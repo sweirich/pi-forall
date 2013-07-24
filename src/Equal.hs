@@ -10,8 +10,6 @@ import Syntax
 import Environment
 
 import Unbound.LocallyNameless hiding (Data, Refl)
-import Control.Monad.Error (when)
-
 import Control.Monad.Error (catchError, zipWithM, zipWithM_)
 import Control.Applicative ((<$>))
 
@@ -20,9 +18,7 @@ import Control.Applicative ((<$>))
 -- ignores type annotations during comparison
 -- throws an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = do   -- let t1' = erase t1 
-  -- let t2' = erase t2 
-  when (t1 `aeq` t2) $ return ()  
+equate t1 t2 = do 
   n1 <- whnf t1 
   n2 <- whnf t2       
   case (n1, n2) of 

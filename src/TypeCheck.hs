@@ -361,9 +361,6 @@ tcTerm (Subst tm p mbnd) Nothing = do
       -- ensure that m' and n' are good  
       (m',_) <- tcType (subst x m a)
       (n',_) <- tcType (subst x n a)
-      -- can't do this. See proj2 in Products.pi
-      -- (_,mTy)  <- inferType m
-      -- (aa,aTy) <- extendCtx (Sig x mTy) $ checkType a (Type 0)
       return (m', n')
     Nothing -> return (m,n)
   (atm, ty') <- checkType tm m'
@@ -543,6 +540,10 @@ declarePats [] _     = err [DS "Not enough patterns in match"]
 declarePats _  Empty = err [DS "Too many patterns in match"]
            
                        
+-- | Convert a pattern to an (annotated) term so that we can add an 
+-- equation for it in the context. Because data constructors must 
+-- be annotated with their types, we need to have the expected type of 
+-- the pattern available.
 pat2Term :: Pattern -> Type -> TcMonad Term
 pat2Term (PatCon dc pats) ty@(TCon n params) = do
   (delta, deltai) <- lookupDCon dc n
@@ -585,13 +586,15 @@ equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
     eqWithPats (map unArg args) pats tele
 equateWithPat _ _ _ = return []  
 
-
-kcTele :: Telescope -> TcMonad (Telescope, Int)
-kcTele Empty = return (Empty, 0)
-kcTele (Cons ep rbnd) = do
+-- | Check all of the types contained within a telescope returning
+-- a telescope where all of the types have been annotated, and the 
+-- maximum level of any type in the telescope.
+tcTypeTele :: Telescope -> TcMonad (Telescope, Int)
+tcTypeTele Empty = return (Empty, 0)
+tcTypeTele (Cons ep rbnd) = do
   let ((x, unembed -> ty),tl) = unrebind rbnd
   (ty', i) <- tcType ty
-  (tele', j) <- extendCtx (Sig x ty') $ kcTele tl
+  (tele', j) <- extendCtx (Sig x ty') $ tcTypeTele tl
   return (Cons ep (rebind (x, embed ty') tele'), max i j)
 
   
@@ -634,6 +637,7 @@ tcModule defs m' = do checkedEntries <- extendCtxMods importedModules $
 data HintOrCtx = AddHint Hint
                | AddCtx [Decl]
 
+-- | Check each sort of declaration in a module
 tcEntry :: Decl -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
   oldDef <- lookupDef n
@@ -673,7 +677,7 @@ tcEntry (Axiom n ty) = do
 -- rule Decl_data
 tcEntry (Data t delta lev cs) =
   do -- Check that the telescope for the datatype definition is well-formed
-     (edelta, i) <- kcTele delta
+     (edelta, i) <- tcTypeTele delta
      ---- check that the telescope provided 
      ---  for each data constructor is wellfomed, and elaborate them
      ---  TODO: worry about universe levels also?
@@ -681,7 +685,7 @@ tcEntry (Data t delta lev cs) =
             extendSourceLocation pos defn $ 
               extendCtx (AbsData t edelta lev) $
                 extendCtxTele edelta $ do
-                  (etele, j) <- kcTele tele
+                  (etele, j) <- tcTypeTele tele
                   return (ConstructorDef pos d etele)
      ecs <- mapM elabConstructorDef cs
      -- check that types are strictly positive.
@@ -695,7 +699,8 @@ tcEntry (Data t delta lev cs) =
 tcEntry (AbsData _ _ _) = err [DS "internal construct"]     
 
      
-     
+-- | Make sure that we don't have the same name twice in the      
+-- environment. (We don't rename top-level module definitions.)
 duplicateTypeBindingCheck :: TName -> Term -> TcMonad ()
 duplicateTypeBindingCheck n ty = do
   -- Look for existing type bindings ...
@@ -762,7 +767,6 @@ occursPositive tName ty = do
 -- Otherwise, the scrutinee type must be a type constructor, so the
 -- code looks up the data constructors for that type and makes sure that 
 -- there are patterns for each one.
-  
 exhaustivityCheck :: Type -> [Pattern] -> TcMonad ()  
 exhaustivityCheck ty (PatVar x:_) = return ()
 exhaustivityCheck ty pats = do
