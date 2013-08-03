@@ -348,7 +348,7 @@ instance Display Term where
             dxs <- display xs
             dc <- display c
             return $ text "at" <+> dxs  <+> text "." <+> dc) mbnd
-      return $ fsep [text "conv" <+> da,
+      return $ fsep [text "subst" <+> da,
                      text "by" <+> db,
                      dat]
 

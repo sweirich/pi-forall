@@ -78,13 +78,13 @@ equate t1 t2 = do
                                
     (TyEq a b, TyEq c d) -> equate a c >> equate b d      
     
-    (Refl _, Refl _) -> return ()
+    (Refl _,  Refl _) -> return ()
     
     (Subst at1 _ _, at2) -> equate at1 at2
     
     (at1, Subst at2 _ _) -> equate at1 at2
     
-    (Contra a1 _, Contra a2 _) -> equate a1 a2
+    (Contra a1 _, Contra a2 _) -> return ()
 
       
     (TCon c1 ts1, TCon c2 ts2) | c1 == c2 -> 
@@ -123,7 +123,7 @@ equate t1 t2 = do
     (_,_) -> do 
       gamma <- getLocalCtx
       err [DS "Expected", DD t2, DS "which normalizes to", DD n2,
-           DS "but found", DD t1, 
+           DS "but found", DD t1,  DS "which normalizes to", DD n1,
            DS "in context:", DD gamma]
 
 -- | Note: ignores erased args during comparison
@@ -196,7 +196,7 @@ whnf :: Term -> TcMonad Term
 whnf (Var x) = do      
   maybeDef <- lookupDef x
   case (maybeDef) of 
-    (Just d) -> whnf (erase d) 
+    (Just d) -> whnf d 
     _ -> return (Var x)
 
 whnf (App t1 arg@(Arg _ t2)) = do
