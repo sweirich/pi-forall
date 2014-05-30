@@ -712,9 +712,9 @@ tcEntry (Def n term) = do
                                checkType term ty `catchError` handler
             -- Put the elaborated version of term into the context.
             if (n `elem` fv eterm) then
-              return $ AddCtx [Sig n ety, RecDef n eterm]
-            else
-              return $ AddCtx [Sig n ety, Def n eterm]
+                 return $ AddCtx [Sig n ety, RecDef n eterm]
+              else
+                 return $ AddCtx [Sig n ety, Def n eterm]
     die term' =
       extendSourceLocation (unPosFlaky term) term $
          err [DS "Multiple definitions of", DD n,

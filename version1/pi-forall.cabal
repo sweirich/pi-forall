@@ -1,0 +1,41 @@
+Name: pi-forall
+Version: 0.1
+License: BSD3
+License-file: LICENSE
+Copyright: (c) 2013 University of Pennsylvania
+Description: An implementation of a simple dependently typed language for OPLSS 2013
+Author: Stephanie Weirich <sweirich@cis.upenn.edu>, based on code by Trellys Team <trellys@...>
+Maintainer: Stephanie Weirich <sweirich@cis.upenn.edu>
+Cabal-Version: >= 1.2
+Build-type: Simple
+tested-with: GHC == 7.6.3
+
+library
+  hs-source-dirs: src/
+  Exposed-modules: Syntax
+                   Parser
+                   TypeCheck
+                   Main
+  Build-depends:  base >= 4
+
+executable pi-forall
+  hs-source-dirs: src/
+  Main-is: Main.hs
+  Build-depends: base >=4,
+                 parsec >= 3.1 && < 3.2,
+                 pretty >= 1.0.1.0,
+                 RepLib >= 0.5.3 && < 0.6, 
+                 unbound >= 0.4.2 && < 0.5,
+                 mtl,
+                 -- 0.2.2.0, 0.3.0.0
+                 transformers,
+                 array >= 0.3.0.2 && < 0.5,
+                 containers,
+                 directory,
+                 filepath,
+                 HUnit,
+                 QuickCheck,
+                 bimap == 0.2.4
+  Ghc-Options:  -Wall -fno-warn-unused-matches
+
+

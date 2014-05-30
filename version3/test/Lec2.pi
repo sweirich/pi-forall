@@ -1,0 +1,35 @@
+module Lec2 where
+
+import Hw1
+
+eq_true : (b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = True -> (b1 = b2)
+eq_true = \b1 b2 pf. 
+  if b1 then if b2 then refl else contra pf
+  		  else if b2 then contra pf else refl
+
+void : Type 
+void = (A:Type) -> A
+
+eq_false : 	(b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = False -> (b1 = b2) -> void
+eq_false = \ b1 b2 pf1 pf2 .
+  if b1 then if b2 then contra pf1 else contra pf2
+        else if b2 then contra pf2 else contra pf1 
+
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  subst refl by pf 
+
+trans : (A:Type) -> (x:A) -> (y:A) -> (z:A) -> (x = z) -> (z = y) -> (x = y)
+trans = \A x y z pf1 pf2 . 
+  subst pf1 by pf2 
+
+
+-- Watch out! This expression loops forever when type checking
+-- It can never be called because its argument is unsatifiable.
+
+loop : (Bool = (Bool -> Bool)) -> Bool
+loop = \ y . 
+   let delta = (\ x . (subst x by y) x : Bool -> Bool) in
+   let omega = delta (subst delta by sym Type Bool (Bool -> Bool) y) in
+	(tt : T omega)
+

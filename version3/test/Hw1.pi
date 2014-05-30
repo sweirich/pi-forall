@@ -1,0 +1,61 @@
+module Hw1 where
+
+-- HW #1: get this file to type check by adding typing rules
+-- for booleans and let expressions to TypeCheck.hs and Equal.hs 
+
+z0 : Bool
+z0 = if True then False else True
+
+-- prelude operations on boolean values
+
+or : Bool -> Bool -> Bool
+or = \b1 b2. if b1 then True else b2
+
+not : Bool -> Bool
+not = \b . if b then False else True
+
+and : Bool -> Bool -> Bool
+and = \b1 b2. if b1 then b2 else False
+
+eq_bool : Bool -> Bool -> Bool
+eq_bool = \ b1 b2 . 
+  if b1 then b2 else (not b2)  
+
+-- using booleans in types
+
+T : Bool -> Type
+T = \b. if b then One else Bool
+
+z1 : T True
+z1 = tt
+
+z2 : T False
+z2 = True
+
+-- let-expressions
+
+x0 : One
+x0 = let y = tt in y
+
+x1 : Bool
+x1 = let y = not True in or y y
+
+-- let-expressions with "refinement"
+-- the type checking rule for let should add a definition of the 
+-- let-bound variable, so that its value can be used in types.
+
+x2 = let x = True in (tt : T x)
+
+-- Challenge: type-level programming with boolean 
+-- expressions. To get bar and barnot to work 
+-- the typing rule for 'if' expressions must be 
+-- context-dependent. In otherwords, it should add new 
+-- definitions to the context in the true/false branches
+-- when the scrutinee is a variable
+
+bar : (b : Bool) -> (T b : Type)
+bar = \b .if b then tt else True
+
+barnot : (b : Bool) -> (T (not b) : Type)
+barnot = \b. if b then False else tt
+
