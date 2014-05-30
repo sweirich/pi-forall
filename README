@@ -1,13 +1,14 @@
 pi-forall
 =========
-   A demo implementation of a simple dependently-typed language for OPLSS 2013
+   A demo implementation of a simple dependently-typed language for OPLSS
+   (Used in 2014 and 2013)
 	Stephanie Weirich
 
 The goal of this project is to bring up the design issues that occur in the
 implementation languages like Agda, Coq, Epigram, Idris, etc. Of course, it
 can't cover everything, but this code is a good starting point for discussion.
 
-As it's main purpose is didactic, the code itself has been written for
+As its main purpose is didactic, the code itself has been written for
 clarity, not for speed. The point of this implementation is an introduction to
 practical issues of language design and how specific features interact with
 each other. 
