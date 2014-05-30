@@ -1,0 +1,8 @@
+Overview of the implementation
+==============================
+
+So you've made your way to the implementation. Now what are all of these
+files? 
+
+  Syntax.hs     The abstract syntax of the language
+  Parser.hs     

@@ -1,0 +1,10 @@
+module Hw2 where
+
+double : (A:Type) -> (x : A) -> { x : A | A }
+double = \A x. (x,x) 
+
+fst : (A:Type) -> (B : A -> Type) -> { x : A | B x } -> A
+fst = \A B p. pcase p of (x0,y) -> x0
+
+snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
+snd = \A B p. pcase p of (x1,y) -> y

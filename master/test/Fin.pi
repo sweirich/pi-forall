@@ -1,0 +1,84 @@
+-- PI library for finite numbers
+--
+-- Some of these are adapted from Fin.agda
+--
+-- Author: Stephanie Weirich
+
+module Fin where
+
+import Nat
+import Equality
+
+data Fin (n : Nat) : Type where
+  Zero of [m:Nat][n = Succ m] 
+  Succ of [m:Nat][n = Succ m] (Fin m)
+
+x : Fin 1
+x = Zero [0][refl]
+
+toNat : [n : Nat] -> Fin n -> Nat
+ind toNat [n] = \ fn . 
+  case fn of 
+   Zero [m][m_eq]   -> 0
+   Succ [m][m_eq] i -> plus 1 (toNat [m] i)
+
+raise : [m : Nat] -> (n: Nat) -> Fin m -> (Fin (plus n m))
+raise = \ [m] . 
+  ind raise n = \ i. 
+    case n of 
+      Zero    -> i
+      Succ n0 -> Succ [plus n0 m][refl] (raise n0 i)
+
+inject_1 : [m : Nat] -> Fin m -> Fin (Succ m)
+inject_1 = \[m] f . Succ [m][refl] f
+
+inject : [m:Nat] -> (n:Nat) -> Fin m -> Fin (plus m n)
+ind inject [m] = \n fn. 
+  case fn of 
+    Zero [m0][m_eq]   -> Zero [plus m0 n][refl]
+    Succ [m0][m_eq] i -> Succ [plus m0 n][refl] (inject [m0] n i)
+
+
+fpred : [n : Nat] -> Fin n -> Fin n
+fpred = \ [n] fn . 
+  case fn of 
+    Zero [m][m_eq]-> Zero [m][m_eq]
+    (Succ [m][m_eq] i) -> inject_1 [m] i
+
+-- equality is decidable
+
+fin_heq : [n: Nat] -> [m:Nat] -> (Fin n) -> (Fin m) -> Bool
+ind fin_heq [n] = \ [m] fn1 fn2 . 
+    case fn1 of 
+      Zero [m1][m1_eq] ->  
+         case fn2 of
+            Zero [m2][m2_eq]      -> True
+            Succ [m2][m2_eq] x    -> False
+      Succ [m1][m1_eq] fn1' ->  
+         --m1_eq : n = Succ m1
+         case fn2 of
+            Succ [m2][m2_eq] fn2' -> 
+				   fin_heq [m1][m2] fn1' fn2'
+            Zero [m2][m2_eq] -> False
+   
+
+-- but a little more difficult when the arguments have the same type
+
+fin_eq : [n: Nat] -> (Fin n) -> (Fin n) -> Bool
+fin_eq =  
+ ind eq [n] = \fn1 fn2 .
+   case fn1 of 
+      Zero [m1][m1_eq] ->  
+         case fn2 of
+            Zero [m2][m2_eq]      -> True
+            Succ [m2][m2_eq] x    -> False
+      Succ [m1][m1_eq] fn1' ->  
+         --m1_eq : n = Succ m1
+         case fn2 of
+            Succ [m2][m2_eq] fn2' -> 
+				     -- m2_eq = Succ m1 = Succ m2
+				     let rec = (eq [m1] fn1' : Fin m1 -> Bool) in
+				     let [m1_eq_m2] = (sm_eq_Sn__m_eq_n m1 m2 m2_eq : m1 = m2) in
+					  (subst rec by m1_eq_m2 at x. Fin x -> Bool) fn2' 
+            Zero [m2][m2_eq] -> False
+

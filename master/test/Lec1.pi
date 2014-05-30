@@ -1,0 +1,42 @@
+module Lec1 where
+
+{- SOLN HW -}
+id : (x:Type) -> x -> x
+id = \x y . y 
+
+compose : (A : Type) -> (B : Type) -> (C:Type) ->
+  (B -> C) -> (A -> B) -> (A -> C)
+compose = \ A B C f g x. (f (g x))
+
+-- some Church encodings, need impredicativity to make them
+-- more reasonable
+
+bool : Type 
+bool = (A:Type) -> A -> A -> A 
+
+true : bool
+true = \A x y. x
+
+false : bool
+false = \A x y. y
+
+bool' : bool -> Type 
+bool' = \b . (B : (b : bool) -> Type) -> B true -> B false -> B b
+
+true' : bool' true
+true' = \A x y . x
+
+false' : bool' false
+false' = \ A x y. y
+
+void : Type
+void = (x:Type) -> x
+
+unit : Type
+unit =  (x:Type) -> x -> x
+
+delta : void -> void
+delta = \x. x (void -> void) x
+
+
+{- STUBWITH -}
