@@ -1,0 +1,113 @@
+-- PI library for natural numbers
+--
+-- Some of these are adapted from Trellys examples
+--
+-- Author: Stephanie Weirich
+--
+
+module Nat where
+
+data Nat : Type where
+  Zero
+  Succ of (Nat)
+
+is_zero : Nat -> Bool
+is_zero = \ x . case x of 
+  Zero -> True
+  Succ n' -> False
+
+pred : Nat -> Nat
+pred = \n . case n of
+  Zero -> Zero
+  Succ n' -> n'
+
+-- S m = S n -> m = n
+--
+-- Poor man's inversion.
+--
+-- This strategy provides inversion for any datatype constructor: refl and a
+-- projection function (here pred).
+--
+-- There is a strong argument for adding a new expression form for such
+-- inversions. :-)
+
+sm_eq_Sn__m_eq_n : (m:Nat) -> (n:Nat) -> ((Succ m:Nat) = Succ n) -> m = n
+sm_eq_Sn__m_eq_n = \m n sm_eq_Sn . TRUSTME
+
+{-
+  let pSm_eq_m    = (refl : pred (Succ m) = m) in
+  let pSn_eq_n    = (refl : pred (Succ n) = n) in
+  let pSm_eq_pSn  = (subst refl by sm_eq_Sn : pred (Succ m) = pred (Succ n)) in 
+  let m_eq_pSn    = (subst pSm_eq_pSn by pSm_eq_m : pred (Succ m) = pred (Succ n)) in
+  subst m_eq_pSn by pSn_eq_n 
+-}
+
+m_eq_n_Sm_eq_Sn : (m:Nat) -> (n:Nat) -> m = n -> ((Succ m : Nat) = Succ n)
+m_eq_n_Sm_eq_Sn = \m n pf . 
+  subst refl by pf 
+
+nat_eq : Nat -> Nat -> Bool
+nat_eq = \ x y .
+  case x of 
+     Zero -> case y of
+        Zero -> True
+        Succ n -> False
+     Succ m -> case y of 
+        Zero -> False
+        Succ n -> nat_eq m n
+
+plus : Nat -> Nat -> Nat
+plus = \ n m .
+  case n of
+    Zero -> m
+    Succ pred -> Succ (plus pred m)
+
+mult : Nat -> Nat -> Nat
+mult = \ n m .
+  case n of
+    Zero -> Zero
+    Succ pred -> plus m (mult pred m)
+
+
+minus : Nat -> Nat -> Nat
+minus = \n m .
+   case n of
+     Zero -> Zero
+     Succ pred -> case m of
+                    Zero -> n
+                    Succ mpred -> minus pred mpred
+
+-------------------------------------------------------
+-- Reasoning about datatypes
+
+minus_same_zero : (n : Nat) -> (minus n n = 0)
+minus_same_zero = \ n .
+    case n of
+      Zero -> (refl : minus 0 0 = 0) 
+      Succ p -> 
+        let ih = (minus_same_zero p : minus p p = 0) in
+        let x  = (refl : minus p p = (minus (Succ p) (Succ p))) in
+        subst ih by x 
+
+lemma_minus_zero_id : (n : Nat) -> (minus n 0 = n)
+lemma_minus_zero_id =   \n . case n of 
+    Zero -> (refl : minus 0 0 = 0)
+    Succ n' -> (refl : minus (Succ n') 0 = Succ n') 
+
+
+lemma_minus_plus_id : (m : Nat) -> (n : Nat) -> ((minus (plus m n) m) = n)
+lemma_minus_plus_id = \m n .
+  case m of
+     Zero -> lemma_minus_zero_id n
+     Succ m' -> lemma_minus_plus_id m' n
+
+plus_associates : (i:Nat) -> (j:Nat) -> (k:Nat) -> plus (plus i j) k = plus i (plus j k)
+plus_associates = \ i j k .
+  case i of
+     -- `refl` away `Zero`s on the left of `(+)`: (0+j)+k = j+k = 0+(j+k)
+    Zero -> refl
+    -- associate `plus` in `Succ` of the inductive case:
+    -- S ((i'+j)+k) = S (i'+(j+k))
+    Succ i' -> 
+      let ih = (plus_associates i' j k) in
+		m_eq_n_Sm_eq_Sn (plus (plus i' j) k) (plus i' (plus j k)) ih

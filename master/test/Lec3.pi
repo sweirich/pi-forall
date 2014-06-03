@@ -1,0 +1,48 @@
+module Lec3 where
+
+data Day : Type where
+   Monday
+   Tuesday
+   Wednesday
+   Thursday 
+   Friday
+   Saturday
+   Sunday
+  
+next_weekday : Day -> Day
+next_weekday = \d . case d of 
+   Monday -> Tuesday 
+   Tuesday -> Wednesday
+   Wednesday -> Thursday
+   Thursday -> Friday
+   Friday -> Monday
+   Saturday -> Monday
+   Sunday -> Monday
+
+
+data Void : Type where {}   -- no constructors
+
+false_elim : [A:Type] -> Void -> A
+false_elim = \ [A] v . case v of {}
+
+neg : Type -> Type
+neg = \ x . (x -> Void)
+
+next_is_not_saturday : (d: Day) -> neg (next_weekday d = Saturday) 
+next_is_not_saturday = \ d. 
+  \pf. case d of
+     Monday -> contra pf
+     Tuesday -> contra pf
+     Wednesday -> contra pf
+     Thursday -> contra pf
+     Friday -> contra pf
+     Saturday -> contra pf
+     Sunday -> contra pf
+
+
+-- products (conjunctions)
+
+data And (A : Type) (B : Type) : Type where
+  Conj of (_ : A) (_ : B)
+
+
