@@ -1,6 +1,13 @@
 Pi-Forall language
 ------------------
 
+This language implemention is designed to accompany four lectures at OPLSS. Notes for these lectures are available at:
+
+[notes.md](notes.md)
+[notes2.md](notes2.md)
+[notes3.md](notes3.md)
+[notes4.md](notes4.md)
+
 This repo contains several versions of a demo implementation of dependently-typed lambda calculus. 
 
 There are three partial versions:

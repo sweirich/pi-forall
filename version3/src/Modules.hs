@@ -26,8 +26,8 @@ getModules
      [FilePath] -> String -> m [Module]
 getModules prefixes top = do
   toParse <- gatherModules prefixes [ModuleImport top]
-  flip evalStateT emptyConstructorNames $
-    mapM reparse toParse
+  flip evalStateT emptyConstructorNames $ mapM reparse toParse
+     
 
 data ModuleInfo = ModuleInfo {
                     modInfoName     :: MName, 

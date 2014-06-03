@@ -81,15 +81,11 @@ tcTerm (Lam bnd) Nothing = do
 
 tcTerm (App t1 t2) Nothing = do  
   (at1, ty1)             <- inferType t1  
-  (Runtime, x, tyA, tyB, mc) <- ensurePi ty1 
+  (x, tyA, tyB) <- ensurePi ty1 
   (at2, ty2)             <- checkType t2 tyA
   let result = (App at1 at2, subst x at2 tyB)
-  
   return result
                      
-
-
-
 
 
 tcTerm (Ann tm ty) Nothing = do
@@ -102,8 +98,8 @@ tcTerm (Pos p tm) mTy =
   
 tcTerm (Paren tm) mTy = tcTerm tm mTy
   
-tcTerm (TrustMe ann1) ann2 = do  
-  Just expectedTy <- matchAnnots ann1 ann2
+tcTerm t@(TrustMe ann1) ann2 = do  
+  expectedTy <- matchAnnots t ann1 ann2
   return (TrustMe (Annot (Just expectedTy)), expectedTy)
 
 tcTerm (TyUnit) Nothing = return (TyUnit, Type)
@@ -114,20 +110,18 @@ tcTerm (TyBool) Nothing = err [DS "unimplemented"]
   
 tcTerm (LitBool b) Nothing = err [DS "unimplemented"]
   
-tcTerm (If t1 t2 t3 ann1) ann2 = err [DS "unimplemented"]      
+tcTerm t@(If t1 t2 t3 ann1) ann2 = err [DS "unimplemented"]      
   
 tcTerm (Let bnd) ann =   err [DS "unimplemented"]        
   
+             
+           
   
   
-tcTerm (TyEq a b) Nothing = err [DS "unimplemented"]
-  
-tcTerm (Refl ann1) ann2 = err [DS "unimplemented"]
-  
-tcTerm (Subst tm p ann1) ann2 = err [DS "unimplemented"]
     
-tcTerm t@(Contra p ann1) ann2 = err [DS "unimplemented"]                 
+      
 
+    
 tcTerm t@(Sigma bnd) Nothing = err [DS "unimplemented"]
   
 tcTerm t@(Prod a b ann1) ann2 = err [DS "unimplemented"]
@@ -149,21 +143,22 @@ tcTerm tm ty = err [DS "unimplemented" ]
 -- The first annotation is assumed to come from an annotation on 
 -- the syntax of the term itself, the second as an argument to 
 -- 'checkType'.  
-matchAnnots :: Annot -> Maybe Type -> TcMonad (Maybe Type)
-matchAnnots (Annot Nothing) Nothing     = return Nothing
-matchAnnots (Annot Nothing) (Just t)    = return (Just t)
-matchAnnots (Annot (Just t)) Nothing    = do
+matchAnnots :: Term -> Annot -> Maybe Type -> TcMonad Type
+matchAnnots e (Annot Nothing) Nothing     = err 
+ [DD e, DS "requires annotation"]
+matchAnnots e (Annot Nothing) (Just t)    = return t
+matchAnnots e (Annot (Just t)) Nothing    = do
   at <- tcType t                                          
-  return (Just at)
-matchAnnots (Annot (Just t1)) (Just t2) = do
+  return at
+matchAnnots e (Annot (Just t1)) (Just t2) = do
   at1 <- tcType t1                                          
   equate at1 t2
-  return (Just at1)
+  return at1
   
 -- | Make sure that the term is a type (i.e. has type 'Type') 
 tcType :: Term -> TcMonad Term
 tcType tm = do
-  (atm, aty) <- checkType tm Type
+  (atm, _) <- checkType tm Type
   return atm
                       
                     

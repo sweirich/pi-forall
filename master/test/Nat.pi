@@ -7,13 +7,9 @@
 
 module Nat where
 
-data List (a : Type) : Type where
-  Nil 
-  Cons of (x : a) (xs : List a)
-
 data Nat : Type where
   Zero
-  Succ of (x : Nat)
+  Succ of (Nat)
 
 is_zero : Nat -> Bool
 is_zero = \ x . case x of 
@@ -25,7 +21,6 @@ pred = \n . case n of
   Zero -> Zero
   Succ n' -> n'
 
-{-
 -- S m = S n -> m = n
 --
 -- Poor man's inversion.
@@ -36,8 +31,10 @@ pred = \n . case n of
 -- There is a strong argument for adding a new expression form for such
 -- inversions. :-)
 
-sm_eq_Sn__m_eq_n : (m:Nat) -> (n:Nat) -> (Succ m = Succ n) -> m = n
-sm_eq_Sn__m_eq_n = \m n sm_eq_Sn .
+sm_eq_Sn__m_eq_n : (m:Nat) -> (n:Nat) -> ((Succ m:Nat) = Succ n) -> m = n
+sm_eq_Sn__m_eq_n = \m n sm_eq_Sn . TRUSTME
+
+{-
   let pSm_eq_m    = (refl : pred (Succ m) = m) in
   let pSn_eq_n    = (refl : pred (Succ n) = n) in
   let pSm_eq_pSn  = (subst refl by sm_eq_Sn : pred (Succ m) = pred (Succ n)) in 
@@ -45,7 +42,7 @@ sm_eq_Sn__m_eq_n = \m n sm_eq_Sn .
   subst m_eq_pSn by pSn_eq_n 
 -}
 
-m_eq_n_Sm_eq_Sn : (m:Nat) -> (n:Nat) -> m = n -> (Succ m = Succ n)
+m_eq_n_Sm_eq_Sn : (m:Nat) -> (n:Nat) -> m = n -> ((Succ m : Nat) = Succ n)
 m_eq_n_Sm_eq_Sn = {- SOLN EP -} \m n pf . 
   subst refl by pf {- STUBWITH TRUSTME -}
 

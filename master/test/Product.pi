@@ -77,7 +77,7 @@ eproj2 = \[A][B] x . case x of
 -- Erased second component
 
 data Refine (A:Type) (B : A -> Type) : Type where
-  Prod of (x:A)[B x]
+  Prod of (x:A)[y:B x]
 
 rproj1 : [A:Type] -> [B:A -> Type] -> Refine A B -> A 
 rproj1 = \[A][B] x . case x of 

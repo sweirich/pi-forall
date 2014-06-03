@@ -4,13 +4,6 @@
 
 # A Simple Core language with Type in Type
 
-## References and source code
-
-github repo with version1
-
-* Cardelli, A Dependently-Typed language with Type:Type
-* A. Löh, C. McBride, W. Swierstra / A tutorial implementation of a dependently typed lambda calculus
-* Andrej Bauer, How to implement dependent type theory I  (blog post)
 
 ## Let's consider a simple lambda calculus
 
@@ -440,6 +433,13 @@ and the
 [MonadError](https://hackage.haskell.org/package/mtl-2.1.2/docs/Control-Monad-Error.html),
 which our type checking monad will be instances of.
 
+    lookupTy :: TName -> TcMonad Term
+	 extendCtx :: Decl -> TcMonad Term -> TcMonad Term
+     
+	  
+	 err  :: (Disp a) => a -> TcMonad b
+	 warn :: (Disp a) => a -> TcMonad b
+
 We'll also need this monad to be a freshness monad, to support working with
 binding structure, and throw in MonadIO for good measure.
 
@@ -534,7 +534,7 @@ type. These variables are not allowed to appear free in the result type of the
 pattern match.
 
     G |- a : { x : A | B }
-	 G , x:A, y:B |- b : C
+	 G, x:A, y:B |- b : C
 	 G |- C : Type
     ------------------------------ pcase
     G |- pcase a of (x,y) -> b : C
@@ -544,20 +544,12 @@ The code in 'version1' includes abstract syntax and code for parsing and
 pretty printing. However, to get Hw1.pi to compile, you'll need to fill in the
 missing cases in TypeCheck.hs.
 
+## References 
+
+* Cardelli, A Dependently-Typed language with Type:Type
+* Augustsson, Cayenne -- a Language With Dependent Types
+* A. Löh, C. McBride, W. Swierstra / A tutorial implementation of a dependently typed lambda calculus
+* Andrej Bauer, How to implement dependent type theory I  (blog post)
+
     
-
-# Definitional equality
-
-You may have noticed that 
-
-## Example
-
-bool' : Bool -> Type
-bool' = \b . (B : (b : bool) -> Type) -> B true -> B false -> B b
-
-true' : bool' true
-true' = \A x y . x
-
-false' : bool' false
-false' = \ A x y. y
 

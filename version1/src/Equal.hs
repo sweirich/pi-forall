@@ -5,6 +5,7 @@
 
 -- | Compare two terms for equality
 module Equal (whnf,equate,ensureType,ensurePi, 
+              
                
                ) where
 
@@ -82,21 +83,13 @@ equate t1 t2 = do
 
 
 
-
-            
     (_,_) -> do 
       gamma <- getLocalCtx
-      err [DS "Expected", DD t2, DS "which normalizes to", DD n2,
-           DS "but found", DD t1,  DS "which normalizes to", DD n1,
+      err [DS "Expected", DD n2,
+           DS "but found", DD n1,
            DS "in context:", DD gamma]
 
--- | Note: ignores erased args during comparison
-equateArgs :: Arg -> Arg -> TcMonad ()    
-equateArgs (Arg Runtime t1) (Arg Runtime t2) = do
-  equate t1 t2
-equateArgs a@(Arg Erased t1) (Arg Erased t2) = return ()
-equateArgs a1 a2 = err [DS "Arguments do not match", 
-                       DD a1, DS "and", DD a2]
+  
   
 -------------------------------------------------------
 
@@ -109,25 +102,20 @@ ensureType ty = do
     Type-> return ()
     _  -> err [DS "Expected a Type, instead found", DD nf]
 
--- | Ensure that the given type 'ty' is some sort of 'Pi' type
+-- | Ensure that the given type 'ty' is a 'Pi' type
 -- (or could be normalized to be such) and return the components of 
 -- the type.
 -- Throws an error if this is not the case.
-ensurePi :: Term -> TcMonad (Epsilon, TName, Term, Term, Maybe Term)
+ensurePi :: Term -> TcMonad (TName, Term, Term)
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
     (Pi bnd) -> do 
       ((x, unembed -> tyA), tyB) <- unbind bnd
-      return (Runtime, x, tyA, tyB, Nothing)
-    (ErasedPi bnd) -> do 
-      ((x, unembed -> tyA), tyB) <- unbind bnd
-      return (Erased, x, tyA, tyB, Nothing)
-    (PiC ep bnd) -> do
-      ((x, unembed -> tyA), (constr, tyB)) <- unbind bnd
-      return (ep, x, tyA, tyB, Just constr)      
+      return (x, tyA, tyB)
     _ -> err [DS "Expected a function type, instead found", DD nf]
     
+
     
     
     
@@ -156,23 +144,21 @@ whnf (App t1 t2) = do
     _ -> do
       return (App nf t2)
       
-whnf (ErasedApp t1 t2) = do
-  nf <- whnf t1 
-  case nf of 
-    (ErasedLam bnd) -> do
-      ((x,_),body) <- unbind bnd 
-      whnf (subst x t2 body)
-      
-    _ -> do
-      return (ErasedApp nf t2)
 
+      
 whnf (If t1 t2 t3 ann) = do
   nf <- whnf t1
   case nf of 
     (LitBool b) -> if b then whnf t2 else whnf t3
     _ -> return (If nf t2 t3 ann)
 
-      
+whnf (Pcase a bnd ann) = do
+  nf <- whnf a 
+  case nf of 
+    Prod b c _ -> do
+      ((x,y), body) <- unbind bnd
+      whnf (subst x b (subst y c body))
+    _ -> return (Pcase nf bnd ann)
 
 whnf t@(Ann tm ty) = 
   err [DS "Unexpected arg to whnf:", DD t]

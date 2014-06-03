@@ -10,8 +10,6 @@ module PrettyPrint(Disp(..), D(..))  where
 
 import Syntax
 import Unbound.LocallyNameless hiding (empty,Data,Refl)
-import Unbound.LocallyNameless.Alpha 
-import Unbound.LocallyNameless.Ops
 
 import Control.Monad.Identity
 import Control.Monad.Reader
@@ -39,9 +37,11 @@ cleverDisp d =
 
 instance Disp Term 
 instance Rep a => Disp (Name a) 
+{- SOLN DATA -}
 instance Disp Telescope 
 instance Disp Pattern 
 instance Disp Match 
+{- STUBWITH -}
 
 instance Disp String where
   disp = text
@@ -82,12 +82,12 @@ instance Disp D where
 instance Disp [D] where
   disp dl = sep $ map disp dl
 
-
+{- SOLN DATA -}
 instance Disp Epsilon where
   disp Erased = text "-"
   disp Runtime = text "+"
-
-
+  disp Constraint = text "="
+{- STUBWITH -}
 -------------------------------------------------------------------------
 -- Modules and Decls
 -------------------------------------------------------------------------
@@ -104,8 +104,7 @@ instance Disp [Decl] where
   disp = vcat . map disp
   
 instance Disp Decl where
-  disp (Def n r@(Ind _ bnd _)) | 
-      name2String(fst(fst(unsafeUnbind bnd)))==name2String n = disp r
+
   disp (Def n term) = disp n <+> text "=" <+> disp term
 
   disp (RecDef n r) = disp (Def n r)
@@ -113,6 +112,7 @@ instance Disp Decl where
   disp (Sig n ty) =
         disp n <+> text ":" <+> disp ty
 
+{- SOLN DATA -}
   disp (Data n params constructors) =
     hang (text "data" <+> disp n <+> disp params
            <+> colon <+> text "Type" 
@@ -127,7 +127,7 @@ instance Disp Decl where
 instance Disp ConstructorDef where
   disp (ConstructorDef _ c Empty) = text c 
   disp (ConstructorDef _ c tele)  = text c <+> text "of" <+> disp tele
-  
+{- STUBWITH -}
 
 -------------------------------------------------------------------------
 -- The Display class
@@ -185,14 +185,17 @@ instance Display Bool where
 -------------------------------------------------------------------------
 -------------------------------------------------------------------------
 
-
+{- SOLN DATA -}
 bindParens :: Epsilon -> Doc -> Doc
 bindParens Runtime d = d
 bindParens Erased  d = brackets d
+bindParens Constraint d = brackets d
 
 mandatoryBindParens :: Epsilon -> Doc -> Doc
 mandatoryBindParens Runtime d = parens d
 mandatoryBindParens Erased  d = brackets d
+mandatoryBindParens Constraint  d = brackets d
+{- STUBWITH -}
 
 instance Display Annot where
   display (Annot Nothing)  = return $ empty
@@ -202,6 +205,7 @@ instance Display Annot where
          (text ":" <+>) <$> (display x)
       else return $ empty
 
+{- SOLN DATA -}
 instance Display Arg where
   display arg@(Arg ep t) = do
     st <- ask
@@ -224,17 +228,17 @@ instance Display Arg where
               Prod _ _ _  -> annotParens ep
               TrustMe _   -> annotParens ep              
               Refl _      -> annotParens ep
-              OrdAx _     -> annotParens ep
               
               _           -> mandatoryBindParens ep 
     wraparg arg <$> display t 
-
+{- STUBWITH -}
  
 
 
 instance Display Term where
   display (Var n) = display n
 
+{- SOLN DATA -}
   display (isNumeral -> Just i) = display i
 
   display (TCon n args) = do
@@ -247,7 +251,8 @@ instance Display Term where
     dargs  <- mapM display args
     dannot <- display annot
     return $ dn <+> hsep dargs <+> dannot
-
+{- STUBWITH -}
+    
   display (Type) = return $ text "Type"
 
   display a@(Lam b) = do
@@ -277,39 +282,6 @@ instance Display Term where
               else 
                 da
         return $ lhs <+> text "->" <+> db
-
-  display (PiC ep bnd) = do
-     lunbind bnd $ \((n,a), (c, b)) -> do
-        da <- display (unembed a)
-        dn <- display n
-        db <- display b
-        dc <- display c
-        let lhs = mandatoryBindParens ep $
-              if (n `elem` fv b) then
-                (dn <+> colon <+> da)
-              else 
-                da
-        return $ lhs <+> text "|" <+> dc <+> text "->" <+> db 
-
-
-  display (Smaller a b) = do
-    da <- display a 
-    db <- display b
-    return $ da <+> text "<" <+> db
-    
-  display (OrdAx ann) = do
-    dann <- display ann
-    return $ text "ord" <+> dann
-
-  display (Ind ep binding annot) =
-    lunbind binding $ \ ((n,x),body) -> do
-      dn <- display n
---      return dn
-      dx <- display x
-      db <- display body
-      dann <- display annot
-      return $ text "ind" <+> dn <+> bindParens ep dx <+> text "="
-               <+> db <+> dann
   
   display (Paren e) = do
      de <- display e
@@ -323,18 +295,21 @@ instance Display Term where
      da <- display (unembed a)
      dx <- display x
      db <- display b
-     return $  sep [text "let" <+> bindParens Runtime dx
+     return $  sep [text "let" <+> dx
                     <+> text "=" <+> da
                     <+> text "in",
                     db]
 
+{- SOLN DATA -}
   display (Case scrut alts annot) = do
      dscrut <- display scrut
      dalts <- mapM display alts
      dannot <- display annot
      return $ text "case" <+> dscrut <+> text "of" $$
           (nest 2 $ vcat $ dalts) <+> dannot              
-         
+{- STUBWITH -}         
+     
+{- SOLN EQUAL -}     
   display (Subst a b annot) = do
       da  <- display a
       db  <- display b
@@ -355,7 +330,9 @@ instance Display Term where
      dty <- display ty
      da  <- display mty 
      return $ text "contra" <+> dty <+> da
+{- STUBWITH -}     
      
+{- SOLN EP -}     
   display a@(ErasedLam b) = do
     (binds, body) <- gatherBinders a
     return $ hang (sep binds) 2 body
@@ -384,7 +361,7 @@ instance Display Term where
               else 
                 da
         return $ lhs <+> text "->" <+> db
-     
+{- STUBWITH -}     
      
      
   display (Ann a b)    = do
@@ -433,6 +410,7 @@ instance Display Term where
   display (TyUnit) = return $ text "One"  
   display (LitUnit) = return $ text "tt"
   
+{- SOLN DATA -}
 instance Display Match where
   display (Match bd) =
     lunbind bd $ \ (pat, ubd) -> do
@@ -447,7 +425,6 @@ instance Display Pattern where
       parens <$> ((<+>) <$> (display c) <*> (hsep <$> (mapM display args)))
   display (PatVar x) = display x
 
-
 instance Display a => Display (a, Epsilon) where
   display (t, ep) = bindParens ep <$> display t
 
@@ -456,39 +433,33 @@ instance Disp Arg where
 
 instance Display Telescope where
   display Empty = return empty
-  display (Cons ep bnd) = goTele ep bnd
-    
-goTele :: (IsEmbed t, Alpha t, Display t1,
-           Display (Embedded t), Display t2) =>
-          Epsilon -> Rebind (t1, t) t2 -> M Doc
-goTele ep bnd = do
-      let ((n, unembed->ty), tele) = unrebind bnd
+  display (Cons Constraint t1 t2 tele) = do      
+      dt1 <- display t1
+      dt2 <- display t2
+      dtele <- display tele
+      return $ brackets (dt1 <+> char '=' <+> dt2) <+> dtele  
+  display (Cons ep n ty tele) = do 
       dn <- display n
       dty <- display ty
       dtele <- display tele
       return $ mandatoryBindParens ep (dn <+> colon <+> dty) <+> dtele
-
+{- STUBWITH -}
+      
 gatherBinders :: Term -> M ([Doc], Doc)
 gatherBinders (Lam b) = 
    lunbind b $ \((n,unembed->ma), body) -> do
       dn <- display n
       dt <- display ma
       (rest, body) <- gatherBinders body
-      return $ (text "\\" <> bindParens Runtime (dn <+> dt) <+> text "." : rest, body)
+      return $ (text "\\" <>  (dn <+> dt) <+> text "." : rest, body)
+{- SOLN EP -}      
 gatherBinders (ErasedLam b) = 
    lunbind b $ \((n,unembed->ma), body) -> do
       dn <- display n
       dt <- display ma
       (rest, body) <- gatherBinders body
-      return $ (text "\\" <> bindParens Erased (dn <+> dt) <+> text "." : rest, body)
-gatherBinders (Ind ep binding ann) = 
-  lunbind binding $ \ ((n,x),body) -> do
-      dn <- display n
-      dx <- display x
-      (rest,body) <- gatherBinders body
-      return (text "ind" <+> dn <+> bindParens ep dx <+> text "=" : rest, 
-              body)
-
+      return $ (text "\\" <> brackets (dn <+> dt) <+> text "." : rest, body)
+{- STUBWITH -}
 gatherBinders body = do 
   db <- display body
   return ([], db)

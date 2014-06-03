@@ -86,52 +86,15 @@ data Term =
    | Pcase Term (Bind (TName, TName) Term) Annot
      -- ^ elimination form  'pcase p of (x,y) -> p' 
 
-   -- propositional equality
-   | TyEq Term Term     -- ^ Equality type  'a = b'
-   | Refl Annot         -- ^ Proof of equality
-   | Subst Term Term Annot
-                        -- ^ equality elimination
-   | Contra Term Annot  -- ^ witness to contradiction
 
-   -- erasure
-   | ErasedLam (Bind (TName, Embed Annot) Term)  -- ^ abstraction       
-   | ErasedPi  (Bind (TName, Embed Term) Term)   -- ^ function type
-   | ErasedApp Term Term                         -- ^ application
      
-   -- datatypes
-   | TCon String [Term]      -- ^ type constructors (fully applied)
-   | DCon String [Arg] Annot -- ^ term constructors (fully applied)
-   | Case Term [Match] Annot -- ^ case analysis
      
-   | Smaller Term Term    
-      -- ^ The structural order type, @a < b@
-   | OrdAx Annot          
-      -- ^ Constructor for ord type:  x < C .. x ..
-   | Ind Epsilon (Bind (TName, TName) Term) Annot
-      -- ^ inductive definition, binds function name and argument in term  
-   | PiC Epsilon (Bind (TName, Embed Term) 
-          (Term,Term))    
-      -- ^ constrained function type '[ x : Nat | x < y ] -> B'     
                  deriving (Show)
                
 -- | An 'Annot' is optional type information               
 newtype Annot = Annot (Maybe Term) deriving Show            
 
--- | A 'Match' represents a case alternative
-data Match = Match (Bind Pattern Term) deriving (Show)
 
--- | The patterns of case expressions bind all variables 
--- in their respective branches.
-data Pattern = PatCon DCName [(Pattern, Epsilon)]
-             | PatVar TName deriving (Show, Eq)
-
--- | Epsilon annotates whether an abstraction 
--- is implicit or explicit.
-data Epsilon = Runtime | Erased
-     deriving (Eq,Show,Read,Bounded,Ord)
-
--- | An argument is tagged with whether it should be erased
-data Arg  = Arg Epsilon Term deriving (Show)
 
 -----------------------------------------
 -- * Modules and declarations
@@ -141,19 +104,16 @@ data Arg  = Arg Epsilon Term deriving (Show)
 --   and a set of constructor names (which affect parsing).     
 data Module = Module { moduleName         :: MName,
                        moduleImports      :: [ModuleImport],
-                       moduleEntries      :: [Decl],
-                       moduleConstructors :: ConstructorNames
+                       moduleEntries      :: [Decl]
+                       
                      }
+              
   deriving (Show)
 
 newtype ModuleImport = ModuleImport MName
   deriving (Show,Eq)
 
-data ConstructorNames = ConstructorNames {
-                          tconNames :: Set String,
-                          dconNames :: Set String
-                        }
-  deriving (Show, Eq)
+
 
 -- | Declarations are the components of modules
 data Decl = Sig     TName  Term
@@ -162,38 +122,18 @@ data Decl = Sig     TName  Term
             -- ^ The definition of a particular name, must 
             -- already have a type declaration in scope
           | RecDef TName Term 
-          | Data    TCName Telescope [ConstructorDef]
-            -- ^ Declaration for a datatype including all of 
-            -- its data constructors
-          | DataSig TCName Telescope 
-            -- ^ An abstract view of a datatype. Does 
-            -- not include any information about its data 
-            -- constructors
+            
           | Mutual [Decl]
   deriving (Show)
 
--- | A Data constructor has a name and a telescope of arguments
-data ConstructorDef = ConstructorDef SourcePos DCName Telescope
-  deriving (Show)
-           
--------------
--- * Telescopes
--------------
 
--- | A telescope is like a first class context. It binds each name 
--- in the rest of the telescope.  For example   
---     Delta = x:* , y:x, z :y = w, empty
-data Telescope = Empty
-               | Cons Epsilon (Rebind (TName, Embed Term) Telescope)
-  deriving (Show)
 
 -------------
 -- * Auxiliary functions on syntax
 -------------
 
--- | empty set of constructor names
-emptyConstructorNames :: ConstructorNames 
-emptyConstructorNames = ConstructorNames S.empty S.empty
+
+
 
 -- | Default name for '_' occurring in patterns
 wildcardName :: TName
@@ -202,10 +142,6 @@ wildcardName = string2Name "_"
 -- | empty Annotation
 noAnn :: Annot   
 noAnn = Annot Nothing
-
--- | Extract the term from an Arg
-unArg :: Arg -> Term
-unArg (Arg _ t) = t
 
 -- | Partial inverse of Pos
 unPos :: Term -> Maybe SourcePos
@@ -220,88 +156,10 @@ unPosDeep = something (mkQ Nothing unPos)
 unPosFlaky :: Term -> SourcePos
 unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
 
--- | Is this the syntax of a literal (natural) number
-isNumeral :: Term -> Maybe Int
-isNumeral (Pos _ t) = isNumeral t
-isNumeral (Paren t) = isNumeral t
-isNumeral (DCon c [] _) | c== "Zero" = Just 0
-isNumeral (DCon c [Arg _ t] _) | c==  "Succ" =
-  do n <- isNumeral t ; return (n+1)
-isNumeral _ = Nothing
 
--- | Is this pattern a variable
-isPatVar :: Pattern -> Bool
-isPatVar (PatVar _) = True
-isPatVar _          = False
 
----------------------
--- * Erasure
----------------------   
-   
-class Erase a where        
-  -- | erase all computationally irrelevant parts of an expression
-  -- these include all typing annotations  
-  -- irrelevant arguments are replaced by unit
-  erase :: a -> a
         
-instance Erase Term where
-  erase (Var x)         = Var x
-  erase (Lam bnd)    = Lam (bind (x, embed noAnn) (erase body))
-    where ((x,unembed -> _), body) = unsafeUnbind bnd
-  erase (App a1 a2)     = App (erase a1) (erase a2)
-  erase (Type)          = Type 
-  erase (Pi bnd)        = Pi (bind (x, embed (erase tyA)) (erase tyB))
-    where ((x,unembed -> tyA), tyB) = unsafeUnbind bnd
-  erase (Ann t1 t2)     = erase t1   
-  erase (Paren t1)      = erase t1
-  erase (Pos sp t)      = erase t
-  erase (TrustMe _)     = TrustMe noAnn
-  erase (TyUnit)        = TyUnit
-  erase (LitUnit)       = LitUnit
-  erase (TyBool)        = TyBool
-  erase (LitBool b)     = LitBool b
-  erase (If a b c _)    = If (erase a) (erase b) (erase c) noAnn
-  erase (Let bnd)       = Let (bind (x,embed (erase rhs)) (erase body))
-    where ((x,unembed -> rhs),body) = unsafeUnbind bnd
-        
-  erase (TyEq a b)       = TyEq (erase a) (erase b)
-  erase (Refl _)         = Refl noAnn
-  erase (Subst tm pf _)  = Subst (erase tm) (erase pf) noAnn
-  erase (Contra tm _)    = Contra (erase tm) noAnn
                           
-  erase (ErasedLam bnd) = ErasedLam (bind (x, embed noAnn) (erase body))
-    where ((x,unembed -> _), body) = unsafeUnbind bnd
-  erase (ErasedApp tm1 tm2) = ErasedApp (erase tm1) LitUnit
-  erase (ErasedPi  bnd) = ErasedPi (bind (x, embed (erase tyA)) (erase tyB))
-    where ((x,unembed -> tyA), tyB) = unsafeUnbind bnd
-          
-  erase (TCon n tms)    = TCon n (map erase tms)
-  erase (DCon n args _) = DCon n (map erase args) noAnn
-  erase (Case tm ms _)  = Case (erase tm) (map erase ms) noAnn
-  
-  erase (Smaller a b)   = Smaller (erase a) (erase b)
-  erase (OrdAx _)       = OrdAx noAnn
-  erase (Ind ep bnd _)  = Ind ep (bind (f,x) (erase body)) noAnn where
-    ((f,x),body) = unsafeUnbind bnd
-  erase (PiC ep bnd)    = PiC ep (bind (x, embed (erase tyA))
-                               (erase constr, erase tyB)) where
-    ((x,unembed->tyA),(constr,tyB)) = unsafeUnbind bnd
-    
-  erase (Sigma bnd)     = Sigma (bind (x, embed (erase tyA)) (erase tyB)) 
-    where ((x,unembed->tyA),tyB) = unsafeUnbind bnd
-  erase (Prod a b _)    = Prod (erase a) (erase b) noAnn
-  erase (Pcase a bnd _) = 
-    Pcase (erase a) (bind (x,y) (erase body)) noAnn where
-       ((x,y),body) = unsafeUnbind bnd
-
-instance Erase Match where
-  erase (Match bnd) = Match (bind p (erase t)) where
-    (p,t) = unsafeUnbind bnd 
-    
-instance Erase Arg where    
-  erase (Arg Runtime t) = Arg Runtime (erase t)
-  erase (Arg Erased t)  = Arg Erased  LitUnit
-        
 -----------------
 -- * Alpha equivalence, free variables and substitution.
 ------------------
@@ -319,10 +177,10 @@ derive_abstract [''SourcePos]
 instance Alpha SourcePos
 instance Subst b SourcePos
 
-derive [''Epsilon, ''Term, ''Match, 
-        ''Pattern, ''Telescope, ''Module, ''Decl, 
-        ''ConstructorNames, ''ModuleImport, ''ConstructorDef, 
-        ''Arg, ''Annot]
+derive [''Term, 
+        ''Module, ''Decl, 
+        ''ModuleImport, 
+        ''Annot]
 
 -- Among other things, the Alpha class enables the following
 -- functions:
@@ -330,12 +188,7 @@ derive [''Epsilon, ''Term, ''Match,
 --    fv  :: Alpha a => a -> [Name a]
 
 instance Alpha Term
-instance Alpha Match
-instance Alpha Pattern
-instance Alpha Epsilon
-instance Alpha Telescope
-instance Alpha Arg
-instance Alpha ConstructorDef
+
 instance Alpha Annot
 
 
@@ -351,22 +204,6 @@ instance Subst Term Term where
   isvar (Var x) = Just (SubstName x)
   isvar _ = Nothing
 
-instance Subst Term Epsilon
-instance Subst Term Match
-instance Subst Term Pattern
-instance Subst Term Telescope
-instance Subst Term Arg
-instance Subst Term ConstructorDef
+
 instance Subst Term Annot
 
--- | Substitute a list of terms for the variables bound in a telescope
--- This is used to instantiate the parameters of a data constructor
--- to find the types of its arguments.
-substTele :: Telescope -> [ Term ] -> Telescope -> Telescope
-substTele tele args delta = substs (mkSubst tele args) delta where
-  mkSubst Empty [] = []
-  mkSubst (Cons _ (unrebind->((x,_),tele'))) (tm : tms) = 
-       (x,tm) : mkSubst tele' tms
-  mkSubst _ _ = error "Internal error: substTele given illegal arguments"
-  
-  

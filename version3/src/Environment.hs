@@ -9,14 +9,12 @@ module Environment
     TcMonad, runTcMonad,
     Env,Hint(..),
     emptyEnv,
-    lookupTy, lookupTyMaybe, lookupDef, lookupRecDef, lookupHint, lookupTCon, 
-    lookupDCon, lookupDConAll, getTys,
-    getCtx, getLocalCtx, extendCtx, extendCtxTele, 
+    lookupTy, lookupTyMaybe, lookupDef, lookupRecDef, lookupHint,     lookupTCon, lookupDCon, lookupDConAll, extendCtxTele, 
+    getTys, getCtx, getLocalCtx, extendCtx, 
     extendCtxs, extendCtxsGlobal,
     extendCtxMods,
     extendHints,
     extendSourceLocation, getSourceLocation,
-    -- getDefs, substDefs,
     err, warn, extendErr, D(..),Err(..),
   ) where
 
@@ -197,11 +195,15 @@ extendCtxsGlobal :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxsGlobal ds = 
   local (\ m@(Env {ctx = cs}) -> m { ctx     = ds ++ cs,
                                      globals = length (ds ++ cs)})
+
 -- | Extend the context with a telescope
 extendCtxTele :: (MonadReader Env m) => Telescope -> m a -> m a
 extendCtxTele Empty m = m
-extendCtxTele (Cons _ (unrebind -> ((x,unembed->ty),tele))) m = 
+extendCtxTele (Cons Constraint x t2 tele) m = 
+  extendCtx (Def x t2) $ extendCtxTele tele m
+extendCtxTele (Cons ep x ty tele) m = 
   extendCtx (Sig x ty) $ extendCtxTele tele m
+
 
 -- | Extend the context with a module
 -- Note we must reverse the order.
@@ -235,30 +237,6 @@ getSourceLocation = asks sourceLocation
 -- | Add a type hint
 extendHints :: (MonadReader Env m) => Hint -> m a -> m a
 extendHints h = local (\m@(Env {hints = hs}) -> m { hints = h:hs })
-
-{-
--- | access all definitions
-getDefs :: MonadReader Env m => m [(TName,Term)]
-getDefs = do
-  ctx <- getCtx
-  return $ filterDefs ctx
- where filterDefs ((Def x a):ctx) = (x,a) : filterDefs ctx
-       -- filterDefs ((RecDef x a):ctx) = (x,a) : filterDefs ctx
-       filterDefs (_:ctx) = filterDefs ctx
-       filterDefs [] = []
-
--- | substitute all of the defs through a term
-substDefs :: MonadReader Env m => Term -> m Term
-substDefs tm = do
-  ctx <- getCtx
-  return $ substs (expandDefs ctx) tm
- where expandDefs ((Def x a):ctx) =
-           let defs = expandDefs ctx 
-           in ((x, substs defs a) : defs)
-       expandDefs (_:ctx) = expandDefs ctx
-       expandDefs [] = []
--}
-
 
 
 -- | An error that should be reported to the user

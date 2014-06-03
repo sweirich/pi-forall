@@ -84,31 +84,9 @@ tcTerm (Lam bnd) Nothing = do
 
 tcTerm (App t1 t2) Nothing = do  
   (at1, ty1)             <- inferType t1  
-  (Runtime, x, tyA, tyB, mc) <- ensurePi ty1 
+  (x, tyA, tyB) <- ensurePi ty1 
   (at2, ty2)             <- checkType t2 tyA
   let result = (App at1 at2, subst x at2 tyB)
-  {- SOLN DATA -}
-  -- if the function has a constrained type
-  -- make sure that it is satisfied
-  () <- case mc of 
-    Just constr@(Smaller b c) -> do
-      let subterm y [] = False
-          subterm y (Arg _ y' : ys) | y `aeq` y' = True
-          subterm y (_ : ys) = subterm y ys      
-      b' <- whnf (subst x at2 b)
-      c' <- whnf (subst x at2 c)
-      case c' of 
-        (DCon _ args _) | b' `subterm` args ->
-          return ()
-        _ -> do 
-          gamma <- getLocalCtx
-          err [DS "The constraint", DD (Smaller b' c'), 
-                  DS "was not satisfied in the application.",
-                  DS "The local context was:", 
-                  DD gamma]
-    Just c -> err [DS "I don't know how to satisfy the constraint", DD c]
-    _ -> return ()
-  {- STUBWITH -}
   return result
                      
 {- SOLN EP -}
@@ -148,30 +126,10 @@ tcTerm (ErasedLam bnd) Nothing = do
 
 
 tcTerm (ErasedApp t1 t2) Nothing = do  
-  (at1, ty1)             <- inferType t1  
-  (Erased, x, tyA, tyB, mc) <- ensurePi ty1 
-  (at2, ty2)             <- checkType t2 tyA
+  (at1, ty1)    <- inferType t1  
+  (x, tyA, tyB) <- ensureErasedPi ty1 
+  (at2, ty2)    <- checkType t2 tyA
   let result = (ErasedApp at1 at2, subst x at2 tyB)
-  -- if the function has a constrained type
-  -- make sure that it is satisfied
-  () <- case mc of 
-    Just constr@(Smaller b c) -> do
-      let subterm y [] = False
-          subterm y (Arg _ y' : ys) | y `aeq` y' = True
-          subterm y (_ : ys) = subterm y ys      
-      b' <- whnf (subst x at2 b)
-      c' <- whnf (subst x at2 c)
-      case c' of 
-        (DCon _ args _) | b' `subterm` args ->
-          return ()
-        _ -> do 
-          gamma <- getLocalCtx
-          err [DS "The constraint", DD (Smaller b' c'), 
-                  DS "was not satisfied in the application.",
-                  DS "The local context was:", 
-                  DD gamma]
-    Just c -> err [DS "I don't know how to satisfy the constraint", DD c]
-    _ -> return ()
   return result
   
 tcTerm (ErasedPi bnd) Nothing = do 
@@ -179,16 +137,6 @@ tcTerm (ErasedPi bnd) Nothing = do
   atyA <- tcType tyA 
   atyB <- extendCtx (Sig x atyA) $ tcType tyB
   return (ErasedPi (bind (x, embed atyA) atyB), Type)   
-{- STUBWITH -}
-
-
-{- SOLN DATA -}
-tcTerm (PiC ep bnd) Nothing = do 
-  ((x, unembed -> tyA), (tyC,tyB)) <- unbind bnd
-  atyA <- tcType tyA 
-  atyB <- extendCtx (Sig x atyA) $ tcType tyB
-  atyC <- extendCtx (Sig x atyA) $ tcType tyC
-  return (PiC ep (bind (x, embed atyA) (atyC, atyB)), Type)
 {- STUBWITH -}
 
 tcTerm (Ann tm ty) Nothing = do
@@ -201,8 +149,8 @@ tcTerm (Pos p tm) mTy =
   
 tcTerm (Paren tm) mTy = tcTerm tm mTy
   
-tcTerm (TrustMe ann1) ann2 = do  
-  Just expectedTy <- matchAnnots ann1 ann2
+tcTerm t@(TrustMe ann1) ann2 = do  
+  expectedTy <- matchAnnots t ann1 ann2
   return (TrustMe (Annot (Just expectedTy)), expectedTy)
 
 tcTerm (TyUnit) Nothing = return (TyUnit, Type)
@@ -216,19 +164,16 @@ tcTerm (LitBool b) Nothing = {- SOLN HW -} do
   return (LitBool b, TyBool)
   {- STUBWITH err [DS "unimplemented"] -}
   
-tcTerm (If t1 t2 t3 ann1) ann2 = {- SOLN HW -} do
+tcTerm t@(If t1 t2 t3 ann1) ann2 = {- SOLN HW -} do
+  ty <- matchAnnots t ann1 ann2   
   (at1,_) <- checkType t1 TyBool
-  ann <- matchAnnots ann1 ann2 
   nf <- whnf at1 
   let ctx b = case nf of 
         Var x -> [Def x (LitBool b)]
         _     -> []
-  case ann of 
-    Just ty -> do
-      (at2, _) <- extendCtxs (ctx True) $ checkType t2 ty
-      (at3, _) <- extendCtxs (ctx False) $ checkType t3 ty
-      return (If at1 at2 at3 (Annot ann), ty)
-    Nothing -> err [DS "Annotation required"]
+  (at2, _) <- extendCtxs (ctx True) $ checkType t2 ty
+  (at3, _) <- extendCtxs (ctx False) $ checkType t3 ty
+  return (If at1 at2 at3 (Annot (Just ty)), ty)
   {- STUBWITH err [DS "unimplemented"] -}      
   
 tcTerm (Let bnd) ann = {- SOLN HW -} do       
@@ -253,12 +198,32 @@ tcTerm (TCon c params) Nothing = do
   return (TCon c eparams, Type)
   
 -- Data constructor application  
+-- we don't know the expected type, so see if there
+-- is only one datacon of that name that takes no
+-- parameters
+tcTerm t@(DCon c args (Annot Nothing)) Nothing = do
+  matches <- lookupDConAll c 
+  case matches of
+    [(tname,(Empty,ConstructorDef _ _ deltai))] -> do
+      let numArgs   = teleLength deltai
+      unless (length args == numArgs) $
+            err [DS "Constructor", DS c,
+                 DS "should have", DD numArgs, 
+                 DS "data arguments, but was given", 
+                 DD (length args), DS "arguments."]
+      eargs  <- tcArgTele args deltai
+      let ty =  TCon tname []
+      return $ (DCon c eargs (Annot (Just ty)),ty)
+    [_] -> err [DS "Cannot infer the parameters to data constructors.",
+                DS "Add an annotation."]
+    _ -> err [DS "Ambiguous data constructor", DS c]       
+  
+-- we know the expected type of the data constructor
+-- so look up its type in the context
 tcTerm t@(DCon c args ann1) ann2 = do
-  ann <- matchAnnots ann1 ann2
-  case ann of
-    -- we know the expected type of the data constructor
-    -- so look up its type in the context
-    (Just (TCon tname params)) -> do  
+  ty <- matchAnnots t ann1 ann2
+  case ty of
+    (TCon tname params) -> do  
       (delta, deltai) <- lookupDCon c tname
       let numArgs   = teleLength deltai
       unless (length args == numArgs) $
@@ -266,180 +231,103 @@ tcTerm t@(DCon c args ann1) ann2 = do
              DS "should have", DD numArgs, 
              DS "data arguments, but was given", 
              DD (length args), DS "arguments."]
-      eargs  <- tcArgTele args (substTele delta params deltai)
-      let ty = TCon tname params
+      newTele <- (substTele delta params deltai)
+      eargs  <- tcArgTele args newTele
       return $ (DCon c eargs (Annot (Just ty)), ty) 
-    Just ty -> 
+    _ -> 
       err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
-    Nothing -> do
-      -- we don't know the expected type, so see if there
-      -- is only one datacon of that name that takes no
-      -- parameters
-      matches <- lookupDConAll c 
-      case matches of
-        [(tname,(Empty,ConstructorDef _ _ deltai))] -> do
-          let numArgs   = teleLength deltai
-          unless (length args == numArgs) $
-            err [DS "Constructor", DS c,
-                 DS "should have", DD numArgs, 
-                 DS "data arguments, but was given", 
-                 DD (length args), DS "arguments."]
-          eargs  <- tcArgTele args deltai
-          let ty =  TCon tname []
-          return $ (DCon c eargs (Annot (Just ty)),ty)
-        [_] -> err [DS "Cannot infer the parameters to data constructors.",
-                    DS "Add an annotation."]
-        _ -> err [DS "Ambiguous data constructor", DS c]       
   
 -- If we are in inference mode, then 
 --      we do not use refinement        
 -- otherwise, we must have a typing annotation        
-tcTerm (Case scrut alts ann1) ann2 = do   
+tcTerm t@(Case scrut alts ann1) ann2 = do   
   (ascrut, sty) <- inferType scrut 
   (n, params) <- ensureTCon sty
-  ann <- matchAnnots ann1 ann2
+  expectedTy <- matchAnnots t ann1 ann2
   let checkAlt (Match bnd) = do
          (pat, body) <- unbind bnd
          -- add variables from pattern to context
          (decls, evars) <- declarePat pat Runtime (TCon n params)
-         (ebody, atyp) <- case ann of
-           (Just expectedTy) -> do
+         (ebody, atyp) <- do
              -- add scrut = pat equation to the context.
              decls' <- equateWithPat scrut pat (TCon n params)
              (ebody, _) <- extendCtxs (decls ++ decls') $ 
                checkType body expectedTy
              return (ebody, expectedTy)
-           Nothing -> -- extendCtxs decls $ inferType body
-             err [DS "must be in checking mode for case"]
+{- STUBWITH -}             
+{- SOLN EP -}             
          -- make sure 'erased' components aren't used 
          when (any (`elem` (fv (erase ebody))) evars) $
            err [DS "Erased variable bound in match used"]
+{- STUBWITH -}           
+{- SOLN DATA -}         
          return (Match (bind pat ebody), atyp)
   exhaustivityCheck sty (map (\(Match bnd) -> 
                           fst (unsafeUnbind bnd)) alts) 
   aalts_atyps <- mapM checkAlt alts
   let (aalts, atyps) = unzip aalts_atyps
-  ty <- merge ann atyps
+  ty <- merge (Just expectedTy) atyps
   return (Case ascrut aalts (Annot (Just ty)), ty)
-  
-tcTerm (Smaller a b) Nothing = do   
-  (aa,aTy) <- inferType a 
-  (ab,bTy) <- checkType b aTy
-  return (Smaller aa ab, Type)
-
-tcTerm (OrdAx ann1) ann2 = do
-  let subterm y [] = False
-      subterm y (Arg _ y' : ys) | y `aeq` y' = True
-      subterm y (_ : ys) = subterm y ys
-
-  ann <- matchAnnots ann1 ann2 
-  case ann of 
-    Just sm@(Smaller x y) -> do 
-      x' <- whnf x 
-      y' <- whnf y
-      case y' of 
-        (DCon _ args _) | x' `subterm` args ->
-          return (OrdAx (Annot ann), sm)
-        _ -> err [DS "ord must be used at type 'a < C ... a ...'",
-                    DS "Instead, the type", DD sm, DS "was expected."]
-    Just sm -> err [DS "ord must be used at type 'a < C ... a ...'",
-                    DS "Instead, the type", DD sm, DS "was expected."] 
-    Nothing -> err [DS "Cannot figure out type of ord."]
-
-tcTerm (Ind ep bnd ann1) ann2 = do  
-  ann <- matchAnnots ann1 ann2 
-  case ann of 
-    Just ty@(Pi bnd2) -> do
-      ((f,x), body) <- unbind bnd
-      ((y,unembed -> tyA), tyB) <- unbind bnd2
-      
-      -- make type of f inside the body
-      -- constraining it to apply only to smaller arguments
-      let tyF = PiC ep (bind (y, embed tyA)
-                    (Smaller (Var y) (Var x), tyB))
-      
-      -- compute expected type of the body 
-      let x_tyB = swaps (single (AnyName x)(AnyName y)) tyB
-          
-      -- check the body of the ind
-      (ebody, tyB') <-     
-        extendCtx (Sig x tyA) $
-           extendCtx (Sig f tyF) $
-             checkType body x_tyB
-             
-    
-
-      return (Ind ep (bind (f,x) ebody) (Annot (Just ty)), ty)
-
-    Just ty ->
-      err [DS "Ind expression expected to have type", DD ty, 
-           DS "Sadly, it doesn't."]
-    Nothing -> 
-      err [DS "Ind expression should be annotated with its type"]
 {- STUBWITH -}  
   
-tcTerm (TyEq a b) Nothing = {- SOLN EQUAL -} do
+{- SOLN EQUAL -}  
+tcTerm (TyEq a b) Nothing =  do
   (aa,aTy) <- inferType a 
   (ab,bTy) <- checkType b aTy
-  return (TyEq aa ab, Type) {- STUBWITH err [DS "unimplemented"] -}
-  
-tcTerm (Refl ann1) ann2 = {- SOLN EQUAL -} do
-  ann <- matchAnnots ann1 ann2
-  case ann of 
-    (Just (TyEq a b)) -> do
-      equate a b
-      let ty = TyEq a b 
-      return (Refl (Annot (Just ty)), ty)  
-    (Just ty) -> err [DS "refl annotated with", DD ty]
-    Nothing   -> err [DS "refl requires annotation"]
-    {- STUBWITH err [DS "unimplemented"] -}
-  
-tcTerm (Subst tm p ann1) ann2 = {- SOLN EQUAL -} do
-  ann <- matchAnnots ann1 ann2
-  case ann of 
-    Just ty -> do
-      -- infer the type of the proof p
-      (apf, tp) <- inferType p 
-      -- make sure that it is an equality between m and n
-      (m,n)     <- ensureTyEq tp
-      -- look for definitions for the context
-      edecl <- do 
-        m'        <- whnf m
-        n'        <- whnf n
-        case (m',n') of 
-            (Var x, _) -> return [Def x n']
-            (_, Var y) -> return [Def y m']
-            (_,_) -> return [] 
-            
-      pdecl <- do
-        p'        <- whnf apf
-        case p' of 
-          (Var x) -> return [Def x (Refl (Annot (Just tp)))]
-          _       -> return []
-      let refined = extendCtxs (edecl ++ pdecl)
-      (atm, _) <- refined $ checkType tm ty
-      return (Subst atm apf (Annot (Just ty)), ty)
-    Nothing   -> err [DS "subst requires annotation"]      
-  {- STUBWITH err [DS "unimplemented"] -}
-    
-tcTerm t@(Contra p ann1) ann2 = {- SOLN EQUAL -}  do
-  ann <- matchAnnots ann1 ann2
-  case ann of 
-    Nothing -> err [DS "Cannot check term", DD t, DS "without annotation"]
-    Just ty -> do
-      (apf, ty') <- inferType p 
-      (a,b) <- ensureTyEq ty'
-      a' <- whnf a
-      b' <- whnf b
-      case (a',b') of 
-        (DCon da _ _, DCon db _ _) | da /= db -> 
-          return (Contra apf (Annot (Just ty)), ty)
-        (LitBool b1, LitBool b2) | b1 /= b2 ->
-          return (Contra apf (Annot (Just ty)), ty)
-        (_,_) -> err [DS "I can't tell that", DD a, DS "and", DD b,
-                      DS "are contradictory"]
-    {- STUBWITH err [DS "unimplemented"] -}                 
+  return (TyEq aa ab, Type) 
 
+
+tcTerm t@(Refl ann1) ann2 =  do
+  ty <- matchAnnots t ann1 ann2
+  case ty of 
+    (TyEq a b) -> do
+      equate a b
+      return (Refl (Annot (Just ty)), ty)  
+    _ -> err [DS "refl annotated with", DD ty]
+  
+tcTerm t@(Subst tm p ann1) ann2 =  do
+  ty <- matchAnnots t ann1 ann2
+  -- infer the type of the proof p
+  (apf, tp) <- inferType p 
+  -- make sure that it is an equality between m and n
+  (m,n)     <- ensureTyEq tp
+  -- look for definitions for the context
+  edecl <- do 
+    m'        <- whnf m
+    n'        <- whnf n
+    case (m',n') of 
+        (Var x, _) -> return [Def x n']
+        (_, Var y) -> return [Def y m']
+        (_,_) -> return [] 
+        
+  pdecl <- do
+    p'        <- whnf apf
+    case p' of 
+      (Var x) -> return [Def x (Refl (Annot (Just tp)))]
+      _       -> return []
+  let refined = extendCtxs (edecl ++ pdecl)
+  (atm, _) <- refined $ checkType tm ty
+  return (Subst atm apf (Annot (Just ty)), ty)
+    
+tcTerm t@(Contra p ann1) ann2 = do
+  ty <- matchAnnots t ann1 ann2
+  (apf, ty') <- inferType p 
+  (a,b) <- ensureTyEq ty'
+  a' <- whnf a
+  b' <- whnf b
+  case (a',b') of 
+{- STUBWITH -}    
+{- SOLN DATA -}
+    (DCon da _ _, DCon db _ _) | da /= db -> 
+      return (Contra apf (Annot (Just ty)), ty)
+{- STUBWITH -}      
+{- SOLN EQUAL -}
+    (LitBool b1, LitBool b2) | b1 /= b2 ->
+      return (Contra apf (Annot (Just ty)), ty)
+    (_,_) -> err [DS "I can't tell that", DD a, DS "and", DD b,
+                  DS "are contradictory"]
+{- STUBWITH -}
+    
 tcTerm t@(Sigma bnd) Nothing = {- SOLN DATA -} do        
   ((x,unembed->tyA),tyB) <- unbind bnd
   aa <- tcType tyA
@@ -448,48 +336,43 @@ tcTerm t@(Sigma bnd) Nothing = {- SOLN DATA -} do
   {- STUBWITH err [DS "unimplemented"] -}
   
 tcTerm t@(Prod a b ann1) ann2 = {- SOLN DATA -} do
-  ann <- matchAnnots ann1 ann2
-  case ann of
-    Nothing -> err [DS "Cannot check term", DD t, DS "without annotation"]
-    Just ty@(Sigma bnd) -> do
+  ty <- matchAnnots t ann1 ann2
+  case ty of
+     (Sigma bnd) -> do
       ((x, unembed-> tyA), tyB) <- unbind bnd
       (aa,_) <- checkType a tyA
       (ba,_) <- extendCtxs [Sig x tyA, Def x aa] $ checkType b tyB
-      return (Prod aa ba (Annot ann), ty)
-    Just ty -> err [DS "Products must have Sigma Type", DD ty, 
+      return (Prod aa ba (Annot (Just ty)), ty)
+     _ -> err [DS "Products must have Sigma Type", DD ty, 
                    DS "found instead"]
     {- STUBWITH err [DS "unimplemented"] -}
         
 tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN DATA -} do   
-  ann <- matchAnnots ann1 ann2
-  case ann of
-    Nothing -> err [DS "Cannot check term", DD t, DS "without annotation"]
-    Just ty -> do
-      (apr, pty) <- inferType p
-      pty' <- whnf pty
-      case pty' of 
-        Sigma bnd' -> do
-          ((x,unembed->tyA),tyB) <- unbind bnd'
-          ((x',y'),body) <- unbind bnd
-          let tyB' = subst x (Var x') tyB
-          nfp  <- whnf apr
-          let ctx = case nfp of 
-                Var x0 -> [Def x0 (Prod (Var x') (Var y') 
-                                  (Annot (Just pty')))]
-                _     -> []              
-          (abody, bTy) <- extendCtxs ([Sig x' tyA, Sig y' tyB'] ++ ctx) $
-            checkType body ty
-          return (Pcase apr (bind (x',y') abody) (Annot ann), bTy)
-        _ -> err [DS "Pcase must be on sigma type.", DD pty', 
-                  DS "found instead."]
-        {- STUBWITH err [DS "unimplemented"] -}
+  ty <- matchAnnots t ann1 ann2
+  (apr, pty) <- inferType p
+  pty' <- whnf pty
+  case pty' of 
+    Sigma bnd' -> do
+      ((x,unembed->tyA),tyB) <- unbind bnd'
+      ((x',y'),body) <- unbind bnd
+      let tyB' = subst x (Var x') tyB
+      nfp  <- whnf apr
+      let ctx = case nfp of 
+            Var x0 -> [Def x0 (Prod (Var x') (Var y') 
+                              (Annot (Just pty')))]
+            _     -> []              
+      (abody, bTy) <- extendCtxs ([Sig x' tyA, Sig y' tyB'] ++ ctx) $
+        checkType body ty
+      return (Pcase apr (bind (x',y') abody) (Annot (Just ty)), bTy)
+    _ -> err [DS "Scrutinee of pcase must have Sigma type"]
+{- STUBWITH err [DS "unimplemented"] -}
       
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm 
   equate ty' ty
   return (atm, ty)                     
   
-{- SOLN DATA -}
+{- SOLN EQUAL -}
 {- STUBWITH tcTerm tm ty = err [DS "unimplemented" ] -}
 
 
@@ -500,21 +383,22 @@ tcTerm tm (Just ty) = do
 -- The first annotation is assumed to come from an annotation on 
 -- the syntax of the term itself, the second as an argument to 
 -- 'checkType'.  
-matchAnnots :: Annot -> Maybe Type -> TcMonad (Maybe Type)
-matchAnnots (Annot Nothing) Nothing     = return Nothing
-matchAnnots (Annot Nothing) (Just t)    = return (Just t)
-matchAnnots (Annot (Just t)) Nothing    = do
+matchAnnots :: Term -> Annot -> Maybe Type -> TcMonad Type
+matchAnnots e (Annot Nothing) Nothing     = err 
+ [DD e, DS "requires annotation"]
+matchAnnots e (Annot Nothing) (Just t)    = return t
+matchAnnots e (Annot (Just t)) Nothing    = do
   at <- tcType t                                          
-  return (Just at)
-matchAnnots (Annot (Just t1)) (Just t2) = do
+  return at
+matchAnnots e (Annot (Just t1)) (Just t2) = do
   at1 <- tcType t1                                          
   equate at1 t2
-  return (Just at1)
+  return at1
   
 -- | Make sure that the term is a type (i.e. has type 'Type') 
 tcType :: Term -> TcMonad Term
 tcType tm = do
-  (atm, aty) <- checkType tm Type
+  (atm, _) <- checkType tm Type
   return atm
                       
                     
@@ -525,7 +409,8 @@ tcType tm = do
 -- | calculate the length of a telescope
 teleLength :: Telescope -> Int
 teleLength Empty = 0
-teleLength (Cons _ (unrebind->(_,tele'))) = 1 + teleLength tele'
+teleLength (Cons Constraint _ _ tele) = teleLength tele
+teleLength (Cons _ _ _ tele) = 1 + teleLength tele
 
 -- | type check a list of type constructor arguments against a telescope
 tsTele :: [Term] -> Telescope -> TcMonad [Term]
@@ -536,11 +421,19 @@ tsTele tms tele = do
 -- | type check a list of data constructor arguments against a telescope
 tcArgTele ::  [Arg] -> Telescope -> TcMonad [Arg]
 tcArgTele [] Empty = return []
-tcArgTele (Arg ep1 tm:terms) (Cons ep2 (unrebind->((x,unembed->ty),tele'))) | ep1 == ep2 = do
+tcArgTele args (Cons Constraint x ty tele) = do
+  --warn [DS "Checking constraint", DD x, DS "=", DD ty]
+  equate (Var x) ty
+  tcArgTele args tele
+tcArgTele (Arg ep1 tm:terms) (Cons ep2 x ty tele') | ep1 == ep2 = do
+  --warn [DS "Checking arg", DD tm, DS "against type", DD ty, 
+  --      DS "using telescope", DD tele']
   (etm, ety) <- checkType tm ty
-  eterms <- tcArgTele terms (subst x etm tele')
+  tele'' <- doSubst [(x,etm)] tele'
+  --warn [DS "new tele is", DD tele'']
+  eterms <- tcArgTele terms tele''
   return $ Arg ep1 etm:eterms
-tcArgTele (Arg ep1 _ : _) (Cons ep2 _) = 
+tcArgTele (Arg ep1 _ : _) (Cons ep2 _ _ _) = 
   err [DD ep1, DS "argument provided when", 
        DD ep2, DS "argument was expected"]
 tcArgTele [] _ =  
@@ -548,9 +441,54 @@ tcArgTele [] _ =
 tcArgTele _ Empty =  
   err [DD "Too many arguments provided."]
 
+-- | Substitute a list of terms for the variables bound in a telescope
+-- This is used to instantiate the parameters of a data constructor
+-- to find the types of its arguments.
+-- The first argument should only contain 'Runtime' type declarations.
+substTele :: Telescope -> [ Term ] -> Telescope -> TcMonad Telescope
+substTele tele args delta = doSubst (mkSubst tele args) delta where
+  mkSubst Empty [] = []
+  mkSubst (Cons Runtime x _ tele') (tm : tms) = 
+      (x, tm) : mkSubst tele' tms
+  mkSubst _ _ = error "Internal error: substTele given illegal arguments"
+
+-- Propagate the given substitution through the telescope, potentially 
+-- reworking the constraints.
+doSubst :: [(TName,Term)] -> Telescope -> TcMonad Telescope
+doSubst ss Empty = return Empty
+doSubst ss (Cons Constraint x ty tele') = do
+  xnf   <- whnf (substs ss (Var x))
+  tynf  <- whnf (substs ss ty)
+  let decls = match xnf tynf 
+  tele  <- extendCtxs decls $ (doSubst ss tele')
+  return $ extend decls tele
+       where
+    extend [] tele = tele
+    extend (Def x ty:decls) tele = 
+      Cons Constraint x ty (extend decls tele)
+    extend (_:decls) tele = error "Internal error"
+    
+    match :: Type -> Type -> [Decl]
+    match (Var x) ty = [Def x ty]
+    match ty (Var x) = [Def x ty]
+    match (DCon s1 a1s _) (DCon s2 a2s _) | s1 == s2 = 
+      matchArgs a1s a2s 
+    match _ _ = []  
+  
+    matchArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = 
+      match t1 t2 ++ matchArgs a1s a2s
+    matchArgs [] [] = []
+    matchArgs _ _   = []
+doSubst ss (Cons ep x ty tele') = do
+  tynf <- whnf (substs ss ty)
+  tele'' <- doSubst ss tele'  
+  return $ Cons ep x tynf tele''
+
 
 -----------------------------------------------------------
 -- helper functions for checking pattern matching
+
+
 
 -- given the annotation and the types for each branch, merge them together
 merge :: Maybe Type -> [Type] -> TcMonad Type
@@ -564,19 +502,23 @@ merge ann (x : xs) = do
   return x'
            
 -- | Create the binding in the context for each of the variables in 
--- the pattern.
+-- the pattern. 
+-- Also return the erased variables
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
+{-
 declarePat (PatVar x) ep ty@(TyEq (Var y) z) | not (y `elem` fv z) = do
   mt <- lookupDef y
   let ydef = case mt of 
         Nothing -> [Def y z] 
         Just _  -> []
   return ([Sig x ty] ++ ydef,if ep == Erased then [x] else [])
+-}
 declarePat (PatVar x) Runtime y = return ([Sig x y],[])
 declarePat (PatVar x) Erased  y = return ([Sig x y],[x])
 declarePat (PatCon d pats) Runtime (TCon c params) = do
   (delta, deltai) <- lookupDCon d c
-  declarePats pats (substTele delta params deltai)    
+  tele <- (substTele delta params deltai)    
+  declarePats pats tele
 declarePat (PatCon d pats) Erased (TCon c params) = 
   err [DS "Cannot pattern match erased arguments"]
 declarePat pat ep ty = 
@@ -584,8 +526,10 @@ declarePat pat ep ty =
   
 declarePats :: [(Pattern,Epsilon)] -> Telescope -> TcMonad ([Decl],[TName])
 declarePats [] Empty = return ([],[])
-declarePats ((pat,_):pats) (Cons ep rbnd) = do
-  let ((x,unembed -> ty),tele) = unrebind rbnd
+declarePats pats (Cons Constraint x ty tele) = do
+  (decls, names) <- extendCtx (Def x ty) $ declarePats pats tele
+  return (Def x ty : decls, names)
+declarePats ((pat,_):pats) (Cons ep x ty tele) = do
   (ds1,v1) <- declarePat pat ep ty  
   tm <- pat2Term pat ty
   (ds2,v2) <- declarePats pats (subst x tm tele)
@@ -601,11 +545,12 @@ declarePats _  Empty = err [DS "Too many patterns in match"]
 pat2Term :: Pattern -> Type -> TcMonad Term
 pat2Term (PatCon dc pats) ty@(TCon n params) = do
   (delta, deltai) <- lookupDCon dc n
-  let tele = substTele delta params deltai
+  tele <- substTele delta params deltai
   let pats2Terms :: [(Pattern,Epsilon)] -> Telescope -> TcMonad [Arg]
       pats2Terms [] Empty = return []
-      pats2Terms ((p,_) : ps)
-                 (Cons ep (unrebind-> ((x,unembed->ty1), d))) = do
+      pats2Terms ps (Cons Constraint x ty' tele') = 
+        extendCtx (Def x ty') $ pats2Terms ps tele'
+      pats2Terms ((p,_) : ps) (Cons ep x ty1 d) = do
         ty' <- whnf ty1
         t <- pat2Term p ty'
         ts <- pats2Terms ps (subst x t d)
@@ -627,11 +572,12 @@ equateWithPat (Var x) pat ty = do
 equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
   | dc == dc' = do
     (delta, deltai) <- lookupDCon dc n
-    let tele = substTele delta params deltai
+    tele <- substTele delta params deltai
     let eqWithPats :: [Term] -> [(Pattern,Epsilon)] -> Telescope -> TcMonad [Decl]
         eqWithPats [] [] Empty = return []
-        eqWithPats (t : ts) ((p,_) : ps) 
-          (Cons _ (unrebind-> ((x,unembed->ty), tl))) = do
+        eqWithPats ts ps (Cons Constraint x ty tl) = do
+          extendCtx (Def x ty) $ eqWithPats ts ps tl
+        eqWithPats (t : ts) ((p,_) : ps) (Cons _ x ty tl) = do
           decls  <- equateWithPat t p ty
           decls' <- eqWithPats ts ps (subst x t tl)
           return (decls ++ decls')
@@ -644,11 +590,15 @@ equateWithPat _ _ _ = return []
 -- a telescope where all of the types have been annotated
 tcTypeTele :: Telescope -> TcMonad Telescope
 tcTypeTele Empty = return Empty
-tcTypeTele (Cons ep rbnd) = do
-  let ((x, unembed -> ty),tl) = unrebind rbnd
+tcTypeTele (Cons Constraint x tm tl) = do
+  ty <- lookupTy x
+  (tm',_) <- checkType tm ty
+  tele' <- extendCtx (Def x tm') $ tcTypeTele tl
+  return (Cons Constraint x tm' tele')
+tcTypeTele (Cons ep x ty tl) = do
   ty' <- tcType ty
   tele' <- extendCtx (Sig x ty') $ tcTypeTele tl
-  return (Cons ep (rebind (x, embed ty') tele'))
+  return (Cons ep x ty' tele')
 {- STUBWITH -}
   
 --------------------------------------------------------
@@ -732,7 +682,6 @@ tcEntry (Data t delta cs) =
      edelta <- tcTypeTele delta
      ---- check that the telescope provided 
      ---  for each data constructor is wellfomed, and elaborate them
-     ---  TODO: worry about universe levels also?
      let elabConstructorDef defn@(ConstructorDef pos d tele) =
             extendSourceLocation pos defn $ 
               extendCtx (DataSig t edelta) $
@@ -798,7 +747,7 @@ exhaustivityCheck ty pats = do
         loop ((PatCon dc args):pats') dcons = do
           (cd@(ConstructorDef _ _ tele, dcons')) <- 
             removeDcon dc dcons 
-          let tele' = substTele delta tys tele 
+          tele' <- substTele delta tys tele 
           let (aargs, pats'') = relatedPats dc pats'
           checkSubPats tele' (args:aargs) 
           loop pats'' dcons'
@@ -839,7 +788,8 @@ relatedPats dc (pc@(PatVar _):pats) = ([], pc:pats)
 -- are pattern variables. 
 checkSubPats :: Telescope -> [[(Pattern,Epsilon)]] -> TcMonad ()
 checkSubPats Empty _ = return ()
-checkSubPats (Cons _ (unrebind->((name,unembed->tyP),tele))) patss 
+checkSubPats (Cons Constraint _ _ tele) patss = checkSubPats tele patss
+checkSubPats (Cons _ name tyP tele) patss 
   | length patss > 0 = do 
   let hds = map (fst . head) patss 
   let tls = map tail patss 

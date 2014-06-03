@@ -24,9 +24,10 @@ trans = TRUSTME
 -- Watch out! This expression loops forever when type checking
 -- It can never be called because its argument is unsatifiable.
 
+{-
 loop : (Bool = (Bool -> Bool)) -> Bool
 loop = \ y . 
    let delta = (\ x . (subst x by y) x : Bool -> Bool) in
    let omega = delta (subst delta by sym Type Bool (Bool -> Bool) y) in
 	(tt : T omega)
-
+-}

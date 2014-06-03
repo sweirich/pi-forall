@@ -9,14 +9,12 @@ module Environment
     TcMonad, runTcMonad,
     Env,Hint(..),
     emptyEnv,
-    lookupTy, lookupTyMaybe, lookupDef, lookupRecDef, lookupHint, lookupTCon, 
-    lookupDCon, lookupDConAll, getTys,
-    getCtx, getLocalCtx, extendCtx, extendCtxTele, 
+    lookupTy, lookupTyMaybe, lookupDef, lookupRecDef, lookupHint, 
+    getTys, getCtx, getLocalCtx, extendCtx, 
     extendCtxs, extendCtxsGlobal,
     extendCtxMods,
     extendHints,
     extendSourceLocation, getSourceLocation,
-    -- getDefs, substDefs,
     err, warn, extendErr, D(..),Err(..),
   ) where
 
@@ -30,7 +28,7 @@ import Text.ParserCombinators.Parsec.Pos(SourcePos)
 import Control.Monad.Reader
 import Control.Monad.Error
 
-import Data.List
+
 import Data.Maybe (listToMaybe, catMaybes)
 
 
@@ -126,59 +124,6 @@ lookupRecDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
--- | Find a type constructor in the context
-lookupTCon :: (MonadReader Env m, MonadError Err m) 
-          => TCName -> m (Telescope,Maybe [ConstructorDef])
-lookupTCon v = do
-  g <- asks ctx
-  scanGamma g
-  where
-    scanGamma [] = do currentEnv <- asks ctx
-                      err [DS "The type constructor", DD v, DS "was not found.",
-                           DS "The current environment is", DD currentEnv]
-    scanGamma ((Data v' delta cs):g) = 
-      if v == v' 
-        then return $ (delta,Just cs) 
-        else  scanGamma g
-    scanGamma ((DataSig v' delta):g) =
-      if v == v'
-         then return $ (delta,Nothing)
-         else scanGamma g
-    scanGamma (_:g) = scanGamma g
-
--- | Find a data constructor in the context, returns a list of 
--- all potential matches    
-lookupDConAll :: (MonadReader Env m, MonadError Err m) 
-          => DCName -> m [(TCName,(Telescope,ConstructorDef))]
-lookupDConAll v = do
-  g <- asks ctx
-  scanGamma g
-  where
-    scanGamma [] = return []
-    scanGamma ((Data v' delta cs):g) = 
-        case find (\(ConstructorDef _ v'' tele) -> v''==v ) cs of
-          Nothing -> scanGamma g
-          Just c -> do more <- scanGamma g 
-                       return $ [ (v', (delta, c)) ] ++ more
-    scanGamma ((DataSig v' delta):g) = scanGamma g
-    scanGamma (_:g) = scanGamma g
-
--- | Given the name of a data constructor and the type that it should
--- construct, find the telescopes for its parameters and arguments.    
--- Throws an error if the data constructor cannot be found for that type.
-lookupDCon :: (MonadReader Env m, MonadError Err m) 
-              => DCName -> TCName -> m (Telescope,Telescope)
-lookupDCon c tname = do
-  matches <- lookupDConAll c
-  case lookup tname matches of
-    Just (delta, ConstructorDef _ _ deltai) -> 
-      return (delta, deltai)
-    Nothing  -> 
-      err ([DS "Cannot find data constructor", DS c,
-           DS "for type", DD tname,
-           DS "Potential matches were:"] ++
-           (map (DD . fst) matches) ++
-           (map (DD . snd . snd) matches))
 
 
 
@@ -197,11 +142,8 @@ extendCtxsGlobal :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxsGlobal ds = 
   local (\ m@(Env {ctx = cs}) -> m { ctx     = ds ++ cs,
                                      globals = length (ds ++ cs)})
--- | Extend the context with a telescope
-extendCtxTele :: (MonadReader Env m) => Telescope -> m a -> m a
-extendCtxTele Empty m = m
-extendCtxTele (Cons _ (unrebind -> ((x,unembed->ty),tele))) m = 
-  extendCtx (Sig x ty) $ extendCtxTele tele m
+
+
 
 -- | Extend the context with a module
 -- Note we must reverse the order.
@@ -235,30 +177,6 @@ getSourceLocation = asks sourceLocation
 -- | Add a type hint
 extendHints :: (MonadReader Env m) => Hint -> m a -> m a
 extendHints h = local (\m@(Env {hints = hs}) -> m { hints = h:hs })
-
-{-
--- | access all definitions
-getDefs :: MonadReader Env m => m [(TName,Term)]
-getDefs = do
-  ctx <- getCtx
-  return $ filterDefs ctx
- where filterDefs ((Def x a):ctx) = (x,a) : filterDefs ctx
-       -- filterDefs ((RecDef x a):ctx) = (x,a) : filterDefs ctx
-       filterDefs (_:ctx) = filterDefs ctx
-       filterDefs [] = []
-
--- | substitute all of the defs through a term
-substDefs :: MonadReader Env m => Term -> m Term
-substDefs tm = do
-  ctx <- getCtx
-  return $ substs (expandDefs ctx) tm
- where expandDefs ((Def x a):ctx) =
-           let defs = expandDefs ctx 
-           in ((x, substs defs a) : defs)
-       expandDefs (_:ctx) = expandDefs ctx
-       expandDefs [] = []
--}
-
 
 
 -- | An error that should be reported to the user

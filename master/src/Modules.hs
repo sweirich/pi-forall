@@ -12,7 +12,8 @@ import Parser(parseModuleFile, parseModuleImports)
 import Text.ParserCombinators.Parsec.Error
 import Control.Applicative 
 import Control.Monad.Error
-import Control.Monad.State.Lazy
+{- SOLN DATA -}
+import Control.Monad.State.Lazy{- STUBWITH -}
 import System.FilePath
 import System.Directory
 import qualified Data.Graph as Gr
@@ -26,8 +27,9 @@ getModules
      [FilePath] -> String -> m [Module]
 getModules prefixes top = do
   toParse <- gatherModules prefixes [ModuleImport top]
-  flip evalStateT emptyConstructorNames $
-    mapM reparse toParse
+{- SOLN DATA -}
+  flip evalStateT emptyConstructorNames $ mapM reparse toParse
+{- STUBWITH   mapM reparse toParse -}     
 
 data ModuleInfo = ModuleInfo {
                     modInfoName     :: MName, 
@@ -79,6 +81,7 @@ getModuleFileName prefixes modul = do
      else return $ head files
 
 -- | Fully parse a module (not just the imports).
+{- SOLN DATA -}
 reparse :: (MonadError ParseError m, MonadIO m, MonadState ConstructorNames m) => 
             ModuleInfo -> m Module
 reparse (ModuleInfo _ fileName _) = do
@@ -86,4 +89,8 @@ reparse (ModuleInfo _ fileName _) = do
   modu <- parseModuleFile cnames fileName
   put (moduleConstructors modu)
   return modu
-
+{- STUBWITH 
+reparse :: (MonadError ParseError m, MonadIO m) => 
+            ModuleInfo -> m Module
+reparse (ModuleInfo _ fileName _) = parseModuleFile fileName
+-}

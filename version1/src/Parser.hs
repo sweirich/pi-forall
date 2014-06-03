@@ -1,4 +1,4 @@
-{- PiForall language, OPLSS, Summer 2013 -}
+{- PiForall language, OPLSS -}
 
 {-# LANGUAGE PatternGuards, FlexibleInstances, FlexibleContexts, TupleSections, ExplicitForAll #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
@@ -16,7 +16,6 @@ module Parser
 import Syntax hiding (moduleImports)
 
 import Unbound.LocallyNameless hiding (Data,Refl,Infix,join,name)
-import Unbound.LocallyNameless.Ops (unsafeUnbind)
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
@@ -34,12 +33,9 @@ import qualified Data.Set as S
 Concrete syntax for the language: 
 Optional components in this BNF are marked with < >
 
-  levels:
-     l ::= natural numbers
-
   terms:
     a,b,A,B ::=
-      Type <l>                 Universes
+      Type                     Universes
     | x                        Variables   (start with lowercase)
     | \ x . a                  Function definition
     | a b                      Application
@@ -62,24 +58,6 @@ Optional components in this BNF are marked with < >
     | (a, b)                   Prod introduction
     | pcase a of (x,y) -> b    Prod elimination
 
-    | a = b                    Equality type
-    | refl                     Equality proof
-    | subst a by b <at x.c>    Type conversion
-    | contra a                 Contra
-
-    | C a ...                  Type / Term constructors
-    | case a [y] of            Pattern matching
-        C1 [x] y z -> b1
-        C2 x [y]   -> b2
-    | ind f x = a              Induction
-    | ( x : A | C) -> B        Constrained type
-    | a < b                    Ordering constrant
-
-    | \ [x <:A> ] . a          Erased lambda
-    | a [b]                    Erased application
-    | [x : A] -> B             Erased pi    
-    | let [x] = a in b         Erased let
-    | ind f [x] = a            Erased ind
 
 
 
@@ -88,20 +66,7 @@ Optional components in this BNF are marked with < >
       foo : A
       foo = a
 
-      axiom foo : A      
 
-      data T D : Type <l> where
-         C1 of D1
-         ...
-         Cn of Dn
-
-  telescopes:
-    D ::=
-                               Empty
-     | (x : A) D               runtime cons
-     | (A) D 
-     | [x : A] D               erased cons
-     | [A] D
 
   Syntax sugar:
 
@@ -111,11 +76,6 @@ Optional components in this BNF are marked with < >
 
      This gets parsed as \ x . \ [y] . \ z . a
 
-   - You can make a top level declaration an ind:
-
-     foo : (n : Nat) -> A
-     ind foo x = ...
-
 -}
 
 liftError :: (MonadError e m) => Either e a -> m a
@@ -123,12 +83,11 @@ liftError (Left e) = throwError e
 liftError (Right a) = return a
 
 -- | Parse a module declaration from the given filepath.
-parseModuleFile :: (MonadError ParseError m, MonadIO m) => ConstructorNames -> String -> m Module
-parseModuleFile cnames name = do
+parseModuleFile :: (MonadError ParseError m, MonadIO m) => String -> m Module
+parseModuleFile name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
   liftError $ runFreshM $ 
-    flip evalStateT cnames $
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 
 -- | Parse only the imports part of a module from the given filepath.
@@ -136,19 +95,13 @@ parseModuleImports :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleImports name = do
   contents <- liftIO $ readFile name
   liftError $ runFreshM $ 
-    flip evalStateT emptyConstructorNames $
+
      (runParserT (do { whiteSpace; moduleImports }) [] name contents)
 
 -- | Test an 'LParser' on a String.
---
--- E.g., do
---
--- > testParser decl "axiom fix : (aTy : Type 0) -> (f : ((a:aTy) -> aTy)) -> aTy"
---
--- to parse an axiom declaration of a logical fixpoint combinator.
 testParser :: (LParser t) -> String -> Either ParseError t
 testParser parser str = runFreshM $ 
-   flip evalStateT emptyConstructorNames $
+
      runParserT (do { whiteSpace; v <- parser; eof; return v}) [] "<interactive>" str
 
 -- | Parse an expression.
@@ -158,14 +111,14 @@ parseExpr = testParser expr
 -- * Lexer definitions
 type LParser a = ParsecT
                     String                      -- The input is a sequence of Char
-                    [Column]                    -- The internal state for Layout tabs
-                    (StateT ConstructorNames
-                       FreshM)                   -- The internal state for generating fresh names, 
-                                                -- and for remembering which names are constructors.
+                    [Column] (                  -- The internal state for Layout tabs
+
+                       FreshM)                  -- The internal state for generating fresh names, 
                     a                           -- the type of the object being parsed
 
-instance Fresh (ParsecT s u (StateT ConstructorNames FreshM))  where
-  fresh = lift . lift . fresh
+instance Fresh (ParsecT s u FreshM)  where
+  fresh = lift . fresh
+
 
 -- Based on Parsec's haskellStyle (which we can not use directly since
 -- Parsec gives it a too specific type).
@@ -204,8 +157,7 @@ trellysStyle = Token.LanguageDef
                , Token.reservedOpNames =
                  ["!","?","\\",":",".",",","<", "=", "+", "-", "^", "()", "_","|","{", "}"]
                 }
-
-tokenizer :: Token.GenTokenParser String [Column] (StateT ConstructorNames FreshM)
+tokenizer :: Token.GenTokenParser String [Column] (FreshM)
 layout :: forall a t. LParser a -> LParser t -> LParser [a]
 (tokenizer, layout) = 
   let (t, Token.LayFun l) = Token.makeTokenParser trellysStyle "{" ";" "}"
@@ -219,48 +171,12 @@ whiteSpace = Token.whiteSpace tokenizer
 
 variable :: LParser TName
 variable =
-  do i <- identifier
-     cnames <- get
-     if (i `S.member` (tconNames cnames) || 
-         i `S.member` (dconNames cnames))
-       then fail "Expected a variable, but a constructor was found"
-       else return $ string2Name i
+  do i <- identifier 
+     return $ string2Name i
+     
 
-wildcard :: LParser TName
-wildcard = reservedOp "_" >> return wildcardName
 
-varOrWildcard :: LParser TName
-varOrWildcard = try wildcard <|> variable
 
-dconstructor :: LParser DCName
-dconstructor =
-  do i <- identifier
-     cnames <- get
-     if (i `S.member` dconNames cnames)
-       then return i
-       else if (i `S.member` tconNames cnames)
-             then fail "Expected a data constructor, but a type constructor was found."
-             else fail "Expected a constructor, but a variable was found"
-                  
-tconstructor :: LParser TCName
-tconstructor =
-  do i <- identifier
-     cnames <- get
-     if (i `S.member` tconNames cnames)
-       then return i
-       else if (i `S.member` dconNames cnames)
-             then fail "Expected a type constructor, but a data constructor was found."
-             else fail "Expected a constructor, but a variable was found"                  
-
--- variables or zero-argument constructors
-varOrCon :: LParser Term
-varOrCon = do i <- identifier
-              cnames <- get
-              if  (i `S.member` (dconNames cnames))
-                then return (DCon i [] (Annot Nothing))
-                else if  (i `S.member` tconNames cnames)
-                       then return (TCon i [])
-                       else return (Var (string2Name i))
 
 colon, dot, comma :: LParser ()
 colon = Token.colon tokenizer >> return ()
@@ -276,16 +192,7 @@ parens = Token.parens tokenizer
 brackets = Token.brackets tokenizer
 -- braces = Token.braces tokenizer
 
-natural :: LParser Int
-natural = fromInteger <$> Token.natural tokenizer
 
-natenc :: LParser Term
-natenc =
-  do n <- natural
-     return $ encode n 
-   where encode 0 = DCon "Zero" [] natty
-         encode n = DCon "Succ" [Arg Runtime (encode (n-1))] natty
-         natty    = Annot $ Just (TCon "Nat" [])
 
 moduleImports :: LParser Module
 moduleImports = do
@@ -293,7 +200,7 @@ moduleImports = do
   modName <- identifier
   reserved "where"
   imports <- layout importDef (return ())
-  return $ Module modName imports [] emptyConstructorNames
+  return $ Module modName imports [] 
 
 moduleDef :: LParser Module
 moduleDef = do
@@ -302,64 +209,24 @@ moduleDef = do
   reserved "where"
   imports <- layout importDef (return ())
   decls <- layout decl (return ())
-  cnames <- get
-  return $ Module modName imports decls cnames
+
+  return $ Module modName imports decls 
 
 importDef :: LParser ModuleImport
 importDef = do reserved "import" >>  (ModuleImport <$> importName)
   where importName = identifier
 
-telescope :: LParser Telescope
-telescope = do
-  bindings <- telebindings
-  return $ foldr g Empty bindings where
-    g (n, t, ep) rst = Cons ep (rebind (n, embed t) rst)
-  
-telebindings :: LParser [(TName, Term, Epsilon)]
-telebindings = many teleBinding
-  where
-    annot :: Epsilon -> LParser (TName, Term, Epsilon)
-    annot ep = do
-      (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
-                <|>    ((,) <$> (fresh wildcardName) <*> expr)
-      return (x,ty,ep)
-    teleBinding :: LParser (TName, Term,Epsilon)
-    teleBinding =
-      (    parens (annot Runtime)
-       <|> brackets (annot Erased)) <?> "binding"
 
+    
 ---
 --- Top level declarations
 ---
 
-decl,dataDef,sigDef,valDef,indDef :: LParser Decl
-decl = (try dataDef) <|> sigDef <|> valDef <|> indDef 
+decl,sigDef,valDef :: LParser Decl
+decl =  sigDef <|> valDef 
 
--- datatype declarations.
-dataDef = do
-  reserved "data"
-  name <- identifier
-  params <- telescope
-  colon
-  Type <- typen
-  modify (\cnames -> 
-           cnames{ tconNames = S.insert name 
-                               (tconNames cnames) })
-  reserved "where"
-  cs <- layout constructorDef (return ())
-  forM_ cs
-    (\(ConstructorDef _ cname _) ->
-       modify (\cnames -> cnames{ dconNames = S.insert cname (dconNames cnames)}))
-  return $ Data name params cs
 
-constructorDef :: LParser ConstructorDef
-constructorDef = do
-  pos <- getPosition
-  cname <- identifier
-  args <- option Empty (reserved "of" >> telescope)
-  return $ ConstructorDef pos cname args
-  <?> "Constructor"
-
+  
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
@@ -369,11 +236,6 @@ valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
   val <- expr
   return $ Def n val
-
-indDef = do
-  r@(Ind _ b _) <- ind
-  let ((n,_),_) = unsafeUnbind b
-  return $ Def n r
 
 
 ------------------------
@@ -386,11 +248,8 @@ trustme :: LParser Term
 trustme = do reserved "TRUSTME" 
              return (TrustMe (Annot Nothing))
 
-refl :: LParser Term
-refl =
-  do reserved "refl"
-     return $ Refl (Annot Nothing)
 
+     
 -- Expressions
 
 expr,term,factor :: LParser Term
@@ -399,11 +258,11 @@ expr,term,factor :: LParser Term
 expr = do
     p <- getPosition
     Pos p <$> (buildExpressionParser table term)
-  where table = [[ifix  AssocLeft "<" Smaller],
-                 [ifix  AssocLeft "=" TyEq],
+  where table = [
+
                  [ifixM AssocRight "->" mkArrow]
-                ]
-        ifix  assoc op f = Infix (reservedOp op >> return f) assoc
+                ]   
+
         ifixM assoc op f = Infix (reservedOp op >> f) assoc
         mkArrow  = 
           do n <- fresh wildcardName
@@ -414,58 +273,33 @@ expr = do
 -- application.  Breaking it out as a seperate category both
 -- eliminates left-recursion in (<expr> := <expr> <expr>) and
 -- allows us to keep constructors fully applied in the abstract syntax.
-term = try dconapp <|> try tconapp <|> funapp
+term =  funapp
 
-arg :: LParser Arg
-arg = (Arg Erased) <$> brackets expr <|> (Arg Runtime) <$> factor
 
-dconapp :: LParser Term
-dconapp = do 
-  c <- dconstructor
-  args <- many arg
-  return $ DCon c args (Annot Nothing)
   
-tconapp :: LParser Term  
-tconapp = do
-  c <- tconstructor
-  ts <- many factor
-  return $ TCon c ts
-
 funapp :: LParser Term
 funapp = do 
   f <- factor
   foldl' app f <$> many bfactor
-  where bfactor = ((,Erased)  <$> brackets expr) <|>
-                  ((,Runtime) <$> factor)
-        app e1 (e2,Runtime)  =  App e1 e2
-        app e1 (e2,Erased)   =  ErasedApp e1 e2
+  where bfactor = brackets expr 
+        app = App
 
-factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
-                , typen      <?> "Type n"
-                , natenc     <?> "a literal"
+factor = choice [ Var <$> variable <?> "a variable"                
+                , typen      <?> "Type"
                 , lambda     <?> "a lambda"
-                , ind        <?> "ind"
                 , letExpr    <?> "a let"
-                , contra     <?> "a contra"
-                , caseExpr   <?> "a case"
-                , pcaseExpr  <?> "a pcase"
-                , substExpr  <?> "a subst"
-                , ordax      <?> "ord"  
-                , refl       <?> "refl"
+                  
+                  
                 , trustme    <?> "TRUSTME"
-                , impProd    <?> "an implicit function type"
+                  
                 , bconst     <?> "a constant"  
                 , ifExpr     <?> "an if expression" 
                 , sigmaTy    <?> "a sigma type"  
+                , pcaseExpr  <?> "a pcase"
                 , expProdOrAnnotOrParens
                     <?> "an explicit function type or annotated expression"
                 ]
 
-
-
-impOrExpVar :: LParser (TName, Epsilon)
-impOrExpVar = try ((,Erased) <$> (brackets variable)) 
-              <|> (,Runtime) <$> variable
 
 
 typen :: LParser Term
@@ -475,40 +309,26 @@ typen =
 
 
 
--- Lambda abstractions have the syntax '\x . e' 
+  -- Lambda abstractions have the syntax '\x . e' 
 lambda :: LParser Term
 lambda = do reservedOp "\\"
-            binds <- many1 impOrExpVar
+            binds <- many1 variable
             dot
             body <- expr
-            return $ foldr lam body binds where
-    lam (x, Runtime) m = Lam (bind (x, embed $ Annot Nothing) m)                     
-    lam (x, Erased) m  = ErasedLam (bind (x, embed $ Annot Nothing) m)                                              
+            return $ foldr lam body binds 
+  where
 
 
-ordax :: LParser Term
-ordax = 
-  do reserved "ord"
-     return (OrdAx (Annot Nothing))
-
-
--- recursive abstractions, with the syntax 'ind f x = e', no type annotation.
-ind :: LParser Term
-ind = do
-  reserved "ind"
-  f <- variable
-  (x, ep) <- impOrExpVar
-  reservedOp "="
-  body <- expr
-  return $ (Ind ep (bind (f,x) body) (Annot Nothing))
+   lam x m = Lam (bind (x, embed $ Annot Nothing) m)
+                            
 
 
 bconst  :: LParser Term
-bconst = choice [reserved "Bool" >> return TyBool,
+bconst = choice [reserved "Bool"  >> return TyBool,
                  reserved "False" >> return (LitBool False),
-                 reserved "True" >> return  (LitBool True),
-                 reserved "One"  >> return TyUnit,
-                 reserved "tt"   >> return LitUnit]
+                 reserved "True"  >> return (LitBool True),
+                 reserved "One"   >> return TyUnit,
+                 reserved "tt"    >> return LitUnit]
 
 ifExpr :: LParser Term
 ifExpr = 
@@ -536,23 +356,7 @@ letExpr =
      body <- expr
      return $ (Let (bind (x,embed boundExp) body))
 
--- impProd - implicit dependent products
--- These have the syntax [x:a] -> b or [a] -> b .
-impProd :: LParser Term
-impProd =
-  do (x,tyA, mc) <- brackets 
-       (try ((,,) <$> variable <*> (colon >> expr) <*> constraint)
-        <|> ((,,) <$> fresh wildcardName <*> expr) <*> constraint)
-     reservedOp "->" 
-     tyB <- expr
-     return $ case mc of 
-       Just c  -> PiC Erased (bind (x,embed tyA) (c,tyB))
-       Nothing -> ErasedPi (bind (x,embed tyA) tyB)
 
-constraint :: LParser (Maybe Term)
-constraint = 
-  option Nothing (reservedOp "|" >> Just <$> expr)
-  
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
 -- with the ambiguity caused because these types, annotations and
@@ -593,36 +397,7 @@ expProdOrAnnotOrParens =
          Comma a b -> return $ Prod a b (Annot Nothing)
          Nope a    -> return $ Paren a
 
-pattern :: LParser Pattern 
--- Note that 'dconstructor' and 'variable' overlaps, annoyingly.
-pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
-       <|> atomic_pattern
-  where
-    arg_pattern    =  ((,Erased) <$> brackets pattern) 
-                  <|> ((,Runtime) <$> atomic_pattern)
-    atomic_pattern =    (parens pattern)
-                  <|> (PatVar <$> wildcard)
-                  <|> do t <- varOrCon
-                         case t of
-                           (Var x) -> return $ PatVar x
-                           (DCon c [] _) -> return $ PatCon c []
-                           (TCon c []) -> fail "expected a data constructor but a type constructor was found"
-                           _ -> error "internal error in atomic_pattern"
-
-match :: LParser Match
-match = 
-  do pat <- pattern 
-     reservedOp "->"
-     body <- term
-     return $ Match (bind pat body)
-
-caseExpr :: LParser Term
-caseExpr = do
-    reserved "case"
-    scrut <- factor
-    reserved "of"
-    alts <- layout match (return ())
-    return $ Case scrut alts (Annot Nothing)
+    
     
 pcaseExpr :: LParser Term
 pcaseExpr = do
@@ -638,20 +413,6 @@ pcaseExpr = do
     a <- expr
     return $ Pcase scrut (bind (x,y) a) (Annot Nothing)
 
--- subst e0 by e1 
-substExpr :: LParser Term
-substExpr = do
-  reserved "subst"
-  a <- expr
-  reserved "by"
-  b <- expr
-  return $ Subst a b (Annot Nothing)
-
-contra :: LParser Term
-contra = do
-  reserved "contra"
-  witness <- expr
-  return $ Contra witness (Annot Nothing)
 
 
 sigmaTy :: LParser Term 
