@@ -422,7 +422,8 @@ funapp :: LParser Term
 funapp = do 
   f <- factor
   foldl' app f <$> many bfactor
-  where bfactor = brackets expr 
+  where
+        bfactor = brackets expr 
         app = App
 
 factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
@@ -466,9 +467,9 @@ lambda = do reservedOp "\\"
             return $ foldr lam body binds 
   where
     lam (x, Runtime) m = Lam (bind (x, embed $ Annot Nothing) m)           
+
+    
     lam (x, _) m = error "internal error"
-
-
 
                             
 

@@ -425,12 +425,13 @@ funapp :: LParser Term
 funapp = do 
   f <- factor
   foldl' app f <$> many bfactor
-  where {- SOLN EP -}bfactor = ((,Erased)  <$> brackets expr) 
+  where
+        bfactor = ((,Erased)  <$> brackets expr) 
                              <|> ((,Runtime) <$> factor)
         app e1 (e2,Runtime)  =  App e1 e2
         app e1 (e2,Erased)   =  ErasedApp e1 e2
-        app e1 (e2,Constraint) = error "internal error"{- STUBWITH bfactor = brackets expr 
-        app = App -}
+        app e1 (e2,Constraint) = error "internal error"
+
 
 factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                                   
@@ -474,10 +475,10 @@ lambda = do reservedOp "\\"
             return $ foldr lam body binds 
   where
     lam (x, Runtime) m = Lam (bind (x, embed $ Annot Nothing) m)           
-    lam (x, _) m = error "internal error"
 
     lam (x, Erased) m  = ErasedLam (bind (x, embed $ Annot Nothing) m)         
-
+    
+    lam (x, _) m = error "internal error"
 
                             
 

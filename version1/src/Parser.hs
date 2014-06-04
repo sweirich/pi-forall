@@ -281,7 +281,8 @@ funapp :: LParser Term
 funapp = do 
   f <- factor
   foldl' app f <$> many bfactor
-  where bfactor = brackets expr 
+  where
+        bfactor = brackets expr 
         app = App
 
 factor = choice [ Var <$> variable <?> "a variable"                
@@ -318,8 +319,8 @@ lambda = do reservedOp "\\"
             return $ foldr lam body binds 
   where
 
-
-   lam x m = Lam (bind (x, embed $ Annot Nothing) m)
+    
+     lam x m = Lam (bind (x, embed $ Annot Nothing) m)
                             
 
 

@@ -1,13 +1,6 @@
-% Designing Dependently-Typed Programming Languages
-% Stephanie Weirich
-% OPLSS, June 2014
+## A Simple Core language with Type in Type
 
-# A Simple Core language with Type in Type
-
-
-## Let's consider a simple lambda calculus
-
-What should it contain?
+Let's consider a simple lambda calculus. What should it contain?
 
      a,A ::= x       - variables 
          \x. a       - lambda expressions (anonymous functions)
@@ -22,7 +15,7 @@ uppercase letters for their types `A`
 Note that lambda and pi above are *binding forms*. They bind the variable 
 `x` in `b` and `B` respectively
 
-## When do expressions in this language type check?
+### When do expressions in this language type check?
 
 We should define the type system of this language.
 
@@ -35,7 +28,7 @@ and a typing context.
 The typing context is an ordered list of assumptions about the types of
 variables. 
 
-## An initial set of typing rules - Variables, Lambdas
+### An initial set of typing rules - Variables, Lambdas
 
 If we know a variable's type because it is in the typing context, then that is
 its type:
@@ -91,7 +84,7 @@ or even (with some help from the parser)
      id : (x:Type) -> x -> x
      id = \x y . y 
 
-## More typing rules - Types
+### More typing rules - Types
 
 Actually, I lied.  The real typing rule that we want for lambda 
 has an additional predcondition. We need to make sure that when we 
@@ -130,7 +123,7 @@ type to make sense. We declare this by fiat using the type : type rule.
 Note that, sadly, this rule make our language inconsistent as a
 logic. Girard's paradox
 
-## More typing rules - Application
+### More typing rules - Application
 
 Application requires that the type of the argument matches the domain type of
 the function. However, not that because the type B could have x free in it, we
@@ -313,7 +306,7 @@ of a type checker will be a term that works purely in inference mode.
      Environment.hs - defines the type checking monad		  
 	  TypeCheck.hs   - implementation of the bidirectional type checker
 	  	  
-## Variable binding using the unbound library [Syntax.hs]
+### Variable binding using the unbound library [Syntax.hs]
 
 One difficulty with implementing the lambda calculus is the treatment of
 variable binding. Lambdas and Pis *bind* variables in the body. In the
@@ -403,7 +396,7 @@ For more information about unbound, see
 and the
 [unbound hackage page](http://hackage.haskell.org/package/unbound-0.4.3.1).
 	 
-## A TypeChecking monad [Environment.hs]
+### A TypeChecking monad [Environment.hs]
 
 Recall that our plan is to write two mutually recursive functions for type
 checking of the following types:
@@ -443,7 +436,7 @@ which our type checking monad will be instances of.
 We'll also need this monad to be a freshness monad, to support working with
 binding structure, and throw in MonadIO for good measure.
 
-## Implementing the TypeChecking Algorithm [Typecheck.hs]
+### Implementing the TypeChecking Algorithm [Typecheck.hs]
 
 Now that we have the type checking monad available, we can start our implementation. For flexibility `inferType` and `checkType` will *both* be implemented by the same function:
 
@@ -493,7 +486,7 @@ The function `equate` merely ensures that the two types are
 alpha-equivalent. If they are, then it returns `()` to the monad, otherwise it
 throws an error.
 
-## Homework - Add Booleans and Sigma types
+### Homework - Add Booleans and Sigma types
 
 Some fairly standard typing rules for booleans assert that Bool is a valid type:
 
@@ -540,11 +533,10 @@ pattern match.
     G |- pcase a of (x,y) -> b : C
 
 
-The code in 'version1' includes abstract syntax and code for parsing and
-pretty printing. However, to get Hw1.pi to compile, you'll need to fill in the
-missing cases in TypeCheck.hs.
+The code in `version1` includes abstract and concrete syntax for booleans and sigma types. Your job is to get `Hw1.pi` to compile. However, to get this file to compile, you'll need to fill in the
+missing cases in `TypeCheck.hs`.
 
-## References 
+### References 
 
 * Cardelli, A Dependently-Typed language with Type:Type
 * Augustsson, Cayenne -- a Language With Dependent Types

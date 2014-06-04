@@ -1,12 +1,12 @@
-# Equality 
+# Equality in Dependently-Typed Languages
 
 You may have noticed in the previous lecture that there was something
 missing. Most of the examples that we did could have also been written in
 System F (or something similar)!
 
-# Definitional equality
+## Definitional equality
 
-## Motivating Example - Type level reduction
+### Motivating Example - Type level reduction
 
 TODO: find a better example?
 
@@ -19,7 +19,7 @@ TODO: find a better example?
     false' : bool' false
     false' = \ A x y. y
 
-## Defining definitional equality
+### Defining definitional equality
 
 We need to know when terms/types are equal to eachother:
 
@@ -80,13 +80,13 @@ That has functionality (i.e. we can lift equalities over b)
     ----------------------------------
     G |- b{a1 / x} = b{a2 / x}
 
-## Implementing definitional equality
+### Implementing definitional equality
 
 Delayed substitutions 
 
 Whnf
 
-## Using definitional equality
+### Using definitional equality
 
 We would like to consider our type system as having the following rule:
 
@@ -96,7 +96,7 @@ We would like to consider our type system as having the following rule:
 
 But that rule is not syntax directed. Where do we need to add equality predonditions in our bidirectional system?
 
-## Really using definitional equality
+### Really using definitional equality
 
 Consider our elimination rules for if:
 
@@ -133,7 +133,7 @@ the individual branches of the if expression.
 
 TODO: motivating example
 
-# Propositional equality
+## Propositional equality
 
 You will have noticed that Coq includes an equality type. As a step towards
 more general indexed datatypes, we'll start by adding just this type here.
