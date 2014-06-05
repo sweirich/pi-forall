@@ -13,7 +13,7 @@
 SHELL=/bin/bash
 
 # PASS are tests that *should* always pass.
-PASS=Equality Product Nat Fin Vec
+PASS=Logic Equality Product Nat Fin Vec
 
 # TODO_FAIL are tests that *should* fail but currently pass.
 TODO_FAIL=

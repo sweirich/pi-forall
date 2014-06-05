@@ -20,7 +20,7 @@ false : bool
 false = \A x y. y
 
 bool' : bool -> Type 
-bool' = \b . (B : (b : bool) -> Type) -> B true -> B false -> B b
+bool' = \b . (B : (b : bool) -> Type) -> (B true) -> B false -> B b
 
 true' : bool' true
 true' = \A x y . x

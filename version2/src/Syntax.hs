@@ -129,7 +129,6 @@ data Decl = Sig     TName  Term
             -- already have a type declaration in scope
           | RecDef TName Term 
             
-          | Mutual [Decl]
   deriving (Show)
 
 

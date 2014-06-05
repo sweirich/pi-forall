@@ -18,7 +18,7 @@
 -- 
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE PolymorphicComponents, NoMonomorphismRestriction  #-}
+{-# LANGUAGE PolymorphicComponents, NoMonomorphismRestriction, KindSignatures  #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-unused-do-bind -fno-warn-unused-matches #-}
 
 module LayoutToken
@@ -774,35 +774,47 @@ makeTokenParser languageDef open sep close
                                        | col2 < p = adjust(col-1,ps,close:add)
                                        | col2== p = setInfo(col-1,p:ps,rev (sep:add) more)
                                        | col2 > p = setInfo(col,p:ps,rev add more)
+                                       | True = error "impossible"
                                     rev [] xs = xs
                                     rev (s:ss) xs = rev ss (s++xs)
                                 in adjust (col2,p:ps,[])
               (cs,p:ps,_,GT) -> return ()
           }    	             
-
+getInfo :: forall (m :: * -> *) t t1.
+                 Monad m =>
+                 ParsecT t1 t m (Column, t, t1)
 getInfo = 
    do { pos <- getPosition
       ; tabs <- getState
       ; tokens <- getInput
       ; return(sourceColumn pos,tabs,tokens) }
 
+setInfo :: forall s u (m :: * -> *).
+                 Monad m =>
+                 (Column, u, s) -> ParsecT s u m ()
 setInfo (col,tabs,tokens) =
   do { p <- getPosition
      ; setPosition (setSourceColumn p col)
      ; setState tabs
      ; setInput tokens }
 
+indent :: forall s (m :: * -> *).
+                Monad m =>
+                ParsecT s [Column] m ()
 indent =
   do { pos <- getPosition
      ; tabs <- getState
      ; setState (sourceColumn pos : tabs)
      }
-
+undent :: forall s (m :: * -> *) t. Monad m => ParsecT s [t] m ()
 undent =
   do { (p:ps) <- getState
      ; setState ps
      }
      
+_eoln :: forall (m :: * -> *) a.
+               Monad m =>
+               ParsecT [Char] [Column] m a -> ParsecT [Char] [Column] m Char  
 _eoln whiteSpace =
   do { c <- satisfy (=='\n')  -- c == '\n' to succeed
      ; (col,tabs@(p:ps),input) <- getInfo
@@ -821,6 +833,7 @@ _eoln whiteSpace =
                               | col2==p = setInfo (column-1,tabs,rev (';':prefix) cs)
                               | col2<p  = adjust ('}':prefix) cs (column - 1) ps
                               | col2>p  = setInfo (column,tabs,rev prefix cs)
+                              | True    = error "impossible"
                             rev [] ys = ys
                             rev (x:xs) ys = rev xs (x:ys)
                         in  adjust [] cs col2 tabs

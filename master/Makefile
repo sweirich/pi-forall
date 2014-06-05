@@ -1,5 +1,5 @@
 SOURCES=TypeCheck.hs PrettyPrint.hs LayoutToken.hs Parser.hs Syntax.hs Environment.hs Modules.hs Main.hs Equal.hs 
-TESTS=Makefile Equality.pi Nat.pi Product.pi Fin.pi Vec.pi 
+TESTS=Makefile Logic.pi Equality.pi Nat.pi Product.pi Fin.pi Vec.pi 
 SRCS=$(addprefix src/,$(SOURCES)) 
 
 EXTRA=LICENSE README pi-forall.cabal
@@ -52,7 +52,7 @@ test_soln: ../soln
 uninstall:
 	-ghc-pkg unregister `ghc-pkg list | grep pi-forall`
 	@echo
-	@echo You need to manually delete any trellys binaries on your path.
+	@echo You need to manually delete any pi-forall binaries on your path.
 	@echo You can find them with \`which pi-forall\`
 
 clean:

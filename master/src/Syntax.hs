@@ -166,7 +166,6 @@ data Decl = Sig     TName  Term
             -- not include any information about its data 
             -- constructors
 {- STUBWITH -}            
-          | Mutual [Decl]
   deriving (Show)
 
 {- SOLN DATA -}

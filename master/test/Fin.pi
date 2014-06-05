@@ -9,6 +9,7 @@ module Fin where
 import Nat
 import Equality
 
+
 data Fin (n : Nat) : Type where
   Zero of [m:Nat][n = Succ m] 
   Succ of [m:Nat][n = Succ m] (Fin m)
@@ -26,7 +27,7 @@ raise : [m : Nat] -> (n: Nat) -> Fin m -> Fin (plus n m)
 raise = \ [m] n i. 
     case n of 
       Zero    -> i
-      Succ n0 -> Succ [plus n0 m] (raise [m] n0 i)
+      Succ n0 -> Succ [plus n0 m] (raise [m] n0 i) 
 
 inject_1 : [m : Nat] -> Fin m -> Fin (Succ m)
 inject_1 = \[m] f . Succ [m] f
@@ -35,7 +36,7 @@ inject : [m:Nat] -> (n:Nat) -> Fin m -> Fin (plus m n)
 inject = \ [m] n fn. 
   case fn of 
     Zero [m0]   -> Zero [plus m0 n]
-    Succ [m0] i -> Succ [plus m0 n] (inject [m0] n i)
+    Succ [m0] i -> Succ [plus m0 n] (inject [m0] n i) 
 
 
 fpred : [n : Nat] -> Fin n -> Fin n

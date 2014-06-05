@@ -190,10 +190,10 @@ tcTerm t@(DCon c args ann1) ann2 = do
 -- If we are in inference mode, then 
 --      we do not use refinement        
 -- otherwise, we must have a typing annotation        
-tcTerm t@(Case scrut alts ann1) ann2 = do   
+tcTerm t@(Case scrut alts ann1) ann2 = do  
+  expectedTy <- matchAnnots t ann1 ann2
   (ascrut, sty) <- inferType scrut 
   (n, params) <- ensureTCon sty
-  expectedTy <- matchAnnots t ann1 ann2
   let checkAlt (Match bnd) = do
          (pat, body) <- unbind bnd
          -- add variables from pattern to context
@@ -362,15 +362,11 @@ tsTele tms tele = do
 tcArgTele ::  [Arg] -> Telescope -> TcMonad [Arg]
 tcArgTele [] Empty = return []
 tcArgTele args (Cons Constraint x ty tele) = do
-  --warn [DS "Checking constraint", DD x, DS "=", DD ty]
   equate (Var x) ty
   tcArgTele args tele
 tcArgTele (Arg ep1 tm:terms) (Cons ep2 x ty tele') | ep1 == ep2 = do
-  --warn [DS "Checking arg", DD tm, DS "against type", DD ty, 
-  --      DS "using telescope", DD tele']
   (etm, ety) <- checkType tm ty
   tele'' <- doSubst [(x,etm)] tele'
-  --warn [DS "new tele is", DD tele'']
   eterms <- tcArgTele terms tele''
   return $ Arg ep1 etm:eterms
 tcArgTele (Arg ep1 _ : _) (Cons ep2 _ _ _) = 
@@ -392,7 +388,7 @@ substTele tele args delta = doSubst (mkSubst tele args) delta where
       (x, tm) : mkSubst tele' tms
   mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
--- Propagate the given substitution through the telescope, potentially 
+-- | Propagate the given substitution through the telescope, potentially 
 -- reworking the constraints.
 doSubst :: [(TName,Term)] -> Telescope -> TcMonad Telescope
 doSubst ss Empty = return Empty
@@ -428,9 +424,7 @@ doSubst ss (Cons ep x ty tele') = do
 -----------------------------------------------------------
 -- helper functions for checking pattern matching
 
-
-
--- given the annotation and the types for each branch, merge them together
+-- | given the annotation and the types for each branch, merge them together
 merge :: Maybe Type -> [Type] -> TcMonad Type
 merge Nothing   []   = 
   err [DS "Need an annotation on empty case expression"]
@@ -445,14 +439,6 @@ merge ann (x : xs) = do
 -- the pattern. 
 -- Also return the erased variables
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
-{-
-declarePat (PatVar x) ep ty@(TyEq (Var y) z) | not (y `elem` fv z) = do
-  mt <- lookupDef y
-  let ydef = case mt of 
-        Nothing -> [Def y z] 
-        Just _  -> []
-  return ([Sig x ty] ++ ydef,if ep == Erased then [x] else [])
--}
 declarePat (PatVar x) Runtime y = return ([Sig x y],[])
 declarePat (PatVar x) Erased  y = return ([Sig x y],[x])
 declarePat (PatCon d pats) Runtime (TCon c params) = do
@@ -486,7 +472,10 @@ pat2Term :: Pattern -> Type -> TcMonad Term
 pat2Term (PatCon dc pats) ty@(TCon n params) = do
   (delta, deltai) <- lookupDCon dc n
   tele <- substTele delta params deltai
-  let pats2Terms :: [(Pattern,Epsilon)] -> Telescope -> TcMonad [Arg]
+  args <- pats2Terms pats tele 
+  return (DCon dc args (Annot (Just ty)))
+     where
+      pats2Terms :: [(Pattern,Epsilon)] -> Telescope -> TcMonad [Arg]
       pats2Terms [] Empty = return []
       pats2Terms ps (Cons Constraint x ty' tele') = 
         extendCtx (Def x ty') $ pats2Terms ps tele'
@@ -496,8 +485,6 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
         ts <- pats2Terms ps (subst x t d)
         return (Arg ep t : ts)
       pats2Terms _ _ = err [DS "Invalid number of args to pattern", DD dc]
-  args <- pats2Terms pats tele 
-  return (DCon dc args (Annot (Just ty)))
 pat2Term (PatCon _ _) ty = error "Internal error: should be a tcon"
 pat2Term (PatVar x) ty = return (Var x)
                        

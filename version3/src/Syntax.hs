@@ -155,7 +155,6 @@ data Decl = Sig     TName  Term
             -- not include any information about its data 
             -- constructors
             
-          | Mutual [Decl]
   deriving (Show)
 
 -- | A Data constructor has a name and a telescope of arguments

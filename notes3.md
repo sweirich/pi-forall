@@ -23,6 +23,8 @@ termination analysis, and we won't cover any of it.
 
 We'll work up the general specification of datatypes piece-by-piece,
 generalizing from features that we already know to more difficult cases.
+We'll start with "simple" datatypes, and then extend them with both parameters
+and indices.
 
 ## "Dirt simple" datatypes 
 
@@ -68,7 +70,8 @@ type doesn't need any cases!
     false_elim : (A:Type) -> Void -> A
     false_elim = \ A v . case v of {} 
 	 
-Void brings up the issue of exhaustiveness in case analysis.
+Void brings up the issue of *exhaustiveness* in case analysis. Can we tell
+whether there are enough patterns so that all of the cases are covered? 
 
 ### Nat
 
@@ -162,28 +165,232 @@ For example, a declaration for the `Bool` type would be
 	   boolDecl :: Decl 
       boolDecl = Data "Bool" [ConstructorDef "False" Empty, 
 		                        ConstructorDef "True" Empty]
+										
+## Checking (simple) data constructor applications
 
+When we have a datatype declaration, that means that new data type `T` of type
+`Type` will be added to the context. Furthermore, the context should record
+all of the type constructors for that type, `Ki`, as well as the telescope,
+written `Di` for that data constructor.  This information will be used to
+check terms that are the applications of data constructors. For simplicity,
+we'll assume that data constructors must be applied to all of their arguments.
+
+So our typing rule looks a little like this. We have `as` as representing the 
+list of arguments for the data constructor `Ki`.
+
+      Ki : Di -> T  in G
+      G |- as : Di
+		------------------------ simpl-constr
+		G |- Ki as : T
+		
+We need to check that list against the telescope for the constructor. Each
+argument must have the right type. Furthermore, because of dependency, we
+substitute that argument for the variable in the rest of the telescope.
+		
+		G |- a : A       G |- as : D { a / x }
+		--------------------------------------- tele-arg
+		G |- a as : (x:A) D
+		
+When we get to the end of the list (i.e. there are no more arguments) we should 
+also get to the end of the telescope.		
+		
+		----------- tele-empty
+		G |-  : 
+
+In `TypeCheck.hs`, the function `tcArgTele` essentially implements this
+judgement.  (For reasons that we explain below, we have a special type `Arg`
+for the arguments to the data constructor.)
+
+     tcArgTele :: [Arg] -> Telescope -> TcMonad [Arg]
+	  
+This function relies on the following substitution function for telescopes:
+
+     doSubst :: [(TName,Term)] -> Telescope -> TcMonad Telescope
+
+      
 ## Eliminating dirt simple datatypes
 
-In your homework assignment, we used case to eliminate boolean types.
+In your homework assignment, we used if to eliminate boolean types. Here, we'd
+like to be more general, and have a `case` expression that works with any form
+of datatype. What should the typing rule for that sort of expression look
+like?  Well, the pattern for each branch should match up the telescope for the
+corresponding data constructor.
 
 
-----------------------------------------------------------
+     G |- a : T
+	  Ki : Di -> T  in G       dom(Di) = xsi
+	  G, Di |- ai : A
+	  G |- A : Type
+	  branches exhaustive
+     ------------------------------------- case-simple
+     G |- case a of { Ki xsi -> ai } : A
 
-     not_not_equal : (b : Bool) -> (b = not b) -> Void
-     not_not_equal = \b pf. 
-          if b then (contra pf) else (contra pf)
+Note that this version of case doesn't witness the equality between the
+scrutinee `a` and each of the patterns in the branches.
 
+     G |- a : T
+	  Ki : Di -> T  in G       dom(Di) = xsi
+	  G, Di |- ai : A (Ki xsi)
+	  G |- A : T -> Type
+	  branches exhaustive
+     ------------------------------------- case-simple
+     G |- case a of { Ki xsi -> ai } : A a
 
+How do we implement this rule in our language? The general for type checking a
+case expression `Case scrut alts` of type `ty` is as follows:
 
-- connection between sigma types & indexed types
-    { x : Type | { pf : x = Int | ... }}
-    
- - show definition of sigma types in Product.pi
- 
- - Design issues
-     telescopes
-     pattern matching
-       - indices vs. parameters
-       - utter hack when pattern matching datatypes
-     induction principle (smaller?)
+1. Infer type of the scrutinee `scrut`
+2. Make sure that the inferred type is some type constructor
+3. Make sure that the patterns in the case alts are 
+   exhaustive (`exhausivityCheck`)
+3. For each case alternative:
+  - Create the declarations for the variables in 
+   the pattern (`declarePat`)
+  - Create defs that follow from equating the scrutinee with the 
+   pattern (`equateWithPat`)
+  - Check the body of the case in the extended context against 
+   the expected type
+	
+## Datatypes with parameters 
+
+The first extension of the above scheme is for *parameterized datatypes*. 
+For example, in pi-forall we can define the `Maybe` type with the following
+declaration. The type parameter for this datatype  `A` can be referred to in 
+any of the telescopes for the data constructors.
+
+    data Maybe (A : Type) : Type where
+	    Nothing 
+		 Just of (A)
+		 
+Because this is a dependently-typed language, the variables in the telescope
+can be referred to later in the telescope. For example, with parameters, we can 
+implement Sigma types as a datatype, instead of making them primitive:
+
+    data Sigma (A: Type) (B : A -> Type) : Type
+	    Prod of (x:A) (B)
+
+The general form of datatype declaration with parameters includes a telescope
+for the type constructor, as well as a telescope for each of the data
+constructors.
+
+    data T D : Type where
+       Ki of Di 
+
+That means that when we check an occurrence of a type constructor, we need to
+make sure that its actual arguments match up the parameters in the
+telescope. For this, we can use the argument checking judgement above.
+
+      T : D -> Type in G
+		G |- as : D
+      --------------------   tcon
+      G |- T as : Type
+
+We modify the typing rule for data constructors by marking the telescope
+for type constructor in the typing rule, and then substituting the actual
+arguments from the expected type:
+
+      Ki : D . Di -> T  in G
+      G |- as : Di { bs / D }
+		------------------------ param-constr
+		G |- Ki as : T bs
+		
+For example, if we are trying to check the expression `Just True`, with
+expected type `Maybe Bool`, we'll first see that `Maybe` requires the
+telescope `(A : Type)`.  That means we need to substitute `Bool` for `A` in
+`(_ : A)`, the telescope for `Just`. That produces the telescope `(_ : Bool)`,
+which we'll use to check the argument `True`.
+
+In `TypeCheck.hs`, the function  
+
+    substTele :: Telescope -> [ Term ] -> Telescope -> TcMonad Telescope
+	 
+implements this operation of substituting the actual data type arguments for
+the parameters.
+
+Note that by checking the type of data constructor applications (instead of
+inferring them) we don't need to explicitly provide the parameters to the data
+constructor. The type system can figure them out from the provided type. 
+
+Also note that checking mode also enables *data constructor overloading*. In
+other words, we can have multiple datatypes that use the same data
+constructor. Having the type available allows us to disambiguate.
+
+For added flexibility we can also add code to *infer* the types of data
+constructors when they are not actually parameterized (and when there is no
+ambiguity due to overloading).
+
+## Datatypes with indices	
+
+The final step is to index our datatypes with constraints on the
+parameters. Indexed types let us express inductively defined relations, such
+as `beautiful` from Software Foundations.
+
+    Inductive beautiful : nat → Prop :=
+      b_0 : beautiful 0
+    | b_3 : beautiful 3
+    | b_5 : beautiful 5
+    | b_sum : ∀n m, beautiful n → beautiful m → beautiful (n+m).
+
+Even though `beautiful` has type `nat -> Prop`, we call `nat` this argument an
+index instead of a parameter because it is determined by each data
+constructor. It is not used uniformly in each case.
+
+In pi-forall, we'll implement indices by explictly *constraining*
+parameters. These constraints will just be expressed as equalities written in square brackets. In otherwords, we'll define `beautiful` this way:
+
+    data Beautiful (n : Nat) : Type where
+	    B0 of [n = 0]
+		 B3 of [n = 3]
+		 B5 of [n = 5]
+		 Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[m = m1+m2]
+		 
+Constraints can appear anywhere in the telescope of a data
+constructor. However, they are not arbitrary equality constraints---we want to
+consider them as deferred substitutions. So therefore, the term on the left
+must always be a variable.
+
+These constraints interact with the type checker in a few places:
+
+- When we use data constructors we need to be sure that the constraints are
+  satisfied, by appealing to definitional equality when we are checking
+  arguments against a telescope (in `tcArgTele`).
+
+		G |- x = b      G |- as : D
+		--------------------------------------- tele-constraint
+		G |- as : (x = b) D		
+
+- When we substitute through telescopes (in `doSubst`), we may need to rewrite
+  a constraint `x = b` if we substitute for `x`.
+
+- When we add the pattern variables to the context in each alternative of a
+  case expression, we need to also add the constraints as definitions.
+  (see `declarePats`).
+
+For example, if we check an occurrence of `B3`, i.e. 
+
+    threeIsBeautiful : Beautiful 3
+    threeIsBeautiful = B3
+	 
+this requires substituting `3` for `n` in the telescope `[n = 3]`.  That
+produces an empty telescope.
+
+### Homework: finite numbers in `Fin1.pi1`
+
+The module `Fin1.pi` declares the type of numbers that are drawn from some
+bounded set. For example, the type `Fin 1` only includes 1 number (called
+Zero), `Fin 2` includes 2 numbers, etc.  More generally, `Fin n` is the type
+of all natural numbers smaller than `n`, i.e. of all valid indices for lists
+of size `n`.
+  
+In [Agda](http://www.cse.chalmers.se/~nad/repos/lib/src/Data/Fin.agda), 
+we might declare these numbers as: 
+
+    data Fin : ℕ → Set where
+       zero : {n : ℕ} → Fin (suc n)
+       suc  : {n : ℕ} (i : Fin n) → Fin (suc n)
+
+In pi-forall, this corresponding definition makes the constraints explicit:
+
+    data Fin (n : Nat) : Type where
+       Zero of (m:Nat)[n = Succ m] 
+       Succ of (m:Nat)[n = Succ m] (Fin m)

@@ -282,7 +282,7 @@ funapp = do
   f <- factor
   foldl' app f <$> many bfactor
   where
-        bfactor = brackets expr 
+        bfactor = expr 
         app = App
 
 factor = choice [ Var <$> variable <?> "a variable"                

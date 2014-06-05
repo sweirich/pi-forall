@@ -252,9 +252,11 @@ reserved,reservedOp :: String -> LParser ()
 reserved = Token.reserved tokenizer
 reservedOp = Token.reservedOp tokenizer
 
-parens,brackets :: LParser a -> LParser a
+parens :: LParser a -> LParser a
 parens = Token.parens tokenizer
+brackets :: LParser a -> LParser a
 brackets = Token.brackets tokenizer
+
 -- braces = Token.braces tokenizer
 
 natural :: LParser Int
@@ -423,7 +425,7 @@ funapp = do
   f <- factor
   foldl' app f <$> many bfactor
   where
-        bfactor = brackets expr 
+        bfactor = factor 
         app = App
 
 factor = choice [ varOrCon   <?> "a variable or nullary data constructor"

@@ -277,9 +277,12 @@ reserved,reservedOp :: String -> LParser ()
 reserved = Token.reserved tokenizer
 reservedOp = Token.reservedOp tokenizer
 
-parens,brackets :: LParser a -> LParser a
+parens :: LParser a -> LParser a
 parens = Token.parens tokenizer
+{- SOLN DATA -}
+brackets :: LParser a -> LParser a
 brackets = Token.brackets tokenizer
+{- STUBWITH -}
 -- braces = Token.braces tokenizer
 
 {- SOLN DATA -}
@@ -465,7 +468,7 @@ funapp = do
         app e1 (e2,Erased)   =  ErasedApp e1 e2
         app e1 (e2,Constraint) = error "internal error"
 {- STUBWITH      
-        bfactor = brackets expr 
+        bfactor = factor 
         app = App -}
 
 factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data constructor"

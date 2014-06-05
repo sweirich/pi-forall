@@ -7,13 +7,8 @@ t0 = id [Bool] True
 
 t1 = id [Bool] (id [Bool] True)
 
-{-
+{-  This shouldn't work
 id' : [x:Type] -> [y:x] -> x
 id' = \[x][y]. y
 -}
 
-m : [x:Type] -> [y : Bool = x] -> x
-m = \[x] [y] . subst True by y at h.h
-
-n : [x: True = False] -> [A:Type] -> A
-n = \[x][A]. contra x
