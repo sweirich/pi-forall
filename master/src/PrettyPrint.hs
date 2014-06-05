@@ -187,8 +187,8 @@ instance Display Bool where
 
 {- SOLN DATA -}
 bindParens :: Epsilon -> Doc -> Doc
-bindParens Runtime d = d
-bindParens Erased  d = brackets d
+bindParens Runtime    d = d
+bindParens Erased     d = brackets d
 bindParens Constraint d = brackets d
 
 mandatoryBindParens :: Epsilon -> Doc -> Doc
@@ -196,6 +196,36 @@ mandatoryBindParens Runtime d = parens d
 mandatoryBindParens Erased  d = brackets d
 mandatoryBindParens Constraint  d = brackets d
 {- STUBWITH -}
+
+-- deciding whether to add parens to the func of an application
+wrapf :: Term -> Doc -> Doc
+wrapf f = case f of
+  Var _         -> id
+  App _ _       -> id
+{- SOLN EP -}  
+  ErasedApp _ _ -> id
+{- STUBWITH -}
+  Paren _       -> id
+  Pos _ a       -> wrapf a
+  TrustMe _     -> id
+  _             -> parens
+
+-- deciding whether to add parens to the arg of an application
+wraparg :: Term -> Doc -> Doc
+wraparg x = case x of 
+  Var _       -> id
+  Type        -> id
+  TyUnit      -> id
+  LitUnit     -> id
+  TyBool      -> id
+  LitBool b   -> id
+  Sigma _     -> id
+  TrustMe _   -> id      
+  TCon _ []   -> id  
+  DCon _ [] _ -> id
+  Refl _      -> id
+  Pos _ a     -> wraparg a
+  _           -> parens
 
 instance Display Annot where
   display (Annot Nothing)  = return $ empty
@@ -210,8 +240,8 @@ instance Display Arg where
   display arg@(Arg ep t) = do
     st <- ask
     let annotParens = if showAnnots st 
-                   then mandatoryBindParens 
-                   else bindParens
+                      then mandatoryBindParens 
+                      else bindParens
     let wraparg (Arg ep x) = case x of
               Var _       -> bindParens ep
               TCon _ []   -> bindParens ep
@@ -244,7 +274,8 @@ instance Display Term where
   display (TCon n args) = do
     dn <- display n
     dargs <- mapM display args
-    return $ dn <+> hsep dargs
+    let wargs = zipWith wraparg args dargs
+    return $ dn <+> hsep wargs
 
   display (DCon n args annot) = do
     dn     <- display n
@@ -257,20 +288,12 @@ instance Display Term where
 
   display a@(Lam b) = do
     (binds, body) <- gatherBinders a
-    return $ hang (sep binds) 2 body
+    return $ hang (text "\\" <> sep binds <+> text ".") 2 body
 
   display (App f x) = do
      df <- display f
      dx <- display x
-     let wrapf f = case f of
-            Var _         -> id
-            App _ _       -> id
-            Paren _       -> id
-            Pos _ a       -> wrapf a
-            Ann _ _       -> id
-            TrustMe _     -> id
-            _             -> parens
-     return $ wrapf f df <+> dx             
+     return $ wrapf f df <+> wraparg x dx             
 
   display (Pi bnd) = do
      lunbind bnd $ \((n,a), b) -> do
@@ -278,9 +301,9 @@ instance Display Term where
         dn <- display n
         db <- display b
         let lhs = if (n `elem` fv b) then
-                (dn <+> colon <+> da)
+                parens (dn <+> colon <+> da)
               else 
-                da
+                wraparg (unembed a) da
         return $ lhs <+> text "->" <+> db
   
   display (Paren e) = do
@@ -335,20 +358,12 @@ instance Display Term where
 {- SOLN EP -}     
   display a@(ErasedLam b) = do
     (binds, body) <- gatherBinders a
-    return $ hang (sep binds) 2 body
+    return $ hang (text "\\" <> sep binds <+> text ".") 2 body
 
   display (ErasedApp f x) = do
      df <- display f
      dx <- display x
-     let wrapf f = case f of
-            Var _         -> id
-            App _ _       -> id
-            Paren _       -> id
-            Pos _ a       -> wrapf a
-            Ann _ _       -> id
-            TrustMe _     -> id
-            _             -> parens
-     return $ wrapf f df <+> dx             
+     return $ wrapf f df <+> brackets dx             
 
   display (ErasedPi bnd) = do
      lunbind bnd $ \((n,a), b) -> do
@@ -450,15 +465,16 @@ gatherBinders (Lam b) =
    lunbind b $ \((n,unembed->ma), body) -> do
       dn <- display n
       dt <- display ma
+      let db = if isEmpty dt then dn else (parens (dn <+> dt))
       (rest, body) <- gatherBinders body
-      return $ (text "\\" <>  (dn <+> dt) <+> text "." : rest, body)
+      return $ (db : rest, body)
 {- SOLN EP -}      
 gatherBinders (ErasedLam b) = 
    lunbind b $ \((n,unembed->ma), body) -> do
       dn <- display n
       dt <- display ma
       (rest, body) <- gatherBinders body
-      return $ (text "\\" <> brackets (dn <+> dt) <+> text "." : rest, body)
+      return $ ( brackets (dn <+> dt) : rest, body)
 {- STUBWITH -}
 gatherBinders body = do 
   db <- display body
