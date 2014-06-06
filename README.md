@@ -19,7 +19,7 @@ implementation of dependently-typed lambda calculus.
 
 All of these versions are excerpted from the marked up files in the directory:
 
-- (master/)[master/]
+- [master/](master/)
 
 All edits should be to the code in the `master` directory. The above versions
 are included in the repo just for convenience.

@@ -182,19 +182,19 @@ few places.
   we need to ensure that the type that we infer is the same as the type that 
   is passed to the checker.
 
-    G |- a => A    G |- A = B
-	 -------------------------- :: infer
-	 G |- a <= B
+      G |- a => A    G |- A = B
+	   -------------------------- :: infer
+	   G |- a <= B
 
 - In the rule for application, when we infer the type of the function we need
 to make sure that the function actually has a function type. But we don't really 
 know what the domain and co-domain of the function should be. We'd like our 
 algorithm for type equality to be able to figure this out for us.
   
-    G |- a => A    A ?=> (x:A1) -> A2
-	 G |- b <= A1
-	 ---------------------------------- app
-	 G |- a b => A2 { b / x }
+     G |- a => A    A ?=> (x:A1) -> A2
+	  G |- b <= A1
+	  ---------------------------------- app
+	  G |- a b => A2 { b / x }
 
 ### Implementing definitional equality (see `Equal.hs`)
 
@@ -287,7 +287,7 @@ Why weak-head reduction vs. full reduction?
   there will always be terms that are not equated because of conservativity in
   unfolding recursive definitions.
 
-### Homework - Alternative rules for it and pcase
+### Alternative rules for it and pcase
 
 Consider our elimination rules for if:
 
