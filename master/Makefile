@@ -5,7 +5,7 @@ SRCS=$(addprefix src/,$(SOURCES))
 EXTRA=LICENSE README pi-forall.cabal
 
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi)
-VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi)
+VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi)
 VERSION3=$(addprefix ../version3/,$(SRCS)) $(addprefix ../version3/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi Nat.pi Fin1.pi Product1.pi)
 SOLNS=$(addprefix ../soln/,$(SRCS)) $(addprefix ../soln/test/, $(TESTS))
 
@@ -30,6 +30,8 @@ test_version2 : ../version2
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/Lec1.pi
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/Lec2.pi
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/Hw1.pi
+	../version2/dist/build/pi-forall/pi-forall ../version2/test/Hw2.pi
+	../version2/dist/build/pi-forall/pi-forall ../version2/test/NatChurch.pi
 
 version3: $(VERSION3)
 	cd ../version3 &&	cabal install --disable-documentation . 

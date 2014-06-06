@@ -32,7 +32,7 @@ inferType t = tcTerm t Nothing
 -- elaborated (i.e. already checked to be a good type).
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
-  nf <- whnf expectedTy
+  nf <- whnfRec expectedTy
   tcTerm tm (Just nf)
 
 -- | check a term, producing an elaborated term
@@ -130,7 +130,7 @@ tcTerm t@(Pcase p bnd ann1) ann2 = err [DS "unimplemented"]
       
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm 
-  equate ty' ty
+  unless (aeq ty' ty) $ err [DS "Types don't match", DD ty, DS "and", DD ty']
   return (atm, ty)                     
   
 tcTerm tm ty = err [DS "unimplemented" ]

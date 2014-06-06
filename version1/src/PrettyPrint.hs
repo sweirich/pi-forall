@@ -163,6 +163,33 @@ instance Display Bool where
 
 
 
+-- deciding whether to add parens to the func of an application
+wrapf :: Term -> Doc -> Doc
+wrapf f = case f of
+  Var _         -> id
+  App _ _       -> id
+
+  Paren _       -> id
+  Pos _ a       -> wrapf a
+  TrustMe _     -> id
+  _             -> parens
+
+-- deciding whether to add parens to the arg of an application
+wraparg :: Term -> Doc -> Doc
+wraparg x = case x of 
+  Var _       -> id
+  Type        -> id
+  TyUnit      -> id
+  LitUnit     -> id
+  TyBool      -> id
+  LitBool b   -> id
+  Sigma _     -> id
+  TrustMe _   -> id      
+
+
+  Pos _ a     -> wraparg a
+  _           -> parens
+
 instance Display Annot where
   display (Annot Nothing)  = return $ empty
   display (Annot (Just x)) = do
@@ -184,20 +211,12 @@ instance Display Term where
 
   display a@(Lam b) = do
     (binds, body) <- gatherBinders a
-    return $ hang (sep binds) 2 body
+    return $ hang (text "\\" <> sep binds <+> text ".") 2 body
 
   display (App f x) = do
      df <- display f
      dx <- display x
-     let wrapf f = case f of
-            Var _         -> id
-            App _ _       -> id
-            Paren _       -> id
-            Pos _ a       -> wrapf a
-            Ann _ _       -> id
-            TrustMe _     -> id
-            _             -> parens
-     return $ wrapf f df <+> dx             
+     return $ wrapf f df <+> wraparg x dx             
 
   display (Pi bnd) = do
      lunbind bnd $ \((n,a), b) -> do
@@ -205,9 +224,9 @@ instance Display Term where
         dn <- display n
         db <- display b
         let lhs = if (n `elem` fv b) then
-                (dn <+> colon <+> da)
+                parens (dn <+> colon <+> da)
               else 
-                da
+                wraparg (unembed a) da
         return $ lhs <+> text "->" <+> db
   
   display (Paren e) = do
@@ -287,8 +306,9 @@ gatherBinders (Lam b) =
    lunbind b $ \((n,unembed->ma), body) -> do
       dn <- display n
       dt <- display ma
+      let db = if isEmpty dt then dn else (parens (dn <+> dt))
       (rest, body) <- gatherBinders body
-      return $ (text "\\" <>  (dn <+> dt) <+> text "." : rest, body)
+      return $ (db : rest, body)
 
 gatherBinders body = do 
   db <- display body

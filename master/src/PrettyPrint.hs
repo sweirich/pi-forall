@@ -221,9 +221,13 @@ wraparg x = case x of
   LitBool b   -> id
   Sigma _     -> id
   TrustMe _   -> id      
+{- SOLN DATA -}
   TCon _ []   -> id  
   DCon _ [] _ -> id
+{- STUBWITH -}
+{- SOLN EQUAL -}
   Refl _      -> id
+{- STUBWITH -}
   Pos _ a     -> wraparg a
   _           -> parens
 

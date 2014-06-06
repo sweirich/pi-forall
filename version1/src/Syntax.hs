@@ -49,7 +49,8 @@ type DCName = String
 type Type = Term
 
 data Term = 
-     Type                               -- ^ universe 
+   -- basic language
+     Type                               -- ^ type of types
    | Var TName                          -- ^ variables      
    | Lam (Bind (TName, Embed Annot) Term)             
                                         -- ^ abstraction    
@@ -57,34 +58,35 @@ data Term =
    | Pi (Bind (TName, Embed Term) Term) -- ^ function type
 
    -- practical matters for surface language
-   | Ann Term Term         -- ^ Annotated terms `( x : A )`   
-   | Paren Term            -- ^ parenthesized term, useful for printing
-   | Pos SourcePos Term    -- ^ marked source position, for error messages
+   | Ann Term Term            -- ^ Annotated terms `( x : A )`   
+   | Paren Term               -- ^ parenthesized term, useful for printing
+   | Pos SourcePos Term       -- ^ marked source position, for error messages
      
    -- conveniences  
-   | TrustMe Annot         -- ^ an axiom 'TRUSTME', inhabits all types 
+   | TrustMe Annot            -- ^ an axiom 'TRUSTME', inhabits all types 
    
    -- unit  
    | TyUnit                   -- ^ The type with a single inhabitant `One`
-   | LitUnit                  -- ^ The inhabitant, written tt
+   | LitUnit                  -- ^ The inhabitant, written `tt`
      
-   -- boolean expressions
+   -- homework: boolean expressions
    | TyBool                   -- ^ The type with two inhabitants
    | LitBool Bool             -- ^ True and False
    | If Term Term Term Annot  -- ^ If expression for eliminating booleans
-     
+
+   -- homework sigma types 
+   | Sigma (Bind (TName, Embed Term) Term)
+     -- ^ sigma type `{ x : A | B }` 
+   | Prod Term Term Annot
+     -- ^ introduction for sigmas `( a , b )`
+   | Pcase Term (Bind (TName, TName) Term) Annot
+     -- ^ elimination form  `pcase p of (x,y) -> p`
+
    -- homework let expression
    | Let (Bind (TName, Embed Term) Term)
      -- ^ let expression, introduces a new (potentially recursive) 
      -- definition in the ctx
      
-   -- homework sigma types 
-   | Sigma (Bind (TName, Embed Term) Term)
-     -- ^ sigma type '{ x : A | B }' 
-   | Prod Term Term Annot
-     -- ^ introduction for sigmas '( a , b )'
-   | Pcase Term (Bind (TName, TName) Term) Annot
-     -- ^ elimination form  'pcase p of (x,y) -> p' 
 
 
      
@@ -123,7 +125,6 @@ data Decl = Sig     TName  Term
             -- already have a type declaration in scope
           | RecDef TName Term 
             
-          | Mutual [Decl]
   deriving (Show)
 
 
@@ -189,8 +190,10 @@ derive [''Term,
 
 instance Alpha Term
 
-instance Alpha Annot
-
+instance Alpha Annot where
+    -- override default behavior so that type annotations are ignored
+    -- when comparing for alpha-equivalence
+    aeq' _ _ _ = True
 
 -- The subst class derives capture-avoiding substitution
 -- It has two parameters because the sort of thing we are substiting

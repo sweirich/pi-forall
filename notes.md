@@ -1,34 +1,33 @@
 ## A Simple Core language with Type in Type
 
-Let's consider a simple lambda calculus. What should it contain?
+Let's consider a simple dependently-typed lambda calculus. What should it
+contain? At the bare minimum we can start with the following five forms:
 
      a,A ::= x       - variables 
          \x. a       - lambda expressions (anonymous functions)
          a b         - function applications
          (x:A) -> B  - dependent function type, aka Pi
-         Type        - the 'type' of types, like pi
+         Type        - the 'type' of types
 
-Note that in this language we are using the same syntax for expressions and
-types. For clarity, I'll used lowercase letters `a` for expressions and
-uppercase letters for their types `A`
+Note that we are using the *same* syntax for expressions and types. For
+clarity, I'll used lowercase letters `a` for expressions and uppercase letters
+for their types `A`
 
 Note that lambda and pi above are *binding forms*. They bind the variable 
 `x` in `b` and `B` respectively
 
 ### When do expressions in this language type check?
 
-We should define the type system of this language.
-
-We define a type system using an inductively defined 
-relation. This relation is between an expression, its type,
-and a typing context. 
+We define the type system for this language using an inductively defined
+relation. This relation is between an expression, its type, and a typing
+context.
 
      G |- a : A
 
 The typing context is an ordered list of assumptions about the types of
 variables. 
 
-### An initial set of typing rules - Variables, Lambdas
+### An initial set of typing rules - Variables and Functions
 
 If we know a variable's type because it is in the typing context, then that is
 its type:
@@ -74,7 +73,7 @@ things of type `A` where `A` has type `Type`.
      ------------------------------------------ lambda
       |- \x. \y. y : (x:Type) -> (y : x) -> x
 
-In PiForall, we should eventually be able to write
+In pi-forall, we should eventually be able to write
 
      id : (x:Type) -> (y : x) -> x
 	  id = \x. \y. y
@@ -87,7 +86,7 @@ or even (with some help from the parser)
 ### More typing rules - Types
 
 Actually, I lied.  The real typing rule that we want for lambda 
-has an additional predcondition. We need to make sure that when we 
+has an additional precondition. We need to make sure that when we 
 add assumptions to the context, those assumptions really are types. 
 Otherwise, the rules would allow us to derive this type for the 
 polymorphic lambda calculus:
@@ -136,7 +135,7 @@ need to substitute the argument for x in the result.
 
 ### Example: applying the polymorphic identity function
 
-In PiForall we should be able to apply the polymorphic identity function to
+In pi-forall we should be able to apply the polymorphic identity function to
 itself. When we do this, we need to first provide the type of id, then we can
 apply id to id.
 
@@ -147,7 +146,7 @@ apply id to id.
 
 Because we have (impredicative) polymorphism, we can *encode* familiar types,
 such as booleans. The idea behind this encoding is to represent terms by their
-eliminators. In otherwords, what is important about the value true? The fact
+eliminators. In other words, what is important about the value true? The fact
 that when you get two choices, you pick the first one.  Likewise, false
 "means" that with the same two choices, you should pick the second one.
 With parametric polymorphism, we can give the two terms the same type, which
@@ -173,7 +172,7 @@ So the rules that we have developed so far are great for saying *what* terms
 should type check, but they don't say *how*.  In particular, we've developed
 these rules without thinking about how we would implement them.
 
-A type system is called *syntax-directed* if it is readily apparant how to
+A type system is called *syntax-directed* if it is readily apparent how to
 turn the typing rules into code. In otherwords, we would like to implement the 
 following function (in Haskell), that when given a term and a typing context 
 produces the type of the term (if it exists).
@@ -237,7 +236,7 @@ may to use it to check the type of the argument.
     ---------------------------  app
 	   G |- a b => B { b / x }	  
 
-For types, it is apparant what their type is, so we will just continue to infer that.
+For types, it is apparent what their type is, so we will just continue to infer that.
 
     G |- A => Type     G, x:A |- B => Type
     -------------------------------------- pi
@@ -261,14 +260,14 @@ Let's think about the reverse problem a bit. There are programs that the checkin
 system won't admit but would have been acceptable by our first system. What do
 they look like?
 
-Well, they involve applications of explict lambda terms:
+Well, they involve applications of explicit lambda terms:
 
        |- \x.x : bool -> bool     |- true : bool
       ------------------------------------------  app
        |- (\x.x) true : bool
 
 This term doesn't type check in the bidirectional system because application
-requires the function to have an inferrable type, but lambdas don't.
+requires the function to have an inferable type, but lambdas don't.
 
 However, there is not that much need to write such terms in programs. We can
 always replace them with something equivalent by doing the beta-reduction (in
@@ -290,7 +289,7 @@ A not so desirable property is that the bidirectional system is not closed
 under substitution. The types of variables are always inferred.  This is
 particularly annoying for the application rule when replace a variable
 (inference mode) with another term that is correct only in checking mode.  One
-solution to this problem is to work with *hereditary subsitutions*,
+solution to this problem is to work with *hereditary substitutions*,
 i.e. substitutions that preserve normal forms.
 
 Alternatively, we can solve the problem through *elaboration*, the output 
@@ -438,7 +437,9 @@ binding structure, and throw in MonadIO for good measure.
 
 ### Implementing the TypeChecking Algorithm [Typecheck.hs]
 
-Now that we have the type checking monad available, we can start our implementation. For flexibility `inferType` and `checkType` will *both* be implemented by the same function:
+Now that we have the type checking monad available, we can start our
+implementation. For flexibility `inferType` and `checkType` will *both* be
+implemented by the same function:
 
     inferType :: Term -> TcMonad (Term,Type)
 	 inferType t = tcTerm t Nothing
@@ -486,7 +487,7 @@ The function `equate` merely ensures that the two types are
 alpha-equivalent. If they are, then it returns `()` to the monad, otherwise it
 throws an error.
 
-### Homework - Add Booleans and Sigma types
+### Homework (Type Theory & Haskell) - Add Booleans and Sigma types
 
 Some fairly standard typing rules for booleans assert that Bool is a valid type:
 
@@ -504,9 +505,6 @@ Some fairly standard typing rules for booleans assert that Bool is a valid type:
 	 G |- c : A
 	 ---------------------------- if
 	 G |- if a then b else c : A
-
-How would you extend the language with these constructs? What would the
-bidirectional rules look like? 
 
 Likewise, we can also extend the language with Sigma types. 
 
@@ -532,16 +530,33 @@ pattern match.
     ------------------------------ pcase
     G |- pcase a of (x,y) -> b : C
 
+This part of the homework has two parts:
 
-The code in `version1` includes abstract and concrete syntax for booleans and sigma types. Your job is to get `Hw1.pi` to compile. However, to get this file to compile, you'll need to fill in the
-missing cases in `TypeCheck.hs`.
+1. On paper: rewrite the rules above in bidirectional style. Which rules
+  should be inference rules? Which ones should be checking rules? If you are 
+  familiar with other systems, how do these rules compare?
+ 
+2. In Haskell: The code in `version1/` includes abstract and concrete syntax 
+  for booleans and sigma types. The pi-forall file `version1/test/Hw1.pi` contains 
+  examples of using these new forms. However, to get this file
+  to compile, you'll need to fill in the missing cases in `version1/src/TypeCheck.hs`.
+
+### Homework (pi-forall) 
+
+If Haskell is unfamiliar to you, an alternative assignment is to learn more
+about this language by writing code in pi-forall. For this part, you should 
+use `version2` of pi-forall.
+
+One thing this language can do is Church encoding. The file
+`version2/test/NatChurch.pi` is a start at a Church encoding of natural
+numbers.  Replace the TRUSTMEs in this file so that it compiles.
 
 ### References 
 
-* Cardelli, A Dependently-Typed language with Type:Type
-* Augustsson, Cayenne -- a Language With Dependent Types
-* A. Löh, C. McBride, W. Swierstra / A tutorial implementation of a dependently typed lambda calculus
-* Andrej Bauer, How to implement dependent type theory I  (blog post)
+* Cardelli, [A polymorphic lambda calculus with Type:Type](http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-10.pdf)
+* Augustsson, [Cayenne -- a Language With Dependent Types](http://dl.acm.org/citation.cfm?id=289451)
+* A. Löh, C. McBride, W. Swierstra, [A tutorial implementation of a dependently typed lambda calculus](http://www.andres-loeh.de/LambdaPi/)
+* Andrej Bauer, [How to implement dependent type theory](http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/)
 
     
 

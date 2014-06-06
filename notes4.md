@@ -63,13 +63,15 @@ What about contra? This marks dead code too. So contra should be erased too.
 What about putting it in data structures? We should be able to define
 datatypes with "specificational arguments"
 
-Equality.pi Nat.pi  Fin.pi Vec.pi
+- [Fin.pi](soln/test/Fin.pi)
+- [Vec.pi](soln/test/Vec.pi)
 
 Note: erase only from data constructor arguments, not when appear as 
 arguments to type constructors. (Parameters to type constructors must 
 always be relevant.)
 
-Of course, there are many variations of products: Product.pi
+Of course, there are many variations of products: 
+[Product.pi](soln/test/Product.pi)
 
 ## ERASURE and equality
 ------------------------
@@ -85,4 +87,12 @@ Why?
   - more expressive: don't have to *prove* that those parts are equal 
     (proof irrelevance!)
   - this gets really crazy with heterogeneous equality
-  - sound: see Miquel (ICC), Barras
+  - and it is sound: see Miquel (ICC), Barras
+
+
+# What next?
+------------
+
+- Termination checking
+- Pattern match compilation
+- Univalence

@@ -191,9 +191,9 @@ reserved,reservedOp :: String -> LParser ()
 reserved = Token.reserved tokenizer
 reservedOp = Token.reservedOp tokenizer
 
-parens,brackets :: LParser a -> LParser a
+parens :: LParser a -> LParser a
 parens = Token.parens tokenizer
-brackets = Token.brackets tokenizer
+
 -- braces = Token.braces tokenizer
 
 

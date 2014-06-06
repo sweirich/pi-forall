@@ -1,6 +1,6 @@
 # Datatypes and Indexed Datatypes
 
-Today we'd like to add datatypes to Pi-Forall. 
+Today we'd like to add datatypes to pi-forall. 
 
 Unfortunately, datatypes are both:
 
@@ -336,7 +336,8 @@ index instead of a parameter because it is determined by each data
 constructor. It is not used uniformly in each case.
 
 In pi-forall, we'll implement indices by explictly *constraining*
-parameters. These constraints will just be expressed as equalities written in square brackets. In otherwords, we'll define `beautiful` this way:
+parameters. These constraints will just be expressed as equalities written in 
+square brackets. In otherwords, we'll define `beautiful` this way:
 
     data Beautiful (n : Nat) : Type where
 	    B0 of [n = 0]
@@ -374,7 +375,13 @@ For example, if we check an occurrence of `B3`, i.e.
 this requires substituting `3` for `n` in the telescope `[n = 3]`.  That
 produces an empty telescope.
 
-### Homework: finite numbers in `Fin1.pi1`
+### Homework: Parameterized datatypes and proofs: logic
+
+Translate the definitions and proofs 
+in [Logic chapter of Software Foundations](http://www.cis.upenn.edu/~bcpierce/sf/current/Logic.html) 
+to pi-forall.  
+
+### Homework: Indexed datatypes: finite numbers in `Fin1.pi1`
 
 The module `Fin1.pi` declares the type of numbers that are drawn from some
 bounded set. For example, the type `Fin 1` only includes 1 number (called
@@ -394,3 +401,9 @@ In pi-forall, this corresponding definition makes the constraints explicit:
     data Fin (n : Nat) : Type where
        Zero of (m:Nat)[n = Succ m] 
        Succ of (m:Nat)[n = Succ m] (Fin m)
+
+## References
+
+- Coq pattern matching: [Coq User manual](http://coq.inria.fr/refman/Reference-Manual006.html#Cic-inductive-definitions)
+- Agda pattern matching: [Ulf Norell's dissertation](http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf)
+- Haskell GADTs: [Dimitrios Vytiniotis, Simon Peyton Jones, Tom Schrijvers, and Martin Sulzmann, OutsideIn(X): Modular type inference with local assumptions](http://research.microsoft.com/apps/pubs/default.aspx?id=162516)

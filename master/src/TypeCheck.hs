@@ -35,7 +35,7 @@ inferType t = tcTerm t Nothing
 -- elaborated (i.e. already checked to be a good type).
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
-  nf <- whnf expectedTy
+  nf <- whnfRec expectedTy
   tcTerm tm (Just nf)
 
 -- | check a term, producing an elaborated term
@@ -323,14 +323,14 @@ tcTerm t@(Contra p ann1) ann2 = do
                   DS "are contradictory"]
 {- STUBWITH -}
     
-tcTerm t@(Sigma bnd) Nothing = {- SOLN DATA -} do        
+tcTerm t@(Sigma bnd) Nothing = {- SOLN EQUAL -} do        
   ((x,unembed->tyA),tyB) <- unbind bnd
   aa <- tcType tyA
   ba <- extendCtx (Sig x aa) $ tcType tyB
   return (Sigma (bind (x,embed aa) ba), Type)
   {- STUBWITH err [DS "unimplemented"] -}
   
-tcTerm t@(Prod a b ann1) ann2 = {- SOLN DATA -} do
+tcTerm t@(Prod a b ann1) ann2 = {- SOLN EQUAL -} do
   ty <- matchAnnots t ann1 ann2
   case ty of
      (Sigma bnd) -> do
@@ -342,7 +342,7 @@ tcTerm t@(Prod a b ann1) ann2 = {- SOLN DATA -} do
                    DS "found instead"]
     {- STUBWITH err [DS "unimplemented"] -}
         
-tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN DATA -} do   
+tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN EQUAL -} do   
   ty <- matchAnnots t ann1 ann2
   (apr, pty) <- inferType p
   pty' <- whnf pty
@@ -364,11 +364,13 @@ tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN DATA -} do
       
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm 
+{- SOLN EQUAL -}
   equate ty' ty
+{- STUBWITH   unless (aeq ty' ty) $ err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
   return (atm, ty)                     
   
 {- SOLN EQUAL -}
-{- STUBWITH tcTerm tm ty = err [DS "unimplemented" ] -}
+{- STUBWITH -}
 
 
 ---------------------------------------------------------------------

@@ -32,7 +32,7 @@ inferType t = tcTerm t Nothing
 -- elaborated (i.e. already checked to be a good type).
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
-  nf <- whnf expectedTy
+  nf <- whnfRec expectedTy
   tcTerm tm (Just nf)
 
 -- | check a term, producing an elaborated term
@@ -192,15 +192,49 @@ tcTerm t@(Contra p ann1) ann2 = do
                   DS "are contradictory"]
 
     
-tcTerm t@(Sigma bnd) Nothing = err [DS "unimplemented"]
+tcTerm t@(Sigma bnd) Nothing = do        
+  ((x,unembed->tyA),tyB) <- unbind bnd
+  aa <- tcType tyA
+  ba <- extendCtx (Sig x aa) $ tcType tyB
+  return (Sigma (bind (x,embed aa) ba), Type)
   
-tcTerm t@(Prod a b ann1) ann2 = err [DS "unimplemented"]
+  
+tcTerm t@(Prod a b ann1) ann2 = do
+  ty <- matchAnnots t ann1 ann2
+  case ty of
+     (Sigma bnd) -> do
+      ((x, unembed-> tyA), tyB) <- unbind bnd
+      (aa,_) <- checkType a tyA
+      (ba,_) <- extendCtxs [Sig x tyA, Def x aa] $ checkType b tyB
+      return (Prod aa ba (Annot (Just ty)), ty)
+     _ -> err [DS "Products must have Sigma Type", DD ty, 
+                   DS "found instead"]
+    
         
-tcTerm t@(Pcase p bnd ann1) ann2 = err [DS "unimplemented"]
+tcTerm t@(Pcase p bnd ann1) ann2 = do   
+  ty <- matchAnnots t ann1 ann2
+  (apr, pty) <- inferType p
+  pty' <- whnf pty
+  case pty' of 
+    Sigma bnd' -> do
+      ((x,unembed->tyA),tyB) <- unbind bnd'
+      ((x',y'),body) <- unbind bnd
+      let tyB' = subst x (Var x') tyB
+      nfp  <- whnf apr
+      let ctx = case nfp of 
+            Var x0 -> [Def x0 (Prod (Var x') (Var y') 
+                              (Annot (Just pty')))]
+            _     -> []              
+      (abody, bTy) <- extendCtxs ([Sig x' tyA, Sig y' tyB'] ++ ctx) $
+        checkType body ty
+      return (Pcase apr (bind (x',y') abody) (Annot (Just ty)), bTy)
+    _ -> err [DS "Scrutinee of pcase must have Sigma type"]
+
       
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm 
   equate ty' ty
+
   return (atm, ty)                     
   
 
