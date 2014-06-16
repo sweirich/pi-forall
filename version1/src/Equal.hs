@@ -192,10 +192,3 @@ whnf' b t@(Pos _ x)   =
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 
-
-isWhnf (Lam _)       = True
-
-isWhnf _ = False
-
-
-

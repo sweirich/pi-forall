@@ -217,11 +217,5 @@ whnf' b (Subst tm pf annot) = do
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 
-isWhnf :: Term -> Bool
-
-isWhnf (Lam _)       = True
-
-isWhnf _ = False
-
 
 

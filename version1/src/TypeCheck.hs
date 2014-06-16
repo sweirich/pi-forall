@@ -41,11 +41,9 @@ checkType tm expectedTy = do
 -- an expected type (must be in whnf) in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad (Term,Type)
 
-tcTerm t@(Var x) Nothing = do
-  ty  <- lookupTy x
-  return (t,ty)
+tcTerm t@(Var x) Nothing = err [DS "unimplemented"]
   
-tcTerm t@(Type) Nothing = return (t,Type)  
+tcTerm t@(Type) Nothing = err [DS "unimplemented"]
   
 tcTerm (Pi bnd) Nothing = do 
   ((x, unembed -> tyA), tyB) <- unbind bnd
@@ -113,15 +111,7 @@ tcTerm (LitBool b) Nothing = err [DS "unimplemented"]
 tcTerm t@(If t1 t2 t3 ann1) ann2 = err [DS "unimplemented"]      
   
 tcTerm (Let bnd) ann =   err [DS "unimplemented"]        
-  
-             
-           
-  
-  
-    
-      
 
-    
 tcTerm t@(Sigma bnd) Nothing = err [DS "unimplemented"]
   
 tcTerm t@(Prod a b ann1) ann2 = err [DS "unimplemented"]
@@ -133,8 +123,6 @@ tcTerm tm (Just ty) = do
   unless (aeq ty' ty) $ err [DS "Types don't match", DD ty, DS "and", DD ty']
   return (atm, ty)                     
   
-tcTerm tm ty = err [DS "unimplemented" ]
-
 
 ---------------------------------------------------------------------
 -- helper functions for type checking 

@@ -467,12 +467,15 @@ for the various syntactic forms in inference mode:
 	 
 	 tcTerm (App t1 t2) Nothing = ...
 	 
-Then, we have a pattern for lambda expressions in checking mode:	 
+Mixed in here, we also have a pattern for lambda expressions in checking mode:	 
 	 
     tcTerm (Lam bnd) (Just (Pi bnd2)) = ... 
 	 
 	 tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
        err [DS "Lambda expression has a function type, not", DD nf]
+
+There are also several cases for practical reasons (annotations, source code
+positions, parentheses, TRUSTME) and a few cases for homework.
 		 
 Finally, the last case covers all other forms of checking mode, by 
 calling inference mode and making sure that the inferred type is 
@@ -480,10 +483,10 @@ equal to the checked type.
 		 
 	 tcTerm tm (Just ty) = do
       (atm, ty') <- inferType tm 
-		equate ty' ty
+		unless (aeq ty' ty) $ err [DS "Types don't match", DD ty, DS "and", DD ty']
       return (atm, ty)	 
 
-The function `equate` merely ensures that the two types are
+The function `aeq` merely ensures that the two types are
 alpha-equivalent. If they are, then it returns `()` to the monad, otherwise it
 throws an error.
 

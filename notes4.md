@@ -40,7 +40,7 @@ wouldn't want to allow this definition:
 Here `id'` claims that its second argument is erasable, but it is not.	 
  
 ## How do we rule this out? 
-------------------------
+
 We need to make sure that x is not "used" in the body.
 
     G |- A : Type
@@ -66,9 +66,9 @@ datatypes with "specificational arguments"
 - [Fin.pi](soln/test/Fin.pi)
 - [Vec.pi](soln/test/Vec.pi)
 
-Note: erase only from data constructor arguments, not when appear as 
-arguments to type constructors. (Parameters to type constructors must 
-always be relevant.)
+Note: we can only erase *data* constructor arguments, not types that appear as 
+arguments to *type* constructors. (Parameters to type constructors must 
+always be relevant, they determine the type.)
 
 Of course, there are many variations of products: 
 [Product.pi](soln/test/Product.pi)
@@ -76,12 +76,12 @@ Of course, there are many variations of products:
 ## ERASURE and equality
 ------------------------
 
-We've been alluding to this all week, but now we'll come down to it.  We're
+We've been alluding to this the whole time, but now we'll come down to it.  We're
 actually *defining* equality over "erased" terms instead of the terms
 themselves.  Note how the definition of equate ignores 'eraseable' elements
 like type annotations, erasable arguments, etc.
 
-Why?
+Why is this important?
   - faster comparison: don't have to look at the whole term when comparing for 
     equality. Coq / Adga look at type annotations
   - more expressive: don't have to *prove* that those parts are equal 
@@ -90,9 +90,17 @@ Why?
   - and it is sound: see Miquel (ICC), Barras
 
 
-# What next?
+## What next?
 ------------
 
 - Termination checking
 - Pattern match compilation
 - Univalence
+
+## References
+-------------
+
+Miquel. [Implicit Calculus of Constructions](http://www.pps.univ-paris-diderot.fr/~miquel/publis/tlca01.pdf)
+Barras and Bernardo. [he Implicit Calculus of Constructions as a Programming Language with Dependent Types](http://www.lix.polytechnique.fr/~bernardo/writings/barras-bernardo-icc-fossacs08.pdf)
+Linger and Sheard. [Erasure and Polymorphism in Pure Type Systems](http://web.cecs.pdx.edu/~sheard/papers/FossacsErasure08.pdf)
+Frank Pfenning. [Intensionality, extensionality, and proof irrelevance in modal type theory](http://www.cs.cmu.edu/~fp/papers/lics01.pdf)

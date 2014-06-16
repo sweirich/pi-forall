@@ -17,10 +17,7 @@ module Syntax where
 
 import Generics.RepLib hiding (Data,Refl)
 import Unbound.LocallyNameless hiding (Data,Refl)   
-import Unbound.LocallyNameless.Ops (unsafeUnbind)
 import Text.ParserCombinators.Parsec.Pos       
-import Data.Set (Set)
-import qualified Data.Set as S
 import Data.Maybe (fromMaybe)
 
 -----------------------------------------
