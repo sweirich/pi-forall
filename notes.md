@@ -166,6 +166,25 @@ Thus, a conditional expression just takes a boolean and returns it.
     cond : bool -> (x:Type) -> x -> x -> x
     cond = \ b . b 
 
+### Example: logical and  (i.e. product types)
+
+During lecture 1, instead of encoding booleans, we encoded logical "and".
+
+    and : Type -> Type -> Type
+    and = \p. \q. (c: Type) -> (p -> q -> c) -> c
+
+    conj : (p:Type) -> (q:Type) -> p -> q -> and p q
+    conj = \p.\q. \x.\y. \c. \f. f x y
+
+    proj1 : (p:Type) -> (q:Type) -> and p q -> p
+    proj1  = \p. \q. \a. a p (\x.\y.x)
+
+    proj2 : (p:Type) -> (q:Type) -> and p q -> q
+    proj2  = \p. \q. \a. a q (\x.\y.y)
+
+    and_commutes : (p:Type) -> (q:Type) -> and p q -> and q p
+    and_commutes = \p. \q. \a. conj q p (proj2 p q a) (proj1 p q a)
+
 # From typing rules to a typing algorithm
 
 So the rules that we have developed so far are great for saying *what* terms

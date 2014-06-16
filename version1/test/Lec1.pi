@@ -1,2 +1,12 @@
 module Lec1 where
 
+
+
+
+
+
+id : (y :Type) -> (x:y) -> y
+id = \y.\x.x
+
+ex : (y :Type) -> (x:y) -> y
+ex = id ((y :Type) -> (x:y) -> y) id

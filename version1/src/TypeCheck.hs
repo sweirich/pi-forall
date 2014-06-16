@@ -45,23 +45,11 @@ tcTerm t@(Var x) Nothing = err [DS "unimplemented"]
   
 tcTerm t@(Type) Nothing = err [DS "unimplemented"]
   
-tcTerm (Pi bnd) Nothing = do 
-  ((x, unembed -> tyA), tyB) <- unbind bnd
-  atyA <- tcType tyA 
-  atyB <- extendCtx (Sig x atyA) $ tcType tyB
-  return (Pi (bind (x, embed atyA) atyB), Type) 
+tcTerm (Pi bnd) Nothing = err [DS "unimplemented"]
       
 -- Check the type of a function    
-tcTerm (Lam bnd) (Just (Pi bnd2)) = do
-  -- unbind the variables in the lambda expression and pi type
-  ((x,unembed -> Annot ma), body, 
-   (_, unembed -> tyA), tyB) <- unbind2Plus bnd bnd2
-  -- check tyA matches type annotation on binder, if present
-  maybe (return ()) (equate tyA) ma
-  -- check the type of the body of the lambda expression
-  (ebody, etyB) <- extendCtx (Sig x tyA) (checkType body tyB)
-  return (Lam (bind (x, embed (Annot (Just tyA))) ebody), 
-          Pi bnd2)  
+tcTerm (Lam bnd) (Just (Pi bnd2)) = err [DS "unimplemented"]
+
 tcTerm (Lam _) (Just nf) = 
   err [DS "Lambda expression has a function type, not", DD nf]
 
@@ -77,15 +65,11 @@ tcTerm (Lam bnd) Nothing = do
   return (Lam (bind (x, embed (Annot (Just atyA))) ebody), 
           Pi  (bind (x, embed atyA) atyB))  
 
-tcTerm (App t1 t2) Nothing = do  
-  (at1, ty1)             <- inferType t1  
-  (x, tyA, tyB) <- ensurePi ty1 
-  (at2, ty2)             <- checkType t2 tyA
-  let result = (App at1 at2, subst x at2 tyB)
-  return result
+tcTerm (App t1 t2) Nothing = err [DS "unimplemented"]
                      
-
-
+                             
+                             
+                             
 tcTerm (Ann tm ty) Nothing = do
   ty'         <- tcType ty
   (tm', ty'') <- checkType tm ty'
