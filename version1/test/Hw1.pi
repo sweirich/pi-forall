@@ -1,7 +1,7 @@
 module Hw1 where
 
 -- HW #1: get this file to type check by adding typing rules
--- for booleans and let expressions to TypeCheck.hs and Equal.hs 
+-- for booleans and if-then-else expressions to TypeCheck.hs and Equal.hs 
 
 z0 : Bool
 z0 = if True then False else True
