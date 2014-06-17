@@ -22,9 +22,6 @@ true = \x . \y. \z. y
 false : bool
 false = \x. \y. \z. z
 
-cond : bool -> (x:Type) -> x -> x -> x
-cond = \ b . b 
-
 -- Church encoding of 'and'
 
 and : Type -> Type -> Type

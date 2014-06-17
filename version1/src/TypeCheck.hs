@@ -41,14 +41,26 @@ checkType tm expectedTy = do
 -- an expected type (must be in whnf) in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad (Term,Type)
 
-tcTerm t@(Var x) Nothing = err [DS "unimplemented"]
+tcTerm t@(Var x) Nothing = do
+  tyA <- lookupTy x
+  return (Var x, tyA)
   
-tcTerm t@(Type) Nothing = err [DS "unimplemented"]
+tcTerm t@(Type) Nothing = return (Type, Type)
   
-tcTerm (Pi bnd) Nothing = err [DS "unimplemented"]
-      
+tcTerm (Pi bnd) Nothing = do
+  ((x, unembed -> tyA), tyB) <- unbind bnd
+  (elA, _) <- checkType tyA Type
+  (elB, _) <- extendCtx (Sig x elA) $ checkType tyB Type
+  return (Pi (bind (x, embed elA) elB), Type)
+  
+  
 -- Check the type of a function    
-tcTerm (Lam bnd) (Just (Pi bnd2)) = err [DS "unimplemented"]
+tcTerm (Lam bnd) (Just (Pi bnd2)) = do
+  ((x, annot), body, (_, unembed -> tyA), tyB) <- unbind2Plus bnd bnd2
+  (ebody, _) <- extendCtx (Sig x tyA) $ checkType body tyB
+  return (Lam (bind (x,annot) ebody), Pi bnd2)
+
+
 
 tcTerm (Lam _) (Just nf) = 
   err [DS "Lambda expression has a function type, not", DD nf]
@@ -65,8 +77,16 @@ tcTerm (Lam bnd) Nothing = do
   return (Lam (bind (x, embed (Annot (Just atyA))) ebody), 
           Pi  (bind (x, embed atyA) atyB))  
 
-tcTerm (App t1 t2) Nothing = err [DS "unimplemented"]
-                     
+tcTerm (App t1 t2) Nothing = do
+  (et1, ty1) <- inferType t1
+  case ty1 of                      
+    Pi bnd -> do
+      ((x,unembed -> tyA), tyB) <- unbind bnd
+      (et2, _) <- checkType t2 tyA
+      return (App et1 et2, subst x et2 tyB)
+    _ -> err [DS "Function", DD t1, DS "should have a function type.",
+              DS "Instead has type", DD ty1]
+                                    
                              
                              
                              
