@@ -34,7 +34,7 @@ inferType t = tcTerm t Nothing
 -- elaborated (i.e. already checked to be a good type).
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
-  nf <- whnf expectedTy
+  nf <- whnfRec expectedTy
   tcTerm tm (Just nf)
 
 -- | check a term, producing an elaborated term
@@ -122,7 +122,6 @@ tcTerm (ErasedLam bnd) Nothing = do
   return (ErasedLam (bind (x, embed (Annot (Just atyA))) ebody), 
           ErasedPi  (bind (x, embed atyA) atyB))  
 
-
 tcTerm (ErasedApp t1 t2) Nothing = do  
   (at1, ty1)    <- inferType t1  
   (x, tyA, tyB) <- ensureErasedPi ty1 
@@ -209,8 +208,8 @@ tcTerm t@(DCon c args (Annot Nothing)) Nothing = do
                  DS "data arguments, but was given", 
                  DD (length args), DS "arguments."]
       eargs  <- tcArgTele args deltai
-      let ty =  TCon tname []
-      return $ (DCon c eargs (Annot (Just ty)),ty)
+      let ty = TCon tname []
+      return (DCon c eargs (Annot (Just ty)),ty)
     [_] -> err [DS "Cannot infer the parameters to data constructors.",
                 DS "Add an annotation."]
     _ -> err [DS "Ambiguous data constructor", DS c]       
@@ -228,40 +227,36 @@ tcTerm t@(DCon c args ann1) ann2 = do
              DS "should have", DD numArgs, 
              DS "data arguments, but was given", 
              DD (length args), DS "arguments."]
-      newTele <- (substTele delta params deltai)
-      eargs  <- tcArgTele args newTele
-      return $ (DCon c eargs (Annot (Just ty)), ty) 
+      newTele <- substTele delta params deltai
+      eargs   <- tcArgTele args newTele
+      return (DCon c eargs (Annot (Just ty)), ty) 
     _ -> 
       err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
   
 -- If we are in inference mode, then 
 --      we do not use refinement        
 -- otherwise, we must have a typing annotation        
-tcTerm t@(Case scrut alts ann1) ann2 = do   
+tcTerm t@(Case scrut alts ann1) ann2 = do  
+  ty <- matchAnnots t ann1 ann2
   (ascrut, sty) <- inferType scrut 
   (n, params) <- ensureTCon sty
-  expectedTy <- matchAnnots t ann1 ann2
   let checkAlt (Match bnd) = do
          (pat, body) <- unbind bnd
          -- add variables from pattern to context
          (decls, evars) <- declarePat pat Runtime (TCon n params)
-         (ebody, atyp) <- do
-             -- add scrut = pat equation to the context.
-             decls' <- equateWithPat scrut pat (TCon n params)
-             (ebody, _) <- extendCtxs (decls ++ decls') $ 
-               checkType body expectedTy
-             return (ebody, expectedTy)
+         -- add defs to the contents from scrut = pat
+         decls' <- equateWithPat scrut pat (TCon n params)
+         (ebody, _) <- extendCtxs (decls ++ decls') $ 
+                          checkType body ty
              
          -- make sure 'erased' components aren't used 
          when (any (`elem` (fv (erase ebody))) evars) $
            err [DS "Erased variable bound in match used"]
            
-         return (Match (bind pat ebody), atyp)
-  exhaustivityCheck sty (map (\(Match bnd) -> 
-                          fst (unsafeUnbind bnd)) alts) 
-  aalts_atyps <- mapM checkAlt alts
-  let (aalts, atyps) = unzip aalts_atyps
-  ty <- merge (Just expectedTy) atyps
+         return (Match (bind pat ebody))
+  let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts         
+  exhaustivityCheck sty pats
+  aalts <- mapM checkAlt alts
   return (Case ascrut aalts (Annot (Just ty)), ty)
   
   
@@ -362,6 +357,7 @@ tcTerm t@(Pcase p bnd ann1) ann2 = do
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm 
   equate ty' ty
+
   return (atm, ty)                     
   
 
@@ -394,13 +390,7 @@ tcType tm = do
                       
                     
 ---------------------------------------------------------------------
--- helper functions for type constructor / data constructor creation
-
--- | calculate the length of a telescope
-teleLength :: Telescope -> Int
-teleLength Empty = 0
-teleLength (Cons Constraint _ _ tele) = teleLength tele
-teleLength (Cons _ _ _ tele) = 1 + teleLength tele
+-- helper functions for type constructor creation
 
 -- | type check a list of type constructor arguments against a telescope
 tsTele :: [Term] -> Telescope -> TcMonad [Term]
@@ -408,19 +398,24 @@ tsTele tms tele = do
   args <- tcArgTele (map (Arg Runtime) tms) tele
   return (map unArg args)
 
+---------------------------------------------------------------------
+-- helper functions for data constructor creation
+
+-- | calculate the length of a telescope
+teleLength :: Telescope -> Int
+teleLength Empty = 0
+teleLength (Cons Constraint _ _ tele) = teleLength tele
+teleLength (Cons _ _ _ tele) = 1 + teleLength tele
+
 -- | type check a list of data constructor arguments against a telescope
 tcArgTele ::  [Arg] -> Telescope -> TcMonad [Arg]
 tcArgTele [] Empty = return []
 tcArgTele args (Cons Constraint x ty tele) = do
-  --warn [DS "Checking constraint", DD x, DS "=", DD ty]
   equate (Var x) ty
   tcArgTele args tele
 tcArgTele (Arg ep1 tm:terms) (Cons ep2 x ty tele') | ep1 == ep2 = do
-  --warn [DS "Checking arg", DD tm, DS "against type", DD ty, 
-  --      DS "using telescope", DD tele']
   (etm, ety) <- checkType tm ty
   tele'' <- doSubst [(x,etm)] tele'
-  --warn [DS "new tele is", DD tele'']
   eterms <- tcArgTele terms tele''
   return $ Arg ep1 etm:eterms
 tcArgTele (Arg ep1 _ : _) (Cons ep2 _ _ _) = 
@@ -454,13 +449,13 @@ doSubst ss (Cons Constraint x ty tele') = do
   return $ extend decls tele
        where
     extend [] tele = tele
-    extend (Def x ty:decls) tele = 
-      Cons Constraint x ty (extend decls tele)
+    extend (Def y yty:decls) tele = 
+      Cons Constraint y yty (extend decls tele)
     extend (_:decls) tele = error "Internal error"
     
     match :: Type -> Type -> [Decl]
-    match (Var x) ty = [Def x ty]
-    match ty (Var x) = [Def x ty]
+    match (Var y) yty = [Def y yty]
+    match yty (Var y) = [Def y yty]
     match (DCon s1 a1s _) (DCon s2 a2s _) | s1 == s2 = 
       matchArgs a1s a2s 
     match _ _ = []  
@@ -477,37 +472,16 @@ doSubst ss (Cons ep x ty tele') = do
 
 -----------------------------------------------------------
 -- helper functions for checking pattern matching
-
-
-
--- given the annotation and the types for each branch, merge them together
-merge :: Maybe Type -> [Type] -> TcMonad Type
-merge Nothing   []   = 
-  err [DS "Need an annotation on empty case expression"]
-merge (Just ty) []   = return ty
-merge _ [hd] = return hd
-merge ann (x : xs) = do
-  x' <- merge ann xs 
-  equate x' x
-  return x'
            
--- | Create the binding in the context for each of the variables in 
+-- | Create a binding in the context for each of the variables in 
 -- the pattern. 
 -- Also return the erased variables
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
-{-
-declarePat (PatVar x) ep ty@(TyEq (Var y) z) | not (y `elem` fv z) = do
-  mt <- lookupDef y
-  let ydef = case mt of 
-        Nothing -> [Def y z] 
-        Just _  -> []
-  return ([Sig x ty] ++ ydef,if ep == Erased then [x] else [])
--}
 declarePat (PatVar x) Runtime y = return ([Sig x y],[])
 declarePat (PatVar x) Erased  y = return ([Sig x y],[x])
 declarePat (PatCon d pats) Runtime (TCon c params) = do
   (delta, deltai) <- lookupDCon d c
-  tele <- (substTele delta params deltai)    
+  tele <- substTele delta params deltai   
   declarePats pats tele
 declarePat (PatCon d pats) Erased (TCon c params) = 
   err [DS "Cannot pattern match erased arguments"]
@@ -528,15 +502,17 @@ declarePats [] _     = err [DS "Not enough patterns in match"]
 declarePats _  Empty = err [DS "Too many patterns in match"]
            
                        
--- | Convert a pattern to an (annotated) term so that we can add an 
--- equation for it in the context. Because data constructors must 
--- be annotated with their types, we need to have the expected type of 
--- the pattern available.
+-- | Convert a pattern to an (annotated) term so that we can substitute it for
+-- variables in telescopes. Because data constructors must be annotated with
+-- their types, we need to have the expected type of the pattern available.
 pat2Term :: Pattern -> Type -> TcMonad Term
 pat2Term (PatCon dc pats) ty@(TCon n params) = do
   (delta, deltai) <- lookupDCon dc n
   tele <- substTele delta params deltai
-  let pats2Terms :: [(Pattern,Epsilon)] -> Telescope -> TcMonad [Arg]
+  args <- pats2Terms pats tele 
+  return (DCon dc args (Annot (Just ty)))
+     where
+      pats2Terms :: [(Pattern,Epsilon)] -> Telescope -> TcMonad [Arg]
       pats2Terms [] Empty = return []
       pats2Terms ps (Cons Constraint x ty' tele') = 
         extendCtx (Def x ty') $ pats2Terms ps tele'
@@ -546,8 +522,6 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
         ts <- pats2Terms ps (subst x t d)
         return (Arg ep t : ts)
       pats2Terms _ _ = err [DS "Invalid number of args to pattern", DD dc]
-  args <- pats2Terms pats tele 
-  return (DCon dc args (Annot (Just ty)))
 pat2Term (PatCon _ _) ty = error "Internal error: should be a tcon"
 pat2Term (PatVar x) ty = return (Var x)
                        

@@ -21,41 +21,11 @@ eq_bool : Bool -> Bool -> Bool
 eq_bool = \ b1 b2 . 
   if b1 then b2 else (not b2)  
 
--- using booleans in types
+-- sigma types
 
-T : Bool -> Type
-T = \b. if b then One else Bool
+double : (A:Type) -> (x : A) -> { x : A | A }
+double = \A x. (x,x) 
 
-z1 : T True
-z1 = tt
-
-z2 : T False
-z2 = True
-
--- let-expressions
-
-x0 : One
-x0 = let y = tt in y
-
-x1 : Bool
-x1 = let y = not True in or y y
-
--- let-expressions with "refinement"
--- the type checking rule for let should add a definition of the 
--- let-bound variable, so that its value can be used in types.
-
-x2 = let x = True in (tt : T x)
-
--- Challenge: type-level programming with boolean 
--- expressions. To get bar and barnot to work 
--- the typing rule for 'if' expressions must be 
--- context-dependent. In otherwords, it should add new 
--- definitions to the context in the true/false branches
--- when the scrutinee is a variable
-
-bar : (b : Bool) -> (T b : Type)
-bar = \b .if b then tt else True
-
-barnot : (b : Bool) -> (T (not b) : Type)
-barnot = \b. if b then False else tt
+fst : (A:Type) -> (B : A -> Type) -> { x : A | B x } -> A
+fst = \A B p. pcase p of (x0,y) -> x0
 

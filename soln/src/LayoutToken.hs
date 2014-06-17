@@ -774,6 +774,7 @@ makeTokenParser languageDef open sep close
                                        | col2 < p = adjust(col-1,ps,close:add)
                                        | col2== p = setInfo(col-1,p:ps,rev (sep:add) more)
                                        | col2 > p = setInfo(col,p:ps,rev add more)
+                                       | True = error "impossible"
                                     rev [] xs = xs
                                     rev (s:ss) xs = rev ss (s++xs)
                                 in adjust (col2,p:ps,[])

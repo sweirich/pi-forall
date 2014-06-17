@@ -1,36 +1,53 @@
 module Lec2 where
 
-import Hw1
+-- this code only type checks with a definition of type equality that 
+-- includes beta-equivalence
 
-eq_true : (b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = True -> (b1 = b2)
-eq_true = \b1 b2 pf. 
-  if b1 then if b2 then refl else contra pf
-  		  else if b2 then contra pf else refl
+bool' : Bool -> Type
+bool' = \b . (B : (b : Bool) -> Type) -> B True -> B False -> B b
 
-void : Type 
-void = (A:Type) -> A
+true' : bool' True
+true' = \A x y . x
 
-eq_false : 	(b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = False -> (b1 = b2) -> void
-eq_false = \ b1 b2 pf1 pf2 .
-  if b1 then if b2 then contra pf1 else contra pf2
-        else if b2 then contra pf2 else contra pf1 
+false' : bool' False
+false' = \ A x y. y
+
+T : Bool -> Type
+T = \b. if b then One else Bool
+
+z1 : T True
+z1 = tt
+
+z2 : T False
+z2 = True
+
+
+-- To get bar and barnot to work 
+-- the typing rule for 'if' expressions must be 
+-- context-dependent. In otherwords, it should add new 
+-- definitions to the context in the true/false branches
+-- when the scrutinee is a variable
+
+not : Bool -> Bool 
+not = \x. if x then False else True
+
+bar : (b : Bool) -> T b
+bar = \b .if b then tt else True
+
+barnot : (b : Bool) -> T (not b) 
+barnot = \b. if b then False else tt
+
+-- projections for sigma types
+
+fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
+fst = \A B p. pcase p of (x,y) -> x
+
+snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
+snd = \A B p. pcase p of (x1,y) -> y
+
+-- examples of propositional equality
 
 sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
 sym = \ A x y pf .
   subst refl by pf 
 
-trans : (A:Type) -> (x:A) -> (y:A) -> (z:A) -> (x = z) -> (z = y) -> (x = y)
-trans = \A x y z pf1 pf2 . 
-  subst pf1 by pf2 
-
-
--- Watch out! This expression loops forever when type checking
--- It can never be called because its argument is unsatifiable.
-
-{-
-loop : (Bool = (Bool -> Bool)) -> Bool
-loop = \ y . 
-   let delta = (\ x . (subst x by y) x : Bool -> Bool) in
-   let omega = delta (subst delta by sym Type Bool (Bool -> Bool) y) in
-	(tt : T omega)
--}

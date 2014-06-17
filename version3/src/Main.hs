@@ -77,6 +77,9 @@ test = do
   goFilename "../test/Hw1.pi"  
   goFilename "../test/Lec2.pi"
   goFilename "../test/Hw2.pi"  
+  goFilename "../test/Lec3.pi"
+  goFilename "../test/Fin1.pi"
+  goFilename "../test/Lec4.pi"
       
   goFilename "../test/Logic.pi"  
   goFilename "../test/Equality.pi"  
