@@ -1,0 +1,91 @@
+module Prelude where
+
+id : (x:Type) -> x -> x
+id = \x y . y 
+
+compose : (A : Type) -> (B : Type) -> (C:Type) ->
+  (B -> C) -> (A -> B) -> (A -> C)
+compose = \ A B C f g x. (f (g x))
+
+-- some Church encodings, need impredicativity to make them
+-- more reasonable
+
+bool : Type 1
+bool = (A:Type) -> A -> A -> A 
+
+true : bool
+true = \A x y. x
+
+false : bool
+false = \A x y. y
+
+bool' : bool -> Type 1
+bool' = \b . (B : (b : bool) -> Type) -> B true -> B false -> B b
+
+true' : bool' true
+true' = \A x y . x
+
+false' : bool' false
+false' = \ A x y. y
+
+
+nat : Type 1
+nat = (x:Type) -> x -> (x -> x) -> x
+
+zero : nat
+zero = \x z s. z
+
+succ : nat -> nat
+succ = \n x z s. s (n x z s)
+
+equal : (x:Type) -> (y:Type) -> Type 1
+equal = \x y. (f : Type -> Type) -> f x -> f y
+
+reflexivity : (x:Type) -> equal x x
+reflexivity = \x f z . z
+
+-- homework add booleans? sigma types?
+
+
+x = True
+  
+
+data List (a : Type) : Type where
+  Nil
+  Cons of (x:a) (y:List a)
+
+y : List Bool
+y = Cons True (Cons False Nil)
+
+z : Bool
+z = if True then  False else True
+
+
+not : Bool -> Bool
+not = \b . if b then False else True
+
+T : Bool -> Type
+T = \b. if b then One else One
+
+bar : (b : Bool) -> (T b : Type)
+bar = \b .if b then tt else tt
+
+snot : (b : Bool) -> (T (not b) : Type)
+snot = \b. if b then tt else tt
+
+good : not True = False
+good = refl
+
+data Nat : Type where
+   zero 
+   succ of ( x : Nat )
+
+data Vec (a:Type) (i : Nat) : Type where
+   Nil  of (i = zero) 
+   Cons of (j : Nat) (i = succ j) (a) (Vec a j)
+
+head : (a:Type) -> (i : Nat) -> Vec a (succ i) -> a
+head = \ a i v. case v of 
+           Nil p -> contra p
+           Cons j p hd tl -> hd
+

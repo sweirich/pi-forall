@@ -1,0 +1,52 @@
+TODO - Summer 2014
+* Switch to cayenne style, remove "inductive" types
+* fix type abbreviations issue with replib  (i.e. String vs TConName and DConName)
+* figure out indexed types
+* remove epsilon (if possible)
+* mutual blocks in definitions
+
+DONE
+* Type : Type
+* recursive definitions in context
+* removed Axiom
+* Axiom K / UIP examples
+
+================================================================
+EXERCISE IDEAS
+* write an infinite loop
+* write a loop that unfolds during type checking
+* write a term that should type check, but restricted unfolding prevents it
+
+================================================================
+DONE - Summer 2013
+* Ind based on constrained types
+* More principled annotations
+* pat2term needs a type annotation
+* type check pattern matching?
+* Remove extra variable binding in let
+* Erased arguments
+   - is conv erased in Coq? Agda?
+* Add preamble/credits to each file
+* Add cabal file
+* Many more test cases and DEBUGGING!
+* check for exhaustiveness of case analysis (mostly!)
+
+TODO
+
+* Make the pretty-printer use precedence levels (and omit 'freshening' of vars)
+* Comment/beautify source files
+
+WON'T DO
+* wildcard names
+* Unification for type args - NO
+* OTT file for language specification (both elaboration and type checking)
+
+EXERCISE IDEAS
+
+* add erased arguments to data structures?
+* remove positivity check, implement infinite loop?
+* remove levels, implement infinite loop?
+* unsoundness when escape check is removed from pattern matching ?
+
+* add booleans?
+* add sigma types?

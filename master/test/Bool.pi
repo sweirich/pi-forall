@@ -1,0 +1,61 @@
+module BoolLib where
+
+import Logic
+
+not : Bool -> Bool
+not = \ b . if b then False else True
+
+-- to be or not to be, that is the question
+not_not_equal : (b : Bool) -> (b = not b) -> Void
+not_not_equal = \b pf. 
+  if b then (contra pf) else (contra pf)
+
+andb : Bool -> Bool -> Bool
+andb = \ b1 b2. 
+  case b1 of 
+    True -> b2
+    False -> False
+
+orb : Bool -> Bool -> Bool
+orb = \b1 b2. 
+  case b1 of 
+    True -> True
+    False -> b2
+
+
+implb : Bool -> Bool -> Bool
+implb = \b1 b2. if b1 then b2 else True
+
+negb : Bool -> Bool
+negb = \ b . if b then False else True
+
+andb_prop : (a : Bool) -> (b : bool) -> and a b = True -> And (a = True) (b = True)
+andb_prop = TRUSTME
+
+andb_true_intro : (b1 : Bool) -> (b2 : Bool) -> And (b1 = True) (b2 = True) -> andb b1 b2 = True
+andb_true_intro = TRUSTME
+
+bool_eq : Bool -> Bool -> Bool
+bool_eq = if x then y else not y
+
+eq_true : (b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = True -> (b1 = b2)
+eq_true = \b1 b2 pf. 
+  if b1 then if b2 then refl else contra pf
+                  else if b2 then contra pf else refl
+
+-- A function mapping true to an inhabited type and false to an empty
+-- type.
+
+t : Bool -> Type
+t = \ b . 
+  case b of 
+    True -> Unit
+    False -> Void
+
+is_true : Bool -> Type
+is_true = b = True
+
+{-
+data eq_true : Bool -> Type
+	is_eq_true : eq_true True
+-}
