@@ -379,7 +379,7 @@ produces an empty telescope.
 
 Translate the definitions and proofs 
 in [Logic chapter of Software Foundations](http://www.cis.upenn.edu/~bcpierce/sf/current/Logic.html) 
-to pi-forall.  
+to pi-forall. Make sure that you use at least `version3`.  
 
 ### Homework: Indexed datatypes: finite numbers in `Fin1.pi1`
 
@@ -401,6 +401,10 @@ In pi-forall, this corresponding definition makes the constraints explicit:
     data Fin (n : Nat) : Type where
        Zero of (m:Nat)[n = Succ m] 
        Succ of (m:Nat)[n = Succ m] (Fin m)
+		 
+The file [Fin1.pi](version3/test/Fin1.pi) includes a number of definitions
+that use these types. However, there are some `TRUSTME`s. Replace these with
+the actual definitions.
 
 ## References
 

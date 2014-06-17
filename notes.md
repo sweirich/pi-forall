@@ -168,7 +168,8 @@ Thus, a conditional expression just takes a boolean and returns it.
 
 ### Example: logical and  (i.e. product types)
 
-During lecture 1, instead of encoding booleans, we encoded logical "and".
+During lecture 1, instead of encoding booleans, we encoded a logical "and"
+data structure.
 
     and : Type -> Type -> Type
     and = \p. \q. (c: Type) -> (p -> q -> c) -> c
@@ -318,7 +319,7 @@ of a type checker will be a term that works purely in inference mode.
 
      Syntax.hs      - specification of the abstract syntax of the language
 	  Parser.hs      - turn strings into AST
-  	  PrettyPrint.hs - displays AST in a (somewhat) readable form
+     PrettyPrint.hs - displays AST in a (somewhat) readable form
 	  Main.hs        - top-level routines (repl)
 	  
      Environment.hs - defines the type checking monad		  
@@ -386,7 +387,9 @@ The bottom of the Syntax file contains instructions for unbound. The line
 
     derive [''Term]
 	 
-instructs unbound to derive a representation of the structure of the `Term` AST. This is all that is necessary to create an instance of the `Alpha` type class for this type.	 
+instructs unbound to derive a representation of the structure of the `Term`
+AST. This is all that is necessary to create an instance of the `Alpha` type
+class for this type.
 	 
     instance Alpha Term
 	 
