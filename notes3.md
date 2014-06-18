@@ -210,7 +210,25 @@ This function is defined in terms of a helper function:
 
     whnf :: Term -> TcMonad Term
 	 
-that reduces a type to its *weak-head normal form*. 	 
+that reduces a type to its *weak-head normal form*.  Such terms have done all
+of the reductions to the outermost lambda abstraction (or pi) but do not
+reduce subterms. In other words:
+
+     (\x.x) (\x.x)  
+	  
+is not in whnf, because there is more reduction to go to get to the head. On
+the other hand, even though there are still internal reductions possible:
+	  
+	  \y. (\x.x) (\x.x)   
+
+and
+
+     (y:Type) -> (\x.x)Bool 
+
+are in weak head normal form. Likewise, the term `x y` is also in weak head
+normal form (if we don't have a definition available for `x`) because, even
+though we don't know what the head form is, we cannot reduce the term any
+more.
 
 In `version2` of the the [implementation](version2/src/TypeCheck.hs), these 
 functions are called in a few places: 
@@ -252,32 +270,7 @@ reducing them.
 				 equate b1 b2
 			 (_,_) -> err ...
 
-
-Therefore, we need a mechanism for reducing terms to weak-head normal form.
-Such terms have done all of the reductions to the outermost lambda abstraction
-(or pi) but, do not reduce subterms. In other words:
-
-     (\x.x) (\x.x)  
-	  
-is not in whnf, because there is more reduction to go to get to the head. On
-the other hand, even though there are still internal reductions possible:
-	  
-	  \y. (\x.x) (\x.x)   
-
-and
-
-     (y:Type) -> (\x.x)Bool 
-
-are in weak head normal form. Likewise, the term `x y` is also in weak head
-normal form because, even though we don't know what the head form is, we
-cannot reduce the term any more.
-
-In (Equal.hs)[version2/src/Equal.hs], the function 
-
-     whnf :: Term -> TcMonad Term
-	  
-does this reduction. We can use this reduction also to implement the `checkPi`
-function.
+Therefore, we reuse our mechanism for reducing terms to weak-head normal form.
 
 Why weak-head reduction vs. full reduction?
 
@@ -290,13 +283,15 @@ Why weak-head reduction vs. full reduction?
   
 - Furthermore, we allow recursive definitions in pi-forall, so normalization
   may just fail completely. However, this definition based on wnhf only
-  unfolds recursive definitions when they are needed, so avoids some infinite
-  loops in the type checker. 
+  unfolds recursive definitions when they are needed, and then only once, so
+  avoids some infinite loops in the type checker.
   
   Note that we don't have a complete treatment of equality though. There will
   always be terms that can cause `equate` to loop forever. On the other hand,
   there will always be terms that are not equated because of conservativity in
   unfolding recursive definitions.
+
+# Dependent pattern matching
 
 ### Discussion of bi-directional rules for booleans and sigma types
 
@@ -349,10 +344,20 @@ or false.
 	 ---------------------------- if
 	 G |- if a then b else c : A{a/x}
 	 
-It turns out that this rule is difficult to implement (without annotating the
-expression with `x` and `A`). Given `A{true/x}`, `A{false/x}`, and `A{a/x}`
+For example, here is a simple definition that requires this rule:
+	 
+	 -- function from booleans to types
+	 T : Bool -> Type
+	 T = \b. if b then One else Bool
+
+    -- returns unit when the argument is true
+    bar : (b : Bool) -> T b
+    bar = \b .if b then tt else True	 
+	 
+It turns out that this rule is difficult to implement without annotating the
+expression with `x` and `A`. Given `A{true/x}`, `A{false/x}`, and `A{a/x}`
 (or anything that they are definitionally equal to!) how can we figure out
-whether they correspond?
+whether they correspond to eachother?
 
 So, we'll not be so ambitious. We'll only allow this refinement when 
 the scrutinee is a variable.
@@ -372,17 +377,8 @@ when we are in checking mode.
 	 ------------------------------ if
 	 G |- if x then b else c <= A
 
-
 Then, we only have to remember that x is true / false when checking the
 individual branches of the if expression.
-
-Why is this rule useful? 
-
-    bar : (b : Bool) -> T b
-    bar = \b .if b then tt else True
-
-    barnot : (b : Bool) -> T (not b) 
-    barnot = \b. if b then False else tt
 
 We can modify the rule for sigma types similarly. 
 
@@ -392,20 +388,19 @@ We can modify the rule for sigma types similarly.
     ---------------------------------- pcase
     G |- pcase z of (x,y) -> b <= C
 
-This modification changes our definition of Sigma types from weak-Sigmas to
-strong-Sigmas. With either typing rule, we can define the first projection
+This modification changes our definition of Sigma types from weak Sigmas to
+strong Sigmas. With either typing rule, we can define the first projection
 
     fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
 	 fst = \A B p. pcase p of (x,y) -> x
 
-
-But, weak-Sigmas cannot define the second projection using pcase. The following 
+But, weak Sigmas cannot define the second projection using pcase. The following 
 code only type checks using the above rule.
 
     snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
     snd = \A B p. pcase p of (x1,y) -> y
 
-## Propositional equality
+# Propositional equality
 
 You started proving things right away in Coq with an equality proposition. For
 example, in Coq, when you say
@@ -441,7 +436,7 @@ when it implements *homogeneous* equality.
     G |- a = b : Type
 	 
 The elimination rule for propositional equality allows us to convert the type of 
-on expression to another. 
+one expression to another. 
     
 	 G |- a : A { a1 / x}   G |- b : a1 = a2  
     --------------------------------- subst
@@ -460,15 +455,16 @@ variable.
 	 G |- subst a by b => A 
 
 
-Note that our elimination form for equality is still fairly powerful. We can
-use it to show that propositional equality is symmetric and transitive.
+Note that our elimination form for equality is powerful. We can use it to show
+that propositional equality is symmetric and transitive.
 
     sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
     trans : (A:Type) -> (x:A) -> (y:A) -> (z:A) -> (x = z) -> (z = y) -> (x = y)
 
     
-Furthermore, we can extend this once more, when the proof `b` is also a
-variable.
+Furthermore, we can also extend `subst`, the elimination form for
+propositional equality as we did for booleans. As above, this rule only
+applies when `b` is also a variable.
 
     G |- a <= A { a1 / x } { refl / y }    G |- y => x = a1
 	 -------------------------------------------------------- subst-left
