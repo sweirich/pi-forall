@@ -1,413 +1,497 @@
-# Datatypes and Indexed Datatypes
 
-Today we'd like to add datatypes to pi-forall. 
+# Equality in Dependently-Typed Languages
 
-Unfortunately, datatypes are both:
+You may have noticed in the previous lecture that there was something
+missing. Most of the examples that we did could have also been written in
+System F (or something similar)!
 
-* Really important (you see them *everywhere* when working 
-  with languages like Coq, Agda, Idris, etc.)
-* Really complicated (unlike prior lectures, there are a *lot* of details.)
+Today we are going to think about how type equality can make our language more
+expressive.  We will do this in two steps: adding both definitional and
+propositional equality to the language.
 
-Unlike the prior two lectures, where we could walk through all of the details
-of the specification of the type system, not to mention its implementation, we
-won't be able to do that here. There is just too much! My goal is to give you
-enough information so that you can pick up the Haskell code and understand
-what is going on. 
+## Definitional equality
 
-Even then, realize that the implementation that I'm giving you is not the
-complete story! Recall that we're not considering termination. That means that
-we can think about eliminating datatypes merely by writing recursive
-functions; without having to reason about whether those functions
-terminate. Coq and Agda and Idris include a lot of machinery for this
-termination analysis, and we won't cover any of it.
+### Motivating Example - Type level reduction
 
-We'll work up the general specification of datatypes piece-by-piece,
-generalizing from features that we already know to more difficult cases.
-We'll start with "simple" datatypes, and then extend them with both parameters
-and indices.
+In full dependently-typed languages (and in full pi-forall) we can see the
+need for definitional equality. We want to equate types that are not just
+*syntactically* equal, so that more expressions type check. 
 
-## "Dirt simple" datatypes 
+We saw yesterday an example where we wanted a definition of equality that was
+more expressive than alpha-equivalence. Recall our encoding for the logical
+`and` proposition:
 
-Our first goal is simple. What do we need to get the simplest examples of
-non-recursive and recursive datatypes working? By this I mean datatypes that
-you might see in OCaml or ML, such as `Bool`, `Void` and `Nat`.
+    and : Type -> Type -> Type
+    and = \p. \q. (c: Type) -> (p -> q -> c) -> c
 
-### Booleans
+Unfortunately, our definition of `conj` still doesn't type check:
 
-For example, one homework assignment was to implement 
-booleans. Once we have booleans then we can 
+    conj : (p:Type) -> (q:Type) -> p -> q -> and p q
+    conj = \p.\q. \x.\y. \c. \f. f x y
 
-      data Bool : Type where
-         True 
-         False
-        
-In the homework assignment, we used `if` as the elimination form 
-for boolean values.
-        
-     not : Bool -> Bool
-     not = \ b . if b then False else True
-        
-For uniformity, we'll have a common elimination form for all datatypes, called
-`case` that has branches for all cases. (We'll steal Haskell syntax for case
-expressions, including layout.) For example, we might rewrite `not` with case
-like this:
-        
-     not : Bool -> Bool
-     not = \ b . 
-        case b of 
-           True -> False
-           False -> True
+Running this example with `version1` of the type checker produces the
+following error:
 
-### Void
+    Checking module "Lec1"
+    Type Error:
+    ../test/Lec1.pi:34:22:
+        Function a should have a function type. Instead has type and p q
+        When checking the term 
+           \p . \q . \a . a p ((\x . \y . x))
+        against the signature
+           (p : Type) -> (q : Type) -> (and p q) -> p
+        In the expression
+           a p ((\x . \y . x))
 
-The simplest datatype of all is one that has no constructors! 
+The problem is that even though we want `and p q` to be equal to the type 
+`(c: Type) -> (p -> q -> c) -> c` the typechecker does not treat these types as
+equal. 
 
-    data Void : Type where {}
-     
-Because there are no constructors, the elimination form for values of this
-type doesn't need any cases!
-     
-    false_elim : (A:Type) -> Void -> A
-    false_elim = \ A v . case v of {} 
+Note that the type checker already records in the environment that `and` is
+defined as `\p.\q. (c: Type) -> (p -> q -> c) -> c`. We'd like the type
+checker to look up this definition when it sees the variable `and` and
+beta-reduce th this application.
+
+### Another example needing more expressive equality
+
+As another example, in the full language, we might have a type of length indexed
+vectors, where vectors containing values of type `A` with length `n` can be
+given the type `Vec A n`.  In this language we may have a safe head operation,
+that allows us to access the first element of the vector, as long as it is
+nonzero.
+
+    head : (A : Nat) -> (n : Nat) -> Vec A (succ n) -> Vec A n
+    head = ...
 	 
-Void brings up the issue of *exhaustiveness* in case analysis. Can we tell
-whether there are enough patterns so that all of the cases are covered? 
+However, to call this function, we need to be able to show that the length of
+the argument vector is equal to `succ n` for some n.  This is ok if we know
+the length of the vector outright
 
-### Nat
-
-Finally natural numbers include a data constructor with an argument. 
-
-    data Nat : Type where
-       Zero
-       Succ of (Nat)
-
-In case analysis, we can give a name to that argument in the pattern.
-
-    is_zero : Nat -> Bool
-    is_zero = \ x . case x of 
-       Zero -> True
-       Succ n -> False
-       
-### Dependently-typed data constructor args
-
-Now, I lied. Even in our "dirt simple" system, we'll be able to encode some
-new structures. These structures won't be all that useful yet, but as we add
-parameters and indices to our datatypes, they will be. For example, here's an
-example of a datatype declaration where the data constructors have dependent
-types.
-
-    data SillyBool : Type where      
-       ImTrue  of (b : Bool) (_ : b = True)
-       ImFalse of (b: Bool)  (_ : b = False)
-       
-## Specifying the type system with basic datatypes
-
-Datatype declarations, such as `data Bool`, `data Void` or `data Nat` extend
-the context with new type constants (aka type constructors) and new data
-constructors. It is as if we had added a bunch of new typing rules to the type
-system, such as:
-
-       ---------------
-       G |- Nat : Type
-
-       ----------------
-       G |- Void : Type
-       
-      -----------------
-       G |- Zero : Nat
-       
-         G |- n : Nat
-       -----------------
-       G |- Succ n : Nat
-
-       G |- a1 : Bool    G |- a2 : a1 = True
-      ---------------------------------------
-       G |- ImTrue a1 a2 : SillyBool
-       
-In the general form, a *simple* data type declaration includes a name and a
-list of data constructors.
-
-       data T : Type where
-          K1        -- no arguments
-          K2 of (A)    -- single arg of type A
-          K3 of (x:A)  -- also single arg of type A, called x for fun
-          K4 of (x:A)(y:B) -- two args, the type of B can mention A.
-
-In fact, each data constructor takes a special sort of list of arguments that
-we'll call a 'telescope'.  (The word 'telescope' for this structure was coined
-by de Bruijn to describe the scoping behavior of this structure. The scope of
-each variable overlaps all of the subsequent ones, nesting like an expandable
-telescope.)
-
-We can represent this structure in our implementation by adding a new form of
-declaration (some parts have been elided compared to `version3`, we're
-building up to that version.)
-
-     -- | type constructor names
-     type TCName = String
-
-     -- | data constructor names
-     type DCName = String
-
-     data Decl = ...
-       | Data    TCName [ConstructorDef]
-
-     -- | A Data constructor has a name and a telescope of arguments
-     data ConstructorDef = ConstructorDef DCName Telescope
-           deriving (Show)
-
-     data Telescope = Empty
-                    | Cons TName Term Telescope
-                         deriving (Show)
-								 
-For example, a declaration for the `Bool` type would be 
-   
-	   boolDecl :: Decl 
-      boolDecl = Data "Bool" [ConstructorDef "False" Empty, 
-		                        ConstructorDef "True" Empty]
-										
-## Checking (simple) data constructor applications
-
-When we have a datatype declaration, that means that new data type `T` of type
-`Type` will be added to the context. Furthermore, the context should record
-all of the type constructors for that type, `Ki`, as well as the telescope,
-written `Di` for that data constructor.  This information will be used to
-check terms that are the applications of data constructors. For simplicity,
-we'll assume that data constructors must be applied to all of their arguments.
-
-So our typing rule looks a little like this. We have `as` as representing the 
-list of arguments for the data constructor `Ki`.
-
-      Ki : Di -> T  in G
-      G |- as : Di
-		------------------------ simpl-constr
-		G |- Ki as : T
-		
-We need to check that list against the telescope for the constructor. Each
-argument must have the right type. Furthermore, because of dependency, we
-substitute that argument for the variable in the rest of the telescope.
-		
-		G |- a : A       G |- as : D { a / x }
-		--------------------------------------- tele-arg
-		G |- a as : (x:A) D
-		
-When we get to the end of the list (i.e. there are no more arguments) we should 
-also get to the end of the telescope.		
-		
-		----------- tele-empty
-		G |-  : 
-
-In `TypeCheck.hs`, the function `tcArgTele` essentially implements this
-judgement.  (For reasons that we explain below, we have a special type `Arg`
-for the arguments to the data constructor.)
-
-     tcArgTele :: [Arg] -> Telescope -> TcMonad [Arg]
-	  
-This function relies on the following substitution function for telescopes:
-
-     doSubst :: [(TName,Term)] -> Telescope -> TcMonad Telescope
-
-      
-## Eliminating dirt simple datatypes
-
-In your homework assignment, we used if to eliminate boolean types. Here, we'd
-like to be more general, and have a `case` expression that works with any form
-of datatype. What should the typing rule for that sort of expression look
-like?  Well, the pattern for each branch should match up the telescope for the
-corresponding data constructor.
-
-
-     G |- a : T
-	  Ki : Di -> T  in G       dom(Di) = xsi
-	  G, Di |- ai : A
-	  G |- A : Type
-	  branches exhaustive
-     ------------------------------------- case-simple
-     G |- case a of { Ki xsi -> ai } : A
-
-Note that this version of case doesn't witness the equality between the
-scrutinee `a` and each of the patterns in the branches.
-
-     G |- a : T
-	  Ki : Di -> T  in G       dom(Di) = xsi
-	  G, Di |- ai : A (Ki xsi)
-	  G |- A : T -> Type
-	  branches exhaustive
-     ------------------------------------- case-simple
-     G |- case a of { Ki xsi -> ai } : A a
-
-How do we implement this rule in our language? The general for type checking a
-case expression `Case scrut alts` of type `ty` is as follows:
-
-1. Infer type of the scrutinee `scrut`
-2. Make sure that the inferred type is some type constructor
-3. Make sure that the patterns in the case alts are 
-   exhaustive (`exhausivityCheck`)
-3. For each case alternative:
-  - Create the declarations for the variables in 
-   the pattern (`declarePat`)
-  - Create defs that follow from equating the scrutinee with the 
-   pattern (`equateWithPat`)
-  - Check the body of the case in the extended context against 
-   the expected type
-	
-## Datatypes with parameters 
-
-The first extension of the above scheme is for *parameterized datatypes*. 
-For example, in pi-forall we can define the `Maybe` type with the following
-declaration. The type parameter for this datatype  `A` can be referred to in 
-any of the telescopes for the data constructors.
-
-    data Maybe (A : Type) : Type where
-	    Nothing 
-		 Just of (A)
-		 
-Because this is a dependently-typed language, the variables in the telescope
-can be referred to later in the telescope. For example, with parameters, we can 
-implement Sigma types as a datatype, instead of making them primitive:
-
-    data Sigma (A: Type) (B : A -> Type) : Type
-	    Prod of (x:A) (B)
-
-The general form of datatype declaration with parameters includes a telescope
-for the type constructor, as well as a telescope for each of the data
-constructors.
-
-    data T D : Type where
-       Ki of Di 
-
-That means that when we check an occurrence of a type constructor, we need to
-make sure that its actual arguments match up the parameters in the
-telescope. For this, we can use the argument checking judgement above.
-
-      T : D -> Type in G
-		G |- as : D
-      --------------------   tcon
-      G |- T as : Type
-
-We modify the typing rule for data constructors by marking the telescope
-for type constructor in the typing rule, and then substituting the actual
-arguments from the expected type:
-
-      Ki : D . Di -> T  in G
-      G |- as : Di { bs / D }
-		------------------------ param-constr
-		G |- Ki as : T bs
-		
-For example, if we are trying to check the expression `Just True`, with
-expected type `Maybe Bool`, we'll first see that `Maybe` requires the
-telescope `(A : Type)`.  That means we need to substitute `Bool` for `A` in
-`(_ : A)`, the telescope for `Just`. That produces the telescope `(_ : Bool)`,
-which we'll use to check the argument `True`.
-
-In `TypeCheck.hs`, the function  
-
-    substTele :: Telescope -> [ Term ] -> Telescope -> TcMonad Telescope
+    v1 : Vec Bool (succ 0)
+	 v1 = VCons True VNil
 	 
-implements this operation of substituting the actual data type arguments for
-the parameters.
-
-Note that by checking the type of data constructor applications (instead of
-inferring them) we don't need to explicitly provide the parameters to the data
-constructor. The type system can figure them out from the provided type. 
-
-Also note that checking mode also enables *data constructor overloading*. In
-other words, we can have multiple datatypes that use the same data
-constructor. Having the type available allows us to disambiguate.
-
-For added flexibility we can also add code to *infer* the types of data
-constructors when they are not actually parameterized (and when there is no
-ambiguity due to overloading).
-
-## Datatypes with indices	
-
-The final step is to index our datatypes with constraints on the
-parameters. Indexed types let us express inductively defined relations, such
-as `beautiful` from Software Foundations.
-
-    Inductive beautiful : nat → Prop :=
-      b_0 : beautiful 0
-    | b_3 : beautiful 3
-    | b_5 : beautiful 5
-    | b_sum : ∀n m, beautiful n → beautiful m → beautiful (n+m).
-
-Even though `beautiful` has type `nat -> Prop`, we call `nat` this argument an
-index instead of a parameter because it is determined by each data
-constructor. It is not used uniformly in each case.
-
-In pi-forall, we'll implement indices by explictly *constraining*
-parameters. These constraints will just be expressed as equalities written in 
-square brackets. In otherwords, we'll define `beautiful` this way:
-
-    data Beautiful (n : Nat) : Type where
-	    B0 of [n = 0]
-		 B3 of [n = 3]
-		 B5 of [n = 5]
-		 Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[m = m1+m2]
-		 
-Constraints can appear anywhere in the telescope of a data
-constructor. However, they are not arbitrary equality constraints---we want to
-consider them as deferred substitutions. So therefore, the term on the left
-must always be a variable.
-
-These constraints interact with the type checker in a few places:
-
-- When we use data constructors we need to be sure that the constraints are
-  satisfied, by appealing to definitional equality when we are checking
-  arguments against a telescope (in `tcArgTele`).
-
-		G |- x = b      G |- as : D
-		--------------------------------------- tele-constraint
-		G |- as : (x = b) D		
-
-- When we substitute through telescopes (in `doSubst`), we may need to rewrite
-  a constraint `x = b` if we substitute for `x`.
-
-- When we add the pattern variables to the context in each alternative of a
-  case expression, we need to also add the constraints as definitions.
-  (see `declarePats`).
-
-For example, if we check an occurrence of `B3`, i.e. 
-
-    threeIsBeautiful : Beautiful 3
-    threeIsBeautiful = B3
+So the application `head Bool 0 v1` will type check. (Note that pi-forall
+cannot infer the types `A` and `n`.)
 	 
-this requires substituting `3` for `n` in the telescope `[n = 3]`.  That
-produces an empty telescope.
+However, if we construct the vector, its length may not be a literal natural number:
+	 
+    append : (n : Nat) -> (m : Nat) -> Vec A m -> Vec A n -> Vec A (plus m n)
+	 append = ...
 
-### Homework: Parameterized datatypes and proofs: logic
+In that case, to get `head Bool 1 (append v1 v1)` to type check, we need to
+show that the type `Vec Bool (succ 1)` is equal to the type `Vec Bool (plus 1
+1)`.  If our definition of type equality is *alpha-equivalence*, then this
+equality will not hold. We need to enrich our definition of equality so that
+it equates more terms.
+	 
+### Defining definitional equality
 
-Translate the definitions and proofs 
-in [Logic chapter of Software Foundations](http://www.cis.upenn.edu/~bcpierce/sf/current/Logic.html) 
-to pi-forall. Make sure that you use at least `version3`.  
+The main idea is that we will: 
 
-### Homework: Indexed datatypes: finite numbers in `Fin1.pi1`
+ - establish a new judgement to define when types are equal
 
-The module `Fin1.pi` declares the type of numbers that are drawn from some
-bounded set. For example, the type `Fin 1` only includes 1 number (called
-Zero), `Fin 2` includes 2 numbers, etc.  More generally, `Fin n` is the type
-of all natural numbers smaller than `n`, i.e. of all valid indices for lists
-of size `n`.
+     G |- A = B
+
+ - add the following rule to our type system so that it works "up-to" our
+   defined notion of type equivalence
+
+      G |- a : A    G |- A = B
+	   ------------------------- conv
+	   G |- a : B
+	 
+ - Figure out how to revise the *algorithmic* version of our type system so
+  that it supports the above rule.
+
+What is a good definition of equality?  We started with a very simple one:
+alpha-equivalence. But we can do better:
+
+We'd like to make sure that our relation *contains beta-equivalence*:
+
+    -------------------------- beta
+    G |- (\x.a)b = a {b / x}
+	 
+(with similar rules for if/sigmas if we have them.)
+
+
+Is an *equivalence relation*:
+
+    ----------  refl
+    G |- A = A
+	 
+	 G |- A = B
+	 -----------  sym
+	 G |- B = A
+	 
+	 G |- A = B    G |- B = C
+	 ------------------------- trans
+	 G |- A = C
+
+and a *congruence relation* (i.e. if subterms are equal, then larger terms are equal):
+
+    G |- A1 = A2       G,x:A1 |- B1 = B2
+	 ------------------------------------ pi
+	 G |- (x:A1) -> B1 = (x:A2) -> B2
+
+
+    G,x:A1 |- b1 = b2
+	 ------------------- lam
+	 G |- \x.b1 = \x.b2
+
+
+    G |- a1 = a2    G |- b1 b2 
+	 -------------------------- app
+	 G |- a1 b1 = a2 b2
+
+    [similar rules for if and sigmas]
+
+that has "functionality" (i.e. we can lift equalities over `b`):
+
+    G, x : A |- b : B    G |- a1 == a2     
+    ----------------------------------
+    G |- b{a1 / x} = b{a2 / x}
+
+
+### Using definitional equality in the algorithm
+
+We would like to consider our type system as having the following rule:
+
+    G |- a : A    G |- A = B
+	 ------------------------ conv
+	 G |- a : B
+
+But that rule is not syntax directed. Where do we need to add equality
+preconditions in our bidirectional system?  It turns out that there are only a
+few places.
+
+- Where we switch from checking mode to inference mode in the algorithm. Here 
+  we need to ensure that the type that we infer is the same as the type that 
+  is passed to the checker.
+
+      G |- a => A    G |- A = B
+	   -------------------------- :: infer
+	   G |- a <= B
+
+- In the rule for application, when we infer the type of the function we need
+to make sure that the function actually has a function type. But we don't really 
+know what the domain and co-domain of the function should be. We'd like our 
+algorithm for type equality to be able to figure this out for us.
   
-In [Agda](http://www.cse.chalmers.se/~nad/repos/lib/src/Data/Fin.agda), 
-we might declare these numbers as: 
+     G |- a => A    A ?=> (x:A1) -> A2
+	  G |- b <= A1
+	  ---------------------------------- app
+	  G |- a b => A2 { b / x }
+	  
 
-    data Fin : ℕ → Set where
-       zero : {n : ℕ} → Fin (suc n)
-       suc  : {n : ℕ} (i : Fin n) → Fin (suc n)
+## Using definitional equality
 
-In pi-forall, this corresponding definition makes the constraints explicit:
+The rules above *specify* when terms should be equal, but they are not an
+algorithm. We actually need several different functions. First,
 
-    data Fin (n : Nat) : Type where
-       Zero of (m:Nat)[n = Succ m] 
-       Succ of (m:Nat)[n = Succ m] (Fin m)
+    equate :: Term -> Term -> TcMonad ()
+
+ensures that the two provided types are equal, or throws a type error 
+if they are not. This function corresponds directly to our definition of 
+type equality.
+
+Second, we also need to be able to determine whether a given type is equal to
+some "head" form, without knowing exactly what that form is. For example, when
+*checking* lambda expressions, we need to know that the provided type is of
+the form of a pi type (`(x:A) -> B`). Likewise, when inferring the type of an
+application, we need to know that the type inferred for the function is actually 
+a pi type.  
+
+We can determine this in two ways. Most directly, the function
+
+    ensurePi :: Type -> TcMonad (TName, Type, Type)
+
+checks the given type to see if it is equal to some pi type of the form
+`(x:A1) -> A2`, and if so returns `x`, `A1` and `A2`.  
+This function is defined in terms of a helper function:
+
+    whnf :: Term -> TcMonad Term
+	 
+that reduces a type to its *weak-head normal form*. 	 
+
+In `version2` of the the [implementation](version2/src/TypeCheck.hs), these 
+functions are called in a few places: 
+  - `equate` is called at the end of `tcTerm`
+  - `ensurePi` is called in the `App` case of `tcTerm`
+  - `whnf` is called in `checkType`, before the call to `tcTerm` to make sure that 
+  we are using the head form in checking mode.
+
+
+## Implementing definitional equality (see `Equal.hs`)
+
+There are several ways for implementing definitional equality, as stated via
+the rules above. The easiest one to explain is based on reduction---for
+`equate` to reduce the two arguments to some normal form and then compare
+those normal forms for equivalence.
+
+One way to do this is with the following algorithm:
+
+     equate t1 t2 = do 
+	    nf1 <- reduce t1
+       nf2 <- reduce t2
+		 aeq nf1 nf2
 		 
-The file [Fin1.pi](version3/test/Fin1.pi) includes a number of definitions
-that use these types. However, there are some `TRUSTME`s. Replace these with
-the actual definitions.
+However, we can do better. We'd like to only reduce as much as
+necessary. Sometimes we can equate the terms without completely 
+reducing them.
+
+     equate t1 t2 = do
+  	     when (aeq t1 t1) $ return ()
+		  nf1 <- whnf t1  -- reduce only to 'weak head normal form'
+		  nf2 <- whnf t2
+		  case (nf1,nf2) of 
+		    (App a1 a2, App b1 b2) -> 
+			    -- make sure subterms are equal
+			    equate a1 b1 >> equate a2 b2
+   	    (Lam bnd1, Lam bnd2) -> do
+			    -- ignore variable name and typing annot (if present)
+			    (_, b1, _, b2) <- unbind2Plus bnd1 bnd2
+				 equate b1 b2
+			 (_,_) -> err ...
+
+
+Therefore, we need a mechanism for reducing terms to weak-head normal form.
+Such terms have done all of the reductions to the outermost lambda abstraction
+(or pi) but, do not reduce subterms. In other words:
+
+     (\x.x) (\x.x)  
+	  
+is not in whnf, because there is more reduction to go to get to the head. On
+the other hand, even though there are still internal reductions possible:
+	  
+	  \y. (\x.x) (\x.x)   
+
+and
+
+     (y:Type) -> (\x.x)Bool 
+
+are in weak head normal form. Likewise, the term `x y` is also in weak head
+normal form because, even though we don't know what the head form is, we
+cannot reduce the term any more.
+
+In (Equal.hs)[version2/src/Equal.hs], the function 
+
+     whnf :: Term -> TcMonad Term
+	  
+does this reduction. We can use this reduction also to implement the `checkPi`
+function.
+
+Why weak-head reduction vs. full reduction?
+
+- We can implement deferred substitutions for variables. Note that when
+  comparing terms we need to have the definitions available. That way we can
+  compute that `(plus 3 1)` weak-head normalizes to 4, by looking up the
+  definition of `plus` when needed. However, we don't want to substitute all
+  variables through eagerly---not only does this make extra work, but error
+  messages can be extremely long.
+  
+- Furthermore, we allow recursive definitions in pi-forall, so normalization
+  may just fail completely. However, this definition based on wnhf only
+  unfolds recursive definitions when they are needed, so avoids some infinite
+  loops in the type checker. 
+  
+  Note that we don't have a complete treatment of equality though. There will
+  always be terms that can cause `equate` to loop forever. On the other hand,
+  there will always be terms that are not equated because of conservativity in
+  unfolding recursive definitions.
+
+### Discussion of bi-directional rules for booleans and sigma types
+
+    ---------------- Bool
+    G |- Bool <=> Type
+
+    ---------------- true
+    G |- true <=> Bool
+	
+	 ------------------- false
+    G |- false <=> Bool
+	 	 
+	 G |- a <= Bool 
+	 G |- b <=> A
+	 G |- c <=> A
+	 ---------------------------- if
+	 G |- if a then b else c <=> A
+	 
+    G |- A <= Type     G, x:A |- B <= Type
+    ------------------------------------- sigma
+    G |- { x : A | B } <=> Type
+
+    G |- a <= A      G |- b <= B { a / x }
+	 ------------------------------------ pair
+	 G |- (a,b) <= { x : A | B }
+	 
+    G |- a => { x : A | B }
+	 G, x:A, y:B |- b <=> C
+	 G |- C <= Type
+    ---------------------------------- weak-pcase
+    G |- pcase a of (x,y) -> b <=> C
+
+
+### Alternative rules for if and pcase
+
+Consider our elimination rules for if:
+
+	 G |- a : Bool 
+	 G |- b : A
+	 G |- c : A
+	 ---------------------------- if
+	 G |- if a then b else c : A
+	 
+We can do better by making the type `A` depend on whether the scrutinee is true
+or false.
+
+	 G |- a : Bool 
+	 G |- b : A { true/x }
+	 G |- c : A { false/x }
+	 ---------------------------- if
+	 G |- if a then b else c : A{a/x}
+	 
+It turns out that this rule is difficult to implement (without annotating the
+expression with `x` and `A`). Given `A{true/x}`, `A{false/x}`, and `A{a/x}`
+(or anything that they are definitionally equal to!) how can we figure out
+whether they correspond?
+
+So, we'll not be so ambitious. We'll only allow this refinement when 
+the scrutinee is a variable.
+
+	 G |- x : Bool 
+	 G |- b : A { true / x }
+	 G |- c : A { false / x }
+	 ---------------------------- if
+	 G |- if x then b else c : A 
+
+And, in going to our bidirectional system, we'll only allow refinement
+when we are in checking mode.
+
+	 G |- x => Bool 
+	 G |- b <= A { true / x }
+	 G |- c <= A { false / x }
+	 ------------------------------ if
+	 G |- if x then b else c <= A
+
+
+Then, we only have to remember that x is true / false when checking the
+individual branches of the if expression.
+
+Why is this rule useful? 
+
+    bar : (b : Bool) -> T b
+    bar = \b .if b then tt else True
+
+    barnot : (b : Bool) -> T (not b) 
+    barnot = \b. if b then False else tt
+
+We can modify the rule for sigma types similarly. 
+
+    G |- z => { x : A | B }
+	 G, x:A, y:B |- b <= C { (x,y) / z }
+	 G |- C <= Type
+    ---------------------------------- pcase
+    G |- pcase z of (x,y) -> b <= C
+
+This modification changes our definition of Sigma types from weak-Sigmas to
+strong-Sigmas. With either typing rule, we can define the first projection
+
+    fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
+	 fst = \A B p. pcase p of (x,y) -> x
+
+
+But, weak-Sigmas cannot define the second projection using pcase. The following 
+code only type checks using the above rule.
+
+    snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
+    snd = \A B p. pcase p of (x1,y) -> y
+
+## Propositional equality
+
+You started proving things right away in Coq with an equality proposition. For
+example, in Coq, when you say
+
+    Theorem plus_O_n : forall n : nat, 0 + n  = n
+	 
+You are using a built in type, `a = b` that represents the proposition that
+two terms are equal.
+
+As a step towards more general indexed datatypes, we'll start by adding just
+this type to pi-forall.
+
+The main idea of the equality type is that it converts a *judgement* that two
+types are equal into a *type* that is inhabited only when two types are equal.
+In other words, we can write the intro rule for this form as:
+
+     G |- a = b
+    ------------------- refl
+    G |- refl : a = b
+	 
+Sometimes, you might see the rule written as follows:
+
+    ------------------- refl'
+    G |- refl : a = a
+	 
+However, this rule will turn out to be equivalent to the above version.
+
+This *type* is well-formed when both sides have the same type. In other words,
+when it implements *homogeneous* equality.
+
+    G |- a : A    G |- b : A
+    ------------------------- eq
+    G |- a = b : Type
+	 
+The elimination rule for propositional equality allows us to convert the type of 
+on expression to another. 
+    
+	 G |- a : A { a1 / x}   G |- b : a1 = a2  
+    --------------------------------- subst
+    G |- subst	a by b : A { a2 / x }
+
+How can we implement this rule? For simplicity, we'll play the same trick that
+we did with booleans, requiring that one of the sides of the equality be a
+variable.
+
+    G |- a <= A { a1 / x }    G |- b => x = a1
+	 ------------------------------------------- subst-left
+	 G |- subst a by b => A 
+
+    G |- a <= A { a1 / x }    G |- b => a1 = x
+	 ------------------------------------------- subst-right
+	 G |- subst a by b => A 
+
+
+Note that our elimination form for equality is still fairly powerful. We can
+use it to show that propositional equality is symmetric and transitive.
+
+    sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+    trans : (A:Type) -> (x:A) -> (y:A) -> (z:A) -> (x = z) -> (z = y) -> (x = y)
+
+    
+Furthermore, we can extend this once more, when the proof `b` is also a
+variable.
+
+    G |- a <= A { a1 / x } { refl / y }    G |- y => x = a1
+	 -------------------------------------------------------- subst-left
+	 G |- subst a by y => A 
+
+One last addition: `contra`. If we can somehow prove a false, then we should be
+able to prove anything. A contradiction is a proposition between two terms
+that have different head forms. For now, we'll use:
+
+     G |- p : True = False
+    --------------------- contra
+     G |- contra p : A
+
+### Homework (pi-forall: more church encodings) 
+
+The file `version2/test/NatChurch.pi` is a start at a Church encoding of
+natural numbers.  Replace the TRUSTMEs in this file so that it compiles.
+
+### Homework (pi-forall: equality)
+
+Complete the file [Hw2.pi](version2/test/Hw2.pi). This file gives you practice
+with working with equality propositions in pi-forall.
 
 ## References
 
-- Coq pattern matching: [Coq User manual](http://coq.inria.fr/refman/Reference-Manual006.html#Cic-inductive-definitions)
-- Agda pattern matching: [Ulf Norell's dissertation](http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf)
-- Haskell GADTs: [Dimitrios Vytiniotis, Simon Peyton Jones, Tom Schrijvers, and Martin Sulzmann, OutsideIn(X): Modular type inference with local assumptions](http://research.microsoft.com/apps/pubs/default.aspx?id=162516)
+- HoTT book, Sections 1.1 and 1.12 (http://homotopytypetheory.org/book/)

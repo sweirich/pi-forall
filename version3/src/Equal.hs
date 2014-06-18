@@ -4,8 +4,7 @@
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
 
 -- | Compare two terms for equality
-module Equal (whnf,whnfRec, equate,--ensureType,
-              ensurePi, 
+module Equal (whnf, equate, ensurePi, 
               
               ensureTyEq,  
               ensureTCon  ) where
@@ -26,8 +25,8 @@ equate :: Term -> Term -> TcMonad ()
 equate t1 t2 = do 
   -- if t1 and t2 
   when (aeq t1 t2) $ return ()
-  n1 <- whnf t1  
-  n2 <- whnf t2
+  n1 <- whnf' False t1  
+  n2 <- whnf' False t2
   case (n1, n2) of 
     (Type, Type) -> return ()
     (Var x,  Var y)  | x == y -> return ()
@@ -144,7 +143,7 @@ equateArgs a1 a2 =
 -- Throws an error if this is not the case.
 ensurePi :: Type -> TcMonad (TName, Type, Type)
 ensurePi ty = do
-  nf <- whnfRec ty
+  nf <- whnf ty
   case nf of 
     (Pi bnd) -> do 
       ((x, unembed -> tyA), tyB) <- unbind bnd
@@ -159,7 +158,7 @@ ensurePi ty = do
 -- Throws an error if this is not the case.
 ensureTyEq :: Term -> TcMonad (Term,Term)     
 ensureTyEq ty = do 
-  nf <- whnfRec ty
+  nf <- whnf ty
   case nf of 
     TyEq m n -> return (m, n)
     _ -> err [DS "Expected an equality type, instead found", DD nf]
@@ -170,7 +169,7 @@ ensureTyEq ty = do
 -- Throws an error if this is not the case.    
 ensureTCon :: Term -> TcMonad (TCName, [Term])
 ensureTCon aty = do
-  nf <- whnfRec aty
+  nf <- whnf aty
   case nf of 
     (TCon n params) -> return (n, params)    
     _ -> err [DS "Expected a data type", 
@@ -180,17 +179,12 @@ ensureTCon aty = do
 
 -------------------------------------------------------
 -- | Convert a term to its weak-head normal form.             
--- If there is a variable in the active position with 
--- a non-recursive definition in the context, expand it.    
-whnf :: Term -> TcMonad Term
-whnf = whnf' False
-  
+
 -- Compute whnf while unfolding recursive definitions as well as non-recursive
 -- ones. But only unfold once.
-whnfRec :: Term -> TcMonad Term
-whnfRec = whnf' True
-
-
+whnf :: Term -> TcMonad Term
+whnf = whnf' True
+  
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
   maybeDef <- lookupDef x

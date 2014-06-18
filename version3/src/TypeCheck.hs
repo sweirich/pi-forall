@@ -34,7 +34,7 @@ inferType t = tcTerm t Nothing
 -- elaborated (i.e. already checked to be a good type).
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
-  nf <- whnfRec expectedTy
+  nf <- whnf expectedTy
   tcTerm tm (Just nf)
 
 -- | check a term, producing an elaborated term
