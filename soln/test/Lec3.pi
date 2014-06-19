@@ -1,0 +1,121 @@
+module Lec3 where
+
+--
+-- simple datatypes 
+--
+
+data Nat : Type where
+  Zero
+  Succ of (Nat)
+
+one : Nat
+one = Succ Zero
+
+two : Nat
+two = Succ (Succ Zero)
+
+is_zero : Nat -> Bool
+is_zero = \ x . case x of 
+   Zero -> True
+   Succ n -> False
+
+plus : Nat -> Nat -> Nat
+plus = \ x y. case x of 
+   Zero -> y
+   Succ x' -> Succ (plus x' y)
+
+test0 : plus one one = two
+test0 = refl
+
+spec0 : (n : Nat) -> plus Zero n = n
+spec0 = \n . refl
+
+spec1 : (n : Nat) -> (m : Nat) -> plus (Succ n) m  = Succ (plus n m)
+spec1 = \n m . refl
+   
+   
+   
+-- can have datatypes with no constructors
+   
+{-         
+data Void : Type where {}   
+
+false_elim : (A:Type) -> Void -> A
+false_elim = \ A v . case v of {}
+-} 
+   
+               
+               
+               
+               
+               
+-- Simple "dependent" datatypes               
+               
+{-   
+data SillyBool : Type where      
+  ImTrue  of (b : Bool) (_ : b = True)
+  ImFalse of (b : Bool) (_ : b = False)
+
+toSB : Bool -> SillyBool
+toSB = TRUSTME
+-}    
+
+                     
+       
+       
+       
+       
+       
+--
+-- parameterized datatypes
+--
+
+{-
+data Maybe (A : Type) : Type where
+   Nothing 
+   Just of (A)
+
+data And (A : Type) (B : Type) : Type where
+   Conj of (A)(B)
+
+data Sigma (A: Type) (B : A -> Type) : Type where
+    Prod of (x:A) (B x)
+-}
+
+
+
+
+
+
+
+
+-- indexed datatypes
+
+{-
+data Beautiful (n : Nat) : Type where
+   B0 of [n = 0]
+   B3 of [n = 3]
+   B5 of [n = 5]
+   Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[n = plus m1 m2]
+
+threeIsBeautiful : Beautiful 3
+threeIsBeautiful = B3
+
+eightIsBeautiful : Beautiful 8
+eightIsBeautiful = TRUSTME
+
+beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful (plus 8 n)
+beautifulPlusEight = TRUSTME
+
+data Gorgeous (n : Nat) : Type where
+   G0 of [n = 0]
+   Gplus3 of (m : Nat) (Gorgeous m) [n = plus 3 m]
+   Gplus5 of (m : Nat) (Gorgeous m) [n = plus 5 m]
+
+gorgeousPlus13 : (n : Nat) -> Gorgeous n -> Gorgeous (plus 13 n)
+gorgeousPlus13 = TRUSTME
+
+gorgeousBeautiful : (n : Nat) -> Gorgeous n -> Beautiful n
+gorgeousBeautiful = TRUSTME
+
+-}
