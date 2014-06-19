@@ -6,7 +6,7 @@ module Lec3 where
 
 data Nat : Type where
   Zero
-  Succ of (Nat)
+  Succ of (x : Nat)
 
 one : Nat
 one = Succ Zero
@@ -24,41 +24,92 @@ plus = \ x y. case x of
    Zero -> y
    Succ x' -> Succ (plus x' y)
 
-test0 : plus one one = two
-test0 = refl
-
-spec0 : (n : Nat) -> plus Zero n = n
-spec0 = \n . refl
-
-spec1 : (n : Nat) -> (m : Nat) -> plus (Succ n) m  = Succ (plus n m)
-spec1 = \n m . refl
+   
+   
+   
+   
+   
+   
+   
+   
    
    
    
 -- can have datatypes with no constructors
    
-{-         
+      
 data Void : Type where {}   
 
 false_elim : (A:Type) -> Void -> A
 false_elim = \ A v . case v of {}
--} 
+
    
                
                
-               
+                        
+         
+         
+         
                
                
 -- Simple "dependent" datatypes               
                
-{-   
+
 data SillyBool : Type where      
   ImTrue  of (b : Bool) (_ : b = True)
   ImFalse of (b : Bool) (_ : b = False)
 
 toSB : Bool -> SillyBool
-toSB = TRUSTME
--}    
+toSB = \ b. if b then ImTrue True refl else ImFalse b refl
+
+{-                                          
+       
+G |- a : A
+-----------
+
+         T : D -> Type in G
+        G |- as : D
+       -----------------  tcon
+         G |- T as : Type 
+
+          G |- T bs : Type
+         K : D'. D -> T in G   == lookupDCon
+         G |- as : D { bs / D' }        == tcArgTele
+       -------------------  datacon
+         G |- K as : T bs
+
+
+         G |- a : T bs    == ensureTCon
+         for each i.   Ki : D. Di -> T in G    dom(Di) = xsi
+                       G, Di { bs / D } |- ai : A { Ki xsi / x }      
+                              === declarePat, equateWithPat
+         exhaustivity check
+        -----------------------------------------------
+         G |- case a of { Ki xsi -> ai } : A { a / x }
+
+
+
+G |- as : D
+-----------
+
+            ------------ empty
+            G |- . : .
+
+             G |- a : A
+             G |- as : D { a / x }
+            -------------------- cons
+            G |- a as : (x:A) D
+
+             G |- x = a
+             G |- as : D 
+            -------------------- cons
+            G |- as : [ x = a] D
+
+
+
+-}
+                                         
+    
 
                      
        
@@ -70,7 +121,7 @@ toSB = TRUSTME
 -- parameterized datatypes
 --
 
-{-
+
 data Maybe (A : Type) : Type where
    Nothing 
    Just of (A)
@@ -80,7 +131,7 @@ data And (A : Type) (B : Type) : Type where
 
 data Sigma (A: Type) (B : A -> Type) : Type where
     Prod of (x:A) (B x)
--}
+
 
 
 
@@ -92,21 +143,41 @@ data Sigma (A: Type) (B : A -> Type) : Type where
 -- indexed datatypes
 
 {-
+
+Inductive Beautiful : Nat -> Prop := 
+ |  B0 : Beautiful 0
+ |  B3 : Beautiful 3
+ |  B5 : Beautiful 5
+ |  Bsum : forall n m, Beautiful n -> Beautiful m -> Beautiful (m + n).
+ -}
+
+T : Nat -> Type
+T = \n. case n of 
+       Zero -> One
+       Succ m -> Bool
+
+
 data Beautiful (n : Nat) : Type where
    B0 of [n = 0]
    B3 of [n = 3]
    B5 of [n = 5]
-   Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[n = plus m1 m2]
+   Bsum of (m1:Nat)(m2:Nat)(Beautiful m1 )(Beautiful m2)[n = plus m1 m2]
+
 
 threeIsBeautiful : Beautiful 3
 threeIsBeautiful = B3
 
 eightIsBeautiful : Beautiful 8
-eightIsBeautiful = TRUSTME
+eightIsBeautiful = Bsum 3 5 B3 B5
 
-beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful (plus 8 n)
-beautifulPlusEight = TRUSTME
+beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful 8
+beautifulPlusEight = \n bn. Bsum n 8 bn eightIsBeautiful
 
+ 
+
+
+
+{-
 data Gorgeous (n : Nat) : Type where
    G0 of [n = 0]
    Gplus3 of (m : Nat) (Gorgeous m) [n = plus 3 m]
@@ -119,3 +190,7 @@ gorgeousBeautiful : (n : Nat) -> Gorgeous n -> Beautiful n
 gorgeousBeautiful = TRUSTME
 
 -}
+
+                      
+bad : True = False
+bad = bad

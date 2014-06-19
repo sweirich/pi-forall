@@ -364,8 +364,8 @@ So, we'll not be so ambitious. We'll only allow this refinement when
 the scrutinee is a variable.
 
 	 G |- x : Bool 
-	 G |- b : A { true / x }
-	 G |- c : A { false / x }
+	 (G |- b : A) { true / x }
+	 (G |- c : A) { false / x }
 	 ---------------------------- if
 	 G |- if x then b else c : A 
 

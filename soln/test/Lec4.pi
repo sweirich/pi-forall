@@ -15,8 +15,13 @@ t0 = id [Bool] True
 
 t1 = id [Bool] (id [Bool] True)
 
-{-  This shouldn't work
-id' : [x:Type] -> [y:x] -> x
-id' = \[x][y]. y
--}
+{-  This shouldn't work -}
 
+id' : [x:Type] -> (y:x) -> x
+id' = \[x] y. id [x] ( y : x )
+
+data T : Type where
+  Mk of [ x : Type ] (y : x)
+
+id'' :[x:Type] -> (y:x) -> T
+id'' = \[x] y. Mk [x] y
