@@ -359,6 +359,7 @@ expression with `x` and `A`. Given `A{true/x}`, `A{false/x}`, and `A{a/x}`
 (or anything that they are definitionally equal to!) how can we figure out
 whether they correspond to eachother?
 
+
 So, we'll not be so ambitious. We'll only allow this refinement when 
 the scrutinee is a variable.
 
@@ -379,6 +380,28 @@ when we are in checking mode.
 
 Then, we only have to remember that x is true / false when checking the
 individual branches of the if expression.
+
+Here is an alternative version, for inference mode only, suggested during
+lecture:
+
+     G |- a => Bool 
+     G |- b => B
+     G |- c => C 
+     ----------------------------------------------- if
+     G |- if a then b else c => if a then B else C
+
+It has a nice symmetry---if expressions are typed by if. Note however, to make
+this rule work, we'll need a stronger definitional equivalence than we have.
+In particular, we'll want our definition of equivalence to support the
+following equality:
+
+     ---------------------- 
+     if a then b else b = b
+
+That way, if the type of the two branches of the if does not actually depend
+on the boolean value, we can convert the `if` expression into a more useful
+type.
+
 
 We can modify the rule for sigma types similarly. 
 
