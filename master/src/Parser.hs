@@ -327,22 +327,29 @@ importDef = do reserved "import" >>  (ModuleImport <$> importName)
 telescope :: LParser Telescope
 telescope = do 
   bindings <- telebindings
-  return $ foldr g Empty bindings where
-    g (n, t, ep) rst = Cons ep n t rst
+  return $ foldr id Empty bindings where
   
-telebindings :: LParser [(TName, Term, Epsilon)]
+telebindings :: LParser [Telescope -> Telescope]
 telebindings = many teleBinding
   where
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (fresh wildcardName) <*> expr)
-      return (x,ty,Runtime)
+      return (Cons Runtime x ty)
 
-    imp = (,,) <$> varOrWildcard <*> (colon >> expr) <*> return Erased
+    imp = do
+        v <- varOrWildcard
+        colon
+        t <- expr
+        return (Cons Erased v t)
     
-    equal = (,,) <$> variable <*> (reservedOp "=" >> expr) <*> return Constraint
+    equal = do
+        v <- variable
+        reservedOp "="
+        t <- expr
+        return (Constraint (Var v) t)
     
-    teleBinding :: LParser (TName, Term, Epsilon)
+    teleBinding :: LParser (Telescope -> Telescope)
     teleBinding =
       (    parens annot
        <|> try (brackets imp)
@@ -466,7 +473,6 @@ funapp = do
                              <|> ((,Runtime) <$> factor)
         app e1 (e2,Runtime)  =  App e1 e2
         app e1 (e2,Erased)   =  ErasedApp e1 e2
-        app e1 (e2,Constraint) = error "internal error"
 {- STUBWITH      
         bfactor = factor 
         app = App -}
@@ -524,7 +530,6 @@ lambda = do reservedOp "\\"
     lam (x, Erased) m  = ErasedLam (bind (x, embed $ Annot Nothing) m)         
 {- STUBWITH -}    
 {- SOLN DATA -}
-    lam (x, _) m = error "internal error"
 {- STUBWITH      lam x m = Lam (bind (x, embed $ Annot Nothing) m) -}
                             
 

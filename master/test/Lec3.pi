@@ -86,7 +86,7 @@ threeIsBeautiful : Beautiful 3
 threeIsBeautiful = B3
 
 eightIsBeautiful : Beautiful 8
-eightIsBeautiful = Bsum 3 8 B3 B5
+eightIsBeautiful = Bsum 3 5 B3 B5
 
 beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful (plus 8 n)
 beautifulPlusEight = \ n bn. Bsum 8 n eightIsBeautiful bn
@@ -98,7 +98,7 @@ data Gorgeous (n : Nat) : Type where
 
 gorgeousPlus13 : (n : Nat) -> Gorgeous n -> Gorgeous (plus 13 n)
 gorgeousPlus13 = \n gn. 
-   Gplus5 (plus 8 (plus 3 n)) (Gplus5 (plus 3 n) (Gplus3 n gn)) 
+   Gplus5 (plus 5 (plus 3 n)) (Gplus5 (plus 3 n) (Gplus3 n gn)) 
 
 gorgeousBeautiful : (n : Nat) -> Gorgeous n -> Beautiful n
 gorgeousBeautiful = \n gn . case gn of 
