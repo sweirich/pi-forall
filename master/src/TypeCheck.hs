@@ -448,34 +448,40 @@ substTele tele args delta = doSubst (mkSubst tele args) delta where
       (x, tm) : mkSubst tele' tms
   mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
+-- From a constraint, fetch as many declarations as possible
+constraintToDecls :: Term -> Term -> TcMonad [Decl]
+constraintToDecls tx ty = do
+  txnf  <- whnf tx
+  tynf  <- whnf ty
+  case (txnf, tynf) of
+    (Var y, yty) -> return [Def y yty]
+    (yty, Var y) -> return [Def y yty]
+    (DCon s1 a1s _,  DCon s2 a2s _)
+        | s1 == s2 -> matchArgs a1s a2s
+    _ -> return []
+ where
+    matchArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
+        t1nf <- whnf t1
+        t2nf <- whnf t2
+        ds <- constraintToDecls t1nf t2nf
+        ds' <- matchArgs a1s a2s
+        return $ ds ++ ds'
+    matchArgs [] [] = return []
+    matchArgs _ _   = return []
+
+
 -- Propagate the given substitution through the telescope, potentially 
 -- reworking the constraints.
 doSubst :: [(TName,Term)] -> Telescope -> TcMonad Telescope
 doSubst ss Empty = return Empty
 doSubst ss (Constraint tx ty tele') = do
-  xnf   <- whnf (substs ss tx)
-  tynf  <- whnf (substs ss ty)
+  let tx' = substs ss tx
+  let ty' = substs ss ty
   --warn [DS "doSubst", DD xnf, DD tynf, DD ss]
-  (decls, tsf) <- match xnf tynf 
+  -- (_decls, tsf) <- match tx' ty'
+  decls <- constraintToDecls tx' ty'
   tele  <- extendCtxs decls $ (doSubst ss tele')
-  return $ tsf tele
-       where
-    match :: Type -> Type -> TcMonad ([Decl], (Telescope -> Telescope))
-    match (Var y) yty = return ([Def y yty], Constraint (Var y) yty)
-    match yty (Var y) = return ([Def y yty], Constraint (Var y) yty)
-    match (DCon s1 a1s _) (DCon s2 a2s _) | s1 == s2 = matchArgs a1s a2s 
-    match ty1 ty2 = return
-        ([], Constraint ty1 ty2)
-  
-    matchArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
-        t1nf <- whnf t1
-        t2nf <- whnf t2
-        -- warn [DD t1nf, DD t2nf]
-        (ds, tsf) <- match t1nf t2nf
-        (ds', tsf') <- matchArgs a1s a2s
-        return $ (ds ++ ds', tsf . tsf')
-    matchArgs [] [] = return ([], id)
-    matchArgs _ _   = return ([], id)
+  return $ (Constraint tx' ty' tele)
 doSubst ss (Cons ep x ty tele') = do
   --warn [DS "foo", DD x, DD ty]
   tynf <- whnf (substs ss ty)
@@ -503,10 +509,10 @@ declarePat pat ep ty =
   
 declarePats :: [(Pattern,Epsilon)] -> Telescope -> TcMonad ([Decl],[TName])
 declarePats [] Empty = return ([],[])
-declarePats pats (Constraint (Var x) ty tele) = do
-  (decls, names) <- extendCtx (Def x ty) $ declarePats pats tele
-  return (Def x ty : decls, names)
-declarePats pats (Constraint _ ty tele) = declarePats pats tele
+declarePats pats (Constraint tx ty tele) = do
+  new_decls <- constraintToDecls tx ty
+  (decls, names) <- extendCtxs new_decls $ declarePats pats tele
+  return (new_decls ++ decls, names)
 declarePats ((pat,_):pats) (Cons ep x ty tele) = do
   (ds1,v1) <- declarePat pat ep ty  
   tm <- pat2Term pat ty
@@ -528,10 +534,9 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
      where
       pats2Terms :: [(Pattern,Epsilon)] -> Telescope -> TcMonad [Arg]
       pats2Terms [] Empty = return []
-      pats2Terms ps (Constraint (Var x) ty' tele') = 
-        extendCtx (Def x ty') $ pats2Terms ps tele'
-      pats2Terms ps (Constraint _ ty' tele') =
-        pats2Terms ps tele'
+      pats2Terms ps (Constraint tx' ty' tele') =  do
+        decls <- constraintToDecls tx' ty'
+        extendCtxs decls $ pats2Terms ps tele'
       pats2Terms ((p,_) : ps) (Cons ep x ty1 d) = do
         ty' <- whnf ty1
         t <- pat2Term p ty'
@@ -555,10 +560,9 @@ equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
     tele <- substTele delta params deltai
     let eqWithPats :: [Term] -> [(Pattern,Epsilon)] -> Telescope -> TcMonad [Decl]
         eqWithPats [] [] Empty = return []
-        eqWithPats ts ps (Constraint (Var x) ty tl) = do
-          extendCtx (Def x ty) $ eqWithPats ts ps tl
-        eqWithPats ts ps (Constraint _ ty tl) = do
-          eqWithPats ts ps tl
+        eqWithPats ts ps (Constraint tx ty tl) = do
+          decls <- constraintToDecls tx ty
+          extendCtxs decls $ eqWithPats ts ps tl
         eqWithPats (t : ts) ((p,_) : ps) (Cons _ x ty tl) = do
           decls  <- equateWithPat t p ty
           decls' <- eqWithPats ts ps (subst x t tl)
