@@ -90,14 +90,14 @@ The main idea is that we will:
 
  - establish a new judgement to define when types are equal
 
-     G |- A = B
+        G |- A = B
 
  - add the following rule to our type system so that it works "up-to" our
    defined notion of type equivalence
 
-      G |- a : A    G |- A = B
-	   ------------------------- conv
-	   G |- a : B
+        G |- a : A    G |- A = B
+        ------------------------- conv
+                G |- a : B
 	 
  - Figure out how to revise the *algorithmic* version of our type system so
   that it supports the above rule.
@@ -176,10 +176,10 @@ to make sure that the function actually has a function type. But we don't really
 know what the domain and co-domain of the function should be. We'd like our 
 algorithm for type equality to be able to figure this out for us.
   
-     G |- a => A    A ?=> (x:A1) -> A2
-	  G |- b <= A1
-	  ---------------------------------- app
-	  G |- a b => A2 { b / x }
+        G |- a => A    A ?=> (x:A1) -> A2
+        G |- b <= A1
+        ---------------------------------- app
+               G |- a b => A2 { b / x }
 	  
 
 ## Using definitional equality
