@@ -183,12 +183,12 @@ data ConstructorDef = ConstructorDef SourcePos DCName Telescope
 --     Delta = x:* , y:x, y = w, empty
 data Telescope = Empty
     | Cons   Epsilon TName Term Telescope
+    | Constraint Term Term Telescope
   deriving (Show)
            
 -- | Epsilon annotates the sort of a data constructor argument
 data Epsilon = 
     Runtime 
-  | Constraint
   | Erased
      deriving (Eq,Show,Read,Bounded,Ord)
 
@@ -308,8 +308,6 @@ instance Erase Match where
 instance Erase Arg where    
   erase (Arg Runtime t) = Arg Runtime (erase t)
   erase (Arg Erased t)  = Arg Erased  LitUnit
-  erase (Arg Constraint t) = 
-    error "internal error: erased constraint arg"
 {- STUBWITH -}        
                           
 -----------------

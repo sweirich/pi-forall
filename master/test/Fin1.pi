@@ -27,8 +27,8 @@ x0 = Zero 0
 x1 : Fin 2 
 x1 = Zero 1
 
-x2 : Fin 2 
-x2 = Succ 1 (Zero 1)
+x2 : Fin 3 
+x2 = Succ 2 (Zero 1)
 
 toNat : (n : Nat) -> Fin n -> Nat
 toNat = \ n  fn . 

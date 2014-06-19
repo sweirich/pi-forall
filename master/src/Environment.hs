@@ -203,8 +203,10 @@ extendCtxsGlobal ds =
 -- | Extend the context with a telescope
 extendCtxTele :: (MonadReader Env m) => Telescope -> m a -> m a
 extendCtxTele Empty m = m
-extendCtxTele (Cons Constraint x t2 tele) m = 
+extendCtxTele (Constraint (Var x) t2 tele) m = 
   extendCtx (Def x t2) $ extendCtxTele tele m
+extendCtxTele (Constraint t1 t2 tele) m = 
+  extendCtxTele tele m
 extendCtxTele (Cons ep x ty tele) m = 
   extendCtx (Sig x ty) $ extendCtxTele tele m
 {- STUBWITH -}
