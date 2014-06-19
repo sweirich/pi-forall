@@ -15,7 +15,7 @@ import PrettyPrint
 import Equal
 
 import Unbound.LocallyNameless hiding (Data, Refl)
-import Control.Applicative ((<$>))
+import Control.Applicative 
 import Control.Monad.Error
 import Text.PrettyPrint.HughesPJ
 import Data.Maybe
@@ -246,7 +246,6 @@ tcTerm t@(Case scrut alts ann1) ann2 = do
          (decls, evars) <- declarePat pat Runtime (TCon n params)
          -- add defs to the contents from scrut = pat
          decls' <- equateWithPat scrut pat (TCon n params)
-         -- check each branch
          (ebody, _) <- extendCtxs (decls ++ decls') $ 
                           checkType body ty
              
@@ -405,14 +404,14 @@ tsTele tms tele = do
 -- | calculate the length of a telescope
 teleLength :: Telescope -> Int
 teleLength Empty = 0
-teleLength (Cons Constraint _ _ tele) = teleLength tele
+teleLength (Constraint _ _ tele) = teleLength tele
 teleLength (Cons _ _ _ tele) = 1 + teleLength tele
 
 -- | type check a list of data constructor arguments against a telescope
 tcArgTele ::  [Arg] -> Telescope -> TcMonad [Arg]
 tcArgTele [] Empty = return []
-tcArgTele args (Cons Constraint x ty tele) = do
-  equate (Var x) ty
+tcArgTele args (Constraint tx ty tele) = do
+  equate tx ty
   tcArgTele args tele
 tcArgTele (Arg ep1 tm:terms) (Cons ep2 x ty tele') | ep1 == ep2 = do
   (etm, ety) <- checkType tm ty
@@ -442,30 +441,32 @@ substTele tele args delta = doSubst (mkSubst tele args) delta where
 -- reworking the constraints.
 doSubst :: [(TName,Term)] -> Telescope -> TcMonad Telescope
 doSubst ss Empty = return Empty
-doSubst ss (Cons Constraint x ty tele') = do
-  xnf   <- whnf (substs ss (Var x))
+doSubst ss (Constraint tx ty tele') = do
+  xnf   <- whnf (substs ss tx)
   tynf  <- whnf (substs ss ty)
-  let decls = match xnf tynf 
+  --warn [DS "doSubst", DD xnf, DD tynf, DD ss]
+  (decls, tsf) <- match xnf tynf 
   tele  <- extendCtxs decls $ (doSubst ss tele')
-  return $ extend decls tele
+  return $ tsf tele
        where
-    extend [] tele = tele
-    extend (Def y yty:decls) tele = 
-      Cons Constraint y yty (extend decls tele)
-    extend (_:decls) tele = error "Internal error"
-    
-    match :: Type -> Type -> [Decl]
-    match (Var y) yty = [Def y yty]
-    match yty (Var y) = [Def y yty]
-    match (DCon s1 a1s _) (DCon s2 a2s _) | s1 == s2 = 
-      matchArgs a1s a2s 
-    match _ _ = []  
+    match :: Type -> Type -> TcMonad ([Decl], (Telescope -> Telescope))
+    match (Var y) yty = return ([Def y yty], Constraint (Var y) yty)
+    match yty (Var y) = return ([Def y yty], Constraint (Var y) yty)
+    match (DCon s1 a1s _) (DCon s2 a2s _) | s1 == s2 = matchArgs a1s a2s 
+    match ty1 ty2 = return
+        ([], Constraint ty1 ty2)
   
-    matchArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = 
-      match t1 t2 ++ matchArgs a1s a2s
-    matchArgs [] [] = []
-    matchArgs _ _   = []
+    matchArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
+        t1nf <- whnf t1
+        t2nf <- whnf t2
+        -- warn [DD t1nf, DD t2nf]
+        (ds, tsf) <- match t1nf t2nf
+        (ds', tsf') <- matchArgs a1s a2s
+        return $ (ds ++ ds', tsf . tsf')
+    matchArgs [] [] = return ([], id)
+    matchArgs _ _   = return ([], id)
 doSubst ss (Cons ep x ty tele') = do
+  --warn [DS "foo", DD x, DD ty]
   tynf <- whnf (substs ss ty)
   tele'' <- doSubst ss tele'  
   return $ Cons ep x tynf tele''
@@ -491,9 +492,10 @@ declarePat pat ep ty =
   
 declarePats :: [(Pattern,Epsilon)] -> Telescope -> TcMonad ([Decl],[TName])
 declarePats [] Empty = return ([],[])
-declarePats pats (Cons Constraint x ty tele) = do
+declarePats pats (Constraint (Var x) ty tele) = do
   (decls, names) <- extendCtx (Def x ty) $ declarePats pats tele
   return (Def x ty : decls, names)
+declarePats pats (Constraint _ ty tele) = declarePats pats tele
 declarePats ((pat,_):pats) (Cons ep x ty tele) = do
   (ds1,v1) <- declarePat pat ep ty  
   tm <- pat2Term pat ty
@@ -515,8 +517,10 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
      where
       pats2Terms :: [(Pattern,Epsilon)] -> Telescope -> TcMonad [Arg]
       pats2Terms [] Empty = return []
-      pats2Terms ps (Cons Constraint x ty' tele') = 
+      pats2Terms ps (Constraint (Var x) ty' tele') = 
         extendCtx (Def x ty') $ pats2Terms ps tele'
+      pats2Terms ps (Constraint _ ty' tele') =
+        pats2Terms ps tele'
       pats2Terms ((p,_) : ps) (Cons ep x ty1 d) = do
         ty' <- whnf ty1
         t <- pat2Term p ty'
@@ -540,8 +544,10 @@ equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
     tele <- substTele delta params deltai
     let eqWithPats :: [Term] -> [(Pattern,Epsilon)] -> Telescope -> TcMonad [Decl]
         eqWithPats [] [] Empty = return []
-        eqWithPats ts ps (Cons Constraint x ty tl) = do
+        eqWithPats ts ps (Constraint (Var x) ty tl) = do
           extendCtx (Def x ty) $ eqWithPats ts ps tl
+        eqWithPats ts ps (Constraint _ ty tl) = do
+          eqWithPats ts ps tl
         eqWithPats (t : ts) ((p,_) : ps) (Cons _ x ty tl) = do
           decls  <- equateWithPat t p ty
           decls' <- eqWithPats ts ps (subst x t tl)
@@ -555,11 +561,13 @@ equateWithPat _ _ _ = return []
 -- a telescope where all of the types have been annotated
 tcTypeTele :: Telescope -> TcMonad Telescope
 tcTypeTele Empty = return Empty
-tcTypeTele (Cons Constraint x tm tl) = do
-  ty <- lookupTy x
-  (tm',_) <- checkType tm ty
-  tele' <- extendCtx (Def x tm') $ tcTypeTele tl
-  return (Cons Constraint x tm' tele')
+tcTypeTele (Constraint tm1 tm2 tl) = do
+  (tm1', ty1) <- inferType tm1
+  (tm2',_) <- checkType tm2 ty1
+  tele' <- 
+    (case tm1 of (Var x) -> extendCtx (Def x tm2')
+                 _       -> id) $ tcTypeTele tl
+  return (Constraint tm1' tm2' tele')
 tcTypeTele (Cons ep x ty tl) = do
   ty' <- tcType ty
   tele' <- extendCtx (Sig x ty') $ tcTypeTele tl
@@ -751,7 +759,7 @@ relatedPats dc (pc@(PatVar _):pats) = ([], pc:pats)
 -- are pattern variables. 
 checkSubPats :: Telescope -> [[(Pattern,Epsilon)]] -> TcMonad ()
 checkSubPats Empty _ = return ()
-checkSubPats (Cons Constraint _ _ tele) patss = checkSubPats tele patss
+checkSubPats (Constraint _ _ tele) patss = checkSubPats tele patss
 checkSubPats (Cons _ name tyP tele) patss 
   | length patss > 0 = do 
   let hds = map (fst . head) patss 
@@ -762,4 +770,5 @@ checkSubPats (Cons _ name tyP tele) patss
 checkSubPats t ps =    
   err [DS "Internal error in checkSubPats", DD t, DS (show ps)]            
   
+
 

@@ -1,18 +1,15 @@
 module Lec3 where
 
---
 -- simple datatypes 
---
+
+data Void : Type where {}   -- no constructors
+
+false_elim : [A:Type] -> Void -> A
+false_elim = \ [A] v . case v of {}
 
 data Nat : Type where
   Zero
-  Succ of (x : Nat)
-
-one : Nat
-one = Succ Zero
-
-two : Nat
-two = Succ (Succ Zero)
+  Succ of (Nat)
 
 is_zero : Nat -> Bool
 is_zero = \ x . case x of 
@@ -24,145 +21,66 @@ plus = \ x y. case x of
    Zero -> y
    Succ x' -> Succ (plus x' y)
 
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
--- can have datatypes with no constructors
-   
-      
-data Void : Type where {}   
-
-false_elim : (A:Type) -> Void -> A
-false_elim = \ A v . case v of {}
-
-   
-               
-               
-                        
-         
-         
-         
-               
-               
--- Simple "dependent" datatypes               
-               
-
 data SillyBool : Type where      
   ImTrue  of (b : Bool) (_ : b = True)
-  ImFalse of (b : Bool) (_ : b = False)
+  ImFalse of (b: Bool)  (_ : b = False)
 
-toSB : Bool -> SillyBool
-toSB = \ b. if b then ImTrue True refl else ImFalse b refl
-
-{-                                          
-       
-G |- a : A
------------
-
-         T : D -> Type in G
-        G |- as : D
-       -----------------  tcon
-         G |- T as : Type 
-
-          G |- T bs : Type
-         K : D'. D -> T in G   == lookupDCon
-         G |- as : D { bs / D' }        == tcArgTele
-       -------------------  datacon
-         G |- K as : T bs
-
-
-         G |- a : T bs    == ensureTCon
-         for each i.   Ki : D. Di -> T in G    dom(Di) = xsi
-                       G, Di { bs / D } |- ai : A { Ki xsi / x }      
-                              === declarePat, equateWithPat
-         exhaustivity check
-        -----------------------------------------------
-         G |- case a of { Ki xsi -> ai } : A { a / x }
-
-
-
-G |- as : D
------------
-
-            ------------ empty
-            G |- . : .
-
-             G |- a : A
-             G |- as : D { a / x }
-            -------------------- cons
-            G |- a as : (x:A) D
-
-             G |- x = a
-             G |- as : D 
-            -------------------- cons
-            G |- as : [ x = a] D
-
-
-
--}
-                                         
-    
-
-                     
-       
-       
-       
-       
-       
 --
+-- Another example, Days of the week.
+
+data Day : Type where
+   Monday
+   Tuesday
+   Wednesday
+   Thursday 
+   Friday
+   Saturday
+   Sunday
+  
+-- using datatypes
+
+next_weekday : Day -> Day
+next_weekday = \d . case d of 
+   Monday -> Tuesday 
+   Tuesday -> Wednesday
+   Wednesday -> Thursday
+   Thursday -> Friday
+   Friday -> Monday
+   Saturday -> Monday
+   Sunday -> Monday
+
+neg : Type -> Type
+neg = \ x . (x -> Void)
+
+next_is_not_saturday : (d: Day) -> neg (next_weekday d = Saturday) 
+next_is_not_saturday = \ d. 
+  \pf. case d of
+     Monday -> contra pf
+     Tuesday -> contra pf
+     Wednesday -> contra pf
+     Thursday -> contra pf
+     Friday -> contra pf
+     Saturday -> contra pf
+     Sunday -> contra pf
+
+
 -- parameterized datatypes
---
-
 
 data Maybe (A : Type) : Type where
    Nothing 
    Just of (A)
 
-data And (A : Type) (B : Type) : Type where
-   Conj of (A)(B)
-
 data Sigma (A: Type) (B : A -> Type) : Type where
     Prod of (x:A) (B x)
 
 
-
-
-
-
-
-
-
 -- indexed datatypes
-
-{-
-
-Inductive Beautiful : Nat -> Prop := 
- |  B0 : Beautiful 0
- |  B3 : Beautiful 3
- |  B5 : Beautiful 5
- |  Bsum : forall n m, Beautiful n -> Beautiful m -> Beautiful (m + n).
- -}
-
-T : Nat -> Type
-T = \n. case n of 
-       Zero -> One
-       Succ m -> Bool
-
 
 data Beautiful (n : Nat) : Type where
    B0 of [n = 0]
    B3 of [n = 3]
    B5 of [n = 5]
-   Bsum of (m1:Nat)(m2:Nat)(Beautiful m1 )(Beautiful m2)[n = plus m1 m2]
-
+   Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[n = plus m1 m2]
 
 threeIsBeautiful : Beautiful 3
 threeIsBeautiful = B3
@@ -170,27 +88,20 @@ threeIsBeautiful = B3
 eightIsBeautiful : Beautiful 8
 eightIsBeautiful = Bsum 3 5 B3 B5
 
-beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful 8
-beautifulPlusEight = \n bn. Bsum n 8 bn eightIsBeautiful
+beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful (plus 8 n)
+beautifulPlusEight = \ n bn. Bsum 8 n eightIsBeautiful bn
 
- 
-
-
-
-{-
 data Gorgeous (n : Nat) : Type where
    G0 of [n = 0]
    Gplus3 of (m : Nat) (Gorgeous m) [n = plus 3 m]
    Gplus5 of (m : Nat) (Gorgeous m) [n = plus 5 m]
 
 gorgeousPlus13 : (n : Nat) -> Gorgeous n -> Gorgeous (plus 13 n)
-gorgeousPlus13 = TRUSTME
+gorgeousPlus13 = \n gn. 
+   Gplus5 (plus 5 (plus 3 n)) (Gplus5 (plus 3 n) (Gplus3 n gn)) 
 
 gorgeousBeautiful : (n : Nat) -> Gorgeous n -> Beautiful n
-gorgeousBeautiful = TRUSTME
-
--}
-
-                      
-bad : True = False
-bad = bad
+gorgeousBeautiful = \n gn . case gn of 
+   G0 -> B0
+   Gplus3 m gm -> Bsum 3 m B3 (gorgeousBeautiful m gm)
+   Gplus5 m gm -> Bsum 5 m B5 (gorgeousBeautiful m gm)

@@ -322,8 +322,6 @@ patternMatches (Arg Runtime t) pat@(PatCon d' pats) = do
     (DCon d args _) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
-patternMatches (Arg Constraint _) pat =   
-  err [DS "Internal error"]
 patternMatches (Arg Erased _) pat@(PatCon _ _) = do
   err [DS "Cannot match against irrelevant args"]
 
