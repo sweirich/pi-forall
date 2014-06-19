@@ -246,6 +246,7 @@ tcTerm t@(Case scrut alts ann1) ann2 = do
          (decls, evars) <- declarePat pat Runtime (TCon n params)
          -- add defs to the contents from scrut = pat
          decls' <- equateWithPat scrut pat (TCon n params)
+         -- check each branch
          (ebody, _) <- extendCtxs (decls ++ decls') $ 
                           checkType body ty
              

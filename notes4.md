@@ -1,14 +1,13 @@
-
-
 # Datatypes and Indexed Datatypes
 
-Today we'd like to add datatypes to pi-forall. 
+Today we'd like to add datatypes and erasable arguments to pi-forall. The code to 
+look at is the "complete" implementation in [soln](soln/).
 
 Unfortunately, datatypes are both:
 
 * Really important (you see them *everywhere* when working 
   with languages like Coq, Agda, Idris, etc.)
-* Really complicated (unlike prior lectures, there are a *lot* of details.)
+* Really complicated (there are a *lot* of details.)
 
 Unlike the prior two lectures, where we could walk through all of the details
 of the specification of the type system, not to mention its implementation, we
@@ -20,7 +19,7 @@ Even then, realize that the implementation that I'm giving you is not the
 complete story! Recall that we're not considering termination. That means that
 we can think about eliminating datatypes merely by writing recursive
 functions; without having to reason about whether those functions
-terminate. Coq and Agda and Idris include a lot of machinery for this
+terminate. Coq, Agda and Idris include a lot of machinery for this
 termination analysis, and we won't cover any of it.
 
 We'll work up the general specification of datatypes piece-by-piece,
@@ -77,7 +76,8 @@ whether there are enough patterns so that all of the cases are covered?
 
 ### Nat
 
-Finally natural numbers include a data constructor with an argument. 
+Natural numbers include a data constructor with an argument. For simplicity in
+the parser, those parens must be there.
 
     data Nat : Type where
        Zero
@@ -93,10 +93,11 @@ In case analysis, we can give a name to that argument in the pattern.
 ### Dependently-typed data constructor args
 
 Now, I lied. Even in our "dirt simple" system, we'll be able to encode some
-new structures. These structures won't be all that useful yet, but as we add
-parameters and indices to our datatypes, they will be. For example, here's an
-example of a datatype declaration where the data constructors have dependent
-types.
+new structures, beyond what is available in functional programming languages
+like Haskell and ML. These structures won't be all that useful yet, but as we
+add parameters and indices to our datatypes, they will be. For example, here's
+an example of a datatype declaration where the data constructors have
+dependent types.
 
     data SillyBool : Type where      
        ImTrue  of (b : Bool) (_ : b = True)
@@ -142,7 +143,7 @@ each variable overlaps all of the subsequent ones, nesting like an expandable
 telescope.)
 
 We can represent this structure in our implementation by adding a new form of
-declaration (some parts have been elided compared to `version3`, we're
+declaration (some parts have been elided compared to `soln`, we're
 building up to that version.)
 
      -- | type constructor names
@@ -220,7 +221,7 @@ corresponding data constructor.
 
 
      G |- a : T
-	  Ki : Di -> T  in G       dom(Di) = xsi
+	  Ki : Di -> T  in G       
 	  G, Di |- ai : A
 	  G |- A : Type
 	  branches exhaustive
@@ -228,27 +229,28 @@ corresponding data constructor.
      G |- case a of { Ki xsi -> ai } : A
 
 Note that this version of case doesn't witness the equality between the
-scrutinee `a` and each of the patterns in the branches.
+scrutinee `a` and each of the patterns in the branches. To allow that, we 
+can add a substiution to the result type of the case:
 
      G |- a : T
 	  Ki : Di -> T  in G       dom(Di) = xsi
-	  G, Di |- ai : A (Ki xsi)
+	  G, Di |- ai : A { Ki xsi / x }
 	  G |- A : T -> Type
 	  branches exhaustive
-     ------------------------------------- case-simple
-     G |- case a of { Ki xsi -> ai } : A a
+     -------------------------------------------- case
+     G |- case a of { Ki xsi -> ai } : A { a / x}
 
 How do we implement this rule in our language? The general for type checking a
 case expression `Case scrut alts` of type `ty` is as follows:
 
 1. Infer type of the scrutinee `scrut`
-2. Make sure that the inferred type is some type constructor
+2. Make sure that the inferred type is some type constructor (`ensureTCon`)
 3. Make sure that the patterns in the case alts are 
    exhaustive (`exhausivityCheck`)
 3. For each case alternative:
   - Create the declarations for the variables in 
    the pattern (`declarePat`)
-  - Create defs that follow from equating the scrutinee with the 
+  - Create defs that follow from equating the scrutinee `a` with the 
    pattern (`equateWithPat`)
   - Check the body of the case in the extended context against 
    the expected type
@@ -381,9 +383,9 @@ produces an empty telescope.
 
 Translate the definitions and proofs 
 in [Logic chapter of Software Foundations](http://www.cis.upenn.edu/~bcpierce/sf/current/Logic.html) 
-to pi-forall. Make sure that you use at least `version3`.  
+to pi-forall. See [Logic.pi](soln/test/Logic.pi) for a start.
 
-### Homework: Indexed datatypes: finite numbers in `Fin1.pi1`
+### Homework: Indexed datatypes: finite numbers in `Fin1.pi`
 
 The module `Fin1.pi` declares the type of numbers that are drawn from some
 bounded set. For example, the type `Fin 1` only includes 1 number (called
@@ -404,7 +406,7 @@ In pi-forall, this corresponding definition makes the constraints explicit:
        Zero of (m:Nat)[n = Succ m] 
        Succ of (m:Nat)[n = Succ m] (Fin m)
 		 
-The file [Fin1.pi](version3/test/Fin1.pi) includes a number of definitions
+The file [Fin1.pi](soln/test/Fin1.pi) includes a number of definitions
 that use these types. However, there are some `TRUSTME`s. Replace these with
 the actual definitions.
 
@@ -436,7 +438,7 @@ runtime, and is guaranteed not to depend on `Prop`.
 
 We'll take another approach.
 
-In PiForall we have new kind of quantification, called "forall" that marks
+In pi-forall we have new kind of quantification, called "forall" that marks
 erasable arguments.  We mark forall quantified arguments with brackets. For example, 
 we can mark the type argument of the polymorphic identity function as erasable.
 
@@ -472,23 +474,20 @@ behavior of the program?
     m : [x:Type] -> (y:x) -> x
     m = \[x] y . (y : x)
 
-What about contra? This marks dead code too. So contra should be erased too.
-
-    n : [x: True = False] -> [A:Type] -> A
-    n = \[x][A]. contra x
-
 What about putting it in data structures? We should be able to define
-datatypes with "specificational arguments"
+datatypes with "specificational arguments". For example, 
+see [Vec.pi](soln/test/Vec.pi).
 
-- [Fin.pi](soln/test/Fin.pi)
-- [Vec.pi](soln/test/Vec.pi)
+Note: we can only erase *data* constructor arguments, not types that appear as
+arguments to *type* constructors. (Parameters to type constructors must always
+be relevant, they determine the actual type.)  On the other hand, datatype
+parameters are never relevant to data constructors---we don't even represent
+them in the abstract syntax.  
 
-Note: we can only erase *data* constructor arguments, not types that appear as 
-arguments to *type* constructors. (Parameters to type constructors must 
-always be relevant, they determine the type.)
+### Homework: Erasure and Indexed datatypes: finite numbers in `Fin1.pi`
 
-Of course, there are many variations of products: 
-[Product.pi](soln/test/Product.pi)
+Now take your code in `Fin1.pi` and see if you can mark some of the components
+of the `Fin` datatype as eraseable. 
 
 ## ERASURE and equality
 ------------------------

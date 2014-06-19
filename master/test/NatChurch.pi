@@ -18,7 +18,7 @@ two : nat
 two = s (s z)
 
 plus : nat -> nat -> nat
-plus = TRUSTME
+plus = \x. \y. x nat y s
 
 test0 : plus one one = two
 test0 = refl

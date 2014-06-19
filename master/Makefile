@@ -7,7 +7,7 @@ EXTRA=LICENSE README pi-forall.cabal
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi)
 VERSION3=$(addprefix ../version3/,$(SRCS)) $(addprefix ../version3/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi Nat.pi Fin1.pi Product1.pi)
-SOLNS=$(addprefix ../soln/,$(SRCS)) $(addprefix ../soln/test/, $(TESTS))
+SOLNS=$(addprefix ../soln/,$(SRCS)) $(addprefix ../soln/test/, $(TESTS) Lec1.pi Hw1.pi Lec2.pi Hw2.pi Lec3.pi Fin1.pi Lec4.pi)
 
 STUBREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN.*?STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg' 
 SOLNREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN\s*?[-][\}](\s*\r?\n|\s)(.*?)[\{][-]\s*STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg'
