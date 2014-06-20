@@ -48,6 +48,7 @@ Optional components in this BNF are marked with < >
     | (a : A)                  Annotations
     | (a)                      Parens
     | TRUSTME                  An axiom 'TRUSTME', inhabits all types 
+    | PRINTME                  Used to print goal context
 
     | let x = a in b           Let expression
 
@@ -195,6 +196,7 @@ trellysStyle = Token.LanguageDef
                   ,"axiom"
                   ,"erased"
                   ,"TRUSTME"
+                  ,"PRINTME" 
                   ,"ord" 
                   , "pcase"
                   , "Bool", "True", "False" 
@@ -387,6 +389,10 @@ trustme :: LParser Term
 trustme = do reserved "TRUSTME" 
              return (TrustMe (Annot Nothing))
 
+printme :: LParser Term
+printme = do reserved "PRINTME"
+             return (PrintMe (Annot Nothing))
+
 refl :: LParser Term
 refl =
   do reserved "refl"
@@ -453,6 +459,7 @@ factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                 , ordax      <?> "ord"  
                 , refl       <?> "refl"
                 , trustme    <?> "TRUSTME"
+                , printme    <?> "PRINTME"  
                 , impProd    <?> "an implicit function type"
                 , bconst     <?> "a constant"  
                 , ifExpr     <?> "an if expression" 

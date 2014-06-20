@@ -313,6 +313,7 @@ instance Display Term where
             Pos _ a       -> wrapf a
             Ann _ _       -> id
             TrustMe _     -> id
+            PrintMe _     -> id
             _             -> parens
      return $ wrapf f df <+> dx             
 
@@ -373,6 +374,10 @@ instance Display Term where
   display (TrustMe ma)  = do
     da <- display ma 
     return $ text "TRUSTME" <+> da
+    
+  display (PrintMe ma) = do
+    da <- display ma
+    return $ text "PRINTME" <+> da
     
   display (Sigma bnd) = 
     lunbind bnd $ \ ((x,unembed->tyA),tyB) -> do

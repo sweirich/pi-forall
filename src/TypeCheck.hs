@@ -153,6 +153,13 @@ tcTerm (TrustMe ann1) ann2 = do
   Just expectedTy <- matchAnnots ann1 ann2
   return (TrustMe (Annot (Just expectedTy)), expectedTy)
 
+tcTerm (PrintMe ann1) ann2 = do
+  Just expectedTy <- matchAnnots ann1 ann2
+  gamma <- getLocalCtx
+  warn [DS "Unmet obligation.\nContext: ", DD gamma,
+        DS "\nGoal: ", DD expectedTy]
+  return (PrintMe (Annot (Just expectedTy)), expectedTy)
+
 tcTerm (TyUnit) Nothing = return (TyUnit, Type 0)
 
 tcTerm (LitUnit) Nothing = return (LitUnit, TyUnit)

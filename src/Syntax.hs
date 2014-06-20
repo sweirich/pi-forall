@@ -53,6 +53,7 @@ data Term =
      
    -- conveniences  
    | TrustMe Annot         -- ^ an axiom 'TRUSTME', inhabits all types 
+   | PrintMe Annot         -- ^ like 'TRUSTME' but causes type checker to print context
    
    -- unit  
    | TyUnit                -- ^ The type with a single inhabitant `One`
@@ -240,6 +241,7 @@ instance Erase Term where
   erase (Paren t1)      = erase t1
   erase (Pos sp t)      = erase t
   erase (TrustMe _)     = TrustMe noAnn
+  erase (PrintMe _)     = PrintMe noAnn
   erase (TyUnit)        = TyUnit
   erase (LitUnit)       = LitUnit
   erase (TyBool)        = TyBool
