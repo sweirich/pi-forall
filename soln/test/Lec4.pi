@@ -25,3 +25,7 @@ data T : Type where
 
 id'' :[x:Type] -> (y:x) -> T
 id'' = \[x] y. Mk [x] y
+
+foo : T -> T
+foo = \t . case t of 
+   Mk [x] y -> x

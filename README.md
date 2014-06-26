@@ -1,7 +1,7 @@
 Pi-Forall language
 ------------------
 
-This language implemention is designed to accompany four lectures at
+This language implementation is designed to accompany four lectures at
 OPLSS during Summer 2014. Notes for these lectures are available at:
 
 - [notes.md](notes.md):    Basic language with Type:Type 
@@ -13,8 +13,10 @@ Each set of lecture notes corresponds to an increasingly expressive demo
 implementation of dependently-typed lambda calculus.
 
 - [version1/](version1/):   Basic language implementation, 
-- [version2/](version2/):   Language extended with nontrivil definitional equality
+- [version2/](version2/):   Language extended with nontrivial definitional equality
 - [soln/](soln/):           Language with datatypes and erased arguments
+
+See also the implementation [README.md](master/README.md) for more details.
 
 All of these versions are excerpted from the marked up files in the directory:
 
