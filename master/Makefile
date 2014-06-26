@@ -2,7 +2,7 @@ SOURCES=TypeCheck.hs PrettyPrint.hs LayoutToken.hs Parser.hs Syntax.hs Environme
 TESTS=Makefile Logic.pi Equality.pi Nat.pi Product.pi Fin.pi Vec.pi 
 SRCS=$(addprefix src/,$(SOURCES)) 
 
-EXTRA=LICENSE README pi-forall.cabal
+EXTRA=LICENSE README.md pi-forall.cabal
 
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi)

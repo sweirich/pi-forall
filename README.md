@@ -16,7 +16,7 @@ implementation of dependently-typed lambda calculus.
 - [version2/](version2/):   Language extended with nontrivial definitional equality
 - [soln/](soln/):           Language with datatypes and erased arguments
 
-See also the implementation [README](master/README) for more details.
+See also the implementation [README.md](master/README.md) for more details.
 
 All of these versions are excerpted from the marked up files in the directory:
 
