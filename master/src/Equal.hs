@@ -12,7 +12,7 @@ module Equal (whnf, equate, ensurePi,
 import Syntax
 import Environment
 
-import Unbound.LocallyNameless hiding (Data, Refl)
+import Unbound.Generics.LocallyNameless
 import Control.Monad(when)
 {- SOLN DATA -}
 import Control.Monad.Error (catchError, zipWithM, zipWithM_)

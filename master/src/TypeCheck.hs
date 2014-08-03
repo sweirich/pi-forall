@@ -14,14 +14,15 @@ import Environment
 import PrettyPrint
 import Equal
 
-import Unbound.LocallyNameless hiding (Data, Refl)
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 import Control.Applicative 
 import Control.Monad.Error
 import Text.PrettyPrint.HughesPJ
 import Data.Maybe
 {- SOLN DATA -}
 import Data.List(nub)
-import Unbound.LocallyNameless.Ops (unsafeUnbind)
+import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 {- STUBWITH -}
 
 
@@ -100,7 +101,7 @@ tcTerm (ErasedLam bnd) (Just (ErasedPi bnd2)) = do
   -- check the type of the body of the lambda expression
   (ebody, etyB) <- extendCtx (Sig x tyA) (checkType body tyB)
   -- make sure that an 'erased' variable isn't used
-  when (x `elem` fv (erase ebody)) $
+  when (x `elem` toListOf fv (erase ebody)) $
     err [DS "Erased variable", DD x, 
          DS "used in body"]
   return (ErasedLam (bind (x, embed (Annot (Just tyA))) ebody), 
@@ -118,7 +119,7 @@ tcTerm (ErasedLam bnd) Nothing = do
   -- infer the type of the body of the lambda expression
   (ebody, atyB) <- extendCtx (Sig x atyA) (inferType body)
     -- make sure that an 'erased' variable isn't used
-  when (x `elem` fv (erase ebody)) $
+  when (x `elem` toListOf fv (erase ebody)) $
     err [DS "Erased variable", DD x, 
          DS "used in body"]
   return (ErasedLam (bind (x, embed (Annot (Just atyA))) ebody), 
@@ -180,7 +181,7 @@ tcTerm (Let bnd) ann = {- SOLN HW -} do
   (arhs,aty) <- inferType rhs    
   (abody,ty) <- extendCtxs [Sig x aty, Def x arhs] $ 
                 tcTerm body ann
-  when (x `elem` fv ty) $
+  when (x `elem` toListOf fv ty) $
     err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]  
   return (Let (bind (x,embed arhs) abody), ty)
   {- STUBWITH   err [DS "unimplemented"] -}        
@@ -254,7 +255,7 @@ tcTerm t@(Case scrut alts ann1) ann2 = do
 {- STUBWITH -}             
 {- SOLN EP -}             
          -- make sure 'erased' components aren't used 
-         when (any (`elem` (fv (erase ebody))) evars) $
+         when (any (`elem` (toListOf fv (erase ebody))) evars) $
            err [DS "Erased variable bound in match used"]
 {- STUBWITH -}           
 {- SOLN DATA -}         
@@ -649,7 +650,7 @@ tcEntry (Def n term) = do
             (eterm, ety) <- extendCtx (Sig n ty) $
                                checkType term ty `catchError` handler
             -- Put the elaborated version of term into the context.
-            if (n `elem` fv eterm) then
+            if (n `elem` toListOf fv eterm) then
                  return $ AddCtx [Sig n ety, RecDef n eterm]
               else
                  return $ AddCtx [Sig n ety, Def n eterm]
