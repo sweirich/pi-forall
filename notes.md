@@ -44,7 +44,7 @@ Functions get function types
 
 ### Example: Polymorphic identity functions
 
-Note that the variable x is allowed to appear in `B`. Why is this useful? Well
+Note that the variable `x` is allowed to appear in `B`. Why is this useful? Well
 it gives us *parametric polymorphism* right off the bat.  In Haskell, we 
 write the identity function as follows:
 
@@ -76,7 +76,7 @@ things of type `A` where `A` has type `Type`.
 In pi-forall, we should eventually be able to write
 
      id : (x:Type) -> (y : x) -> x
-	  id = \x. \y. y
+     id = \x. \y. y
 
 or even (with some help from the parser)
 
@@ -94,7 +94,7 @@ polymorphic lambda calculus:
      |- \x.\y. y : (x: 3) -> (y:x) -> x
 
 So the real rule has an extra precondition that checks to make sure that 
-A is actually a type. 
+`A` is actually a type. 
 
        G, x:A |- a : B       G |- A : Type
 	 ----------------------------------------    lambda
@@ -125,8 +125,8 @@ logic. Girard's paradox
 ### More typing rules - Application
 
 Application requires that the type of the argument matches the domain type of
-the function. However, not that because the type B could have x free in it, we
-need to substitute the argument for x in the result.
+the function. However, not that because the type `B` could have `x` free in it,
+we need to substitute the argument for `x` in the result.
 
       G |- a : (x:A) -> B 
 		G |- b : A
@@ -136,8 +136,8 @@ need to substitute the argument for x in the result.
 ### Example: applying the polymorphic identity function
 
 In pi-forall we should be able to apply the polymorphic identity function to
-itself. When we do this, we need to first provide the type of id, then we can
-apply id to id.
+itself. When we do this, we need to first provide the type of `id`, then we can
+apply `id` to `id`.
 
     idid : ((x:Type) -> (y : x) -> x) 
     idid = id ((x:Type) -> (y : x) -> x) id
@@ -252,7 +252,7 @@ Here we must infer the type of the function, but once we have that type, we
 may to use it to check the type of the argument.
 	  
       G |- a => (x:A) -> B 
-		G |- b <= A
+      G |- b <= A
     ---------------------------  app
 	   G |- a b => B { b / x }	  
 
@@ -271,8 +271,8 @@ expressions can be checked against types.  We can make checking more
 applicable by the following rule:
 
        G |- a => A
-		 -------------  (a does not have a checking rule)
-		 G |- a <= A 
+       -------------  (a does not have a checking rule)
+       G |- a <= A 
 
 which allows us to use inference whenever checking doesn't apply.
 
