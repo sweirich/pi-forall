@@ -14,7 +14,7 @@ clarity, I'll used lowercase letters `a` for expressions and uppercase letters
 for their types `A`
 
 Note that lambda and pi above are *binding forms*. They bind the variable 
-`x` in `b` and `B` respectively
+`x` in `a` and `B` respectively
 
 ### When do expressions in this language type check?
 
@@ -69,7 +69,7 @@ things of type `A` where `A` has type `Type`.
           --------------------- var
            x:Type, y:x |- y : x
         ----------------------------- lambda
-         x:Type |- y : (y : x) -> x
+         x:Type |- \y. y : (y : x) -> x
      ------------------------------------------ lambda
       |- \x. \y. y : (x:Type) -> (y : x) -> x
 
@@ -258,7 +258,7 @@ may to use it to check the type of the argument.
 
 For types, it is apparent what their type is, so we will just continue to infer that.
 
-    G |- A => Type     G, x:A |- B => Type
+    G |- A <= Type     G, x:A |- B <= Type
     -------------------------------------- pi
      G |- (x:A) -> B => Type
 
@@ -307,7 +307,7 @@ checking mode will be even more important as we add more terms to the language.
 
 A not so desirable property is that the bidirectional system is not closed
 under substitution. The types of variables are always inferred.  This is
-particularly annoying for the application rule when replace a variable
+particularly annoying for the application rule when we replace a variable
 (inference mode) with another term that is correct only in checking mode.  One
 solution to this problem is to work with *hereditary substitutions*,
 i.e. substitutions that preserve normal forms.
