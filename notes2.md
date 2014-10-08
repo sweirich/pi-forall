@@ -7,12 +7,12 @@ language might look like in Haskell.
 First, an overview of the main files of the implementation.
 
      Syntax.hs      - specification of the abstract syntax of the language
-	  Parser.hs      - turn strings into AST
+     Parser.hs      - turn strings into AST
      PrettyPrint.hs - displays AST in a (somewhat) readable form
-	  Main.hs        - top-level routines (repl)
+     Main.hs        - top-level routines (repl)
 	  
      Environment.hs - defines the type checking monad		  
-	  TypeCheck.hs   - implementation of the bidirectional type checker
+     TypeCheck.hs   - implementation of the bidirectional type checker
 	  	  
 ### Variable binding using the unbound library [Syntax.hs]
 
@@ -44,7 +44,7 @@ automatically generate instances of the `Subst` class. Furthermore, although
 it seems like we only need to substitute within terms, we'll actually need to
 have substitution available at many types.
 
-With names, we can define the syntax of that corresponds to our language
+With names, we can define the syntax that corresponds to our language
 above, using the following datatype.
 
     data Term = 
@@ -113,7 +113,7 @@ checking of the following types:
 
     inferType :: Term -> Ctx -> Maybe (Term,Type)
 	 
-	 checkType :: Term -> Type -> Ctx -> Maybe Term
+    checkType :: Term -> Type -> Ctx -> Maybe Term
 	 
 The inference function should take a term and a context and if it type checks,
 produce its type and its elaboration (where all annotations have been filled
@@ -128,7 +128,7 @@ doesn't type check.
 
     inferType :: Term -> TcMonad (Term,Type)
 	 
-	 checkType :: Term -> Type -> TcMonad Term
+    checkType :: Term -> Type -> TcMonad Term
 
 Those of you who have worked with Haskell before may be familiar with the
 [MonadReader](https://hackage.haskell.org/package/mtl-2.1.2/docs/Control-Monad-Reader.html),
@@ -137,11 +137,11 @@ and the
 which our type checking monad will be instances of.
 
     lookupTy :: TName -> TcMonad Term
-	 extendCtx :: Decl -> TcMonad Term -> TcMonad Term
+    extendCtx :: Decl -> TcMonad Term -> TcMonad Term
      
 	  
-	 err  :: (Disp a) => a -> TcMonad b
-	 warn :: (Disp a) => a -> TcMonad b
+    err  :: (Disp a) => a -> TcMonad b
+    warn :: (Disp a) => a -> TcMonad b
 
 We'll also need this monad to be a freshness monad, to support working with
 binding structure, and throw in MonadIO for good measure.
@@ -153,15 +153,15 @@ implementation. For flexibility `inferType` and `checkType` will *both* be
 implemented by the same function:
 
     inferType :: Term -> TcMonad (Term,Type)
-	 inferType t = tcTerm t Nothing
+    inferType t = tcTerm t Nothing
 	 
-	 checkType :: Term -> Type -> TcMonad (Term, Type)
-	 checkType tm ty = tcTerm tm (Just ty)
+    checkType :: Term -> Type -> TcMonad (Term, Type)
+    checkType tm ty = tcTerm tm (Just ty)
 
 
 The `tcTerm` function checks a term, producing an elaborated term where all of
 the type annotations have been filled in, and its type.  The second argument
-is 'Nothing' in inference mode and an expected type in checking mode.
+is `Nothing` in inference mode and an expected type in checking mode.
 
     tcTerm :: Term -> Maybe Type -> TcMonad (Term,Type)
 
@@ -170,19 +170,19 @@ for the various syntactic forms in inference mode:
 
     tcTerm (Var x) Nothing = ... 
 	 
-	 tcTerm Type Nothing = ...
+    tcTerm Type Nothing = ...
   
     tcTerm (Pi bnd) Nothing = ...
 	 
-	 tcTerm (Lam bnd) Nothing = ... -- must have annotation
+    tcTerm (Lam bnd) Nothing = ... -- must have annotation
 	 
-	 tcTerm (App t1 t2) Nothing = ...
+    tcTerm (App t1 t2) Nothing = ...
 	 
 Mixed in here, we also have a pattern for lambda expressions in checking mode:	 
 	 
     tcTerm (Lam bnd) (Just (Pi bnd2)) = ... 
 	 
-	 tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
+    tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
        err [DS "Lambda expression has a function type, not", DD nf]
 
 There are also several cases for practical reasons (annotations, source code
@@ -192,10 +192,10 @@ Finally, the last case covers all other forms of checking mode, by
 calling inference mode and making sure that the inferred type is 
 equal to the checked type.
 		 
-	 tcTerm tm (Just ty) = do
-      (atm, ty') <- inferType tm 
-		unless (aeq ty' ty) $ err [DS "Types don't match", DD ty, DS "and", DD ty']
-      return (atm, ty)	 
+    tcTerm tm (Just ty) = do
+     (atm, ty') <- inferType tm 
+       unless (aeq ty' ty) $ err [DS "Types don't match", DD ty, DS "and", DD ty']
+     return (atm, ty)	 
 
 The function `aeq` merely ensures that the two types are
 alpha-equivalent. If they are, then it returns `()` to the monad, otherwise it
@@ -217,14 +217,14 @@ Some fairly standard typing rules for booleans assert that Bool is a valid type:
     ---------------- true
     G |- true : Bool
 	
-	 ---------------- false
- 	 G |- false : Bool
+     ---------------- false
+     G |- false : Bool
 	 	 
-	 G |- a : Bool 
-	 G |- b : A
-	 G |- c : A
-	 ---------------------------- if
-	 G |- if a then b else c : A
+     G |- a : Bool 
+     G |- b : A
+     G |- c : A
+     ---------------------------- if
+     G |- if a then b else c : A
 
 Likewise, we can also extend the language with Sigma types. 
 
@@ -236,8 +236,8 @@ A sigma type is a product where the type of the second component of the
 product can depend on the first component.
 
     G |- a : A      G |- b : B { a / x }
-	 ------------------------------------ pair
-	 G |- (a,b) : { x : A | B }
+    ------------------------------------ pair
+    G |- (a,b) : { x : A | B }
 	 
 We destruct sigmas using pattern matching. A simple rule for pattern matching
 introduces variables into the context when pattern matching the sigma
@@ -261,5 +261,3 @@ This part of the homework has two parts:
   `version1/test/Hw1.pi` contains examples of using these new forms. However,
   to get this file to compile, you'll need to fill in the missing cases in
   `version1/src/TypeCheck.hs`.
-
-
