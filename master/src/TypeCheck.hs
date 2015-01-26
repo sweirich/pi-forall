@@ -16,7 +16,7 @@ import Equal
 
 import Unbound.LocallyNameless hiding (Data, Refl)
 import Control.Applicative 
-import Control.Monad.Error
+import Control.Monad.Except
 import Text.PrettyPrint.HughesPJ
 import Data.Maybe
 {- SOLN DATA -}
@@ -458,6 +458,8 @@ constraintToDecls tx ty = do
     (yty, Var y) -> return [Def y yty]
     (DCon s1 a1s _,  DCon s2 a2s _)
         | s1 == s2 -> matchArgs a1s a2s
+    (DCon s1 a1s _,  DCon s2 a2s _)
+        -> warn [DS "constraintToDecls", DD txnf, DS "<>", DD tynf] >> return []
     _ -> return []
  where
     matchArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
@@ -572,8 +574,8 @@ equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
     eqWithPats (map unArg args) pats tele
 equateWithPat _ _ _ = return []  
 
--- | Check all of the types contained within a telescope returning
--- a telescope where all of the types have been annotated
+-- | Check all of the types contained within a telescope 
+-- returns a telescope where all of the types have been annotated
 tcTypeTele :: Telescope -> TcMonad Telescope
 tcTypeTele Empty = return Empty
 tcTypeTele (Constraint tm1 tm2 tl) = do
@@ -723,7 +725,7 @@ duplicateTypeBindingCheck n ty = do
 exhaustivityCheck :: Type -> [Pattern] -> TcMonad ()  
 exhaustivityCheck ty (PatVar x:_) = return ()
 exhaustivityCheck ty pats = do
-  (tcon, tys)     <- ensureTCon ty
+  (tcon, tys)   <- ensureTCon ty
   (delta,mdefs) <- lookupTCon tcon
   case mdefs of 
     Just datacons -> loop pats datacons
@@ -733,8 +735,7 @@ exhaustivityCheck ty pats = do
                             (map (\(ConstructorDef _ dc _) -> DD dc) dcons)
         loop ((PatVar x):_) dcons = return ()
         loop ((PatCon dc args):pats') dcons = do
-          (cd@(ConstructorDef _ _ tele, dcons')) <- 
-            removeDcon dc dcons 
+          (cd@(ConstructorDef _ _ tele, dcons')) <- removeDcon dc dcons 
           tele' <- substTele delta tys tele 
           let (aargs, pats'') = relatedPats dc pats'
           checkSubPats tele' (args:aargs) 

@@ -15,7 +15,7 @@ import Environment
 import Unbound.LocallyNameless hiding (Data, Refl)
 import Control.Monad(when)
 {- SOLN DATA -}
-import Control.Monad.Error (catchError, zipWithM, zipWithM_)
+import Control.Monad.Except (catchError, zipWithM, zipWithM_)
 import Control.Applicative ((<$>))
 {- STUBWITH -}
 
@@ -329,12 +329,13 @@ isWhnf _ = False
 {- SOLN DATA -}
 -- | Determine whether the pattern matches the argument
 -- If so return the appropriate substitution
+-- otherwise throws an error
 patternMatches :: Arg -> Pattern -> TcMonad [(TName, Term)]
 patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
 patternMatches (Arg Runtime t) pat@(PatCon d' pats) = do
   nf <- whnf t
   case nf of 
-    (DCon d [] _) -> return []
+    (DCon d [] _)   | d == d' -> return []
     (DCon d args _) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
