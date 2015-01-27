@@ -31,15 +31,12 @@ singleton = \[A] x. Cons [0] x Nil
 head : [A :Type] -> [n:Nat] -> Vec A (Succ n) -> A
 head = \ [A][n] x.  case x of 
      Cons [m] y ys -> y
-     Nil  -> TRUSTME -- contra n_eq
-
+	  -- Nil case is impossible
 
 tail : [A :Type] -> [n:Nat] -> Vec A (Succ n) -> Vec A n
 tail = \ [A][n] x.  case x of 
-     Nil -> TRUSTME -- contra n_eq 
-	  -- m : Nat, m_eq: (Succ n) = (Succ m), y : A, ys : Vec A m
-     Cons [m] y ys -> TRUSTME
---	    subst ys by sm_eq_Sn__m_eq_n m n (sym [Nat][Succ n][Succ m] m_eq)
+     -- Nil case impossible
+     Cons [m] y ys -> ys
 
 append : [A :Type] ->[m:Nat] -> [n:Nat] -> Vec A m -> Vec A n -> Vec A (plus m n)
 append = \[A] [m] [n] v1 ys . case v1 of 
@@ -52,13 +49,10 @@ zap = \[A][B] [n] vs1 vs2 .
   case vs1 of 
     Nil -> case vs2 of 
        Nil   -> Nil 
-       Cons [m2] f fs -> TRUSTME -- contra eq2
+       -- Cons case impossible
     Cons [m1] f fs -> case vs2 of 
-       Nil -> TRUSTME -- contra eq2
+       -- Nil case impossible
        Cons [m2] x xs -> 
---		    let m1_eq_m2 = sm_eq_Sn__m_eq_n m1 m2 eq2   in
---			 let m2_eq_m1 = sym [Nat][m1][m2] m1_eq_m2   in
---			 let xs' = (subst xs by m2_eq_m1 : Vec A m1)  in
 		    Cons [m1] (f x) (zap [A][B][m1] fs xs)
 
 replicate : [A:Type] -> (n:Nat) -> A -> Vec A n
@@ -86,6 +80,7 @@ zipWith = \[A][B][C] n f v1 v2.
 zip : [A:Type] -> [B:Type] -> (n:Nat) -> Vec A n -> Vec B n -> Vec (Times A B) n
 zip = \[A][B] n . zipWith [A][B][Times A B] n (prod[A][B])
 
+-- easiest version of foldr makes m irrelevant
 foldr : [A:Type]-> [B:Nat -> Type] -> [m:Nat] -> 
         (f : [n:Nat] -> A -> B n -> B (Succ n)) ->    
         B Zero ->
@@ -95,7 +90,7 @@ foldr = \[A][B] [m] f n v .
     Nil -> n
     Cons [m'] x xs -> f [m'] x (foldr [A][B][m'] f n xs)
 
--- we can also make m relevant, with a bit of effort
+-- we can also make m relevant
 foldr' : [A:Type]-> [B:Nat -> Type] -> (m:Nat) -> 
         (f : (n:Nat) -> A -> B n -> B (Succ n)) ->    
         B Zero ->
@@ -107,43 +102,31 @@ foldr' = \[A][B] m f n v .
 
 
 -- we can also define foldr' by induction on m
--- infinite loop?
-{-
 foldr'' : [A:Type]-> [B:Nat -> Type] -> (m:Nat) -> 
         (f : (n:Nat) -> A -> B n -> B (Succ n)) ->    
         B Zero ->
         Vec A m -> B m
-foldr'' = \[A][B]  m f n v . 
+foldr'' = \[A][B] m f n v . 
   case m of 
     Zero -> 
       case v of 
         Nil -> n
-        Cons [m'] x xs -> TRUSTME -- contra eq
     Succ m1 -> 
       case v of 
-        Nil -> TRUSTME -- contra eq
         Cons [m2] x xs -> 
-		    let m1_eq_m2 = sm_eq_Sn__m_eq_n m1 m2 refl   in
-			 let m2_eq_m1 = sym [Nat][m1][m2] m1_eq_m2   in
-			 let xs' = (subst xs by m2_eq_m1 : Vec A m1)  in
-			 f m1 x (foldr'' [A][B] m1 f n xs')
--}
+          f m1 x (foldr'' [A][B] m1 f n xs)
 
-{-
+
+
 foldr1 : [A:Type] -> [m:Nat] -> 
        (A -> A -> A) -> Vec A (Succ m) -> A
 foldr1 = \[A] [m] f v . case v of 
-  Nil  -> TRUSTME -- contra eq
   Cons [m'] x ys -> 
       case ys of 
-         (Nil ) -> x
-         (Cons [m''] y xs) ->
-            -- eq1 : Succ m = Succ m'
-            -- eq2 : m' = Succ m''
-            let m'_eq_m = sym [Nat] [m][m'] (sm_eq_Sn__m_eq_n m m' refl)   in
-            let m_eq_Sm'' = (subst refl by m'_eq_m : m = Succ m'') in
-            f x (foldr1 [m''] f (Cons [m''] y xs))
--}
+         Nil -> x
+         Cons [m''] y xs ->
+            f x (foldr1 [A][m''] f (Cons [m''] y xs))
+
 
 concat : [A:Type] -> [m : Nat] -> [n : Nat] -> Vec (Vec A m) n -> Vec A (mult n m)
 concat = \[A][m] [n] v. case v of 

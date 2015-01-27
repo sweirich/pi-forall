@@ -1,0 +1,29 @@
+module Lambda where
+
+import Nat
+import Fin
+import Vec 
+
+lookup : [a:Type] -> [n:Nat] -> Fin n -> Vec a n -> a
+lookup = \[a][n] f v. case f of 
+   Zero [m] -> case v of 
+           Cons [m'] x xs -> x 
+   Succ [m] f' -> case v of 
+              Cons [m'] x xs -> lookup [a][m] f' xs
+
+data Exp (n : Nat) : Type where
+   Var of (Fin n)
+   App of (Exp n) (Exp n)
+   Lam of (Exp (Succ n)) 
+
+data Val : Type where
+  Clos of [n:Nat] (Vec Val n) (Exp (Succ n))
+
+interp : [n:Nat] -> Vec Val n -> Exp n -> Val
+interp = \[n] env e. 
+  case e of 
+    Var x     -> lookup [Val] [n] x env
+    App e1 e2 -> case (interp [n] env e1) of        
+                    Clos [m] env' body -> 
+                        interp [Succ m] (Cons [m] (interp [n] env e2) env') body 
+    Lam e     -> Clos [n] env e

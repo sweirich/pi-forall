@@ -202,11 +202,12 @@ extendCtxsGlobal ds =
 
 {- SOLN DATA -}
 -- | Extend the context with a telescope
-extendCtxTele :: (MonadReader Env m) => Telescope -> m a -> m a
+extendCtxTele :: (MonadReader Env m, MonadIO m) => Telescope -> m a -> m a
 extendCtxTele Empty m = m
 extendCtxTele (Constraint (Var x) t2 tele) m = 
   extendCtx (Def x t2) $ extendCtxTele tele m
-extendCtxTele (Constraint t1 t2 tele) m = 
+extendCtxTele (Constraint t1 t2 tele) m = do
+  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
   extendCtxTele tele m
 extendCtxTele (Cons ep x ty tele) m = 
   extendCtx (Sig x ty) $ extendCtxTele tele m

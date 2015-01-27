@@ -17,13 +17,13 @@ import Syntax hiding (moduleImports)
 
 import Unbound.LocallyNameless hiding (Data,Refl,Infix,join,name)
 
-import Text.Parsec hiding (State,Empty)
+import Text.Parsec hiding (State)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
 import qualified LayoutToken as Token
 
 import Control.Monad.State.Lazy hiding (join)
 import Control.Applicative ( (<$>), (<*>))
-import Control.Monad.Error hiding (join)
+import Control.Monad.Except hiding (join)
 
 import Data.List
 import qualified Data.Set as S
