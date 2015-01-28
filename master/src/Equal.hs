@@ -5,9 +5,9 @@
 
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
-              {- SOLN EP -}ensureErasedPi, {- STUBWITH -}
+              {- SOLN EP -} ensureErasedPi, {- STUBWITH -}
               {- SOLN EQUAL -} ensureTyEq, {- STUBWITH -} 
-              {-SOLN DATA -} ensureTCon {- STUBWITH -} ) where
+              {- SOLN DATA -} ensureTCon {- STUBWITH -} ) where
 
 import Syntax
 import Environment

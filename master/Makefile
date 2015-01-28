@@ -6,12 +6,12 @@ EXTRA=LICENSE README.md pi-forall.cabal
 
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi)
-SOLNS=$(addprefix ../soln/,$(SRCS)) $(addprefix ../soln/test/, $(TESTS) Lec1.pi Hw1.pi Lec2.pi Hw2.pi Lec3.pi Fin1.pi Lec4.pi)
+SOLNS=$(addprefix ../full/,$(SRCS)) $(addprefix ../full/test/, $(TESTS) Lec1.pi Hw1.pi Lec2.pi Hw2.pi Lec3.pi Fin1.pi Lec4.pi)
 
 STUBREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN.*?STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg' 
 SOLNREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN\s*?[-][\}](\s*\r?\n|\s)(.*?)[\{][-]\s*STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg'
 
-all: version1 version2 soln
+all: version1 version2 full
 
 test : all
 
@@ -32,11 +32,11 @@ test_version2 : ../version2
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/Hw2.pi
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/NatChurch.pi
 
-soln: $(SOLNS) Makefile
-	cd ../soln && cabal install --disable-documentation . 
+full: $(SOLNS) Makefile
+	cd ../full && cabal install --disable-documentation . 
 
-test_soln: ../soln
-	cd ../soln/test && make
+test_full: ../full
+	cd ../full/test && make
 
 
 uninstall:
@@ -46,7 +46,7 @@ uninstall:
 	@echo You can find them with \`which pi-forall\`
 
 clean:
-	-rm -rf src/dist src/cabal-dev ../version1/ ../version2/ ../version3/ soln/ dist/ 
+	-rm -rf src/dist src/cabal-dev ../version1/ ../version2/ full/ dist/ 
 
 test:
 	cd test && make
@@ -93,20 +93,20 @@ cabal-dev:
 	cp README.md  ../version2/README.md
 
 
-../soln/% : % Makefile
-	@echo ========== Creating .hs Solns ==========
-	@mkdir -p ../soln/
-	@mkdir -p ../soln/src
-	@mkdir -p ../soln/test
+../full/% : % Makefile
+	@echo ========== Creating .hs Fulls ==========
+	@mkdir -p ../full/
+	@mkdir -p ../full/src
+	@mkdir -p ../full/test
 	-chmod 640 $@
 	cp $< $@
 	perl -i -pe $(subst SOLN,SOLN HW,$(SOLNREGEX)) $@
 	perl -i -pe $(subst SOLN,SOLN DATA,$(SOLNREGEX)) $@
 	perl -i -pe $(subst SOLN,SOLN EQUAL,$(SOLNREGEX)) $@
 	perl -i -pe $(subst SOLN,SOLN EP,$(SOLNREGEX)) $@
-	cp pi-forall.cabal ../soln/pi-forall.cabal
-	cp LICENSE ../soln/LICENSE
-	cp README.md  ../soln/README.md
+	cp pi-forall.cabal ../full/pi-forall.cabal
+	cp LICENSE ../full/LICENSE
+	cp README.md  ../full/README.md
 
 
    # chmod 440 $@ # prevent inadvertent modification of stub code

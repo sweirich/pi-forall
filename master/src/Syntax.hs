@@ -332,7 +332,7 @@ derive_abstract [''SourcePos]
 instance Alpha SourcePos
 instance Subst b SourcePos
 
-derive [''Term, {- SOLN DATA -}''Match, ''Pattern, ''Telescope, ''Epsilon, 
+derive [''Term, {- SOLN DATA -} ''Match, ''Pattern, ''Telescope, ''Epsilon, 
         ''ConstructorDef, ''ConstructorNames, ''Arg, {- STUBWITH -}
         ''Module, ''Decl, 
         ''ModuleImport, 

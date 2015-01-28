@@ -82,9 +82,9 @@ tcTerm (Lam bnd) Nothing = do
           Pi  (bind (x, embed atyA) atyB))  
 
 tcTerm (App t1 t2) Nothing = do  
-  (at1, ty1)             <- inferType t1  
+  (at1, ty1)    <- inferType t1  
   (x, tyA, tyB) <- ensurePi ty1 
-  (at2, ty2)             <- checkType t2 tyA
+  (at2, ty2)    <- checkType t2 tyA
   let result = (App at1 at2, subst x at2 tyB)
   return result
                      

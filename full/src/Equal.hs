@@ -5,7 +5,7 @@
 
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
-              {- SOLN EP -}ensureErasedPi, {- STUBWITH -}
+              ensureErasedPi, 
               ensureTyEq,  
               ensureTCon  ) where
 
