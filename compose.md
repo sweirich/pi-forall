@@ -11,7 +11,7 @@ datatypes and erased arguments in pi-forall. Therefore they are based on
 not include these features.
 
 We will break the discussion into three main parts:
-  * How do we represent the syntax of pi-forall (including binding structure)
+  * How do we represent the syntax of pi-forall (including binding structure)?
   * What is the general structure of the typechecker?
   * How do we decide when two different pi-forall terms are equal?
 
@@ -28,7 +28,7 @@ First, an overview of the main files of the implementation.
      TypeCheck.hs   - implementation of the bidirectional type checker
      Equal.hs       - decides when two terms are equal, converts terms to whnf
 
-### The (abridged) syntax of pi-forall
+## The (abridged) syntax of pi-forall
 
 We'll focus our discussion of the pi-forall implementation on the following
 five forms:
@@ -46,7 +46,7 @@ for their types `A`
 Note that lambda and pi above are *binding forms*. They bind the variable 
 `x` in `a` and `B` respectively
 	  	  
-### Variable binding using the unbound library [Syntax.hs]
+### Variable binding using the unbound library - [Syntax.hs](version2/src/Syntax.hs)
 
 One difficulty with implementing the lambda calculus is the treatment of
 variable binding. Lambdas and Pis *bind* variables in the body. In the
@@ -99,10 +99,11 @@ and, because the syntax is all shared, a `Type` is just another name for a
 	  
 	  type Type = Term
 
-The fact that this annotation is optional means that we'll be able to use a
-single datatype for both the versions of the language (the one where lambdas
-are annotated and the one where they aren't). We'll start with an expression
-that has no annotations on lambdas, and elaborate it to one that does. 
+The fact that this annotation is optional means that we'll be able to omit
+type annotations in certain parts of the language that programmers type in
+(such as the types of variables in lambdas). The type checker will take an
+expression that has no annotations on lambdas and elaborate it to one that
+does.
 
 The bottom of the Syntax file contains instructions for unbound. The line 
 
@@ -126,10 +127,11 @@ For more information about unbound, see
 and the
 [unbound hackage page](http://hackage.haskell.org/package/unbound-0.4.3.1).
 
-### Bidirectional Typechecking in pi-forall
+## Bidirectional Typechecking in pi-forall - [Typechecker.hs](version2/src/Typechecker.hs)
 
 The pi-forall typechecker is defined by a *bidirectional* type system. This
-means that it is defined by two mutually recursive functions:
+means that it is defined by two mutually recursive functions, which we 
+can think of as having the following types:
 
     inferType :: Term -> Ctx -> Maybe (Term,Type)
 	 
@@ -172,7 +174,7 @@ This typechecking monad:
   - generates "fresh" variables for unbound
 
 
-### Implementing the TypeChecking Algorithm [Typecheck.hs]
+### Implementing the TypeChecking Algorithm 
 
 Now that we have the type checking monad available, we can start our
 implementation. For flexibility `inferType` and `checkType` will *both* be
@@ -223,10 +225,9 @@ equal to the checked type.
 	  equate ty' ty
      return (atm, ty)	 
 
-# Definitional Equality in Dependently-Typed Languages
+## Definitional Equality in Dependently-Typed Languages - [Equal.hs](version2/src/Equal.hs)
 
 Just what is the equate function? 
-
 
 ### Motivating Example - Type level reduction
 
@@ -418,7 +419,7 @@ functions are called in a few places:
     make sure that we are using the head form in checking mode.
 
 
-## Implementing definitional equality (see `Equal.hs`)
+## Implementing definitional equality
 
 There are several ways for implementing definitional equality, as stated via
 the rules above. The easiest one to explain is based on reduction---for
