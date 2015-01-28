@@ -23,7 +23,7 @@ import qualified LayoutToken as Token
 
 import Control.Monad.State.Lazy hiding (join)
 import Control.Applicative ( (<$>), (<*>))
-import Control.Monad.Error hiding (join)
+import Control.Monad.Except hiding (join)
 
 import Data.List
 import qualified Data.Set as S
@@ -296,22 +296,29 @@ importDef = do reserved "import" >>  (ModuleImport <$> importName)
 telescope :: LParser Telescope
 telescope = do 
   bindings <- telebindings
-  return $ foldr g Empty bindings where
-    g (n, t, ep) rst = Cons ep n t rst
+  return $ foldr id Empty bindings where
   
-telebindings :: LParser [(TName, Term, Epsilon)]
+telebindings :: LParser [Telescope -> Telescope]
 telebindings = many teleBinding
   where
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (fresh wildcardName) <*> expr)
-      return (x,ty,Runtime)
+      return (Cons Runtime x ty)
 
-    imp = (,,) <$> varOrWildcard <*> (colon >> expr) <*> return Erased
+    imp = do
+        v <- varOrWildcard
+        colon
+        t <- expr
+        return (Cons Erased v t)
     
-    equal = (,,) <$> variable <*> (reservedOp "=" >> expr) <*> return Constraint
+    equal = do
+        v <- variable
+        reservedOp "="
+        t <- expr
+        return (Constraint (Var v) t)
     
-    teleBinding :: LParser (TName, Term, Epsilon)
+    teleBinding :: LParser (Telescope -> Telescope)
     teleBinding =
       (    parens annot
        <|> try (brackets imp)
@@ -471,7 +478,6 @@ lambda = do reservedOp "\\"
     lam (x, Runtime) m = Lam (bind (x, embed $ Annot Nothing) m)           
 
     
-    lam (x, _) m = error "internal error"
 
                             
 

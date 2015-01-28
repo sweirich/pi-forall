@@ -11,7 +11,7 @@ import Parser(parseModuleFile, parseModuleImports)
 
 import Text.ParserCombinators.Parsec.Error
 import Control.Applicative 
-import Control.Monad.Error
+import Control.Monad.Except
 
 import System.FilePath
 import System.Directory
@@ -58,7 +58,7 @@ topSort ms = reverse sorted -- gr -- reverse $ topSort' ms []
         lu' v = let (m,_,_) = lu v in m
         sorted = [lu' v | v <- Gr.topSort gr]
 
-instance Error ParseError
+-- instance Error ParseError
 
 -- | Find the file associated with a module.
 getModuleFileName :: (MonadIO m)

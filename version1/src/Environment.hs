@@ -26,7 +26,8 @@ import Unbound.LocallyNameless hiding (Data)
 import Text.PrettyPrint.HughesPJ
 import Text.ParserCombinators.Parsec.Pos(SourcePos)
 import Control.Monad.Reader
-import Control.Monad.Error
+import Control.Monad.Except
+import Data.Monoid 
 
 
 import Data.Maybe (listToMaybe, catMaybes)
@@ -36,13 +37,13 @@ import Data.Maybe (listToMaybe, catMaybes)
 -- environment), freshness state (for supporting locally-nameless
 -- representations), error (for error reporting), and IO 
 -- (for e.g.  warning messages).
-type TcMonad = FreshMT (ReaderT Env (ErrorT Err IO))
+type TcMonad = FreshMT (ReaderT Env (ExceptT Err IO))
 
 -- | Entry point for the type checking monad, given an 
 -- initial environment, returns either an error message 
 -- or some result.
 runTcMonad :: Env -> TcMonad a -> IO (Either Err a)
-runTcMonad env m = runErrorT $
+runTcMonad env m = runExceptT $
                      runReaderT (runFreshMT m) env
 
 
@@ -188,8 +189,13 @@ extendErr ma msg'  =
   ma `catchError` \(Err ps msg) ->
   throwError $ Err ps (msg $$ msg')
 
-instance Error Err where
-  strMsg msg = Err [] (text msg)
+instance Monoid Err where
+  mempty = Err [] mempty
+  mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
+  
+
+-- instance Error Err where
+--  strMsg msg = Err [] (text msg)
 
 instance Disp Err where
   disp (Err [] msg) = msg

@@ -31,7 +31,7 @@ and indices.
 
 Our first goal is simple. What do we need to get the simplest examples of
 non-recursive and recursive datatypes working? By this I mean datatypes that
-you might see in OCaml or ML, such as `Bool`, `Void` and `Nat`.
+you might see in Haskell or ML, such as `Bool`, `Void` and `Nat`.
 
 ### Booleans
 

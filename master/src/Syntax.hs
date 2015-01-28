@@ -155,10 +155,15 @@ data ConstructorNames = ConstructorNames {
 -- | Declarations are the components of modules
 data Decl = Sig     TName  Term
            -- ^ Declaration for the type of a term
+            
           | Def     TName  Term
             -- ^ The definition of a particular name, must 
             -- already have a type declaration in scope
+            
           | RecDef TName Term 
+            -- ^ A potentially (recursive) definition of 
+            -- a particular name, must be declared 
+
 {- SOLN DATA -}            
           | Data    TCName Telescope [ConstructorDef]
             -- ^ Declaration for a datatype including all of 
@@ -338,7 +343,8 @@ derive [''Term, {- SOLN DATA -}''Match, ''Pattern, ''Telescope, ''Epsilon,
 --    aeq :: Alpha a => a -> a -> Bool
 --    fv  :: Alpha a => a -> [Name a]
 
-instance Alpha Term
+instance Alpha Term where
+  
 {- SOLN DATA -}
 instance Alpha Match
 instance Alpha Pattern

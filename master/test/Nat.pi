@@ -60,20 +60,18 @@ minus = \n m .
 -------------------------------------------------------
 -- Reasoning about datatypes
 
+
 minus_same_zero : (n : Nat) -> (minus n n = 0)
 minus_same_zero = \ n .
     case n of
-      Zero -> (refl : minus 0 0 = 0) 
-      Succ p -> 
-        let ih = (minus_same_zero p : minus p p = 0) in
-        let x  = (refl : minus p p = (minus (Succ p) (Succ p))) in
-        subst ih by x 
+      Zero -> refl 
+      Succ p -> (minus_same_zero p : minus p p = 0)
 
 lemma_minus_zero_id : (n : Nat) -> (minus n 0 = n)
 lemma_minus_zero_id = {- SOLN EP -}
   \n . case n of 
-    Zero -> (refl : minus 0 0 = 0)
-    Succ n' -> (refl : minus (Succ n') 0 = Succ n') {- STUBWITH TRUSTME -}
+    Zero -> refl 
+    Succ n' -> refl {- STUBWITH TRUSTME -}
 
 
 lemma_minus_plus_id : (m : Nat) -> (n : Nat) -> ((minus (plus m n) m) = n)
@@ -92,3 +90,4 @@ plus_associates = \ i j k .
     Succ i' -> 
       let ih = (plus_associates i' j k) in
 		m_eq_n_Sm_eq_Sn (plus (plus i' j) k) (plus i' (plus j k)) ih
+

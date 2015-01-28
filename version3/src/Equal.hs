@@ -13,8 +13,7 @@ import Syntax
 import Environment
 
 import Unbound.LocallyNameless hiding (Data, Refl)
-import Control.Monad(when)
-import Control.Monad.Error (catchError, zipWithM, zipWithM_)
+import Control.Monad.Except (catchError, zipWithM, zipWithM_)
 import Control.Applicative ((<$>))
 
 
@@ -22,9 +21,7 @@ import Control.Applicative ((<$>))
 --   ignores type annotations during comparison
 --   throws an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = do 
-  -- if t1 and t2 
-  when (aeq t1 t2) $ return ()
+equate t1 t2 = if (aeq t1 t2) then return () else do
   n1 <- whnf' False t1  
   n2 <- whnf' False t2
   case (n1, n2) of 
@@ -82,7 +79,9 @@ equate t1 t2 = do
       equate s1 s2
       Just ((x,y), body1, _, body2) <- unbind2 bnd1 bnd2
       equate body1 body2
-    (TyEq a b, TyEq c d) -> equate a c >> equate b d      
+    (TyEq a b, TyEq c d) -> do
+      equate a c 
+      equate b d      
     
     (Refl _,  Refl _) -> return ()
     
@@ -148,6 +147,7 @@ ensurePi ty = do
     (Pi bnd) -> do 
       ((x, unembed -> tyA), tyB) <- unbind bnd
       return (x, tyA, tyB)
+    
     _ -> err [DS "Expected a function type, instead found", DD nf]
     
 
@@ -183,7 +183,8 @@ ensureTCon aty = do
 -- Compute whnf while unfolding recursive definitions as well as non-recursive
 -- ones. But only unfold once.
 whnf :: Term -> TcMonad Term
-whnf = whnf' True
+whnf t = do
+  whnf' False t
   
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
@@ -206,13 +207,12 @@ whnf' b (App t1 t2) = do
       ((x,_),body) <- unbind bnd 
       whnf' b (subst x t2 body)
         -- only unfold applications of recursive definitions
-    -- if the argument is a data constructor.
+    -- if the argument is not a variable.
     (Var y) -> do
+      nf2 <- whnf' b t2             
       maybeDef <- lookupRecDef y
-      nf2 <- whnf' b t2 
       case maybeDef of 
-        (Just d) | isWhnf nf2 -> do
-          whnf' False (App d nf2)
+        (Just d) -> whnf' False (App d nf2)
         _ -> return (App nf nf2)
       
     _ -> do
@@ -234,6 +234,10 @@ whnf' b (Pcase a bnd ann) = do
       whnf' b (subst x b1 (subst y c body))
     _ -> return (Pcase nf bnd ann)
 
+-- We should only be calling whnf on elaborated terms
+-- Such terms don't contain annotations, parens or pos info    
+-- So we'll throw errors to detect the case where we are 
+-- normalizing source terms    
 whnf' b t@(Ann tm ty) = 
   err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Paren x)   = 
@@ -271,6 +275,7 @@ whnf' b (Case scrut mtchs annot) = do
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 
+{-
 isWhnf :: Term -> Bool
 isWhnf (DCon _ _ _)  = True
 isWhnf (TCon _ _ )  = True
@@ -278,20 +283,20 @@ isWhnf (TCon _ _ )  = True
 isWhnf (Lam _)       = True
 
 isWhnf _ = False
+-}
 
 -- | Determine whether the pattern matches the argument
 -- If so return the appropriate substitution
+-- otherwise throws an error
 patternMatches :: Arg -> Pattern -> TcMonad [(TName, Term)]
 patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
 patternMatches (Arg Runtime t) pat@(PatCon d' pats) = do
   nf <- whnf t
   case nf of 
-    (DCon d [] _) -> return []
+    (DCon d [] _)   | d == d' -> return []
     (DCon d args _) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
-patternMatches (Arg Constraint _) pat =   
-  err [DS "Internal error"]
 patternMatches (Arg Erased _) pat@(PatCon _ _) = do
   err [DS "Cannot match against irrelevant args"]
 

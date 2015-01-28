@@ -16,7 +16,7 @@ import Equal
 
 import Unbound.LocallyNameless hiding (Data, Refl)
 import Control.Applicative 
-import Control.Monad.Error
+import Control.Monad.Except
 import Text.PrettyPrint.HughesPJ
 import Data.Maybe
 
@@ -80,9 +80,9 @@ tcTerm (Lam bnd) Nothing = do
           Pi  (bind (x, embed atyA) atyB))  
 
 tcTerm (App t1 t2) Nothing = do  
-  (at1, ty1)             <- inferType t1  
+  (at1, ty1)    <- inferType t1  
   (x, tyA, tyB) <- ensurePi ty1 
-  (at2, ty2)             <- checkType t2 tyA
+  (at2, ty2)    <- checkType t2 tyA
   let result = (App at1 at2, subst x at2 tyB)
   return result
                      
@@ -91,6 +91,7 @@ tcTerm (App t1 t2) Nothing = do
 tcTerm (Ann tm ty) Nothing = do
   ty'         <- tcType ty
   (tm', ty'') <- checkType tm ty'
+  
   return (tm', ty'')   
   
 tcTerm (Pos p tm) mTy = 
@@ -159,7 +160,7 @@ tcTerm t@(Subst tm p ann1) ann2 =  do
   (apf, tp) <- inferType p 
   -- make sure that it is an equality between m and n
   (m,n)     <- ensureTyEq tp
-  -- look for definitions for the context
+  -- if either side is a variable, add a definition to the context 
   edecl <- do 
     m'        <- whnf m
     n'        <- whnf n

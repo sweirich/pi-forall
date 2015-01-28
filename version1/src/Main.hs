@@ -16,7 +16,7 @@ import Parser
 import Text.PrettyPrint.HughesPJ (render)
 import Text.ParserCombinators.Parsec.Error 
 
-import Control.Monad.Error
+import Control.Monad.Except
 
 import System.Environment(getArgs)
 import System.Exit (exitFailure,exitSuccess)
@@ -63,7 +63,7 @@ goFilename pathToMainFile = do
       (mainFilePrefix, name) = splitFileName pathToMainFile
       currentDir = "" 
   putStrLn $ "processing " ++ name ++ "..."
-  v <- runErrorT (getModules prefixes name)
+  v <- runExceptT (getModules prefixes name)
   val <- v `exitWith` putParseError
   putStrLn "type checking..."
   d <- runTcMonad emptyEnv (tcModules val)
@@ -87,6 +87,11 @@ test = do
   goFilename "../test/Nat.pi"  
   goFilename "../test/Fin.pi"  
   goFilename "../test/Vec.pi"  
+  
+  goFilename "../test/Lambda0.pi"
+  goFilename "../test/Lambda1.pi"
+  goFilename "../test/Lambda2.pi"
+
         
   
 

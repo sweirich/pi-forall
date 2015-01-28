@@ -4,7 +4,17 @@ import Nat
 import Fin
 import Vec 
 
+
+nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
+nth = \[a][n] v f. case v of 
+   Cons [m'] x xs -> case f of 
+      Zero [m] -> x 
+      Succ [m] f' -> nth [a][m] xs f'
+   Nil -> case f of {}   -- all cases are impossible
+
+
 {-
+-- alternative definition of nth
 
 nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
 nth = \[a][n] v f. case f of 
@@ -14,24 +24,13 @@ nth = \[a][n] v f. case f of
            Cons [m'] x xs -> nth [a][m] xs f'
 -}
 
-nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
-nth = \[a][n] v f. case v of 
-   Cons [m'] x xs -> case f of 
-      Zero [m] -> x 
-      Succ [m] f' -> nth [a][m] xs f'
-   Nil -> case f of {}
-
-
-
 
 data Exp (n : Nat) : Type where
-   Var of (Fin n)          -- variables, represented with de Bruijn indices
-   App of (Exp n) (Exp n)  -- application
-   Lam of (Exp (Succ n))   -- anonymous functions
-   Lit of (Nat)            -- natural number constants
+   Var of (Fin n)                -- variables, represented with de Bruijn indices
+   App of (Exp n) (Exp n)        -- application
+   Lam of (Exp (Succ n))         -- anonymous functions
+   Lit of (Nat)                  -- natural number constants
    If0 of (Exp n)(Exp n)(Exp n)  -- test for zero
-
-
 
 data Val : Type where
   Clos of [n:Nat] (Vec Val n) (Exp (Succ n))

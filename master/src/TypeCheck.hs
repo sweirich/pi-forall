@@ -83,9 +83,9 @@ tcTerm (Lam bnd) Nothing = do
           Pi  (bind (x, embed atyA) atyB))  
 
 tcTerm (App t1 t2) Nothing = do  
-  (at1, ty1)             <- inferType t1  
+  (at1, ty1)    <- inferType t1  
   (x, tyA, tyB) <- ensurePi ty1 
-  (at2, ty2)             <- checkType t2 tyA
+  (at2, ty2)    <- checkType t2 tyA
   let result = (App at1 at2, subst x at2 tyB)
   return result
                      
@@ -141,6 +141,7 @@ tcTerm (ErasedPi bnd) Nothing = do
 tcTerm (Ann tm ty) Nothing = do
   ty'         <- tcType ty
   (tm', ty'') <- checkType tm ty'
+  
   return (tm', ty'')   
   
 tcTerm (Pos p tm) mTy = 
@@ -263,8 +264,8 @@ tcTerm t@(Case scrut alts ann1) ann2 = do
 {- SOLN DATA -}         
          return (Match (bind pat ebody))
   let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts         
-  exhaustivityCheck scrut' sty pats
   aalts <- mapM checkAlt alts
+  exhaustivityCheck scrut' sty pats
   return (Case ascrut aalts (Annot (Just ty)), ty)
 {- STUBWITH -}  
   
@@ -289,7 +290,7 @@ tcTerm t@(Subst tm p ann1) ann2 =  do
   (apf, tp) <- inferType p 
   -- make sure that it is an equality between m and n
   (m,n)     <- ensureTyEq tp
-  -- look for definitions for the context
+  -- if either side is a variable, add a definition to the context 
   edecl <- do 
     m'        <- whnf m
     n'        <- whnf n
@@ -509,7 +510,6 @@ doSubst ss (Constraint tx ty tele') = do
   tele  <- extendCtxs decls $ (doSubst ss tele')
   return $ (Constraint tx' ty' tele)
 doSubst ss (Cons ep x ty tele') = do
-  --warn [DS "foo", DD x, DD ty]
   tynf <- whnf (substs ss ty)
   tele'' <- doSubst ss tele'  
   return $ Cons ep x tynf tele''
@@ -520,32 +520,32 @@ doSubst ss (Cons ep x ty tele') = do
            
 -- | Create a binding in the context for each of the variables in 
 -- the pattern. 
--- Also return the erased variables
+-- Also returns the erased variables so that they can be checked
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
 declarePat (PatVar x) Runtime y = return ([Sig x y],[])
 declarePat (PatVar x) Erased  y = return ([Sig x y],[x])
 declarePat (PatCon d pats) Runtime (TCon c params) = do
   (delta, deltai) <- lookupDCon d c
   tele <- substTele delta params deltai   
-  declarePats pats tele
+  declarePats d pats tele
 declarePat (PatCon d pats) Erased (TCon c params) = 
   err [DS "Cannot pattern match erased arguments"]
 declarePat pat ep ty = 
   err [DS "Cannot match pattern", DD pat, DS "with type", DD ty]
   
-declarePats :: [(Pattern,Epsilon)] -> Telescope -> TcMonad ([Decl],[TName])
-declarePats [] Empty = return ([],[])
-declarePats pats (Constraint tx ty tele) = do
+declarePats :: DCName -> [(Pattern,Epsilon)] -> Telescope -> TcMonad ([Decl],[TName])
+declarePats dc [] Empty = return ([],[])
+declarePats dc pats (Constraint tx ty tele) = do
   new_decls <- constraintToDecls tx ty
-  (decls, names) <- extendCtxs new_decls $ declarePats pats tele
+  (decls, names) <- extendCtxs new_decls $ declarePats dc pats tele
   return (new_decls ++ decls, names)
-declarePats ((pat,_):pats) (Cons ep x ty tele) = do
+declarePats dc ((pat,_):pats) (Cons ep x ty tele) = do
   (ds1,v1) <- declarePat pat ep ty  
   tm <- pat2Term pat ty
-  (ds2,v2) <- declarePats pats (subst x tm tele)
+  (ds2,v2) <- declarePats dc pats (subst x tm tele)
   return ((ds1 ++ ds2),(v1 ++ v2))
-declarePats [] _     = err [DS "Not enough patterns in match"]
-declarePats _  Empty = err [DS "Too many patterns in match"]
+declarePats dc [] _     = err [DS "Not enough patterns in match for data constructor", DD dc]
+declarePats dc pats  Empty = err [DS "Too many patterns in match for data constructor", DD dc]
            
                        
 -- | Convert a pattern to an (annotated) term so that we can substitute it for
@@ -760,24 +760,30 @@ exhaustivityCheck scrut ty pats = do
     Just datacons -> loop pats datacons
       where 
         loop [] [] = return ()
-        loop [] dcons = checkImpossible dcons
+        loop [] dcons = do
+          l <- checkImpossible dcons
+          if null l then return ()
+             else err $ [DS "Missing case for "] ++ map DD l
         loop ((PatVar x):_) dcons = return ()
         loop ((PatCon dc args):pats') dcons = do
           (cd@(ConstructorDef _ _ tele, dcons')) <- removeDcon dc dcons 
           tele' <- substTele delta tys tele 
           let (aargs, pats'') = relatedPats dc pats'
-          checkSubPats tele' (args:aargs) 
+          checkSubPats dc tele' (args:aargs) 
           loop pats'' dcons'
           
         -- make sure that the given list of constructors is impossible
         -- in the current environment
-        checkImpossible :: [ConstructorDef] -> TcMonad ()
-        checkImpossible [] = return ()
-        checkImpossible cd@(ConstructorDef _ dc tele : rest) = (do
-          tele' <- substTele delta tys tele
-          _ <- tcTypeTele tele'
-          err [DS "Missing case for", DD dc])
-            `catchError` (\_ -> checkImpossible rest)
+        checkImpossible :: [ConstructorDef] -> TcMonad [DCName]
+        checkImpossible [] = return []
+        checkImpossible cd@(ConstructorDef _ dc tele : rest) = do
+          this <- (do
+                      tele' <- substTele delta tys tele
+                      _     <- tcTypeTele tele'
+                      return [dc]) `catchError` (\_ -> return [])                  
+          others <- checkImpossible rest
+          return (this ++ others)
+            
     Nothing -> 
       err [DS "Cannot determine constructors of", DD ty]      
   
@@ -820,18 +826,18 @@ relatedPats dc (pc@(PatVar _):pats) = ([], pc:pats)
 
 -- for simplicity, this function requires that all subpatterns 
 -- are pattern variables. 
-checkSubPats :: Telescope -> [[(Pattern,Epsilon)]] -> TcMonad ()
-checkSubPats Empty _ = return ()
-checkSubPats (Constraint _ _ tele) patss = checkSubPats tele patss
-checkSubPats (Cons _ name tyP tele) patss 
-  | length patss > 0 = do 
-  let hds = map (fst . head) patss 
-  let tls = map tail patss 
-  case hds of 
-    (PatVar _ : []) -> checkSubPats tele tls
-    _ -> err [DS "All subpatterns must be variables in this version."]
-checkSubPats t ps =    
-  err [DS "Internal error in checkSubPats", DD t, DS (show ps)]            
+checkSubPats :: DCName -> Telescope -> [[(Pattern,Epsilon)]] -> TcMonad ()
+checkSubPats dc Empty _ = return ()
+checkSubPats dc (Constraint _ _ tele) patss = checkSubPats dc tele patss
+checkSubPats dc (Cons _ name tyP tele) patss 
+  | length patss > 0 && (all ((> 0) . length) patss)  = do 
+    let hds = map (fst . head) patss 
+    let tls = map tail patss 
+    case hds of 
+      (PatVar _ : []) -> checkSubPats dc tele tls
+      _ -> err [DS "All subpatterns must be variables in this version."]
+checkSubPats dc t ps =    
+  err [DS "Internal error in checkSubPats", DD dc, DD t, DS (show ps)]            
   
 
 {- STUBWITH -}

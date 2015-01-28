@@ -19,8 +19,8 @@ data Fin (n : Nat) : Type where
   Zero of [m:Nat][n = Succ m] 
   Succ of [m:Nat][n = Succ m] (Fin m)
 
-x : Fin 1
-x = Zero [0]
+-- x : Fin 1
+-- x = Zero [0]
 
 toNat : [n : Nat] -> Fin n -> Nat
 toNat = \ [n] fn . 

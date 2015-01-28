@@ -88,8 +88,10 @@ test = do
   goFilename "../test/Fin.pi"  
   goFilename "../test/Vec.pi"  
   
-  goFilename "../test/Lambda.pi"
-  goFilename "../test/datacon.pi"
+  goFilename "../test/Lambda0.pi"
+  goFilename "../test/Lambda1.pi"
+  goFilename "../test/Lambda2.pi"
+
         
   
 

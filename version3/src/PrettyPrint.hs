@@ -84,7 +84,6 @@ instance Disp [D] where
 instance Disp Epsilon where
   disp Erased = text "-"
   disp Runtime = text "+"
-  disp Constraint = text "="
 
 -------------------------------------------------------------------------
 -- Modules and Decls
@@ -185,12 +184,10 @@ instance Display Bool where
 bindParens :: Epsilon -> Doc -> Doc
 bindParens Runtime    d = d
 bindParens Erased     d = brackets d
-bindParens Constraint d = brackets d
 
 mandatoryBindParens :: Epsilon -> Doc -> Doc
 mandatoryBindParens Runtime d = parens d
 mandatoryBindParens Erased  d = brackets d
-mandatoryBindParens Constraint  d = brackets d
 
 
 -- deciding whether to add parens to the func of an application
@@ -216,6 +213,7 @@ wraparg x = case x of
   Sigma _     -> id
   TrustMe _   -> id      
   TCon _ []   -> id  
+  (isNumeral -> Just x) -> id
   DCon _ [] _ -> id
 
   Refl _      -> id
@@ -250,6 +248,7 @@ instance Display Arg where
               Pos _ a     -> wraparg (Arg ep a)
 
               DCon _ [] _ -> annotParens ep
+              (isNumeral -> Just i) -> annotParens ep
               Prod _ _ _  -> annotParens ep
               TrustMe _   -> annotParens ep              
               Refl _      -> annotParens ep
@@ -418,7 +417,7 @@ instance Disp Arg where
 
 instance Display Telescope where
   display Empty = return empty
-  display (Cons Constraint t1 t2 tele) = do      
+  display (Constraint t1 t2 tele) = do      
       dt1 <- display t1
       dt2 <- display t2
       dtele <- display tele

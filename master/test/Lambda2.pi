@@ -4,6 +4,9 @@ import Nat
 import Fin
 import Vec 
 
+{- This version also requires that the object language be statically typed. 
+   It eliminates all run-time errors from the expression. -}
+
 lookup : [a:Type] -> [n:Nat] -> Fin n -> Vec a n -> a
 lookup = \[a][n] f v. case f of 
    Zero [m] -> case v of 
@@ -42,6 +45,7 @@ data Exp (n : List Ty) (t : Ty) : Type where
    App of [t1:Ty] (Exp n (TyFun t1 t)) (Exp n t1)
    Lam of [t1: Ty][t2:Ty](Exp (Cons t1 n) t2) [t = TyFun t1 t2]
    Lit of (Nat)[t = TyNat]
+   If0 of (Exp n TyNat)(Exp n t)(Exp n t)
 
 data Env (val : Ty -> Type) (n : List Ty)  : Type where
    Nil  of [n = Nil]
@@ -55,18 +59,18 @@ data Val (t : Ty) : Type where
 env : List Ty -> Type
 env = \u.  Env (\t. Val t) u
 
-elookup : [n : List Ty] -> [t:Ty] -> VarRef n t -> env n -> Val t
-elookup = \ [n][t] var e. case var of 
+nth : [n : List Ty] -> [t:Ty] -> env n -> VarRef n t -> Val t
+nth = \ [n][t] e var. case var of 
    VZ [ts]       -> case e of 
                       Cons [u][ts] v vs -> v
    VS [ts][u] v' -> case e of 
-	              Cons [u][ts] v vs -> elookup [ts][t] v' vs 
+	              Cons [u][ts] v vs -> nth [ts][t] vs v'
 
 
 interp : [n:List Ty] -> [t:Ty] -> env n -> Exp n t -> Val t
 interp = \[n][t] rho exp. 
   case exp of 
-    Var x          -> elookup [n][t] x rho
+    Var x          -> nth [n][t] rho x
     App [t1] e1 e2 -> 
       let v1 = interp [n][TyFun t1 t] rho e1 in
       let v2 = interp [n][t1]         rho e2 in 
@@ -77,6 +81,10 @@ interp = \[n][t] rho exp.
 
     Lam [t1][t2] body -> Clos [n][t1][t2] rho body
     Lit i          -> VNat i
+    If0 e1 e2 e3 -> case (interp [n][TyNat] rho e1) of 
+        VNat x -> case x of 
+          Zero     -> interp [n][t] rho e2
+          (Succ y) -> interp [n][t] rho e3
 
 
 t1 : interp [Nil][TyNat] Nil (App[TyNat] (Lam [TyNat][TyNat] (Var x)) (Lit 3)) = VNat 3

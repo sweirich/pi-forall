@@ -16,7 +16,7 @@ import Control.Monad.Reader
 import Text.PrettyPrint as PP
 import Text.ParserCombinators.Parsec.Pos (SourcePos, sourceName, sourceLine, sourceColumn)
 import Text.ParserCombinators.Parsec.Error (ParseError)
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*>))
 import qualified Data.Set as S
 
 -- | The 'Disp' class governs types which can be turned into 'Doc's

@@ -214,6 +214,7 @@ wraparg x = case x of
   Sigma _     -> id
   TrustMe _   -> id      
   TCon _ []   -> id  
+  (isNumeral -> Just x) -> id
   DCon _ [] _ -> id
 
   Refl _      -> id
@@ -248,6 +249,7 @@ instance Display Arg where
               Pos _ a     -> wraparg (Arg ep a)
 
               DCon _ [] _ -> annotParens ep
+              (isNumeral -> Just i) -> annotParens ep
               Prod _ _ _  -> annotParens ep
               TrustMe _   -> annotParens ep              
               Refl _      -> annotParens ep

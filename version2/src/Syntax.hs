@@ -126,10 +126,15 @@ newtype ModuleImport = ModuleImport MName
 -- | Declarations are the components of modules
 data Decl = Sig     TName  Term
            -- ^ Declaration for the type of a term
+            
           | Def     TName  Term
             -- ^ The definition of a particular name, must 
             -- already have a type declaration in scope
+            
           | RecDef TName Term 
+            -- ^ A potentially (recursive) definition of 
+            -- a particular name, must be declared 
+
             
   deriving (Show)
 
@@ -194,7 +199,8 @@ derive [''Term,
 --    aeq :: Alpha a => a -> a -> Bool
 --    fv  :: Alpha a => a -> [Name a]
 
-instance Alpha Term
+instance Alpha Term where
+  
 
 instance Alpha Annot where
     -- override default behavior so that type annotations are ignored
