@@ -1,0 +1,72 @@
+module Lambda where
+
+import Nat
+import Fin
+import Vec 
+
+{-
+
+nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
+nth = \[a][n] v f. case f of 
+   Zero [m] -> case v of 
+           Cons [m'] x xs -> x 
+   Succ [m] f' -> case v of 
+           Cons [m'] x xs -> nth [a][m] xs f'
+-}
+
+nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
+nth = \[a][n] v f. case v of 
+   Cons [m'] x xs -> case f of 
+      Zero [m] -> x 
+      Succ [m] f' -> nth [a][m] xs f'
+   Nil -> case f of {}
+
+
+
+
+data Exp (n : Nat) : Type where
+   Var of (Fin n)          -- variables, represented with de Bruijn indices
+   App of (Exp n) (Exp n)  -- application
+   Lam of (Exp (Succ n))   -- anonymous functions
+   Lit of (Nat)            -- natural number constants
+   If0 of (Exp n)(Exp n)(Exp n)  -- test for zero
+
+
+
+data Val : Type where
+  Clos of [n:Nat] (Vec Val n) (Exp (Succ n))
+  VNat of (Nat)
+
+
+interp : [n:Nat] -> Vec Val n -> Exp n -> Val
+interp = \[n] rho e. 
+  case e of 
+    Var x     -> nth [Val] [n] rho x
+    App e1 e2 -> 
+       let v1 = interp [n] rho e1 in
+       let v2 = interp [n] rho e2 in
+       case v1 of        
+         Clos [m] rho' body -> 
+            interp [Succ m] (Cons [m] v2 rho') body 
+         VNat i -> TRUSTME
+    Lam e     -> Clos [n] rho e
+    Lit i     -> VNat i
+    If0 e1 e2 e3 -> 
+      case (interp [n] rho e1) of 
+        VNat x -> case x of 
+          Zero     -> interp [n] rho e2
+          (Succ y) -> interp [n] rho e3
+        Clos [m]  rho exp -> TRUSTME
+
+
+one : Fin 2
+one = Succ [1] (Zero [0])
+
+t1 : interp [0] Nil (App (Lam (Var (Zero[0]))) (Lit 3)) = VNat 3
+t1 = refl
+
+-- t2 : interp [0] Nil (App (Lam (Var one)) (Lit 2)) = TRUSTME
+-- t2 = refl
+
+t3 : interp [0] Nil (App (Lit 1) (Lit 2)) = TRUSTME
+t3 = refl
