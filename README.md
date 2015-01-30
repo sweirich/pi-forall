@@ -16,8 +16,6 @@ Videos for these lectures are also available from the
 An abridged version of these lectures was given at the Compose
 Conference, January 2015. 
 
-- [compose15.pptx](PPT)  Talk slides
-- [master/test/Lambda1.pi](Lambda1.pi):  Example of dependently-typed programming
 - [compose.md](compose.md): Overview of pi-forall implementation
 
 These lecture notes corresponds to an increasingly expressive demo
