@@ -618,6 +618,7 @@ tcTypeTele (Cons ep x ty tl) = do
   ty' <- tcType ty
   tele' <- extendCtx (Sig x ty') $ tcTypeTele tl
   return (Cons ep x ty' tele')
+  
 {- STUBWITH -}
   
 --------------------------------------------------------

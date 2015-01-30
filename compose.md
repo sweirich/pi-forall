@@ -6,23 +6,25 @@ are for the *second* part of the talk: the first part included an extended
 example of dependently-typed programming in pi-forall.
 
 Because of the time limitation, these notes do not cover the implementation of
-datatypes and erased arguments in pi-forall. Therefore they are based on
+datatypes or erased arguments in pi-forall. Therefore they are based on
 `version2` of the the [pi-forall implementation](version2/src/), which does
 not include these features.
 
-We will break the discussion into three main parts:
+We break the discussion into three main parts:
+
   * How do we represent the syntax of pi-forall (including binding structure)?
   * What is the general structure of the typechecker?
   * How do we decide when two different pi-forall terms are equal?
 
 ## The pi-forall implementation 
 
-First, an overview of the main files of the implementation.
+But, before we do that, we start with an overview of the main files of the
+implementation.
 
      Syntax.hs      - specification of the abstract syntax of the language
      Parser.hs      - turn strings into AST
      PrettyPrint.hs - displays AST in a (somewhat) readable form
-     Main.hs        - top-level routines (repl)
+     Main.hs        - top-level routines 
 	  
      Environment.hs - defines the type checking monad		  
      TypeCheck.hs   - implementation of the bidirectional type checker
@@ -147,14 +149,14 @@ in.)
 The nice thing about a bidirectional system is that it reduces the number of
 annotations that are necessary in programs that we want to write. For example, 
 if we have a top-level type annotation, then we don't need to also annotate the 
-argument types of functions. t
+argument types of functions. 
 
 id : (a:Type) -> a -> a
 id = \a x. x
 
-This works because we will be able to *check* the type of the definition, so
+This works because we will be able to *check* the type of the definition;
 we can pull out the argument type from the expected type.  Checking mode is
-even more important as we add more terms to the language (such as datatypes).
+even more important as we add more forms to the language (such as datatypes).
 
 ### Typechecking monad
 
@@ -170,7 +172,7 @@ information than `Nothing` when a program doesn't type check.
 This typechecking monad:
   - keeps track of the types of free variables
   - records the definitions of variables (like a delayed substitution)
-  - allows us to generate compiler errors and warnings 
+  - allows us to generate errors and warnings 
   - generates "fresh" variables for unbound
 
 
@@ -214,9 +216,9 @@ Mixed in here, we also have a pattern for lambda expressions in checking mode:
        err [DS "Lambda expression has a function type, not", DD nf]
 
 There are also several cases for practical reasons (annotations, source code
-positions, parentheses, TRUSTME) and a few cases for homework.
+positions, parentheses, TRUSTME).
 		 
-Finally, the last case covers all other forms of checking mode, by 
+Finally, the last case covers all other forms of checking mode by 
 calling inference mode and making sure that the inferred type is 
 equal to the checked type.
 		 
@@ -235,7 +237,7 @@ In full dependently-typed languages (and in full pi-forall) we can see the
 need for definitional equality. We want to equate types that are not just
 *syntactically* equal, so that more expressions type check. 
 
-in the full language, we might have a type of length indexed
+In the full language, we might have a type of length indexed
 vectors, where vectors containing values of type `A` with length `n` can be
 given the type `Vec A n`.  In this language we may have a safe head operation,
 that allows us to access the first element of the vector, as long as it is
@@ -273,17 +275,11 @@ The main idea is that we will:
 
         G |- A = B
 
- - add the following rule to our type system so that it works "up-to" our
-   defined notion of type equivalence
-
-        G |- a : A    G |- A = B
-        ------------------------- conv
-                G |- a : B
+ - Define a type equality *algorithm* (equate) that computes when types are
+   equal.
 	 
- - Figure out how to revise the *algorithmic* version of our type system so
-  that it supports the above rule.
 
-What is a good definition of equality?  We started with a very simple one:
+What is a good definition of equality?  We can start with a very simple one:
 alpha-equivalence. But we can do better:
 
 We'd like to make sure that our relation *contains beta-equivalence*:
@@ -292,7 +288,6 @@ We'd like to make sure that our relation *contains beta-equivalence*:
     G |- (\x.a)b = a {b / x}
 	 
 (with similar rules for if/sigmas if we have them.)
-
 
 Is an *equivalence relation*:
 
@@ -313,23 +308,11 @@ and a *congruence relation* (i.e. if subterms are equal, then larger terms are e
 	 ------------------------------------ pi
 	 G |- (x:A1) -> B1 = (x:A2) -> B2
 
-
-    G,x:A1 |- b1 = b2
-	 ------------------- lam
-	 G |- \x.b1 = \x.b2
-
-
     G |- a1 = a2    G |- b1 b2 
 	 -------------------------- app
 	 G |- a1 b1 = a2 b2
 
-    [similar rules for if and sigmas]
-
-that has "functionality" (i.e. we can lift equalities over `b`):
-
-    G, x : A |- b : B    G |- a1 == a2     
-    ----------------------------------
-    G |- b{a1 / x} = b{a2 / x}
+    [similar rules for other terms]
 
 
 ### Using definitional equality in the algorithm
@@ -346,48 +329,36 @@ few places.
 
 - Where we switch from checking mode to inference mode in the algorithm. Here 
   we need to ensure that the type that we infer is the same as the type that 
-  is passed to the checker.
-
-      G |- a => A    G |- A = B
-	   -------------------------- :: infer
-	   G |- a <= B
+  is passed to the checker  (cf. last case of tcTerm above).
 
 - In the rule for application, when we infer the type of the function we need
 to make sure that the function actually has a function type. But we don't really 
 know what the domain and co-domain of the function should be. We'd like our 
 algorithm for type equality to be able to figure this out for us.
   
-        G |- a => A    A ?=> (x:A1) -> A2
-        G |- b <= A1
-        ---------------------------------- app
-               G |- a b => A2 { b / x }
-	  
+     tcTerm (App t1 t2) Nothing = do  
+        (at1, ty1)    <- inferType t1  
+        (x, tyA, tyB) <- ensurePi ty1        -- make sure ty1 is a function type
+        (at2, ty2)    <- checkType t2 tyA
+        let result = (App at1 at2, subst x at2 tyB)
+        return result
 
-## Using definitional equality
-
-The rules above *specify* when terms should be equal, but they are not an
-algorithm. We actually need several different functions. First,
-
-    equate :: Term -> Term -> TcMonad ()
-
-ensures that the two provided types are equal, or throws a type error 
-if they are not. This function corresponds directly to our definition of 
-type equality.
-
-Second, we also need to be able to determine whether a given type is equal to
-some "head" form, without knowing exactly what that form is. For example, when
-*checking* lambda expressions, we need to know that the provided type is of
-the form of a pi type (`(x:A) -> B`). Likewise, when inferring the type of an
-application, we need to know that the type inferred for the function is actually 
-a pi type.  
-
-We can determine this in two ways. Most directly, the function
+Above, the function
 
     ensurePi :: Type -> TcMonad (TName, Type, Type)
 
 checks the given type to see if it is equal to some pi type of the form
 `(x:A1) -> A2`, and if so returns `x`, `A1` and `A2`.  
-This function is defined in terms of a helper function:
+
+- When we are checking types, we need to make sure that if the expected type is equivalent
+a function type for example, it has the form of a function type. 
+
+    checkType :: Term -> Type -> TcMonad (Term, Type)
+    checkType tm expectedTy = do
+        nf <- whnf expectedTy               -- determine the 'head-form' of the type
+        tcTerm tm (Just nf)
+
+The function 
 
     whnf :: Term -> TcMonad Term
 	 
@@ -411,14 +382,6 @@ normal form (if we don't have a definition available for `x`) because, even
 though we don't know what the head form is, we cannot reduce the term any
 more.
 
-In `version2` of the the [typechecker](version2/src/TypeCheck.hs), these 
-functions are called in a few places: 
-  - `equate` is called at the end of `tcTerm`
-  - `ensurePi` is called in the `App` case of `tcTerm`
-  - `whnf` is called in `checkType`, before the call to `tcTerm` to 
-    make sure that we are using the head form in checking mode.
-
-
 ## Implementing definitional equality
 
 There are several ways for implementing definitional equality, as stated via
@@ -429,17 +392,19 @@ those normal forms for equivalence.
 One way to do this is with the following algorithm:
 
      equate t1 t2 = do 
-	    nf1 <- reduce t1
+	    nf1 <- reduce t1   -- reduce the term as much as possible
        nf2 <- reduce t2
 		 aeq nf1 nf2
 		 
-However, we can do better. We'd like to only reduce as much as
-necessary. Sometimes we can equate the terms without completely 
-reducing them.
+However, we can do better. Sometimes we can equate the terms without
+completely reducing them. For example we can already show that `(plus 1 2)`
+equals `(plus 1 2)` without doing the addition. When checking for equality
+we'd like to only reduce as much as necessary.
 
      equate t1 t2 = if (aeq t1 t1) then return () else do
 		  nf1 <- whnf t1  -- reduce only to 'weak head normal form'
 		  nf2 <- whnf t2
+        -- compare the head forms, call equate recursively 
 		  case (nf1,nf2) of 
 		    (App a1 a2, App b1 b2) -> 
 			    -- make sure subterms are equal
