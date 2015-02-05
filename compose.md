@@ -5,7 +5,7 @@ technical keynote at the Compose conference, Friday January 30, 2015.
 
 The Compose organizers have posted a
 [video](https://www.youtube.com/watch?v=6klfKLBnz9k) of the entire talk. The
-slides for the [first part of the talk](compose.pdf) are available here. That
+slides for the [first part of the talk](compose15.pdf) are available here. That
 first part considered an extended example of the use of dependent types:
 
  * [Lambda0.pi](master/test/Lambda0.pi) - The starting point. A simple, environment 
