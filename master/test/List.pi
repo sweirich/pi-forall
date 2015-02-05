@@ -6,7 +6,6 @@ data List (a : Type) : Type where
   Nil  
   Cons of (a) (List a)
 
-
 map : [a : Type] -> [b: Type] -> (a -> b) -> List a -> List b 
 map = \[a] [b] f xs . case xs of 
   Nil -> Nil

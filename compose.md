@@ -1,14 +1,31 @@
-# Notes for Compose conference
+# Pi-Forall: How to use and implement a dependently-typed language
 
 These notes are an abridged form of the OPLSS notes, and were used for a
-technical keynote at the Compose conference, Friday January 30, 2015.  They
-are for the *second* part of the talk: the first part included an extended
-example of dependently-typed programming in pi-forall.
+technical keynote at the Compose conference, Friday January 30, 2015. 
 
-Because of the time limitation, these notes do not cover the implementation of
-datatypes or erased arguments in pi-forall. Therefore they are based on
-`version2` of the the [pi-forall implementation](version2/src/), which does
-not include these features.
+The Compose organizers have posted a
+[video](https://www.youtube.com/watch?v=6klfKLBnz9k) of the entire talk. The
+slides for the [first part of the talk](compose.pdf) are available here. That
+first part considered an extended example of the use of dependent types:
+
+ * [Lambda0.pi](master/test/Lambda0.pi) - The starting point. A simple, environment 
+ based interpreter for the lambda calculus with function and natural numbers. This
+ interpreter could fail in two ways: the lambda term to interpret 
+ could have unbound variables or it could have a dynamic type error. 
+ * [Lambda1.pi](master/test/Lambda1.pi) - Using the indexed types `Fin` and `Vec`, 
+ this version shows how to eliminate the first sort of failure. The expression
+ datatype now tracks the number of free variables in the term and the interpreter
+ must be called with an environment that has values for that many free variables. 
+ * [Lambda2.pi](master/test/Lambda2.pi) - Not covered in the talk, but the 
+ end of the story. How to also get rid of the run-time type errors by only 
+ representing well-typed expressions.
+
+The bulk of these notes are for the *second* part of the talk---the
+implementation of a type checker for a dependently-typed language.  Because of
+the time limitation, these notes do not cover the implementation of datatypes
+or erased arguments in pi-forall. Therefore they are based on `version2` of
+the the [pi-forall implementation](version2/src/), which does not include
+these features.
 
 We break the discussion into three main parts:
 

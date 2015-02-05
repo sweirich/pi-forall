@@ -1,8 +1,24 @@
 module Lambda where
 
 import Nat
-import Fin
-import Vec 
+
+data Fin (n : Nat) : Type where
+  Zero of [m:Nat]       [n = Succ m]
+  Succ of [m:Nat](Fin m)[n = Succ m]
+
+x1 : Fin 3
+x1 = Succ [2] (Succ [1] (Zero [0]))
+
+x2 : Fin 3
+x2 = Succ [2] (Zero [1])
+
+x3 : Fin 3
+x3 = Zero [2]
+
+
+data Vec (A : Type) (n : Nat) : Type where
+  Nil  of                       [n = Zero] 
+  Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
 
 
 nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a

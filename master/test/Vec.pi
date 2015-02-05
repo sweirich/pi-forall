@@ -14,18 +14,8 @@ import Fin
 import Product
 
 data Vec (A : Type) (n : Nat) : Type where
-  Nil  of [n = Zero] 
-  Cons of [m:Nat][n = Succ m] (A) (Vec A m)
-
-data In (A:Type) (x:A) (n:Nat) (v:Vec A n) : Type where
-  Here  of [m:Nat][n = Succ m][xs : Vec A m] 
-           [v = Cons [m] x xs]
-  There of [m:Nat][n = Succ m][xs : Vec A m] 
-           [y:A][v = Cons [m] y xs]
-           (In A x m xs)
-
-singleton : [A:Type] -> A -> Vec A 1
-singleton = \[A] x. Cons [0] x Nil
+  Nil  of                       [n = Zero] 
+  Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
 
 
 head : [A :Type] -> [n:Nat] -> Vec A (Succ n) -> A
@@ -115,6 +105,17 @@ foldr'' = \[A][B] m f n v .
       case v of 
         Cons [m2] x xs -> 
           f m1 x (foldr'' [A][B] m1 f n xs)
+          
+data In (A:Type) (x:A) (n:Nat) (v:Vec A n) : Type where
+  Here  of [m:Nat][n = Succ m][xs : Vec A m] 
+           [v = Cons [m] x xs]
+  There of [m:Nat][n = Succ m][xs : Vec A m] 
+           [y:A][v = Cons [m] y xs]
+           (In A x m xs)
+
+singleton : [A:Type] -> A -> Vec A 1
+singleton = \[A] x. Cons [0] x Nil
+          
 
 
 
