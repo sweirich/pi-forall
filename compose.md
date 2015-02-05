@@ -1,12 +1,14 @@
 # Pi-Forall: How to use and implement a dependently-typed language
 
 These notes are an abridged form of the OPLSS notes, and were used for a
-technical keynote at the Compose conference, Friday January 30, 2015. 
+technical keynote at the [Compose conference](composeconference.org), 
+Friday January 30, 2015. 
 
 The Compose organizers have posted a
-[video](https://www.youtube.com/watch?v=6klfKLBnz9k) of the entire talk. The
-slides for the [first part of the talk](compose15.pdf) are available here. That
-first part considered an extended example of the use of dependent types:
+[video](https://www.youtube.com/watch?v=6klfKLBnz9k) of the entire two hour
+talk. The slides for the [first part of the talk](compose15.pdf) are available. 
+That first part considered an extended example of the use of dependent
+types:
 
  * [Lambda0.pi](master/test/Lambda0.pi) - The starting point. A simple, environment 
  based interpreter for the lambda calculus with function and natural numbers. This
