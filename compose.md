@@ -146,7 +146,7 @@ For more information about unbound, see
 and the
 [unbound hackage page](http://hackage.haskell.org/package/unbound-0.4.3.1).
 
-## Bidirectional Typechecking in pi-forall - [Typechecker.hs](version2/src/Typechecker.hs)
+## Bidirectional Typechecking in pi-forall - [Typechecker.hs](version2/src/TypeCheck.hs)
 
 The pi-forall typechecker is defined by a *bidirectional* type system. This
 means that it is defined by two mutually recursive functions, which we 
