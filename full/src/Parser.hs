@@ -23,7 +23,7 @@ import qualified LayoutToken as Token
 
 import Control.Monad.State.Lazy hiding (join)
 import Control.Applicative ( (<$>), (<*>))
-import Control.Monad.Error hiding (join)
+import Control.Monad.Except hiding (join)
 
 import Data.List
 import qualified Data.Set as S
@@ -67,6 +67,9 @@ Optional components in this BNF are marked with < >
         C1 [x] y z -> b1
         C2 x [y]   -> b2
 
+    | \ [x <:A> ] . a          Erased lambda
+    | a [b]                    Erased application
+    | [x : A] -> B             Erased pi    
 
 
   declarations:
@@ -296,22 +299,29 @@ importDef = do reserved "import" >>  (ModuleImport <$> importName)
 telescope :: LParser Telescope
 telescope = do 
   bindings <- telebindings
-  return $ foldr g Empty bindings where
-    g (n, t, ep) rst = Cons ep n t rst
+  return $ foldr id Empty bindings where
   
-telebindings :: LParser [(TName, Term, Epsilon)]
+telebindings :: LParser [Telescope -> Telescope]
 telebindings = many teleBinding
   where
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (fresh wildcardName) <*> expr)
-      return (x,ty,Runtime)
+      return (Cons Runtime x ty)
 
-    imp = (,,) <$> varOrWildcard <*> (colon >> expr) <*> return Erased
+    imp = do
+        v <- varOrWildcard
+        colon
+        t <- expr
+        return (Cons Erased v t)
     
-    equal = (,,) <$> variable <*> (reservedOp "=" >> expr) <*> return Constraint
+    equal = do
+        v <- variable
+        reservedOp "="
+        t <- expr
+        return (Constraint (Var v) t)
     
-    teleBinding :: LParser (TName, Term, Epsilon)
+    teleBinding :: LParser (Telescope -> Telescope)
     teleBinding =
       (    parens annot
        <|> try (brackets imp)
@@ -425,8 +435,11 @@ funapp = do
   f <- factor
   foldl' app f <$> many bfactor
   where
-        bfactor = factor 
-        app = App
+        bfactor = ((,Erased)  <$> brackets expr) 
+                             <|> ((,Runtime) <$> factor)
+        app e1 (e2,Runtime)  =  App e1 e2
+        app e1 (e2,Erased)   =  ErasedApp e1 e2
+
 
 factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                                   
@@ -439,6 +452,7 @@ factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                 , refl       <?> "refl"
                 , contra     <?> "a contra" 
                 , trustme    <?> "TRUSTME"
+                                  , impProd    <?> "an implicit function type"
                   
                 , bconst     <?> "a constant"  
                 , ifExpr     <?> "an if expression" 
@@ -470,8 +484,8 @@ lambda = do reservedOp "\\"
   where
     lam (x, Runtime) m = Lam (bind (x, embed $ Annot Nothing) m)           
 
+    lam (x, Erased) m  = ErasedLam (bind (x, embed $ Annot Nothing) m)         
     
-    lam (x, _) m = error "internal error"
 
                             
 
@@ -509,6 +523,16 @@ letExpr =
      body <- expr
      return $ (Let (bind (x,embed boundExp) body))
 
+-- impProd - implicit dependent products
+-- These have the syntax [x:a] -> b or [a] -> b .
+impProd :: LParser Term
+impProd =
+  do (x,tyA) <- brackets 
+       (try ((,) <$> variable <*> (colon >> expr))
+        <|> ((,) <$> fresh wildcardName <*> expr))
+     reservedOp "->" 
+     tyB <- expr
+     return $ ErasedPi (bind (x,embed tyA) tyB)
 
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals

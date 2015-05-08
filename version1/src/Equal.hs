@@ -4,8 +4,7 @@
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
 
 -- | Compare two terms for equality
-module Equal (whnf,whnfRec, equate,--ensureType,
-              ensurePi, 
+module Equal (whnf, equate, ensurePi, 
               
                
                ) where
@@ -14,18 +13,15 @@ import Syntax
 import Environment
 
 import Unbound.LocallyNameless hiding (Data, Refl)
-import Control.Monad(when)
 
 
 -- | compare two expressions for equality
 --   ignores type annotations during comparison
 --   throws an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = do 
-  -- if t1 and t2 
-  when (aeq t1 t2) $ return ()
-  n1 <- whnf t1  
-  n2 <- whnf t2
+equate t1 t2 = if (aeq t1 t2) then return () else do
+  n1 <- whnf' False t1  
+  n2 <- whnf' False t2
   case (n1, n2) of 
     (Type, Type) -> return ()
     (Var x,  Var y)  | x == y -> return ()
@@ -108,11 +104,12 @@ equate t1 t2 = do
 -- Throws an error if this is not the case.
 ensurePi :: Type -> TcMonad (TName, Type, Type)
 ensurePi ty = do
-  nf <- whnfRec ty
+  nf <- whnf ty
   case nf of 
     (Pi bnd) -> do 
       ((x, unembed -> tyA), tyB) <- unbind bnd
       return (x, tyA, tyB)
+
     _ -> err [DS "Expected a function type, instead found", DD nf]
     
 
@@ -124,17 +121,13 @@ ensurePi ty = do
 
 -------------------------------------------------------
 -- | Convert a term to its weak-head normal form.             
--- If there is a variable in the active position with 
--- a non-recursive definition in the context, expand it.    
-whnf :: Term -> TcMonad Term
-whnf = whnf' False
-  
+
 -- Compute whnf while unfolding recursive definitions as well as non-recursive
 -- ones. But only unfold once.
-whnfRec :: Term -> TcMonad Term
-whnfRec = whnf' True
-
-
+whnf :: Term -> TcMonad Term
+whnf t = do
+  whnf' False t
+  
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
   maybeDef <- lookupDef x
@@ -175,20 +168,24 @@ whnf' b (Pcase a bnd ann) = do
       whnf' b (subst x b1 (subst y c body))
     _ -> return (Pcase nf bnd ann)
 
+-- We should only be calling whnf on elaborated terms
+-- Such terms don't contain annotations, parens or pos info    
+-- So we'll throw errors to detect the case where we are 
+-- normalizing source terms    
 whnf' b t@(Ann tm ty) = 
   err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Paren x)   = 
   err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Pos _ x)   = 
   err [DS "Unexpected position arg to whnf:", DD t]
-
-  
   
     
-
             
 
 
 -- all other terms are already in WHNF
 whnf' b tm = return tm
+
+
+
 

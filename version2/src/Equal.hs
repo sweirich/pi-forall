@@ -13,16 +13,13 @@ import Syntax
 import Environment
 
 import Unbound.LocallyNameless hiding (Data, Refl)
-import Control.Monad(when)
 
 
 -- | compare two expressions for equality
 --   ignores type annotations during comparison
 --   throws an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = do 
-  -- if t1 and t2 
-  when (aeq t1 t2) $ return ()
+equate t1 t2 = if (aeq t1 t2) then return () else do
   n1 <- whnf' False t1  
   n2 <- whnf' False t2
   case (n1, n2) of 
@@ -80,7 +77,9 @@ equate t1 t2 = do
       equate s1 s2
       Just ((x,y), body1, _, body2) <- unbind2 bnd1 bnd2
       equate body1 body2
-    (TyEq a b, TyEq c d) -> equate a c >> equate b d      
+    (TyEq a b, TyEq c d) -> do
+      equate a c 
+      equate b d      
     
     (Refl _,  Refl _) -> return ()
     
@@ -119,6 +118,7 @@ ensurePi ty = do
     (Pi bnd) -> do 
       ((x, unembed -> tyA), tyB) <- unbind bnd
       return (x, tyA, tyB)
+
     _ -> err [DS "Expected a function type, instead found", DD nf]
     
 
@@ -144,7 +144,8 @@ ensureTyEq ty = do
 -- Compute whnf while unfolding recursive definitions as well as non-recursive
 -- ones. But only unfold once.
 whnf :: Term -> TcMonad Term
-whnf = whnf' True
+whnf t = do
+  whnf' False t
   
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
@@ -186,17 +187,19 @@ whnf' b (Pcase a bnd ann) = do
       whnf' b (subst x b1 (subst y c body))
     _ -> return (Pcase nf bnd ann)
 
+-- We should only be calling whnf on elaborated terms
+-- Such terms don't contain annotations, parens or pos info    
+-- So we'll throw errors to detect the case where we are 
+-- normalizing source terms    
 whnf' b t@(Ann tm ty) = 
   err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Paren x)   = 
   err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Pos _ x)   = 
   err [DS "Unexpected position arg to whnf:", DD t]
-
 whnf' b (Let bnd)  = do
   ((x,unembed->rhs),body) <- unbind bnd
   whnf' b (subst x rhs body)
-  
   
 whnf' b (Subst tm pf annot) = do
   pf' <- whnf' b pf
@@ -204,18 +207,12 @@ whnf' b (Subst tm pf annot) = do
     Refl _ -> whnf' b tm
     _ -> return (Subst tm pf' annot)
     
-
             
 
 
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 
-isWhnf :: Term -> Bool
-
-isWhnf (Lam _)       = True
-
-isWhnf _ = False
 
 
 

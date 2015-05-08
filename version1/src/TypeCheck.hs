@@ -15,8 +15,8 @@ import PrettyPrint
 import Equal
 
 import Unbound.LocallyNameless hiding (Data, Refl)
-import Control.Applicative ((<$>))
-import Control.Monad.Error
+import Control.Applicative 
+import Control.Monad.Except
 import Text.PrettyPrint.HughesPJ
 import Data.Maybe
 
@@ -32,7 +32,7 @@ inferType t = tcTerm t Nothing
 -- elaborated (i.e. already checked to be a good type).
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
-  nf <- whnfRec expectedTy
+  nf <- whnf expectedTy
   tcTerm tm (Just nf)
 
 -- | check a term, producing an elaborated term
@@ -42,26 +42,28 @@ checkType tm expectedTy = do
 tcTerm :: Term -> Maybe Type -> TcMonad (Term,Type)
 
 tcTerm t@(Var x) Nothing = do
-  tyA <- lookupTy x
-  return (Var x, tyA)
+  ty  <- lookupTy x
+  return (t,ty)
   
-tcTerm t@(Type) Nothing = return (Type, Type)
+tcTerm t@(Type) Nothing = return (t,Type)  
   
-tcTerm (Pi bnd) Nothing = do
+tcTerm (Pi bnd) Nothing = do 
   ((x, unembed -> tyA), tyB) <- unbind bnd
-  (elA, _) <- checkType tyA Type
-  (elB, _) <- extendCtx (Sig x elA) $ checkType tyB Type
-  return (Pi (bind (x, embed elA) elB), Type)
-  
-  
+  atyA <- tcType tyA 
+  atyB <- extendCtx (Sig x atyA) $ tcType tyB
+  return (Pi (bind (x, embed atyA) atyB), Type) 
+      
 -- Check the type of a function    
 tcTerm (Lam bnd) (Just (Pi bnd2)) = do
-  ((x, annot), body, (_, unembed -> tyA), tyB) <- unbind2Plus bnd bnd2
-  (ebody, _) <- extendCtx (Sig x tyA) $ checkType body tyB
-  return (Lam (bind (x,annot) ebody), Pi bnd2)
-
-
-
+  -- unbind the variables in the lambda expression and pi type
+  ((x,unembed -> Annot ma), body, 
+   (_, unembed -> tyA), tyB) <- unbind2Plus bnd bnd2
+  -- check tyA matches type annotation on binder, if present
+  maybe (return ()) (equate tyA) ma
+  -- check the type of the body of the lambda expression
+  (ebody, etyB) <- extendCtx (Sig x tyA) (checkType body tyB)
+  return (Lam (bind (x, embed (Annot (Just tyA))) ebody), 
+          Pi bnd2)  
 tcTerm (Lam _) (Just nf) = 
   err [DS "Lambda expression has a function type, not", DD nf]
 
@@ -77,22 +79,19 @@ tcTerm (Lam bnd) Nothing = do
   return (Lam (bind (x, embed (Annot (Just atyA))) ebody), 
           Pi  (bind (x, embed atyA) atyB))  
 
-tcTerm (App t1 t2) Nothing = do
-  (et1, ty1) <- inferType t1
-  case ty1 of                      
-    Pi bnd -> do
-      ((x,unembed -> tyA), tyB) <- unbind bnd
-      (et2, _) <- checkType t2 tyA
-      return (App et1 et2, subst x et2 tyB)
-    _ -> err [DS "Function", DD t1, DS "should have a function type.",
-              DS "Instead has type", DD ty1]
-                                    
-                             
-                             
-                             
+tcTerm (App t1 t2) Nothing = do  
+  (at1, ty1)    <- inferType t1  
+  (x, tyA, tyB) <- ensurePi ty1 
+  (at2, ty2)    <- checkType t2 tyA
+  let result = (App at1 at2, subst x at2 tyB)
+  return result
+                     
+
+
 tcTerm (Ann tm ty) Nothing = do
   ty'         <- tcType ty
   (tm', ty'') <- checkType tm ty'
+  
   return (tm', ty'')   
   
 tcTerm (Pos p tm) mTy = 
@@ -115,7 +114,15 @@ tcTerm (LitBool b) Nothing = err [DS "unimplemented"]
 tcTerm t@(If t1 t2 t3 ann1) ann2 = err [DS "unimplemented"]      
   
 tcTerm (Let bnd) ann =   err [DS "unimplemented"]        
+  
+             
+           
+  
+  
+    
+      
 
+    
 tcTerm t@(Sigma bnd) Nothing = err [DS "unimplemented"]
   
 tcTerm t@(Prod a b ann1) ann2 = err [DS "unimplemented"]
@@ -127,6 +134,8 @@ tcTerm tm (Just ty) = do
   unless (aeq ty' ty) $ err [DS "Types don't match", DD ty, DS "and", DD ty']
   return (atm, ty)                     
   
+
+
 
 ---------------------------------------------------------------------
 -- helper functions for type checking 
@@ -250,4 +259,5 @@ duplicateTypeBindingCheck n ty = do
                  DS "Previous typing was", DD ty']
        in
          extendSourceLocation p ty $ err msg
+
 

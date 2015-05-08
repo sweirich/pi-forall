@@ -5,9 +5,9 @@
 
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
-              {- SOLN EP -}ensureErasedPi, {- STUBWITH -}
+              {- SOLN EP -} ensureErasedPi, {- STUBWITH -}
               {- SOLN EQUAL -} ensureTyEq, {- STUBWITH -} 
-              {-SOLN DATA -} ensureTCon {- STUBWITH -} ) where
+              {- SOLN DATA -} ensureTCon {- STUBWITH -} ) where
 
 import Syntax
 import Environment
@@ -15,7 +15,7 @@ import Environment
 import Unbound.Generics.LocallyNameless
 import Control.Monad(when)
 {- SOLN DATA -}
-import Control.Monad.Error (catchError, zipWithM, zipWithM_)
+import Control.Monad.Except (catchError, zipWithM, zipWithM_)
 import Control.Applicative ((<$>))
 {- STUBWITH -}
 
@@ -23,9 +23,7 @@ import Control.Applicative ((<$>))
 --   ignores type annotations during comparison
 --   throws an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = do 
-  -- if t1 and t2 
-  when (aeq t1 t2) $ return ()
+equate t1 t2 = if (aeq t1 t2) then return () else do
   n1 <- whnf' False t1  
   n2 <- whnf' False t2
   case (n1, n2) of 
@@ -84,7 +82,9 @@ equate t1 t2 = do
       Just ((x,y), body1, _, body2) <- unbind2 bnd1 bnd2
       equate body1 body2
 {- SOLN EQUAL -}      
-    (TyEq a b, TyEq c d) -> equate a c >> equate b d      
+    (TyEq a b, TyEq c d) -> do
+      equate a c 
+      equate b d      
     
     (Refl _,  Refl _) -> return ()
     
@@ -98,6 +98,7 @@ equate t1 t2 = do
       equate b1 b2
     (ErasedApp a1 a2, ErasedApp b1 b2) -> do
       equate a1 b1 
+      -- ignore erased arguments
     (ErasedPi bnd1, ErasedPi bnd2) -> do
       Just ((x, unembed -> tyA1), tyB1, 
             (_, unembed -> tyA2), tyB2) <- unbind2 bnd1 bnd2
@@ -163,6 +164,8 @@ ensurePi ty = do
     (Pi bnd) -> do 
       ((x, unembed -> tyA), tyB) <- unbind bnd
       return (x, tyA, tyB)
+{- SOLN EP -}
+    (ErasedPi _) -> err [DS "Type error in application. Perhaps you forgot an erased argument?"]{- STUBWITH -}
     _ -> err [DS "Expected a function type, instead found", DD nf]
     
 {- SOLN EP -}    
@@ -213,7 +216,8 @@ ensureTCon aty = do
 -- Compute whnf while unfolding recursive definitions as well as non-recursive
 -- ones. But only unfold once.
 whnf :: Term -> TcMonad Term
-whnf = whnf' True
+whnf t = do
+  whnf' False t
   
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
@@ -237,13 +241,12 @@ whnf' b (App t1 t2) = do
       whnf' b (subst x t2 body)
     {- SOLN DATA -}
     -- only unfold applications of recursive definitions
-    -- if the argument is a data constructor.
+    -- if the argument is not a variable.
     (Var y) -> do
+      nf2 <- whnf' b t2             
       maybeDef <- lookupRecDef y
-      nf2 <- whnf' b t2 
       case maybeDef of 
-        (Just d) | isWhnf nf2 -> do
-          whnf' False (App d nf2)
+        (Just d) -> whnf' False (App d nf2)
         _ -> return (App nf nf2)
     {- STUBWITH -}  
     _ -> do
@@ -256,7 +259,14 @@ whnf' b (ErasedApp t1 t2) = do
     (ErasedLam bnd) -> do
       ((x,_),body) <- unbind bnd 
       whnf' b (subst x t2 body)
-    -- TODO: unfold rec defs?
+    -- unfold rec defs?
+    (Var y) -> do
+      nf2 <- whnf' b t2             
+      maybeDef <- lookupRecDef y
+      case maybeDef of 
+        (Just d) -> whnf' False (ErasedApp d nf2)
+        _ -> return (ErasedApp nf nf2)
+
     _ -> do
       return (ErasedApp nf t2)
 {- STUBWITH -}
@@ -275,19 +285,21 @@ whnf' b (Pcase a bnd ann) = do
       whnf' b (subst x b1 (subst y c body))
     _ -> return (Pcase nf bnd ann)
 
+-- We should only be calling whnf on elaborated terms
+-- Such terms don't contain annotations, parens or pos info    
+-- So we'll throw errors to detect the case where we are 
+-- normalizing source terms    
 whnf' b t@(Ann tm ty) = 
   err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Paren x)   = 
   err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Pos _ x)   = 
   err [DS "Unexpected position arg to whnf:", DD t]
-
 {- SOLN HW -}
 whnf' b (Let bnd)  = do
   ((x,unembed->rhs),body) <- unbind bnd
   whnf' b (subst x rhs body)
 {- STUBWITH -}  
-  
 {- SOLN EQUAL -}  
 whnf' b (Subst tm pf annot) = do
   pf' <- whnf' b pf
@@ -295,7 +307,6 @@ whnf' b (Subst tm pf annot) = do
     Refl _ -> whnf' b tm
     _ -> return (Subst tm pf' annot)
 {- STUBWITH -}    
-
 {- SOLN DATA -}      
 whnf' b (Case scrut mtchs annot) = do
   nf <- whnf' b scrut        
@@ -315,26 +326,17 @@ whnf' b (Case scrut mtchs annot) = do
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 
-isWhnf :: Term -> Bool
-{- SOLN DATA -}
-isWhnf (DCon _ _ _)  = True
-isWhnf (TCon _ _ )  = True
-{- STUBWITH -}
-isWhnf (Lam _)       = True
-{- SOLN EP -}
-isWhnf (ErasedLam _) = True
-{- STUBWITH -}
-isWhnf _ = False
 
 {- SOLN DATA -}
 -- | Determine whether the pattern matches the argument
 -- If so return the appropriate substitution
+-- otherwise throws an error
 patternMatches :: Arg -> Pattern -> TcMonad [(TName, Term)]
 patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
 patternMatches (Arg Runtime t) pat@(PatCon d' pats) = do
   nf <- whnf t
   case nf of 
-    (DCon d [] _) -> return []
+    (DCon d [] _)   | d == d' -> return []
     (DCon d args _) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]

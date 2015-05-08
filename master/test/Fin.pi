@@ -1,21 +1,35 @@
 -- PI library for finite numbers
 --
 -- Some of these are adapted from Fin.agda
---
--- Author: Stephanie Weirich
 
 module Fin where
 
 import Nat
 import Equality
 
+-- Numbers bound within a finite range.  e.g. the type "Fin 3" has 
+-- exactly three members:  
+--    Zero [2]
+--    Succ [2] (Zero [1])
+--  and 
+--    Succ [2] (Succ [1] (Zero [0]))
+-- 
 
 data Fin (n : Nat) : Type where
   Zero of [m:Nat][n = Succ m] 
   Succ of [m:Nat][n = Succ m] (Fin m)
 
-x : Fin 1
-x = Zero [0]
+-- x : Fin 1
+-- x = Zero [0]
+
+x0 : Fin 3
+x0 = Zero [2]
+
+x1 : Fin 3
+x1 = Succ [2] (Zero [1])
+
+x2 : Fin 3
+x2 = Succ [2] (Succ [1] (Zero [0]))
 
 toNat : [n : Nat] -> Fin n -> Nat
 toNat = \ [n] fn . 

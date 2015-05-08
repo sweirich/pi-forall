@@ -95,6 +95,10 @@ data Term =
                         -- ^ equality elimination
    | Contra Term Annot  -- ^ witness to an equality contradiction
 
+   -- erasure
+   | ErasedLam (Bind (TName, Embed Annot) Term)  -- ^ abstraction       
+   | ErasedPi  (Bind (TName, Embed Term) Term)   -- ^ function type
+   | ErasedApp Term Term                         -- ^ application
      
    -- datatypes
    | TCon String [Term]             -- ^ type constructors (fully applied)
@@ -145,10 +149,15 @@ data ConstructorNames = ConstructorNames {
 -- | Declarations are the components of modules
 data Decl = Sig     TName  Term
            -- ^ Declaration for the type of a term
+            
           | Def     TName  Term
             -- ^ The definition of a particular name, must 
             -- already have a type declaration in scope
+            
           | RecDef TName Term 
+            -- ^ A potentially (recursive) definition of 
+            -- a particular name, must be declared 
+
           | Data    TCName Telescope [ConstructorDef]
             -- ^ Declaration for a datatype including all of 
             -- its data constructors
@@ -171,12 +180,12 @@ data ConstructorDef = ConstructorDef SourcePos DCName Telescope
 --     Delta = x:* , y:x, y = w, empty
 data Telescope = Empty
     | Cons   Epsilon TName Term Telescope
+    | Constraint Term Term Telescope
   deriving (Show)
            
 -- | Epsilon annotates the sort of a data constructor argument
 data Epsilon = 
     Runtime 
-  | Constraint
   | Erased
      deriving (Eq,Show,Read,Bounded,Ord)
 
@@ -234,6 +243,65 @@ isPatVar (PatVar _) = True
 isPatVar _          = False
 
 
+---------------------
+-- * Erasure
+---------------------   
+   
+class Erase a where        
+  -- | erase all computationally irrelevant parts of an expression
+  -- these include all typing annotations  
+  -- irrelevant arguments are replaced by unit
+  erase :: a -> a
+        
+instance Erase Term where
+  erase (Var x)         = Var x
+  erase (Lam bnd)    = Lam (bind (x, embed noAnn) (erase body))
+    where ((x,unembed -> _), body) = unsafeUnbind bnd
+  erase (App a1 a2)     = App (erase a1) (erase a2)
+  erase (Type)          = Type 
+  erase (Pi bnd)        = Pi (bind (x, embed (erase tyA)) (erase tyB))
+    where ((x,unembed -> tyA), tyB) = unsafeUnbind bnd
+  erase (Ann t1 t2)     = erase t1   
+  erase (Paren t1)      = erase t1
+  erase (Pos sp t)      = erase t
+  erase (TrustMe _)     = TrustMe noAnn
+  erase (TyUnit)        = TyUnit
+  erase (LitUnit)       = LitUnit
+  erase (TyBool)        = TyBool
+  erase (LitBool b)     = LitBool b
+  erase (If a b c _)    = If (erase a) (erase b) (erase c) noAnn
+  erase (Let bnd)       = Let (bind (x,embed (erase rhs)) (erase body))
+    where ((x,unembed -> rhs),body) = unsafeUnbind bnd
+        
+  erase (TyEq a b)       = TyEq (erase a) (erase b)
+  erase (Refl _)         = Refl noAnn
+  erase (Subst tm pf _)  = Subst (erase tm) (erase pf) noAnn
+  erase (Contra tm _)    = Contra (erase tm) noAnn
+                          
+  erase (ErasedLam bnd) = ErasedLam (bind (x, embed noAnn) (erase body))
+    where ((x,unembed -> _), body) = unsafeUnbind bnd
+  erase (ErasedApp tm1 tm2) = ErasedApp (erase tm1) LitUnit
+  erase (ErasedPi  bnd) = ErasedPi (bind (x, embed (erase tyA)) (erase tyB))
+    where ((x,unembed -> tyA), tyB) = unsafeUnbind bnd
+          
+  erase (TCon n tms)    = TCon n (map erase tms)
+  erase (DCon n args _) = DCon n (map erase args) noAnn
+  erase (Case tm ms _)  = Case (erase tm) (map erase ms) noAnn
+      
+  erase (Sigma bnd)     = Sigma (bind (x, embed (erase tyA)) (erase tyB)) 
+    where ((x,unembed->tyA),tyB) = unsafeUnbind bnd
+  erase (Prod a b _)    = Prod (erase a) (erase b) noAnn
+  erase (Pcase a bnd _) = 
+    Pcase (erase a) (bind (x,y) (erase body)) noAnn where
+       ((x,y),body) = unsafeUnbind bnd
+
+instance Erase Match where
+  erase (Match bnd) = Match (bind p (erase t)) where
+    (p,t) = unsafeUnbind bnd 
+    
+instance Erase Arg where    
+  erase (Arg Runtime t) = Arg Runtime (erase t)
+  erase (Arg Erased t)  = Arg Erased  LitUnit
         
                           
 -----------------
@@ -253,8 +321,8 @@ derive_abstract [''SourcePos]
 instance Alpha SourcePos
 instance Subst b SourcePos
 
-derive [''Term, {- SOLN DATA -}''Match, ''Pattern, ''Telescope, ''Epsilon, 
-        ''ConstructorDef, ''ConstructorNames, ''Arg, {- STUBWITH -}
+derive [''Term, ''Match, ''Pattern, ''Telescope, ''Epsilon, 
+        ''ConstructorDef, ''ConstructorNames, ''Arg, 
         ''Module, ''Decl, 
         ''ModuleImport, 
         ''Annot]
@@ -264,7 +332,8 @@ derive [''Term, {- SOLN DATA -}''Match, ''Pattern, ''Telescope, ''Epsilon,
 --    aeq :: Alpha a => a -> a -> Bool
 --    fv  :: Alpha a => a -> [Name a]
 
-instance Alpha Term
+instance Alpha Term where
+  
 instance Alpha Match
 instance Alpha Pattern
 instance Alpha Epsilon

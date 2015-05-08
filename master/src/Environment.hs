@@ -27,7 +27,8 @@ import Unbound.Generics.LocallyNameless
 import Text.PrettyPrint.HughesPJ
 import Text.ParserCombinators.Parsec.Pos(SourcePos)
 import Control.Monad.Reader
-import Control.Monad.Error
+import Control.Monad.Except
+import Data.Monoid 
 
 {- SOLN DATA -}
 import Data.List{- STUBWITH -}
@@ -38,13 +39,13 @@ import Data.Maybe (listToMaybe, catMaybes)
 -- environment), freshness state (for supporting locally-nameless
 -- representations), error (for error reporting), and IO 
 -- (for e.g.  warning messages).
-type TcMonad = FreshMT (ReaderT Env (ErrorT Err IO))
+type TcMonad = FreshMT (ReaderT Env (ExceptT Err IO))
 
 -- | Entry point for the type checking monad, given an 
 -- initial environment, returns either an error message 
 -- or some result.
 runTcMonad :: Env -> TcMonad a -> IO (Either Err a)
-runTcMonad env m = runErrorT $
+runTcMonad env m = runExceptT $
                      runReaderT (runFreshMT m) env
 
 
@@ -201,11 +202,12 @@ extendCtxsGlobal ds =
 
 {- SOLN DATA -}
 -- | Extend the context with a telescope
-extendCtxTele :: (MonadReader Env m) => Telescope -> m a -> m a
+extendCtxTele :: (MonadReader Env m, MonadIO m) => Telescope -> m a -> m a
 extendCtxTele Empty m = m
 extendCtxTele (Constraint (Var x) t2 tele) m = 
   extendCtx (Def x t2) $ extendCtxTele tele m
-extendCtxTele (Constraint t1 t2 tele) m = 
+extendCtxTele (Constraint t1 t2 tele) m = do
+  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
   extendCtxTele tele m
 extendCtxTele (Cons ep x ty tele) m = 
   extendCtx (Sig x ty) $ extendCtxTele tele m
@@ -254,8 +256,13 @@ extendErr ma msg'  =
   ma `catchError` \(Err ps msg) ->
   throwError $ Err ps (msg $$ msg')
 
-instance Error Err where
-  strMsg msg = Err [] (text msg)
+instance Monoid Err where
+  mempty = Err [] mempty
+  mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
+  
+
+-- instance Error Err where
+--  strMsg msg = Err [] (text msg)
 
 instance Disp Err where
   disp (Err [] msg) = msg

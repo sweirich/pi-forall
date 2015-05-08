@@ -160,10 +160,15 @@ data ConstructorNames = ConstructorNames {
 -- | Declarations are the components of modules
 data Decl = Sig     TName  Term
            -- ^ Declaration for the type of a term
+            
           | Def     TName  Term
             -- ^ The definition of a particular name, must 
             -- already have a type declaration in scope
+            
           | RecDef TName Term 
+            -- ^ A potentially (recursive) definition of 
+            -- a particular name, must be declared 
+
 {- SOLN DATA -}            
           | Data    TCName Telescope [ConstructorDef]
             -- ^ Declaration for a datatype including all of 
@@ -328,18 +333,20 @@ instance Erase Arg where
 
 -- Defining SourcePos abstractly means that they get ignored 
 -- when comparing terms.
-instance Alpha SourcePos where
-  aeq' _ctx _ _ = True
-  fvAny' _ctx _nfn = pure
-  open _ _ = id
-  close _ _ = id
-  isPat _ = mempty
-  isTerm _ = True
-  nthPatFind _ _ = Left 0
-  namePatFind _ _ = Left 0
-  swaps' _ _ = id
-  freshen' _ x = return (x, mempty)
-  lfreshen' _ x cont = cont x mempty
+-- XXX need one with aeq' that always returns true.
+$(makeClosedAlpha ''SourcePos)
+-- instance Alpha SourcePos where
+--   aeq' _ctx _ _ = True
+--   fvAny' _ctx _nfn = pure
+--   open _ _ = id
+--   close _ _ = id
+--   isPat _ = mempty
+--   isTerm _ = True
+--   nthPatFind _ _ = Left 0
+--   namePatFind _ _ = Left 0
+--   swaps' _ _ = id
+--   freshen' _ x = return (x, mempty)
+--   lfreshen' _ x cont = cont x mempty
   
 instance Subst b SourcePos where subst _ _ = id ; substs _ = id
 
@@ -348,7 +355,8 @@ instance Subst b SourcePos where subst _ _ = id ; substs _ = id
 --    aeq :: Alpha a => a -> a -> Bool
 --    fv  :: Alpha a => a -> [Name a]
 
-instance Alpha Term
+instance Alpha Term where
+  
 {- SOLN DATA -}
 instance Alpha Match
 instance Alpha Pattern

@@ -84,7 +84,6 @@ instance Disp [D] where
 instance Disp Epsilon where
   disp Erased = text "-"
   disp Runtime = text "+"
-  disp Constraint = text "="
 
 -------------------------------------------------------------------------
 -- Modules and Decls
@@ -185,12 +184,10 @@ instance Display Bool where
 bindParens :: Epsilon -> Doc -> Doc
 bindParens Runtime    d = d
 bindParens Erased     d = brackets d
-bindParens Constraint d = brackets d
 
 mandatoryBindParens :: Epsilon -> Doc -> Doc
 mandatoryBindParens Runtime d = parens d
 mandatoryBindParens Erased  d = brackets d
-mandatoryBindParens Constraint  d = brackets d
 
 
 -- deciding whether to add parens to the func of an application
@@ -198,6 +195,7 @@ wrapf :: Term -> Doc -> Doc
 wrapf f = case f of
   Var _         -> id
   App _ _       -> id
+  ErasedApp _ _ -> id
 
   Paren _       -> id
   Pos _ a       -> wrapf a
@@ -216,6 +214,7 @@ wraparg x = case x of
   Sigma _     -> id
   TrustMe _   -> id      
   TCon _ []   -> id  
+  (isNumeral -> Just x) -> id
   DCon _ [] _ -> id
 
   Refl _      -> id
@@ -250,6 +249,7 @@ instance Display Arg where
               Pos _ a     -> wraparg (Arg ep a)
 
               DCon _ [] _ -> annotParens ep
+              (isNumeral -> Just i) -> annotParens ep
               Prod _ _ _  -> annotParens ep
               TrustMe _   -> annotParens ep              
               Refl _      -> annotParens ep
@@ -347,6 +347,26 @@ instance Display Term where
      return $ text "contra" <+> dty <+> da
      
      
+  display a@(ErasedLam b) = do
+    (binds, body) <- gatherBinders a
+    return $ hang (text "\\" <> sep binds <+> text ".") 2 body
+
+  display (ErasedApp f x) = do
+     df <- display f
+     dx <- display x
+     return $ wrapf f df <+> brackets dx             
+
+  display (ErasedPi bnd) = do
+     lunbind bnd $ \((n,a), b) -> do
+        da <- display (unembed a)
+        dn <- display n
+        db <- display b
+        let lhs = mandatoryBindParens Erased  $
+              if (n `elem` fv b) then
+                (dn <+> colon <+> da)
+              else 
+                da
+        return $ lhs <+> text "->" <+> db
      
      
      
@@ -418,7 +438,7 @@ instance Disp Arg where
 
 instance Display Telescope where
   display Empty = return empty
-  display (Cons Constraint t1 t2 tele) = do      
+  display (Constraint t1 t2 tele) = do      
       dt1 <- display t1
       dt2 <- display t2
       dtele <- display tele
@@ -438,6 +458,12 @@ gatherBinders (Lam b) =
       let db = if isEmpty dt then dn else (parens (dn <+> dt))
       (rest, body) <- gatherBinders body
       return $ (db : rest, body)
+gatherBinders (ErasedLam b) = 
+   lunbind b $ \((n,unembed->ma), body) -> do
+      dn <- display n
+      dt <- display ma
+      (rest, body) <- gatherBinders body
+      return $ ( brackets (dn <+> dt) : rest, body)
 
 gatherBinders body = do 
   db <- display body
