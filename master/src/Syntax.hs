@@ -7,7 +7,8 @@
              ViewPatterns, 
              EmptyDataDecls,
              DeriveGeneric,
-             DeriveDataTypeable
+             DeriveDataTypeable,
+             TemplateHaskell
  #-}
 
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
@@ -24,6 +25,7 @@ import Data.Typeable (Typeable)
 
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
+import Unbound.Generics.LocallyNameless.TH (makeClosedAlpha)
 import Text.ParserCombinators.Parsec.Pos       
 import Data.Set (Set)
 import qualified Data.Set as S
