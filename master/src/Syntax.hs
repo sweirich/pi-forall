@@ -1,14 +1,14 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE FlexibleInstances, 
+{-# LANGUAGE TemplateHaskell,
+             FlexibleInstances, 
              MultiParamTypeClasses, 
              FlexibleContexts, 
              UndecidableInstances, 
              ViewPatterns, 
              EmptyDataDecls,
              DeriveGeneric,
-             DeriveDataTypeable,
-             TemplateHaskell
+             DeriveDataTypeable
  #-}
 
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
@@ -94,6 +94,7 @@ data Term =
    | Let (Bind (TName, Embed Term) Term)
      -- ^ let expression, introduces a new (potentially recursive) 
      -- definition in the ctx
+
 
 {- SOLN EQUAL -}
    -- propositional equality
@@ -202,7 +203,7 @@ data Telescope = Empty
 data Epsilon = 
     Runtime 
   | Erased
-     deriving (Eq,Show,Read,Bounded,Ord, Generic, Typeable)
+     deriving (Eq,Show,Read,Bounded,Ord,Generic,Typeable)
 
 -- | An argument is tagged with whether it should be erased
 data Arg  = Arg Epsilon Term deriving (Show, Generic, Typeable)           

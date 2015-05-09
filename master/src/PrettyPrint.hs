@@ -313,9 +313,9 @@ instance Display Term where
         dn <- display n
         db <- display b
         let lhs = if (n `elem` toListOf fv b) then
-                    parens (dn <+> colon <+> da)
-                  else 
-                    wraparg (unembed a) da
+                parens (dn <+> colon <+> da)
+              else 
+                wraparg (unembed a) da
         return $ lhs <+> text "->" <+> db
   
   display (Paren e) = do

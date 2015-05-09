@@ -13,7 +13,6 @@ import Syntax
 import Environment
 
 import Unbound.Generics.LocallyNameless
-import Control.Monad(when)
 {- SOLN DATA -}
 import Control.Monad.Except (catchError, zipWithM, zipWithM_)
 import Control.Applicative ((<$>))
