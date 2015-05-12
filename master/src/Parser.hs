@@ -15,7 +15,7 @@ module Parser
 
 import Syntax hiding (moduleImports)
 
-import Unbound.LocallyNameless hiding (Data,Refl,Infix,join,name)
+import Unbound.Generics.LocallyNameless
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
