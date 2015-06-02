@@ -132,7 +132,7 @@ instance Disp ConstructorDef where
 -- 
 data DispInfo = DI
   {
-  showAnnots :: Bool,         -- ^ should we show the annotations?  
+  showAnnots :: Bool,           -- ^ should we show the annotations?  
   dispAvoid  :: S.Set AnyName   -- ^ names that have been used
   }
 
