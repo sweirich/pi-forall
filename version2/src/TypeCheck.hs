@@ -14,7 +14,8 @@ import Environment
 import PrettyPrint
 import Equal
 
-import Unbound.LocallyNameless hiding (Data, Refl)
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 import Control.Applicative 
 import Control.Monad.Except
 import Text.PrettyPrint.HughesPJ
@@ -131,7 +132,7 @@ tcTerm (Let bnd) ann = do
   (arhs,aty) <- inferType rhs    
   (abody,ty) <- extendCtxs [Sig x aty, Def x arhs] $ 
                 tcTerm body ann
-  when (x `elem` fv ty) $
+  when (x `elem` toListOf fv ty) $
     err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]  
   return (Let (bind (x,embed arhs) abody), ty)
           
@@ -329,7 +330,7 @@ tcEntry (Def n term) = do
             (eterm, ety) <- extendCtx (Sig n ty) $
                                checkType term ty `catchError` handler
             -- Put the elaborated version of term into the context.
-            if (n `elem` fv eterm) then
+            if (n `elem` toListOf fv eterm) then
                  return $ AddCtx [Sig n ety, RecDef n eterm]
               else
                  return $ AddCtx [Sig n ety, Def n eterm]

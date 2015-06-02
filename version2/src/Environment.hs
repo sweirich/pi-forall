@@ -21,7 +21,7 @@ module Environment
 import Syntax
 import PrettyPrint
 
-import Unbound.LocallyNameless hiding (Data)
+import Unbound.Generics.LocallyNameless
 
 import Text.PrettyPrint.HughesPJ
 import Text.ParserCombinators.Parsec.Pos(SourcePos)

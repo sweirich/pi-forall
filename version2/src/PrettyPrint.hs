@@ -1,22 +1,25 @@
 {- PiForall language, OPLSS -}
 
 {-# LANGUAGE TypeSynonymInstances,ExistentialQuantification,FlexibleInstances, UndecidableInstances, FlexibleContexts,
-             ViewPatterns, DefaultSignatures
+             ViewPatterns, DefaultSignatures, GeneralizedNewtypeDeriving
  #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-name-shadowing #-}
 
 -- | A Pretty Printer. 
 module PrettyPrint(Disp(..), D(..))  where
 
+import Data.Typeable (Typeable)
+
 import Syntax
-import Unbound.LocallyNameless hiding (empty,Data,Refl)
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Text.PrettyPrint as PP
 import Text.ParserCombinators.Parsec.Pos (SourcePos, sourceName, sourceLine, sourceColumn)
 import Text.ParserCombinators.Parsec.Error (ParseError)
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative (Applicative(..), (<$>), (<*>))
 import qualified Data.Set as S
 
 -- | The 'Disp' class governs types which can be turned into 'Doc's
@@ -32,11 +35,11 @@ class Disp d where
 
 cleverDisp :: (Display d, Alpha d) => d -> Doc
 cleverDisp d =
-  runIdentity (runReaderT (display d) initDI)
+  runReaderDispInfo (display d) initDI
 
 
 instance Disp Term 
-instance Rep a => Disp (Name a) 
+instance Typeable a => Disp (Name a) 
 
 
 instance Disp String where
@@ -117,7 +120,7 @@ data DispInfo = DI
   }
 
 
-instance LFresh (Reader DispInfo) where
+instance LFresh (ReaderDispInfo) where
   lfresh nm = do
       let s = name2String nm
       di <- ask;
@@ -132,7 +135,13 @@ instance LFresh (Reader DispInfo) where
 initDI :: DispInfo
 initDI = DI False S.empty
 
-type M a = (ReaderT DispInfo Identity) a
+newtype ReaderDispInfo a = ReaderDispInfo (ReaderT DispInfo Identity a)
+                         deriving (Functor, Applicative, Monad, MonadReader DispInfo)
+
+runReaderDispInfo :: ReaderDispInfo a -> DispInfo -> a
+runReaderDispInfo (ReaderDispInfo comp) = runReader comp
+
+type M a = ReaderDispInfo a
 
 -- | The 'Display' class is like the 'Disp' class. It qualifies
 --   types that can be turned into 'Doc'.  The difference is that the
@@ -224,7 +233,7 @@ instance Display Term where
         da <- display (unembed a)
         dn <- display n
         db <- display b
-        let lhs = if (n `elem` fv b) then
+        let lhs = if (n `elem` toListOf fv b) then
                 parens (dn <+> colon <+> da)
               else 
                 wraparg (unembed a) da
@@ -336,7 +345,7 @@ gatherBinders body = do
   return ([], db)
 
 -- Assumes that all terms were opened safely earlier.
-instance Rep a => Display (Name a) where
+instance Typeable a => Display (Name a) where
   display n = return $ (text . name2String) n
 
 instance Disp [Term] where
