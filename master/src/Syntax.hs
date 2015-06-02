@@ -1,12 +1,15 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE TemplateHaskell, 
+{-# LANGUAGE TemplateHaskell,
              FlexibleInstances, 
              MultiParamTypeClasses, 
              FlexibleContexts, 
              UndecidableInstances, 
              ViewPatterns, 
-             EmptyDataDecls #-}
+             EmptyDataDecls,
+             DeriveGeneric,
+             DeriveDataTypeable
+ #-}
 
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
 
@@ -15,9 +18,14 @@
 
 module Syntax where
 
-import Generics.RepLib hiding (Data,Refl)
-import Unbound.LocallyNameless hiding (Data,Refl)   
-import Unbound.LocallyNameless.Ops (unsafeUnbind)
+import Control.Applicative (pure)
+import Data.Monoid (mempty)
+import GHC.Generics (Generic)
+import Data.Typeable (Typeable)
+
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
+import Unbound.Generics.LocallyNameless.TH (makeClosedAlpha)
 import Text.ParserCombinators.Parsec.Pos       
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -86,7 +94,7 @@ data Term =
    | Let (Bind (TName, Embed Term) Term)
      -- ^ let expression, introduces a new (potentially recursive) 
      -- definition in the ctx
-     
+
 
 {- SOLN EQUAL -}
    -- propositional equality
@@ -109,19 +117,19 @@ data Term =
       --- (fully applied, erased arguments first)
    | Case Term [Match] Annot        -- ^ case analysis
 {- STUBWITH -}     
-                 deriving (Show)
+                 deriving (Show, Generic, Typeable)
                
 -- | An 'Annot' is optional type information               
-newtype Annot = Annot (Maybe Term) deriving Show            
+newtype Annot = Annot (Maybe Term) deriving (Show, Generic, Typeable)
 
 {- SOLN DATA -}
 -- | A 'Match' represents a case alternative
-data Match = Match (Bind Pattern Term) deriving (Show)
+data Match = Match (Bind Pattern Term) deriving (Show, Generic, Typeable)
 
 -- | The patterns of case expressions bind all variables 
 -- in their respective branches.
 data Pattern = PatCon DCName [(Pattern, Epsilon)]
-             | PatVar TName deriving (Show, Eq)
+             | PatVar TName deriving (Show, Eq, Generic, Typeable)
 
 {- STUBWITH -}
 
@@ -139,17 +147,17 @@ data Module = Module { moduleName         :: MName,
 {- STUBWITH -}                       
                      }
               
-  deriving (Show)
+  deriving (Show, Generic, Typeable)
 
 newtype ModuleImport = ModuleImport MName
-  deriving (Show,Eq)
+  deriving (Show,Eq, Generic, Typeable)
 
 {- SOLN DATA -}
 data ConstructorNames = ConstructorNames {
                           tconNames :: Set String,
                           dconNames :: Set String
                         }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic, Typeable)
 {- STUBWITH -}
 
 -- | Declarations are the components of modules
@@ -173,12 +181,12 @@ data Decl = Sig     TName  Term
             -- not include any information about its data 
             -- constructors
 {- STUBWITH -}            
-  deriving (Show)
+  deriving (Show, Generic, Typeable)
 
 {- SOLN DATA -}
 -- | A Data constructor has a name and a telescope of arguments
 data ConstructorDef = ConstructorDef SourcePos DCName Telescope
-  deriving (Show)
+  deriving (Show, Generic, Typeable)
            
 -------------
 -- * Telescopes
@@ -189,16 +197,16 @@ data ConstructorDef = ConstructorDef SourcePos DCName Telescope
 data Telescope = Empty
     | Cons   Epsilon TName Term Telescope
     | Constraint Term Term Telescope
-  deriving (Show)
+  deriving (Show, Generic, Typeable)
            
 -- | Epsilon annotates the sort of a data constructor argument
 data Epsilon = 
     Runtime 
   | Erased
-     deriving (Eq,Show,Read,Bounded,Ord)
+     deriving (Eq,Show,Read,Bounded,Ord,Generic,Typeable)
 
 -- | An argument is tagged with whether it should be erased
-data Arg  = Arg Epsilon Term deriving (Show)           
+data Arg  = Arg Epsilon Term deriving (Show, Generic, Typeable)           
 {- STUBWITH -}
 
 -------------
@@ -231,7 +239,7 @@ unPos _         = Nothing
 
 -- | Tries to find a Pos anywhere inside a term
 unPosDeep :: Term -> Maybe SourcePos
-unPosDeep = something (mkQ Nothing unPos)
+unPosDeep = unPos -- something (mkQ Nothing unPos) -- TODO: Generic version of this
 
 -- | Tries to find a Pos inside a term, otherwise just gives up.
 unPosFlaky :: Term -> SourcePos
@@ -328,15 +336,22 @@ instance Erase Arg where
 
 -- Defining SourcePos abstractly means that they get ignored 
 -- when comparing terms.
-derive_abstract [''SourcePos]
-instance Alpha SourcePos
-instance Subst b SourcePos
-
-derive [''Term, {- SOLN DATA -} ''Match, ''Pattern, ''Telescope, ''Epsilon, 
-        ''ConstructorDef, ''ConstructorNames, ''Arg, {- STUBWITH -}
-        ''Module, ''Decl, 
-        ''ModuleImport, 
-        ''Annot]
+-- XXX need one with aeq' that always returns true.
+$(makeClosedAlpha ''SourcePos)
+-- instance Alpha SourcePos where
+--   aeq' _ctx _ _ = True
+--   fvAny' _ctx _nfn = pure
+--   open _ _ = id
+--   close _ _ = id
+--   isPat _ = mempty
+--   isTerm _ = True
+--   nthPatFind _ _ = Left 0
+--   namePatFind _ _ = Left 0
+--   swaps' _ _ = id
+--   freshen' _ x = return (x, mempty)
+--   lfreshen' _ x cont = cont x mempty
+  
+instance Subst b SourcePos where subst _ _ = id ; substs _ = id
 
 -- Among other things, the Alpha class enables the following
 -- functions:
