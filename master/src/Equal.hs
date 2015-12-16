@@ -1,6 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns, FlexibleContexts, CPP #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
 
 -- | Compare two terms for equality
@@ -15,7 +15,20 @@ import Environment
 import Unbound.Generics.LocallyNameless
 {- SOLN DATA -}
 import Control.Monad.Except (catchError, zipWithM, zipWithM_)
+
+
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
 import Control.Applicative ((<$>))
+#endif
+
+
 {- STUBWITH -}
 
 -- | compare two expressions for equality

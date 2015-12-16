@@ -18,7 +18,7 @@
 -- 
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE PolymorphicComponents, NoMonomorphismRestriction, KindSignatures  #-}
+{-# LANGUAGE PolymorphicComponents, NoMonomorphismRestriction, KindSignatures, FlexibleContexts  #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-unused-do-bind -fno-warn-unused-matches #-}
 
 module LayoutToken
@@ -744,20 +744,20 @@ makeTokenParser languageDef open sep close
     layoutBegin = (symbol open)  <?> ("layout opening symbol ("++open++")")
    
     layout p stop =
-	   (do { try layoutBegin; xs <- sepBy p (symbol ";") 
-	       ; layoutEnd <?> "explicit layout closing brace"
-	       ; stop; return (xs)}) <|>
+           (do { try layoutBegin; xs <- sepBy p (symbol ";") 
+               ; layoutEnd <?> "explicit layout closing brace"
+               ; stop; return (xs)}) <|>
            (do { indent; xs <- align p stop; return xs})
            
     align p stop = ormore <|> zero
       where zero = do { stop; option "" layoutSep; undent; return []}
-	    ormore = do { x <- p
-	                ; whiteSpace
-	                ; (do { try layoutSep; xs <- align p stop; return (x:xs)}) <|>
-	                  (do { try layoutEnd; stop; return([x])}) <|>
-	                     -- removing indentation happens automatically
-	                     -- in function whiteSpace
-	                  (do { stop; undent; return ([x])})}
+            ormore = do { x <- p
+                        ; whiteSpace
+                        ; (do { try layoutSep; xs <- align p stop; return (x:xs)}) <|>
+                          (do { try layoutEnd; stop; return([x])}) <|>
+                             -- removing indentation happens automatically
+                             -- in function whiteSpace
+                          (do { stop; undent; return ([x])})}
   
     whiteSpace =
        do { (col1,_,_) <- getInfo
@@ -779,7 +779,7 @@ makeTokenParser languageDef open sep close
                                     rev (s:ss) xs = rev ss (s++xs)
                                 in adjust (col2,p:ps,[])
               (cs,p:ps,_,GT) -> return ()
-          }    	             
+          }                  
 getInfo :: forall (m :: * -> *) t t1.
                  Monad m =>
                  ParsecT t1 t m (Column, t, t1)

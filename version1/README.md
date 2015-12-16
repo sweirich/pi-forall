@@ -25,11 +25,11 @@ Features
   - bidirectional type checking
   - erased arguments (forall)
   - propositional equality 
-  - inductive & indexed datatypes 
+  - indexed datatypes 
 
 Not covered (Future work!)
 --------------------------
-  - nontermination
+  - termination & inductive datatypes
   - effects
   - co-induction
   - type inference & unification

@@ -3,7 +3,7 @@
 {-# LANGUAGE ViewPatterns, TypeSynonymInstances, 
              ExistentialQuantification, NamedFieldPuns, 
              ParallelListComp, FlexibleContexts, ScopedTypeVariables, 
-             TupleSections, FlexibleInstances #-}
+             TupleSections, FlexibleInstances, CPP #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
 
 -- | The main routines for type-checking 
@@ -14,13 +14,29 @@ import Environment
 import PrettyPrint
 import Equal
 
-import Unbound.LocallyNameless hiding (Data, Refl)
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
+
+
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
 import Control.Applicative 
+#endif
+
+
+
+
 import Control.Monad.Except
 import Text.PrettyPrint.HughesPJ
 import Data.Maybe
 import Data.List(nub)
-import Unbound.LocallyNameless.Ops (unsafeUnbind)
+import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
 
 
@@ -98,7 +114,7 @@ tcTerm (ErasedLam bnd) (Just (ErasedPi bnd2)) = do
   -- check the type of the body of the lambda expression
   (ebody, etyB) <- extendCtx (Sig x tyA) (checkType body tyB)
   -- make sure that an 'erased' variable isn't used
-  when (x `elem` fv (erase ebody)) $
+  when (x `elem` toListOf fv (erase ebody)) $
     err [DS "Erased variable", DD x, 
          DS "used in body"]
   return (ErasedLam (bind (x, embed (Annot (Just tyA))) ebody), 
@@ -116,7 +132,7 @@ tcTerm (ErasedLam bnd) Nothing = do
   -- infer the type of the body of the lambda expression
   (ebody, atyB) <- extendCtx (Sig x atyA) (inferType body)
     -- make sure that an 'erased' variable isn't used
-  when (x `elem` fv (erase ebody)) $
+  when (x `elem` toListOf fv (erase ebody)) $
     err [DS "Erased variable", DD x, 
          DS "used in body"]
   return (ErasedLam (bind (x, embed (Annot (Just atyA))) ebody), 
@@ -179,7 +195,7 @@ tcTerm (Let bnd) ann = do
   (arhs,aty) <- inferType rhs    
   (abody,ty) <- extendCtxs [Sig x aty, Def x arhs] $ 
                 tcTerm body ann
-  when (x `elem` fv ty) $
+  when (x `elem` toListOf fv ty) $
     err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]  
   return (Let (bind (x,embed arhs) abody), ty)
           
@@ -254,7 +270,7 @@ tcTerm t@(Case scrut alts ann1) ann2 = do
                           checkType body ty
              
          -- make sure 'erased' components aren't used 
-         when (any (`elem` (fv (erase ebody))) evars) $
+         when (any (`elem` (toListOf fv (erase ebody))) evars) $
            err [DS "Erased variable bound in match used"]
            
          return (Match (bind pat ebody))
@@ -607,6 +623,7 @@ tcTypeTele (Cons ep x ty tl) = do
   ty' <- tcType ty
   tele' <- extendCtx (Sig x ty') $ tcTypeTele tl
   return (Cons ep x ty' tele')
+  
 
   
 --------------------------------------------------------
@@ -669,7 +686,7 @@ tcEntry (Def n term) = do
             (eterm, ety) <- extendCtx (Sig n ty) $
                                checkType term ty `catchError` handler
             -- Put the elaborated version of term into the context.
-            if (n `elem` fv eterm) then
+            if (n `elem` toListOf fv eterm) then
                  return $ AddCtx [Sig n ety, RecDef n eterm]
               else
                  return $ AddCtx [Sig n ety, Def n eterm]
