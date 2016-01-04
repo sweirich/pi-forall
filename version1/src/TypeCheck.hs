@@ -3,7 +3,7 @@
 {-# LANGUAGE ViewPatterns, TypeSynonymInstances, 
              ExistentialQuantification, NamedFieldPuns, 
              ParallelListComp, FlexibleContexts, ScopedTypeVariables, 
-             TupleSections, FlexibleInstances #-}
+             TupleSections, FlexibleInstances, CPP #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
 
 -- | The main routines for type-checking 
@@ -16,7 +16,22 @@ import Equal
 
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
+
+
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
 import Control.Applicative 
+#endif
+
+
+
+
 import Control.Monad.Except
 import Text.PrettyPrint.HughesPJ
 import Data.Maybe

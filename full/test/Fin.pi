@@ -22,6 +22,15 @@ data Fin (n : Nat) : Type where
 -- x : Fin 1
 -- x = Zero [0]
 
+x0 : Fin 3
+x0 = Zero [2]
+
+x1 : Fin 3
+x1 = Succ [2] (Zero [1])
+
+x2 : Fin 3
+x2 = Succ [2] (Succ [1] (Zero [0]))
+
 toNat : [n : Nat] -> Fin n -> Nat
 toNat = \ [n] fn . 
   case fn of 

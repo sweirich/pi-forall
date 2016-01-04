@@ -1,6 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE PatternGuards, FlexibleInstances, FlexibleContexts, TupleSections, ExplicitForAll #-}
+{-# LANGUAGE PatternGuards, FlexibleInstances, FlexibleContexts, TupleSections, ExplicitForAll, CPP #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
 
 -- | A parsec-based parser for the concrete syntax.
@@ -15,15 +15,34 @@ module Parser
 
 import Syntax hiding (moduleImports)
 
-import Unbound.LocallyNameless hiding (Data,Refl,Infix,join,name)
+import Unbound.Generics.LocallyNameless
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
 import qualified LayoutToken as Token
 
 import Control.Monad.State.Lazy hiding (join)
+
+
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
 import Control.Applicative ( (<$>), (<*>))
+#endif
+
+
+
+
+
 import Control.Monad.Except hiding (join)
+
+
+
 
 import Data.List
 import qualified Data.Set as S
@@ -158,7 +177,7 @@ trellysStyle = Token.LanguageDef
                 , Token.nestedComments = True
                 , Token.identStart     = letter
                 , Token.identLetter    = alphaNum <|> oneOf "_'"
-                , Token.opStart	       = oneOf ":!#$%&*+.,/<=>?@\\^|-"
+                , Token.opStart        = oneOf ":!#$%&*+.,/<=>?@\\^|-"
                 , Token.opLetter       = oneOf ":!#$%&*+.,/<=>?@\\^|-"
                 , Token.caseSensitive  = True
                 , Token.reservedNames =

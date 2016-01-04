@@ -13,7 +13,7 @@ clarity, not for speed. The point of this implementation is an introduction to
 practical issues of language design and how specific features interact with
 each other. 
 
-Furthermore, this code base includes a number of features (unit, booleans,
+Furthermore, this code based includes a number of features (unit, booleans,
 sigma types) which are all subsumed by the general mechanism for
 datatypes. These are included to give examples before diving into the more
 general, and much more complicated, code. 
@@ -25,11 +25,11 @@ Features
   - bidirectional type checking
   - erased arguments (forall)
   - propositional equality 
-  - inductive & indexed datatypes 
+  - indexed datatypes 
 
 Not covered (Future work!)
 --------------------------
-  - nontermination
+  - termination & inductive datatypes
   - effects
   - co-induction
   - type inference & unification

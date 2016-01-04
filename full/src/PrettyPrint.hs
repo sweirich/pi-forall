@@ -1,22 +1,40 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE TypeSynonymInstances,ExistentialQuantification,FlexibleInstances, UndecidableInstances, FlexibleContexts,
-             ViewPatterns, DefaultSignatures
- #-}
+{-# LANGUAGE TypeSynonymInstances,ExistentialQuantification,FlexibleInstances, UndecidableInstances, ViewPatterns, DefaultSignatures, GeneralizedNewtypeDeriving, FlexibleContexts, CPP #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-name-shadowing #-}
 
 -- | A Pretty Printer. 
 module PrettyPrint(Disp(..), D(..))  where
 
+import Data.Typeable (Typeable)
+
 import Syntax
-import Unbound.LocallyNameless hiding (empty,Data,Refl)
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Text.PrettyPrint as PP
 import Text.ParserCombinators.Parsec.Pos (SourcePos, sourceName, sourceLine, sourceColumn)
 import Text.ParserCombinators.Parsec.Error (ParseError)
-import Control.Applicative ((<$>), (<*>))
+
+
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
+import Control.Applicative (Applicative(..), (<$>), (<*>))
+#endif
+
+
+
+
+
+
 import qualified Data.Set as S
 
 -- | The 'Disp' class governs types which can be turned into 'Doc's
@@ -32,11 +50,11 @@ class Disp d where
 
 cleverDisp :: (Display d, Alpha d) => d -> Doc
 cleverDisp d =
-  runIdentity (runReaderT (display d) initDI)
+  runReaderDispInfo (display d) initDI
 
 
 instance Disp Term 
-instance Rep a => Disp (Name a) 
+instance Typeable a => Disp (Name a) 
 instance Disp Telescope 
 instance Disp Pattern 
 instance Disp Match 
@@ -132,12 +150,12 @@ instance Disp ConstructorDef where
 -- 
 data DispInfo = DI
   {
-  showAnnots :: Bool,           -- ^ should we show the annotations?  
+  showAnnots :: Bool,         -- ^ should we show the annotations?  
   dispAvoid  :: S.Set AnyName   -- ^ names that have been used
   }
 
 
-instance LFresh (Reader DispInfo) where
+instance LFresh (ReaderDispInfo) where
   lfresh nm = do
       let s = name2String nm
       di <- ask;
@@ -152,7 +170,13 @@ instance LFresh (Reader DispInfo) where
 initDI :: DispInfo
 initDI = DI False S.empty
 
-type M a = (ReaderT DispInfo Identity) a
+newtype ReaderDispInfo a = ReaderDispInfo (ReaderT DispInfo Identity a)
+                         deriving (Functor, Applicative, Monad, MonadReader DispInfo)
+
+runReaderDispInfo :: ReaderDispInfo a -> DispInfo -> a
+runReaderDispInfo (ReaderDispInfo comp) = runReader comp
+
+type M a = ReaderDispInfo a
 
 -- | The 'Display' class is like the 'Disp' class. It qualifies
 --   types that can be turned into 'Doc'.  The difference is that the
@@ -294,7 +318,7 @@ instance Display Term where
         da <- display (unembed a)
         dn <- display n
         db <- display b
-        let lhs = if (n `elem` fv b) then
+        let lhs = if (n `elem` toListOf fv b) then
                 parens (dn <+> colon <+> da)
               else 
                 wraparg (unembed a) da
@@ -362,7 +386,7 @@ instance Display Term where
         dn <- display n
         db <- display b
         let lhs = mandatoryBindParens Erased  $
-              if (n `elem` fv b) then
+              if (n `elem` toListOf fv b) then
                 (dn <+> colon <+> da)
               else 
                 da
@@ -470,7 +494,7 @@ gatherBinders body = do
   return ([], db)
 
 -- Assumes that all terms were opened safely earlier.
-instance Rep a => Display (Name a) where
+instance Typeable a => Display (Name a) where
   display n = return $ (text . name2String) n
 
 instance Disp [Term] where
