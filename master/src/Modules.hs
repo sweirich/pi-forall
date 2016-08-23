@@ -1,6 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, CPP #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
 
 -- | Tools for working with multiple source files
@@ -10,7 +10,23 @@ import Syntax
 import Parser(parseModuleFile, parseModuleImports)
 
 import Text.ParserCombinators.Parsec.Error
+
+
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions
 import Control.Applicative 
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet
+import Control.Applicative
+#endif
+
+
+
+
 import Control.Monad.Except
 {- SOLN DATA -}
 import Control.Monad.State.Lazy{- STUBWITH -}

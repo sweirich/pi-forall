@@ -1,6 +1,6 @@
 {- OPLSS -}
 
-{-# LANGUAGE GADTs, NamedFieldPuns, FlexibleContexts, ViewPatterns, RankNTypes #-}
+{-# LANGUAGE GADTs, NamedFieldPuns, FlexibleContexts, ViewPatterns, RankNTypes, CPP #-}
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
 
 -- | Utilities for managing a typechecking context.
@@ -21,13 +21,29 @@ module Environment
 import Syntax
 import PrettyPrint
 
-import Unbound.LocallyNameless hiding (Data)
+import Unbound.Generics.LocallyNameless
 
 import Text.PrettyPrint.HughesPJ
 import Text.ParserCombinators.Parsec.Pos(SourcePos)
 import Control.Monad.Reader
 import Control.Monad.Except
+
+
+
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
 import Data.Monoid 
+#endif
+
+
+
+
 
 import Data.List
 import Data.Maybe (listToMaybe, catMaybes)

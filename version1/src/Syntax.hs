@@ -8,18 +8,33 @@
              ViewPatterns, 
              EmptyDataDecls,
              DeriveGeneric,
-             DeriveDataTypeable
- #-}
+             DeriveDataTypeable,
+             CPP #-}
 
 {-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
+
+
 
 -- | The abstract syntax of the simple dependently typed language
 -- See comment at the top of 'Parser' for the concrete syntax
 
 module Syntax where
 
---import Control.Applicative (pure)
---import Data.Monoid (mempty)
+#ifdef MIN_VERSION_GLASGOW_HASKELL
+#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
+-- ghc >= 7.10.3
+#else
+-- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
+#endif
+#else
+-- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
+
+-- both needed only on even earlier ghc's
+-- import Control.Applicative (pure)
+-- import Data.Monoid (mempty)
+#endif
+
+
 import GHC.Generics (Generic)
 import Data.Typeable (Typeable)
 

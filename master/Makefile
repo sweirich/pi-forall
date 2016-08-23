@@ -11,6 +11,8 @@ SOLNS=$(addprefix ../full/,$(SRCS)) $(addprefix ../full/test/, $(TESTS) Lec1.pi 
 STUBREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN.*?STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg' 
 SOLNREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN\s*?[-][\}](\s*\r?\n|\s)(.*?)[\{][-]\s*STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg'
 
+flags=
+
 all: version1 version2 full
 
 test : all
@@ -32,8 +34,13 @@ test_version2 : ../version2
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/Hw2.pi
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/NatChurch.pi
 
+# full: $(SOLNS) Makefile
+# 	cd ../full && cabal install --disable-documentation . 
+
+# --force-reinstalls needed only on debian testing / ghc 7.8.4
 full: $(SOLNS) Makefile
-	cd ../full && cabal install --disable-documentation . 
+	cd ../full && cabal install --disable-documentation $(flags) . 
+
 
 test_full: ../full
 	cd ../full/test && make
@@ -46,7 +53,7 @@ uninstall:
 	@echo You can find them with \`which pi-forall\`
 
 clean:
-	-rm -rf src/dist src/cabal-dev ../version1/ ../version2/ full/ dist/ 
+	-rm -rf src/dist src/cabal-dev ../version1/ ../version2/ ../full/ dist/ 
 
 test:
 	cd test && make
