@@ -2,7 +2,7 @@ SOURCES=TypeCheck.hs PrettyPrint.hs LayoutToken.hs Parser.hs Syntax.hs Environme
 TESTS=Makefile Logic.pi Equality.pi Nat.pi Product.pi Fin.pi Vec.pi List.pi Lambda0.pi Lambda1.pi Lambda2.pi
 SRCS=$(addprefix src/,$(SOURCES)) 
 
-EXTRA=LICENSE README.md pi-forall.cabal
+EXTRA=LICENSE README.md pi-forall.cabal Setup.hs
 
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi)
@@ -82,6 +82,7 @@ cabal-dev:
 	cp pi-forall.cabal ../version1/pi-forall.cabal
 	cp LICENSE ../version1/LICENSE
 	cp README.md  ../version1/README.md
+	cp Setup.hs ../version1/Setup.hs
 
 
 ../version2/% : % Makefile
@@ -98,7 +99,7 @@ cabal-dev:
 	cp pi-forall.cabal ../version2/pi-forall.cabal
 	cp LICENSE ../version2/LICENSE
 	cp README.md  ../version2/README.md
-
+	cp Setup.hs ../version1/Setup.hs
 
 ../full/% : % Makefile
 	@echo ========== Creating .hs Fulls ==========
@@ -114,6 +115,6 @@ cabal-dev:
 	cp pi-forall.cabal ../full/pi-forall.cabal
 	cp LICENSE ../full/LICENSE
 	cp README.md  ../full/README.md
-
+	cp Setup.hs ../version1/Setup.hs
 
    # chmod 440 $@ # prevent inadvertent modification of stub code
