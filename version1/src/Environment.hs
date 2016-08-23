@@ -27,7 +27,7 @@ import Text.PrettyPrint.HughesPJ
 import Text.ParserCombinators.Parsec.Pos(SourcePos)
 import Control.Monad.Reader
 import Control.Monad.Except
-import Data.Monoid 
+--import Data.Monoid 
 
 
 import Data.Maybe (listToMaybe, catMaybes)
@@ -94,7 +94,7 @@ lookupHint v = do
   return $ listToMaybe [ ty | Hint v' ty <- hints, v == v']
 
 -- | Find a name's type in the context.
-lookupTyMaybe :: (MonadReader Env m, MonadError Err m) 
+lookupTyMaybe :: (MonadReader Env m) 
          => TName -> m (Maybe Term)
 lookupTyMaybe v = do
   ctx <- asks ctx
@@ -113,13 +113,13 @@ lookupTy v =
                        DS "in context", DD gamma]
 
 -- | Find a name's def in the context.
-lookupDef :: (MonadReader Env m, MonadError Err m, MonadIO m) 
+lookupDef :: (MonadReader Env m) 
           => TName -> m (Maybe Term)
 lookupDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | Def v' a <- ctx, v == v']
   
-lookupRecDef :: (MonadReader Env m, MonadError Err m, MonadIO m) 
+lookupRecDef :: (MonadReader Env m) 
           => TName -> m (Maybe Term)
 lookupRecDef v = do
   ctx <- asks ctx

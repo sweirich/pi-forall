@@ -18,8 +18,8 @@
 
 module Syntax where
 
-import Control.Applicative (pure)
-import Data.Monoid (mempty)
+--import Control.Applicative (pure)
+--import Data.Monoid (mempty)
 import GHC.Generics (Generic)
 import Data.Typeable (Typeable)
 
