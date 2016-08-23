@@ -18,7 +18,11 @@
 -- 
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE PolymorphicComponents, NoMonomorphismRestriction, KindSignatures, FlexibleContexts  #-}
+
+{-# LANGUAGE PolymorphicComponents,
+             NoMonomorphismRestriction,
+             KindSignatures,
+             FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-unused-do-bind -fno-warn-unused-matches #-}
 
 module LayoutToken

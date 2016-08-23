@@ -29,7 +29,6 @@ import Control.Monad.Reader
 import Control.Monad.Except
 
 
-
 #ifdef MIN_VERSION_GLASGOW_HASKELL
 #if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
 -- ghc >= 7.10.3
@@ -40,9 +39,6 @@ import Control.Monad.Except
 -- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
 import Data.Monoid 
 #endif
-
-
-
 
 
 import Data.List
@@ -110,7 +106,7 @@ lookupHint v = do
   return $ listToMaybe [ ty | Hint v' ty <- hints, v == v']
 
 -- | Find a name's type in the context.
-lookupTyMaybe :: (MonadReader Env m, MonadError Err m) 
+lookupTyMaybe :: (MonadReader Env m) 
          => TName -> m (Maybe Term)
 lookupTyMaybe v = do
   ctx <- asks ctx
@@ -129,13 +125,13 @@ lookupTy v =
                        DS "in context", DD gamma]
 
 -- | Find a name's def in the context.
-lookupDef :: (MonadReader Env m, MonadError Err m, MonadIO m) 
+lookupDef :: (MonadReader Env m) 
           => TName -> m (Maybe Term)
 lookupDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | Def v' a <- ctx, v == v']
   
-lookupRecDef :: (MonadReader Env m, MonadError Err m, MonadIO m) 
+lookupRecDef :: (MonadReader Env m) 
           => TName -> m (Maybe Term)
 lookupRecDef v = do
   ctx <- asks ctx
@@ -163,7 +159,7 @@ lookupTCon v = do
 
 -- | Find a data constructor in the context, returns a list of 
 -- all potential matches    
-lookupDConAll :: (MonadReader Env m, MonadError Err m) 
+lookupDConAll :: (MonadReader Env m) 
           => DCName -> m [(TCName,(Telescope,ConstructorDef))]
 lookupDConAll v = do
   g <- asks ctx

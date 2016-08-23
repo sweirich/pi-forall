@@ -1,15 +1,18 @@
 Name: pi-forall
-Version: 0.1
+Version: 0.1.1
 License: BSD3
 License-file: LICENSE
-Copyright: (c) 2013 University of Pennsylvania
+Copyright: (c) 2013-2016 University of Pennsylvania
 Description: An implementation of a simple dependently typed language for OPLSS 2013
 Author: Stephanie Weirich <sweirich@cis.upenn.edu>, based on code by Trellys Team <trellys@...>
 Maintainer: Stephanie Weirich <sweirich@cis.upenn.edu>
 Cabal-Version: >= 1.2
 Build-type: Simple
 tested-with: GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
-
+category: Compilers/Interpreters
+homepage: https://github.com/sweirich/pi-forall
+synopsis: Demo implementation of typechecker for dependently-typed language
+          
 library
   hs-source-dirs: src/
   Exposed-modules: Syntax
