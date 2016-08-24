@@ -2,10 +2,10 @@ SOURCES=TypeCheck.hs PrettyPrint.hs LayoutToken.hs Parser.hs Syntax.hs Environme
 TESTS=Makefile Logic.pi Equality.pi Nat.pi Product.pi Fin.pi Vec.pi List.pi Lambda0.pi Lambda1.pi Lambda2.pi
 SRCS=$(addprefix src/,$(SOURCES)) 
 
-EXTRA=LICENSE README.md pi-forall.cabal Setup.hs
+EXTRA=LICENSE README.md pi-forall.cabal Setup.hs stack.yaml
 
-VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi)
-VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi)
+VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi) $(EXTRA)
+VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi) $(EXTRA)
 SOLNS=$(addprefix ../full/,$(SRCS)) $(addprefix ../full/test/, $(TESTS) Lec1.pi Hw1.pi Lec2.pi Hw2.pi Lec3.pi Fin1.pi Lec4.pi)
 
 STUBREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN.*?STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg' 
@@ -38,7 +38,7 @@ test_version2 : ../version2
 # 	cd ../full && cabal install --disable-documentation . 
 
 # --force-reinstalls needed only on debian testing / ghc 7.8.4
-full: $(SOLNS) Makefile
+full: $(SOLNS) Makefile $(EXTRA)
 	cd ../full && cabal install --disable-documentation $(flags) . 
 
 
@@ -68,7 +68,7 @@ pi: cabal-dev
 cabal-dev:
 	cabal install cabal-dev
 
-../version1/% : % Makefile
+../version1/% : % Makefile $(EXTRA)
 	@echo ========== Creating Version 1 ==========
 	@mkdir -p ../version1
 	@mkdir -p ../version1/src
@@ -83,9 +83,10 @@ cabal-dev:
 	cp LICENSE ../version1/LICENSE
 	cp README.md  ../version1/README.md
 	cp Setup.hs ../version1/Setup.hs
+	cp stack.yaml ../version1/stack.yaml
 
 
-../version2/% : % Makefile
+../version2/% : % Makefile $(EXTRA)
 	@echo ========== Creating ../Version 2 ==========
 	@mkdir -p ../version2
 	@mkdir -p ../version2/src
@@ -99,9 +100,10 @@ cabal-dev:
 	cp pi-forall.cabal ../version2/pi-forall.cabal
 	cp LICENSE ../version2/LICENSE
 	cp README.md  ../version2/README.md
-	cp Setup.hs ../version1/Setup.hs
+	cp Setup.hs ../version2/Setup.hs
+	cp stack.yaml ../version2/stack.yaml
 
-../full/% : % Makefile
+../full/% : % Makefile $(EXTRA)
 	@echo ========== Creating .hs Fulls ==========
 	@mkdir -p ../full/
 	@mkdir -p ../full/src
@@ -115,6 +117,6 @@ cabal-dev:
 	cp pi-forall.cabal ../full/pi-forall.cabal
 	cp LICENSE ../full/LICENSE
 	cp README.md  ../full/README.md
-	cp Setup.hs ../version1/Setup.hs
-
+	cp Setup.hs ../full/Setup.hs
+	cp stack.yaml ../full/stack.yaml
    # chmod 440 $@ # prevent inadvertent modification of stub code

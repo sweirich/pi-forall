@@ -41,14 +41,14 @@ import qualified Data.Set as S
 class Disp d where
   disp :: d -> Doc
   
-  default disp :: (Display d, Alpha d) => d -> Doc
+  default disp :: (Display d) => d -> Doc
   disp = cleverDisp
 
 -- This function tries to pretty-print terms using the lowest number in
 -- the names of the variable (i.e. as close to what the user originally
 -- wrote.)
 
-cleverDisp :: (Display d, Alpha d) => d -> Doc
+cleverDisp :: (Display d) => d -> Doc
 cleverDisp d =
   runReaderDispInfo (display d) initDI
 

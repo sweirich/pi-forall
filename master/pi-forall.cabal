@@ -19,6 +19,11 @@ library
   Exposed-modules: Syntax
                    Parser
                    TypeCheck
+                   Modules
+                   Environment
+                   PrettyPrint
+                   Equal
+                   LayoutToken
                    Main
   Build-depends:  base >= 4 && < 5,
                   parsec >= 3.1.8 && < 3.2,
@@ -37,7 +42,7 @@ library
 executable pi-forall
   hs-source-dirs: src/
   Main-is: Main.hs
-  Build-depends: base >=4,
+  Build-depends: base >=4 && < 5, 
                  parsec >= 3.1.8 && < 3.2,
                  mtl >= 2.2.1,
                  pretty >= 1.0.1.0,
@@ -50,5 +55,14 @@ executable pi-forall
                  HUnit,
                  QuickCheck
   Ghc-Options:  -Wall -fno-warn-unused-matches
+  Other-modules: Environment
+                 Equal
+                 LayoutToken
+                 Modules
+                 Parser
+                 PrettyPrint
+                 Syntax
+                 TypeCheck
 
+  
 

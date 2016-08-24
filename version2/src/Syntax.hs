@@ -20,7 +20,6 @@
 
 module Syntax where
 
-
 #ifdef MIN_VERSION_GLASGOW_HASKELL
 #if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
 -- ghc >= 7.10.3
