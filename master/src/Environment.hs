@@ -42,6 +42,11 @@ import Data.Monoid
 #endif
 
 
+-- import Data.Semigroup if it is not already in base
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup
+#endif
+
 {- SOLN DATA -}
 import Data.List{- STUBWITH -}
 import Data.Maybe (listToMaybe, catMaybes)
@@ -268,12 +273,16 @@ extendErr ma msg'  =
   ma `catchError` \(Err ps msg) ->
   throwError $ Err ps (msg $$ msg')
 
+#if MIN_VERSION_base(4,11,0)
 instance Semigroup Err where
   (Err src1 d1) <> (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
+#endif
 
 instance Monoid Err where
   mempty = Err [] mempty
-
+#if !MIN_VERSION_base(4,11,0)
+  mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
+#endif
 
 -- instance Error Err where
 --  strMsg msg = Err [] (text msg)

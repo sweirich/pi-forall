@@ -8,7 +8,7 @@ Author: Stephanie Weirich <sweirich@cis.upenn.edu>, based on code by Trellys Tea
 Maintainer: Stephanie Weirich <sweirich@cis.upenn.edu>
 Cabal-Version: >= 1.8
 Build-type: Simple
-tested-with: GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
+tested-with: GHC == 7.10.3, GHC == 8.0.1, GHC == 8.6.5, GHC == 8.8.3
 Category: Compilers/Interpreters
 Homepage: https://github.com/sweirich/pi-forall
 Synopsis: Demo implementation of typechecker for dependently-typed language
@@ -37,8 +37,9 @@ library
                   filepath,
                   HUnit,
                   QuickCheck
-                  
-                  
+  if !impl(ghc >= 8.0)
+    build-depends: semigroups == 0.18.*                  
+
 executable pi-forall
   hs-source-dirs: src/
   Main-is: Main.hs
@@ -64,5 +65,7 @@ executable pi-forall
                  Syntax
                  TypeCheck
 
+  if !impl(ghc >= 8.0)
+    build-depends: semigroups == 0.18.*                  
   
 

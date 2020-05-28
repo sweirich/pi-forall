@@ -19,13 +19,13 @@ test : all
 
 
 version1: $(VERSION1)
-	cd ../version1 && cabal install --disable-documentation . 
+	cd ../version1 && cabal install --overwrite-policy=always --disable-documentation . 
 
 test_version1: ../version1
 	../version1/dist/build/pi-forall/pi-forall ../version1/test/Lec1.pi
 
 version2: $(VERSION2)
-	cd ../version2 && cabal install --disable-documentation . 
+	cd ../version2 && cabal install --overwrite-policy=always  --disable-documentation . 
 
 test_version2 : ../version2
 	../version2/dist/build/pi-forall/pi-forall ../version2/test/Lec1.pi
@@ -39,7 +39,7 @@ test_version2 : ../version2
 
 # --force-reinstalls needed only on debian testing / ghc 7.8.4
 full: $(SOLNS) Makefile $(EXTRA)
-	cd ../full && cabal install --disable-documentation $(flags) . 
+	cd ../full && cabal install --overwrite-policy=always --disable-documentation $(flags) . 
 
 
 test_full: ../full
@@ -66,7 +66,7 @@ pi: cabal-dev
 # You need to have the cabal install dir on your path (by default
 # ~/.cabal/bin) so that `cabal-dev` command is found.
 cabal-dev:
-	cabal install cabal-dev
+	cabal install --overwrite-policy=always cabal-dev
 
 ../version1/% : % Makefile $(EXTRA)
 	@echo ========== Creating Version 1 ==========
