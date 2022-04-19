@@ -72,13 +72,9 @@ single datatype for both the versions of the language (the one where lambdas
 are annotated and the one where they aren't). We'll start with an expression
 that has no annotations on lambdas, and elaborate it to one that does. 
 
-The bottom of the Syntax file contains instructions for unbound. The line 
-
-    derive [''Term]
-	 
-instructs unbound to derive a representation of the structure of the `Term`
-AST. This is all that is necessary to create an instance of the `Alpha` type
-class for this type.
+The bottom of the Syntax file contains instances for unbound. The library uses
+generic programming to create all of the definitions in an instance of the
+`Alpha` type class. 
 	 
     instance Alpha Term
 	 

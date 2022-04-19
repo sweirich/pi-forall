@@ -1,8 +1,8 @@
 pi-forall
 =========
    A demo implementation of a simple dependently-typed language for OPLSS
-   (Used in 2014 and 2013)
-	Stephanie Weirich
+   (Used in 2022, 2014 and 2013)
+	 Stephanie Weirich
 
 The goal of this project is to bring up the design issues that occur in the
 implementation languages like Agda, Coq, Epigram, Idris, etc. Of course, it
@@ -21,14 +21,14 @@ general, and much more complicated, code.
 
 Features
 --------
-  - PTS representation (uniform syntax for all levels)
+  - Pure-type-system (PTS) representation (uniform syntax for all levels)
   - bidirectional type checking
   - erased arguments (forall)
   - propositional equality 
   - indexed datatypes 
 
-Not covered (Future work!)
---------------------------
+Not covered
+-----------
   - termination & inductive datatypes
   - effects
   - co-induction
@@ -36,23 +36,19 @@ Not covered (Future work!)
   - general constraint solving
 
 This code is open source. Feel free to extend or adapt it for your own
-project. The definitive version will be uploaded to github after the summer 
-school is complete. 
+project. 
   https://github.com/sweirich/pi-forall
 
 Caveat 
 ------
 There will be bugs. There will be *design* bugs. The language is probably not
 sound. Or may not be so in the presence of 'innocent' axioms like classical
-logic. Even in this little language there are many semantic pitfalls. C'est la
-vie.
+logic. Even in this little language there are many semantic pitfalls.
 
 Installation
 ----------
-  pi-forall requires GHC and cabal, most easily available from 
-  the Haskell Platform (http://www.haskell.org/platform/) 
+  pi-forall requires GHC and cabal or stack
   
-  in the top level directory type 'cabal install'
 
 Contents
 --------

@@ -1,7 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE FlexibleContexts, CPP #-}
-{-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
 
 -- | Tools for working with multiple source files
 module Modules(getModules, ModuleInfo(..)) where

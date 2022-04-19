@@ -1,7 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE PatternGuards, FlexibleInstances, FlexibleContexts, TupleSections, ExplicitForAll, CPP #-}
-{-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
 
 -- | A parsec-based parser for the concrete syntax.
 module Parser
@@ -19,32 +18,12 @@ import Unbound.Generics.LocallyNameless
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
-import qualified LayoutToken as Token
+-- import qualified Text.Parsec.Token as Token
+import qualified LayoutToken as Token 
 
 import Control.Monad.State.Lazy hiding (join)
-
-
-#ifdef MIN_VERSION_GLASGOW_HASKELL
-#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
--- ghc >= 7.10.3
-#else
--- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
-#endif
-#else
--- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
-import Control.Applicative ( (<$>), (<*>))
-#endif
-
-
-
-
-
-import Control.Monad.Except hiding (join)
-
-
-
-
-import Data.List
+import Control.Monad.Except ( MonadError(throwError) )
+import Data.List ( foldl' )
 import qualified Data.Set as S
 
 {- 
@@ -187,8 +166,8 @@ instance Fresh (ParsecT s u FreshM)  where
 
 -- Based on Parsec's haskellStyle (which we can not use directly since
 -- Parsec gives it a too specific type).
-trellysStyle :: (Stream s m Char, Monad m) => Token.GenLanguageDef s u m
-trellysStyle = Token.LanguageDef
+piforallStyle :: (Stream s m Char, Monad m) => Token.GenLanguageDef s u m
+piforallStyle = Token.LanguageDef
                 { Token.commentStart   = "{-"
                 , Token.commentEnd     = "-}"
                 , Token.commentLine    = "--"
@@ -226,9 +205,7 @@ trellysStyle = Token.LanguageDef
 tokenizer :: Token.GenTokenParser String [Column] (StateT ConstructorNames FreshM)
 {- STUBWITH tokenizer :: Token.GenTokenParser String [Column] (FreshM) -}
 layout :: forall a t. LParser a -> LParser t -> LParser [a]
-(tokenizer, layout) = 
-  let (t, Token.LayFun l) = Token.makeTokenParser trellysStyle "{" ";" "}"
-      in (t, l)
+(tokenizer, Token.LayFun layout) = Token.makeTokenParser piforallStyle  "{" ";" "}"
 
 identifier :: LParser String
 identifier = Token.identifier tokenizer
@@ -296,13 +273,10 @@ reserved,reservedOp :: String -> LParser ()
 reserved = Token.reserved tokenizer
 reservedOp = Token.reservedOp tokenizer
 
-parens :: LParser a -> LParser a
+parens, brackets, braces :: LParser a -> LParser a
 parens = Token.parens tokenizer
-{- SOLN DATA -}
-brackets :: LParser a -> LParser a
 brackets = Token.brackets tokenizer
-{- STUBWITH -}
--- braces = Token.braces tokenizer
+braces = Token.braces tokenizer
 
 {- SOLN DATA -}
 natural :: LParser Int
@@ -346,29 +320,29 @@ importDef = do reserved "import" >>  (ModuleImport <$> importName)
 telescope :: LParser Telescope
 telescope = do 
   bindings <- telebindings
-  return $ foldr id Empty bindings where
+  return $ Telescope (foldr id [] bindings) where
   
-telebindings :: LParser [Telescope -> Telescope]
+telebindings :: LParser [[Assn] -> [Assn]]
 telebindings = many teleBinding
   where
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (fresh wildcardName) <*> expr)
-      return (Cons Runtime x ty)
+      return (AssnVar x Runtime ty :)
 
     imp = do
         v <- varOrWildcard
         colon
         t <- expr
-        return (Cons Erased v t)
+        return (AssnVar v Erased t :)
     
     equal = do
         v <- variable
         reservedOp "="
         t <- expr
-        return (Constraint (Var v) t)
+        return (AssnProp (Eq (Var v) t) :)
     
-    teleBinding :: LParser (Telescope -> Telescope)
+    teleBinding :: LParser ([Assn] -> [Assn])
     teleBinding =
       (    parens annot
        <|> try (brackets imp)
@@ -405,7 +379,7 @@ constructorDef :: LParser ConstructorDef
 constructorDef = do
   pos <- getPosition
   cname <- identifier
-  args <- option Empty (reserved "of" >> telescope)
+  args <- option (Telescope []) (reserved "of" >> telescope)
   return $ ConstructorDef pos cname args
   <?> "Constructor"
 {- STUBWITH -}
@@ -413,7 +387,7 @@ constructorDef = do
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ Sig n ty 
+  return $ Sig n {- SOLN EP -}Runtime{- STUBWITH -} ty 
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -457,7 +431,7 @@ expr = do
         mkArrow  = 
           do n <- fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (bind (n,embed tyA) tyB)
+               Pi (bind (n, {- SOLN EP -}Runtime, {- STUBWITH -} embed tyA) tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -478,7 +452,7 @@ dconapp = do
 tconapp :: LParser Term  
 tconapp = do
   c <- tconstructor
-  ts <- many factor
+  ts <- many arg
   return $ TCon c ts
 {- STUBWITH -}
   
@@ -490,11 +464,11 @@ funapp = do
 {- SOLN EP -}
         bfactor = ((,Erased)  <$> brackets expr) 
                              <|> ((,Runtime) <$> factor)
-        app e1 (e2,Runtime)  =  App e1 e2
-        app e1 (e2,Erased)   =  ErasedApp e1 e2
+        app e1 (e2,ep)  =  App e1 (Arg ep e2)
+
 {- STUBWITH      
         bfactor = factor 
-        app = App -}
+        app e1 e2 = App e1 (Arg e2) -}
 
 factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data constructor"
                   {- STUBWITH Var <$> variable <?> "a variable" -}                
@@ -542,14 +516,10 @@ lambda = do reservedOp "\\"
             body <- expr
             return $ foldr lam body binds 
   where
-{- SOLN DATA -}
-    lam (x, Runtime) m = Lam (bind (x, embed $ Annot Nothing) m)           
-{- STUBWITH -}
 {- SOLN EP -}
-    lam (x, Erased) m  = ErasedLam (bind (x, embed $ Annot Nothing) m)         
-{- STUBWITH -}    
-{- SOLN DATA -}
-{- STUBWITH      lam x m = Lam (bind (x, embed $ Annot Nothing) m) -}
+    lam (x, ep) m = Lam (bind (x, ep, embed $ Annot Nothing) m)           
+{- STUBWITH lam x m = Lam (bind (x, embed $ Annot Nothing) m) -}  
+
                             
 
 
@@ -569,11 +539,7 @@ ifExpr =
      reserved "else"
      c <- expr
      return (If a b c (Annot Nothing))
-     {-
-     let tm = Match (bind (PatCon "True"  []) b)
-     let fm = Match (bind (PatCon "False" []) c)
-     return $ (Case a [tm, fm] (Annot Nothing))
-     -}
+    
 
 -- 
 letExpr :: LParser Term
@@ -596,7 +562,7 @@ impProd =
         <|> ((,) <$> fresh wildcardName <*> expr))
      reservedOp "->" 
      tyB <- expr
-     return $ ErasedPi (bind (x,embed tyA) tyB)
+     return $ Pi (bind (x,Erased, embed tyA) tyB)
 {- STUBWITH -}
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
@@ -633,7 +599,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (bind (x,embed a) b))
+                      return $ Pi (bind (x,{- SOLN EP -}Runtime,{- STUBWITH -}embed a) b))
          Colon a b -> return $ Ann a b
          Comma a b -> return $ Prod a b (Annot Nothing)
          Nope a    -> return $ Paren a

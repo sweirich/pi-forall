@@ -1,7 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE PatternGuards, FlexibleInstances, FlexibleContexts, TupleSections, ExplicitForAll, CPP #-}
-{-# OPTIONS_GHC -Wall -fno-warn-unused-matches -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
 
 -- | A parsec-based parser for the concrete syntax.
 module Parser
@@ -19,32 +18,12 @@ import Unbound.Generics.LocallyNameless
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
-import qualified LayoutToken as Token
+-- import qualified Text.Parsec.Token as Token
+import qualified LayoutToken as Token 
 
 import Control.Monad.State.Lazy hiding (join)
-
-
-#ifdef MIN_VERSION_GLASGOW_HASKELL
-#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
--- ghc >= 7.10.3
-#else
--- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
-#endif
-#else
--- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
-import Control.Applicative ( (<$>), (<*>))
-#endif
-
-
-
-
-
-import Control.Monad.Except hiding (join)
-
-
-
-
-import Data.List
+import Control.Monad.Except ( MonadError(throwError) )
+import Data.List ( foldl' )
 import qualified Data.Set as S
 
 {- 
@@ -141,8 +120,8 @@ instance Fresh (ParsecT s u FreshM)  where
 
 -- Based on Parsec's haskellStyle (which we can not use directly since
 -- Parsec gives it a too specific type).
-trellysStyle :: (Stream s m Char, Monad m) => Token.GenLanguageDef s u m
-trellysStyle = Token.LanguageDef
+piforallStyle :: (Stream s m Char, Monad m) => Token.GenLanguageDef s u m
+piforallStyle = Token.LanguageDef
                 { Token.commentStart   = "{-"
                 , Token.commentEnd     = "-}"
                 , Token.commentLine    = "--"
@@ -178,9 +157,7 @@ trellysStyle = Token.LanguageDef
                 }
 tokenizer :: Token.GenTokenParser String [Column] (FreshM)
 layout :: forall a t. LParser a -> LParser t -> LParser [a]
-(tokenizer, layout) = 
-  let (t, Token.LayFun l) = Token.makeTokenParser trellysStyle "{" ";" "}"
-      in (t, l)
+(tokenizer, Token.LayFun layout) = Token.makeTokenParser piforallStyle  "{" ";" "}"
 
 identifier :: LParser String
 identifier = Token.identifier tokenizer
@@ -206,10 +183,10 @@ reserved,reservedOp :: String -> LParser ()
 reserved = Token.reserved tokenizer
 reservedOp = Token.reservedOp tokenizer
 
-parens :: LParser a -> LParser a
+parens, brackets, braces :: LParser a -> LParser a
 parens = Token.parens tokenizer
-
--- braces = Token.braces tokenizer
+brackets = Token.brackets tokenizer
+braces = Token.braces tokenizer
 
 
 
@@ -249,7 +226,7 @@ decl =  sigDef <|> valDef
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ Sig n ty 
+  return $ Sig n  ty 
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -286,7 +263,7 @@ expr = do
         mkArrow  = 
           do n <- fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (bind (n,embed tyA) tyB)
+               Pi (bind (n,  embed tyA) tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -302,7 +279,7 @@ funapp = do
   foldl' app f <$> many bfactor
   where
         bfactor = factor 
-        app = App
+        app e1 e2 = App e1 (Arg e2)
 
 factor = choice [ Var <$> variable <?> "a variable"                
                 , typen      <?> "Type"
@@ -337,9 +314,8 @@ lambda = do reservedOp "\\"
             body <- expr
             return $ foldr lam body binds 
   where
+lam x m = Lam (bind (x, embed $ Annot Nothing) m)  
 
-    
-     lam x m = Lam (bind (x, embed $ Annot Nothing) m)
                             
 
 
@@ -359,11 +335,7 @@ ifExpr =
      reserved "else"
      c <- expr
      return (If a b c (Annot Nothing))
-     {-
-     let tm = Match (bind (PatCon "True"  []) b)
-     let fm = Match (bind (PatCon "False" []) c)
-     return $ (Case a [tm, fm] (Annot Nothing))
-     -}
+    
 
 -- 
 letExpr :: LParser Term

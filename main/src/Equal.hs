@@ -1,58 +1,42 @@
 {- PiForall language -}
 
-
-{-# LANGUAGE ViewPatterns,
-             FlexibleContexts,
-             CPP #-}
-{-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
-
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
-              {- SOLN EP -} ensureErasedPi, {- STUBWITH -}
               {- SOLN EQUAL -} ensureTyEq, {- STUBWITH -} 
               {- SOLN DATA -} ensureTCon {- STUBWITH -} ) where
 
 import Syntax
-import Environment
-
-import Unbound.Generics.LocallyNameless
+import Environment ( D(DS, DD), TcMonad )
+import qualified Environment as Env
+import qualified Unbound.Generics.LocallyNameless as Unbound
 {- SOLN DATA -}
-import Control.Monad.Except (catchError, zipWithM, zipWithM_)
-
-
-#ifdef MIN_VERSION_GLASGOW_HASKELL
-#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
--- ghc >= 7.10.3
-#else
--- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
-#endif
-#else
--- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
-import Control.Applicative ((<$>))
-#endif
-
-
+import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
 {- STUBWITH -}
 
 -- | compare two expressions for equality
---   ignores type annotations during comparison
---   throws an error if the two types cannot be matched up
+--   if the two terms and not already in whnf, first check if they are alpha equivalent 
+
+--   ignore type annotations during comparison
+--   throw an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = if (aeq t1 t2) then return () else do
+equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
   n1 <- whnf' False t1  
   n2 <- whnf' False t2
   case (n1, n2) of 
+
     (Type, Type) -> return ()
     (Var x,  Var y)  | x == y -> return ()
     (Lam bnd1, Lam bnd2) -> do
-      (_, b1, _, b2) <- unbind2Plus bnd1 bnd2
+      (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       equate b1 b2
     (App a1 a2, App b1 b2) -> do
       equate a1 b1 
-      equate a2 b2
+      equateArgs [a2] [b2]
     (Pi bnd1, Pi bnd2) -> do
-      ((_, unembed -> tyA1), tyB1, 
-       (_, unembed -> tyA2), tyB2) <- unbind2Plus bnd1 bnd2
+      ((_, {- SOLN EP -}ep1,{- STUBWITH -} Unbound.unembed -> tyA1), tyB1, 
+       (_, {- SOLN EP -}ep2,{- STUBWITH -} Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 {- SOLN EP -}
+      unless (ep1 == ep2) $
+          tyErr n1 n2 {- STUBWITH -}
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -77,14 +61,14 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
       equate a1 a2 >> equate b1 b2 >> equate c1 c2
       
     (Let bnd1, Let bnd2) -> do
-      Just ((x,unembed -> rhs1), body1, 
-            (_,unembed -> rhs2), body2) <- unbind2 bnd1 bnd2
+      Just ((x,Unbound.unembed -> rhs1), body1, 
+            (_,Unbound.unembed -> rhs2), body2) <- Unbound.unbind2 bnd1 bnd2
       equate rhs1 rhs2
       equate body1 body2
             
     (Sigma bnd1, Sigma bnd2) -> do 
-      Just ((x, unembed -> tyA1), tyB1, 
-            (_, unembed -> tyA2), tyB2) <- unbind2 bnd1 bnd2
+      Just ((x, Unbound.unembed -> tyA1), tyB1, 
+            (_, Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2 bnd1 bnd2
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -94,7 +78,7 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
       
     (Pcase s1 bnd1 _, Pcase s2 bnd2 _) -> do  
       equate s1 s2
-      Just ((x,y), body1, _, body2) <- unbind2 bnd1 bnd2
+      Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
       equate body1 body2
 {- SOLN EQUAL -}      
     (TyEq a b, TyEq c d) -> do
@@ -107,22 +91,9 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
         
     (Contra a1 _, Contra a2 _) -> return ()
 {- STUBWITH -}      
-{- SOLN EP -}
-    (ErasedLam bnd1, ErasedLam bnd2) -> do
-      Just (x, b1, _, b2) <- unbind2 bnd1 bnd2
-      equate b1 b2
-    (ErasedApp a1 a2, ErasedApp b1 b2) -> do
-      equate a1 b1 
-      -- ignore erased arguments
-    (ErasedPi bnd1, ErasedPi bnd2) -> do
-      Just ((x, unembed -> tyA1), tyB1, 
-            (_, unembed -> tyA2), tyB2) <- unbind2 bnd1 bnd2
-      equate tyA1 tyA2                                             
-      equate tyB1 tyB2
-{- STUBWITH -}
 {- SOLN DATA -}      
     (TCon c1 ts1, TCon c2 ts2) | c1 == c2 -> 
-      zipWithM_ equate ts1 ts2
+      zipWithM_ equateArgs [ts1] [ts2]
     (DCon d1 a1 _, DCon d2 a2 _) | d1 == d2 -> do
       equateArgs a1 a2
     (Case s1 brs1 ann1, Case s2 brs2 ann2) 
@@ -131,11 +102,11 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
       -- require branches to be in the same order
       -- on both expressions
       let matchBr (Match bnd1) (Match bnd2) = do
-            mpb <- unbind2 bnd1 bnd2
+            mpb <- Unbound.unbind2 bnd1 bnd2
             case mpb of 
               Just (p1, a1, p2, a2) | p1 == p2 -> do
                 equate a1 a2
-              _ -> err [DS "Cannot match branches in",
+              _ -> Env.err [DS "Cannot match branches in",
                               DD n1, DS "and", DD n2]
       zipWithM_ matchBr brs1 brs2       
 {- STUBWITH -}
@@ -143,28 +114,35 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
     (_, Var x) -> recEquate x n1
     (_,_) -> tyErr n1 n2
  where tyErr n1 n2 = do 
-          gamma <- getLocalCtx
-          err [DS "Expected", DD n2,
+          gamma <- Env.getLocalCtx
+          Env.err [DS "Expected", DD n2,
                DS "but found", DD n1,
                DS "in context:", DD gamma]
        recEquate x n2 = do
-         mrd <- lookupRecDef x 
+         mrd <- Env.lookupRecDef x 
          case mrd of 
            Just d -> equate d n2
            Nothing -> tyErr (Var x) n2
 
-{- SOLN DATA -}
--- | Note: ignores erased args during comparison
+
+-- | Match up args
 equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
-equateArgs (Arg Runtime t1:t1s) (Arg Runtime t2:t2s) = do
-  equate t1 t2
+equateArgs (a1:t1s) (a2:t2s) = do
+  equate (unArg a1) (unArg a2)
   equateArgs t1s t2s
-equateArgs (Arg Erased _:t1s) (Arg Erased _ :t2s) = 
-  equateArgs t1s t2s
+{- SOLN EP -}  
+  unless (argEp a1 == argEp a2) $
+     Env.err [DS "Arg stage mismatch",
+              DS "Expected " , DD a2, 
+              DS "Found ", DD a1]
+{- STUBWITH -}
 equateArgs [] [] = return ()
-equateArgs a1 a2 = 
-  err [DS "args don't match"]
-{- STUBWITH -}  
+equateArgs a1 a2 = do 
+          gamma <- Env.getLocalCtx
+          Env.err [DS "Expected", DD (length a2),
+                   DS "but found", DD (length a1),
+                   DS "in context:", DD gamma]
+
   
 -------------------------------------------------------
 
@@ -172,31 +150,16 @@ equateArgs a1 a2 =
 -- (or could be normalized to be such) and return the components of 
 -- the type.
 -- Throws an error if this is not the case.
-ensurePi :: Type -> TcMonad (TName, Type, Type)
+ensurePi :: Type -> 
+  TcMonad (TName, {- SOLN EP -}Epsilon, {- STUBWITH -} Type, Type)
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
     (Pi bnd) -> do 
-      ((x, unembed -> tyA), tyB) <- unbind bnd
-      return (x, tyA, tyB)
-{- SOLN EP -}
-    (ErasedPi _) -> err [DS "Type error in application. Perhaps you forgot an erased argument?"]{- STUBWITH -}
-    _ -> err [DS "Expected a function type, instead found", DD nf]
+      ((x, {- SOLN EP -}ep,{- STUBWITH -} Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
+      return (x, {- SOLN EP -}ep,{- STUBWITH -} tyA, tyB)
+    _ -> Env.err [DS "Expected a function type, instead found", DD nf]
     
-{- SOLN EP -}    
--- | Ensure that the given type 'ty' is an 'ErasedPi' type
--- (or could be normalized to be such) and return the components of 
--- the type.
--- Throws an error if this is not the case.
-ensureErasedPi :: Term -> TcMonad (TName, Term, Term)
-ensureErasedPi ty = do
-  nf <- whnf ty
-  case nf of 
-    (ErasedPi bnd) -> do 
-      ((x, unembed -> tyA), tyB) <- unbind bnd
-      return (x, tyA, tyB)
-    _ -> err [DS "Expected an erased function type, instead found", DD nf]
-{- STUBWITH -}
     
 {- SOLN EQUAL -}    
 -- | Ensure that the given 'ty' is an equality type 
@@ -208,19 +171,19 @@ ensureTyEq ty = do
   nf <- whnf ty
   case nf of 
     TyEq m n -> return (m, n)
-    _ -> err [DS "Expected an equality type, instead found", DD nf]
+    _ -> Env.err [DS "Expected an equality type, instead found", DD nf]
 {- STUBWITH -}    
     
 {- SOLN DATA -}
 -- | Ensure that the given type 'ty' is some tycon applied to 
 --  params (or could be normalized to be such).
 -- Throws an error if this is not the case.    
-ensureTCon :: Term -> TcMonad (TCName, [Term])
+ensureTCon :: Term -> TcMonad (TCName, [Arg])
 ensureTCon aty = do
   nf <- whnf aty
   case nf of 
     (TCon n params) -> return (n, params)    
-    _ -> err [DS "Expected a data type", 
+    _ -> Env.err [DS "Expected a data type", 
               DS ", but found", DD nf]
 {- STUBWITH -}
     
@@ -236,55 +199,37 @@ whnf t = do
   
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
-  maybeDef <- lookupDef x
+  maybeDef <- Env.lookupDef x
   case (maybeDef) of 
     (Just d) -> whnf' b d 
     _ -> 
       if b then do
-          maybeRecDef <- lookupRecDef x 
+          maybeRecDef <- Env.lookupRecDef x 
           case maybeRecDef of 
             (Just d) -> whnf' False d
             _ -> return (Var x)
         else 
           return (Var x)
 
-whnf' b (App t1 t2) = do
+whnf' b (App t1 a2) = do
   nf <- whnf' b t1 
   case nf of 
     (Lam bnd) -> do
-      ((x,_),body) <- unbind bnd 
-      whnf' b (subst x t2 body)
+      ((x, {- SOLN EP -}_,{- STUBWITH -} _),body) <- Unbound.unbind bnd 
+      whnf' b (Unbound.subst x (unArg a2) body)
     {- SOLN DATA -}
     -- only unfold applications of recursive definitions
     -- if the argument is not a variable.
+    -- TODO: ??? What is this for?
     (Var y) -> do
-      nf2 <- whnf' b t2             
-      maybeDef <- lookupRecDef y
+      nf2 <- whnf' b (unArg a2)            
+      maybeDef <- Env.lookupRecDef y
       case maybeDef of 
-        (Just d) -> whnf' False (App d nf2)
-        _ -> return (App nf nf2)
-    {- STUBWITH -}  
+        (Just d) -> whnf' False (App d a2{unArg=nf2})
+        _ -> return (App nf a2{unArg=nf2})    {- STUBWITH -}  
     _ -> do
-      return (App nf t2)
+      return (App nf a2)
       
-{- SOLN EP -}      
-whnf' b (ErasedApp t1 t2) = do
-  nf <- whnf' b t1 
-  case nf of 
-    (ErasedLam bnd) -> do
-      ((x,_),body) <- unbind bnd 
-      whnf' b (subst x t2 body)
-    -- unfold rec defs?
-    (Var y) -> do
-      nf2 <- whnf' b t2             
-      maybeDef <- lookupRecDef y
-      case maybeDef of 
-        (Just d) -> whnf' False (ErasedApp d nf2)
-        _ -> return (ErasedApp nf nf2)
-
-    _ -> do
-      return (ErasedApp nf t2)
-{- STUBWITH -}
       
 whnf' b (If t1 t2 t3 ann) = do
   nf <- whnf' b t1
@@ -296,8 +241,8 @@ whnf' b (Pcase a bnd ann) = do
   nf <- whnf' b a 
   case nf of 
     Prod b1 c _ -> do
-      ((x,y), body) <- unbind bnd
-      whnf' b (subst x b1 (subst y c body))
+      ((x,y), body) <- Unbound.unbind bnd
+      whnf' b (Unbound.subst x b1 (Unbound.subst y c body))
     _ -> return (Pcase nf bnd ann)
 
 -- We should only be calling whnf on elaborated terms
@@ -305,39 +250,34 @@ whnf' b (Pcase a bnd ann) = do
 -- So we'll throw errors to detect the case where we are 
 -- normalizing source terms    
 whnf' b t@(Ann tm ty) = 
-  err [DS "Unexpected arg to whnf:", DD t]
+  Env.err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Paren x)   = 
-  err [DS "Unexpected arg to whnf:", DD t]
+  Env.err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Pos _ x)   = 
-  err [DS "Unexpected position arg to whnf:", DD t]
+  Env.err [DS "Unexpected position arg to whnf:", DD t]
 {- SOLN HW -}
 whnf' b (Let bnd)  = do
-  ((x,unembed->rhs),body) <- unbind bnd
-  whnf' b (subst x rhs body)
-{- STUBWITH -}  
+  ((x,Unbound.unembed->rhs),body) <- Unbound.unbind bnd
+  whnf' b (Unbound.subst x rhs body){- STUBWITH -}  
 {- SOLN EQUAL -}  
 whnf' b (Subst tm pf annot) = do
   pf' <- whnf' b pf
   case pf' of 
     Refl _ -> whnf' b tm
-    _ -> return (Subst tm pf' annot)
-{- STUBWITH -}    
+    _ -> return (Subst tm pf' annot){- STUBWITH -}    
 {- SOLN DATA -}      
 whnf' b (Case scrut mtchs annot) = do
   nf <- whnf' b scrut        
   case nf of 
     (DCon d args _) -> f mtchs where
       f (Match bnd : alts) = (do
-          (pat, br) <- unbind bnd
+          (pat, br) <- Unbound.unbind bnd
           ss <- patternMatches (Arg Runtime nf) pat 
-          whnf' b (substs ss br)) 
+          whnf' b (Unbound.substs ss br)) 
             `catchError` \ _ -> f alts
-      f [] = err $ [DS "Internal error: couldn't find a matching",
+      f [] = Env.err $ [DS "Internal error: couldn't find a matching",
                     DS "branch for", DD nf, DS "in"] ++ (map DD mtchs)
-    _ -> return (Case nf mtchs annot)
-{- STUBWITH -}            
-
-
+    _ -> return (Case nf mtchs annot){- STUBWITH -}            
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 
@@ -354,8 +294,8 @@ patternMatches (Arg Runtime t) pat@(PatCon d' pats) = do
     (DCon d [] _)   | d == d' -> return []
     (DCon d args _) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
-    _ -> err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
+    _ -> Env.err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
 patternMatches (Arg Erased _) pat@(PatCon _ _) = do
-  err [DS "Cannot match against irrelevant args"]
+  Env.err [DS "Cannot match against irrelevant args"]
 {- STUBWITH -}
 

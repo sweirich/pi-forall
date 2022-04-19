@@ -27,6 +27,9 @@ context.
 The typing context is an ordered list of assumptions about the types of
 variables. 
 
+ 
+     G ::= . | G, x : A
+
 ### An initial set of typing rules - Variables and Functions
 
 If we know a variable's type because it is in the typing context, then that is
@@ -36,9 +39,10 @@ its type:
       ----------- var 
       G |- x : A
 
-Functions get function types
+Variables are introduced into the context when we type check 
+abstractions. 
 
-        G, x:A |- a : B     
+        G, x:A |- a : B
 	 ---------------------------------    lambda
      G |- \x.a : (x:A) -> B
 
@@ -120,18 +124,18 @@ Because the type of the polymorphic identity function starts with
 type to make sense. We declare this by fiat using the type : type rule. 
 
 Note that, sadly, this rule make our language inconsistent as a
-logic. Girard's paradox
+logic. cf. Girard's paradox.
 
 ### More typing rules - Application
 
 Application requires that the type of the argument matches the domain type of
-the function. However, not that because the type `B` could have `x` free in it,
+the function. However, note that because the type `B` could have `x` free in it,
 we need to substitute the argument for `x` in the result.
 
       G |- a : (x:A) -> B 
-		G |- b : A
+	  G |- b : A
     ---------------------------  app
-	   G |- a b : B { b / x }
+	  G |- a b : B { b / x }
 
 ### Example: applying the polymorphic identity function
 
@@ -139,7 +143,7 @@ In pi-forall we should be able to apply the polymorphic identity function to
 itself. When we do this, we need to first provide the type of `id`, then we can
 apply `id` to `id`.
 
-    idid : ((x:Type) -> (y : x) -> x) 
+    idid : (x:Type) -> (y : x) -> x 
     idid = id ((x:Type) -> (y : x) -> x) id
 
 ### Example: Church booleans
@@ -254,13 +258,13 @@ may to use it to check the type of the argument.
       G |- a => (x:A) -> B 
       G |- b <= A
     ---------------------------  app
-	   G |- a b => B { b / x }	  
+	  G |- a b => B { b / x }	  
 
-For types, it is apparent what their type is, so we will just continue to infer that.
+For types, it is apparant what their type is, so we will just continue to infer that.
 
     G |- A <= Type     G, x:A |- B <= Type
     -------------------------------------- pi
-     G |- (x:A) -> B => Type
+    G |- (x:A) -> B => Type
 
 	  ----------------  type
 	  G |- Type => Type

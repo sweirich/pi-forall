@@ -1,54 +1,44 @@
 {- OPLSS -}
 
-{-# LANGUAGE GADTs, NamedFieldPuns, FlexibleContexts, ViewPatterns, RankNTypes, CPP #-}
-{-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
-
 -- | Utilities for managing a typechecking context.
 module Environment
-  (
-    TcMonad, runTcMonad,
-    Env,Hint(..),
+  ( TcMonad,
+    runTcMonad,
+    Env,
+    Hint (..),
     emptyEnv,
-    lookupTy, lookupTyMaybe, lookupDef, lookupRecDef, lookupHint, 
-    getTys, getCtx, getLocalCtx, extendCtx,
-    extendCtxs, extendCtxsGlobal,
+    lookupTy,
+    lookupTyMaybe,
+    lookupDef,
+    lookupRecDef,
+    lookupHint ,
+    getTys,
+    getCtx,
+    getLocalCtx,
+    extendCtx,
+    extendCtxs,
+    extendCtxsGlobal,
     extendCtxMods,
     extendHints,
-    extendSourceLocation, getSourceLocation,
-    err, warn, extendErr, D(..),Err(..),
-  ) where
+    extendSourceLocation,
+    getSourceLocation,
+    err,
+    warn,
+    extendErr,
+    D (..),
+    Err (..)
+  )
+where
 
-import Syntax
-import PrettyPrint
-
-import Unbound.Generics.LocallyNameless
-
-import Text.PrettyPrint.HughesPJ
-import Text.ParserCombinators.Parsec.Pos(SourcePos)
-import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad.Reader
 
-
-#ifdef MIN_VERSION_GLASGOW_HASKELL
-#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
--- ghc >= 7.10.3
-#else
--- older ghc versions, but MIN_VERSION_GLASGOW_HASKELL defined
-#endif
-#else
--- MIN_VERSION_GLASGOW_HASKELL not even defined yet (ghc <= 7.8.x)
-import Data.Monoid
-#endif
-
-
--- import Data.Semigroup if it is not already in base
-#if !MIN_VERSION_base(4,11,0)
-import Data.Semigroup
-#endif
-
-
-import Data.Maybe (listToMaybe, catMaybes)
-
+import Data.Maybe (catMaybes, listToMaybe)
+import PrettyPrint
+import Syntax
+import Text.ParserCombinators.Parsec.Pos (SourcePos)
+import Text.PrettyPrint.HughesPJ
+import Unbound.Generics.LocallyNameless
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
@@ -60,106 +50,125 @@ type TcMonad = FreshMT (ReaderT Env (ExceptT Err IO))
 -- initial environment, returns either an error message
 -- or some result.
 runTcMonad :: Env -> TcMonad a -> IO (Either Err a)
-runTcMonad env m = runExceptT $
-                     runReaderT (runFreshMT m) env
-
+runTcMonad env m =
+  runExceptT $
+    runReaderT (runFreshMT m) env
 
 -- | Marked locations in the source code
 data SourceLocation where
   SourceLocation :: forall a. Disp a => SourcePos -> a -> SourceLocation
 
 -- | Type declarations
-data Hint = Hint TName Term
+data Hint = Hint TName  Term
 
 -- | Environment manipulation and accessing functions
 -- The context 'gamma' is a list
-data Env = Env { ctx :: [Decl],
-               -- ^ elaborated term and datatype declarations.
-                 globals :: Int,
-               -- ^ how long the tail of "global" variables in the context is
-               --    (used to supress printing those in error messages)
-                 hints :: [Hint],
-               -- ^ Type declarations (signatures): it's not safe to
-               -- put these in the context until a corresponding term
-               -- has been checked.
-                 sourceLocation ::  [SourceLocation]
-               -- ^ what part of the file we are in (for errors/warnings)
-               }
-  --deriving Show
+data Env = Env
+  { -- | elaborated term and datatype declarations.
+    ctx :: [Decl],
+    -- | how long the tail of "global" variables in the context is
+    --    (used to supress printing those in error messages)
+    globals :: Int,
+    -- | Type declarations (signatures): it's not safe to
+    -- put these in the context until a corresponding term
+    -- has been checked.
+    hints :: [Hint],
+    -- | what part of the file we are in (for errors/warnings)
+    sourceLocation :: [SourceLocation] 
+  }
 
-
+--deriving Show
 
 -- | The initial environment.
 emptyEnv :: Env
-emptyEnv = Env { ctx = [] , globals = 0, hints = [], sourceLocation = [] }
+emptyEnv = Env {ctx = [], globals = 0, hints = [], sourceLocation = []
+  }
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
 
 -- | Return a list of all type bindings, and their names.
-getTys :: (MonadReader Env m) => m [(TName,Term)]
+getTys :: (MonadReader Env m) => m [(TName,  Term)]
 getTys = do
   ctx <- asks ctx
   return $ catMaybes (map unwrap ctx)
-    where unwrap (Sig v ty) = Just (v,ty)
-          unwrap _ = Nothing
+  where
+    unwrap (Sig v  ty) = Just (v, ty)
+    unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
-lookupHint   :: (MonadReader Env m) => TName -> m (Maybe Term)
+lookupHint :: (MonadReader Env m) => TName -> m (Maybe (Term))
 lookupHint v = do
   hints <- asks hints
-  return $ listToMaybe [ ty | Hint v' ty <- hints, v == v']
+  return $ listToMaybe [(ty) | Hint v'  ty <- hints, v == v']
 
 -- | Find a name's type in the context.
-lookupTyMaybe :: (MonadReader Env m)
-         => TName -> m (Maybe Term)
+lookupTyMaybe ::
+  (MonadReader Env m) =>
+  TName ->
+  m (Maybe ( Type))
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [ty | Sig  v' ty <- ctx, v == v']
+  return $ listToMaybe [(ty) | Sig v'  ty <- ctx, v == v']
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
-lookupTy :: (MonadReader Env m, MonadError Err m)
-         => TName -> m Term
+lookupTy ::
+  (MonadReader Env m, MonadError Err m) =>
+  TName ->
+  m ( Type)
 lookupTy v =
-  do x <- lookupTyMaybe v
-     gamma <- getLocalCtx
-     case x of
-       Just res -> return res
-       Nothing -> err [DS ("The variable " ++ show v++ " was not found."),
-                       DS "in context", DD gamma]
+  do
+    x <- lookupTyMaybe v
+    gamma <- getLocalCtx
+    case x of
+      Just res -> return res
+      Nothing ->
+        err
+          [ DS ("The variable " ++ show v ++ " was not found."),
+            DS "in context",
+            DD gamma
+          ]
 
 -- | Find a name's def in the context.
-lookupDef :: (MonadReader Env m)
-          => TName -> m (Maybe Term)
+lookupDef ::
+  (MonadReader Env m) =>
+  TName ->
+  m (Maybe Term)
 lookupDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | Def v' a <- ctx, v == v']
 
-lookupRecDef :: (MonadReader Env m)
-          => TName -> m (Maybe Term)
+lookupRecDef ::
+  (MonadReader Env m) =>
+  TName ->
+  m (Maybe Term)
 lookupRecDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
 
 
-
 -- | Extend the context with a new binding.
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
 extendCtx d =
-  local (\ m@(Env {ctx = cs}) -> m { ctx = d:cs })
+  local (\m@(Env {ctx = cs}) -> m {ctx = d : cs})
 
 -- | Extend the context with a list of bindings
 extendCtxs :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxs ds =
-  local (\ m@(Env {ctx = cs}) -> m { ctx = ds ++ cs })
+  local (\m@(Env {ctx = cs}) -> m {ctx = ds ++ cs})
 
 -- | Extend the context with a list of bindings, marking them as "global"
 extendCtxsGlobal :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxsGlobal ds =
-  local (\ m@(Env {ctx = cs}) -> m { ctx     = ds ++ cs,
-                                     globals = length (ds ++ cs)})
+  local
+    ( \m@(Env {ctx = cs}) ->
+        m
+          { ctx = ds ++ cs,
+            globals = length (ds ++ cs)
+          }
+    )
 
 
 
@@ -186,7 +195,7 @@ getLocalCtx = do
 -- | Push a new source position on the location stack.
 extendSourceLocation :: (MonadReader Env m, Disp t) => SourcePos -> t -> m a -> m a
 extendSourceLocation p t =
-  local (\ e@(Env {sourceLocation = locs}) -> e {sourceLocation = (SourceLocation p t):locs})
+  local (\e@(Env {sourceLocation = locs}) -> e {sourceLocation = (SourceLocation p t) : locs})
 
 -- | access current source location
 getSourceLocation :: MonadReader Env m => m [SourceLocation]
@@ -194,47 +203,43 @@ getSourceLocation = asks sourceLocation
 
 -- | Add a type hint
 extendHints :: (MonadReader Env m) => Hint -> m a -> m a
-extendHints h = local (\m@(Env {hints = hs}) -> m { hints = h:hs })
-
+extendHints h = local (\m@(Env {hints = hs}) -> m {hints = h : hs})
 
 -- | An error that should be reported to the user
 data Err = Err [SourceLocation] Doc
 
 -- | Augment the error message with addition information
 extendErr :: MonadError Err m => m a -> Doc -> m a
-extendErr ma msg'  =
+extendErr ma msg' =
   ma `catchError` \(Err ps msg) ->
-  throwError $ Err ps (msg $$ msg')
+    throwError $ Err ps (msg $$ msg')
 
-#if MIN_VERSION_base(4,11,0)
 instance Semigroup Err where
   (Err src1 d1) <> (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
-#endif
 
 instance Monoid Err where
   mempty = Err [] mempty
-#if !MIN_VERSION_base(4,11,0)
   mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
-#endif
 
 -- instance Error Err where
 --  strMsg msg = Err [] (text msg)
 
 instance Disp Err where
   disp (Err [] msg) = msg
-  disp (Err ((SourceLocation p term):_) msg)  =
-    disp p $$
-    nest 2 msg $$
-    nest 2 (text "In the expression" $$ nest 2 (disp term))
+  disp (Err ((SourceLocation p term) : _) msg) =
+    disp p
+      $$ nest 2 msg
+      $$ nest 2 (text "In the expression" $$ nest 2 (disp term))
 
 -- | Throw an error
-err :: (Disp a, MonadError Err m, MonadReader Env m) => a -> m b
+err :: (Disp a, MonadError Err m, MonadReader Env m) => [a] -> m b
 err d = do
   loc <- getSourceLocation
-  throwError $ Err loc (disp d)
+  throwError $ Err loc (sep $ map disp d)
 
 -- | Print a warning
 warn :: (Disp a, MonadReader Env m, MonadIO m) => a -> m ()
 warn e = do
   loc <- getSourceLocation
   liftIO $ putStrLn $ "warning: " ++ render (disp (Err loc (disp e)))
+

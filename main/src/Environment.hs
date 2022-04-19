@@ -11,7 +11,11 @@ module Environment
     lookupTyMaybe,
     lookupDef,
     lookupRecDef,
-    lookupHint ,
+    lookupHint {- SOLN DATA -},
+    lookupTCon,
+    lookupDCon,
+    lookupDConAll,
+    extendCtxTele {- STUBWITH -},
     getTys,
     getCtx,
     getLocalCtx,
@@ -26,13 +30,17 @@ module Environment
     warn,
     extendErr,
     D (..),
-    Err (..)
+    Err (..){- SOLN EP -},
+    getStage,
+    withStage,
+    checkStage {- STUBWITH -}
   )
 where
 
 import Control.Monad.Except
 import Control.Monad.Reader
-
+{- SOLN DATA -}
+import Data.List {- STUBWITH -}
 import Data.Maybe (catMaybes, listToMaybe)
 import PrettyPrint
 import Syntax
@@ -59,7 +67,7 @@ data SourceLocation where
   SourceLocation :: forall a. Disp a => SourcePos -> a -> SourceLocation
 
 -- | Type declarations
-data Hint = Hint TName  Term
+data Hint = Hint TName {- SOLN EP -}Epsilon{- STUBWITH -} Term
 
 -- | Environment manipulation and accessing functions
 -- The context 'gamma' is a list
@@ -74,7 +82,8 @@ data Env = Env
     -- has been checked.
     hints :: [Hint],
     -- | what part of the file we are in (for errors/warnings)
-    sourceLocation :: [SourceLocation] 
+    sourceLocation :: [SourceLocation] {- SOLN EP -},
+    epsilon :: Epsilon {- STUBWITH -}
   }
 
 --deriving Show
@@ -82,41 +91,41 @@ data Env = Env
 -- | The initial environment.
 emptyEnv :: Env
 emptyEnv = Env {ctx = [], globals = 0, hints = [], sourceLocation = []
-  }
+  {- SOLN EP-}, epsilon = Runtime {- STUBWITH -}}
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
 
 -- | Return a list of all type bindings, and their names.
-getTys :: (MonadReader Env m) => m [(TName,  Term)]
+getTys :: (MonadReader Env m) => m [(TName, {- SOLN EP -}Epsilon,{- STUBWITH -} Term)]
 getTys = do
   ctx <- asks ctx
   return $ catMaybes (map unwrap ctx)
   where
-    unwrap (Sig v  ty) = Just (v, ty)
+    unwrap (Sig v {- SOLN EP -}ep{- STUBWITH -} ty) = Just (v,{- SOLN EP -} ep,{- STUBWITH -} ty)
     unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
-lookupHint :: (MonadReader Env m) => TName -> m (Maybe (Term))
+lookupHint :: (MonadReader Env m) => TName -> m (Maybe ({- SOLN EP -}Epsilon, {- STUBWITH -}Term))
 lookupHint v = do
   hints <- asks hints
-  return $ listToMaybe [(ty) | Hint v'  ty <- hints, v == v']
+  return $ listToMaybe [({- SOLN EP -}ep,{- STUBWITH -}ty) | Hint v' {- SOLN EP -}ep{- STUBWITH -} ty <- hints, v == v']
 
 -- | Find a name's type in the context.
 lookupTyMaybe ::
   (MonadReader Env m) =>
   TName ->
-  m (Maybe ( Type))
+  m (Maybe ({- SOLN EP -}Epsilon,{- STUBWITH -} Type))
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [(ty) | Sig v'  ty <- ctx, v == v']
+  return $ listToMaybe [({- SOLN EP -}ep,{- STUBWITH -}ty) | Sig v' {- SOLN EP -}ep{- STUBWITH -} ty <- ctx, v == v']
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
 lookupTy ::
   (MonadReader Env m, MonadError Err m) =>
   TName ->
-  m ( Type)
+  m ({- SOLN EP -}Epsilon,{- STUBWITH -} Type)
 lookupTy v =
   do
     x <- lookupTyMaybe v
@@ -147,7 +156,82 @@ lookupRecDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
+{- SOLN DATA -}
 
+-- | Find a type constructor in the context
+lookupTCon ::
+  (MonadReader Env m, MonadError Err m) =>
+  TCName ->
+  m (Telescope, Maybe [ConstructorDef])
+lookupTCon v = do
+  g <- asks ctx
+  scanGamma g
+  where
+    scanGamma [] = do
+      currentEnv <- asks ctx
+      err
+        [ DS "The type constructor",
+          DD v,
+          DS "was not found.",
+          DS "The current environment is",
+          DD currentEnv
+        ]
+    scanGamma ((Data v' delta cs) : g) =
+      if v == v'
+        then return $ (delta, Just cs)
+        else scanGamma g
+    scanGamma ((DataSig v' delta) : g) =
+      if v == v'
+        then return $ (delta, Nothing)
+        else scanGamma g
+    scanGamma (_ : g) = scanGamma g
+
+-- | Find a data constructor in the context, returns a list of
+-- all potential matches
+lookupDConAll ::
+  (MonadReader Env m) =>
+  DCName ->
+  m [(TCName, (Telescope, ConstructorDef))]
+lookupDConAll v = do
+  g <- asks ctx
+  scanGamma g
+  where
+    scanGamma [] = return []
+    scanGamma ((Data v' delta cs) : g) =
+      case find (\(ConstructorDef _ v'' tele) -> v'' == v) cs of
+        Nothing -> scanGamma g
+        Just c -> do
+          more <- scanGamma g
+          return $ [(v', (delta, c))] ++ more
+    scanGamma ((DataSig v' delta) : g) = scanGamma g
+    scanGamma (_ : g) = scanGamma g
+
+-- | Given the name of a data constructor and the type that it should
+-- construct, find the telescopes for its parameters and arguments.
+-- Throws an error if the data constructor cannot be found for that type.
+lookupDCon ::
+  (MonadReader Env m, MonadError Err m) =>
+  DCName ->
+  TCName ->
+  m (Telescope, Telescope)
+lookupDCon c tname = do
+  matches <- lookupDConAll c
+  case lookup tname matches of
+    Just (delta, ConstructorDef _ _ deltai) ->
+      return (delta, deltai)
+    Nothing ->
+      err
+        ( [ DS "Cannot find data constructor",
+            DS c,
+            DS "for type",
+            DD tname,
+            DS "Potential matches were:"
+          ]
+            ++ (map (DD . fst) matches)
+            ++ (map (DD . snd . snd) matches)
+        )
+
+{- STUBWITH -}
 
 -- | Extend the context with a new binding.
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
@@ -170,7 +254,20 @@ extendCtxsGlobal ds =
           }
     )
 
+{- SOLN DATA -}
 
+-- | Extend the context with a telescope
+extendCtxTele :: (MonadReader Env m, MonadIO m) => [Assn] -> m a -> m a
+extendCtxTele [] m = m
+extendCtxTele (AssnProp (Eq (Var x) t2) : tele) m =
+  extendCtx (Def x t2) $ extendCtxTele tele m
+extendCtxTele (AssnProp (Eq t1 t2) : tele) m = do
+  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
+  extendCtxTele tele m
+extendCtxTele (AssnVar x ep ty : tele) m =
+  extendCtx (Sig x ep ty) $ extendCtxTele tele m
+
+{- STUBWITH -}
 
 -- | Extend the context with a module
 -- Note we must reverse the order.
@@ -243,3 +340,23 @@ warn e = do
   loc <- getSourceLocation
   liftIO $ putStrLn $ "warning: " ++ render (disp (Err loc (disp e)))
 
+{- SOLN EP -}
+checkStage ::
+  (MonadReader Env m, MonadError Err m) =>
+  Epsilon ->
+  m ()
+checkStage ep1 = do
+  ep2 <- asks epsilon
+  unless (ep1 <= ep2) $ do
+    err
+      [ DS "Cannot access ",
+        DD ep1,
+        DS " variables in this context"
+      ]
+
+withStage :: (MonadReader Env m) => Epsilon -> m a -> m a
+withStage ep = local (\e -> e {epsilon = max (epsilon e) ep})
+
+getStage :: (MonadReader Env m) => m Epsilon
+getStage = asks epsilon
+{- STUBWITH -}

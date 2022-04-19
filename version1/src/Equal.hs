@@ -1,42 +1,38 @@
 {- PiForall language -}
 
-
-{-# LANGUAGE ViewPatterns,
-             FlexibleContexts,
-             CPP #-}
-{-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
-
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
-              
                
                ) where
 
 import Syntax
-import Environment
-
-import Unbound.Generics.LocallyNameless
+import Environment ( D(DS, DD), TcMonad )
+import qualified Environment as Env
+import qualified Unbound.Generics.LocallyNameless as Unbound
 
 
 -- | compare two expressions for equality
---   ignores type annotations during comparison
---   throws an error if the two types cannot be matched up
+--   if the two terms and not already in whnf, first check if they are alpha equivalent 
+
+--   ignore type annotations during comparison
+--   throw an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = if (aeq t1 t2) then return () else do
+equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
   n1 <- whnf' False t1  
   n2 <- whnf' False t2
   case (n1, n2) of 
+
     (Type, Type) -> return ()
     (Var x,  Var y)  | x == y -> return ()
     (Lam bnd1, Lam bnd2) -> do
-      (_, b1, _, b2) <- unbind2Plus bnd1 bnd2
+      (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       equate b1 b2
     (App a1 a2, App b1 b2) -> do
       equate a1 b1 
-      equate a2 b2
+      equateArgs [a2] [b2]
     (Pi bnd1, Pi bnd2) -> do
-      ((_, unembed -> tyA1), tyB1, 
-       (_, unembed -> tyA2), tyB2) <- unbind2Plus bnd1 bnd2
+      ((_,  Unbound.unembed -> tyA1), tyB1, 
+       (_,  Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -61,14 +57,14 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
       equate a1 a2 >> equate b1 b2 >> equate c1 c2
       
     (Let bnd1, Let bnd2) -> do
-      Just ((x,unembed -> rhs1), body1, 
-            (_,unembed -> rhs2), body2) <- unbind2 bnd1 bnd2
+      Just ((x,Unbound.unembed -> rhs1), body1, 
+            (_,Unbound.unembed -> rhs2), body2) <- Unbound.unbind2 bnd1 bnd2
       equate rhs1 rhs2
       equate body1 body2
             
     (Sigma bnd1, Sigma bnd2) -> do 
-      Just ((x, unembed -> tyA1), tyB1, 
-            (_, unembed -> tyA2), tyB2) <- unbind2 bnd1 bnd2
+      Just ((x, Unbound.unembed -> tyA1), tyB1, 
+            (_, Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2 bnd1 bnd2
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -78,26 +74,38 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
       
     (Pcase s1 bnd1 _, Pcase s2 bnd2 _) -> do  
       equate s1 s2
-      Just ((x,y), body1, _, body2) <- unbind2 bnd1 bnd2
+      Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
       equate body1 body2
       
-
 
     (Var x, _) -> recEquate x n2
     (_, Var x) -> recEquate x n1
     (_,_) -> tyErr n1 n2
  where tyErr n1 n2 = do 
-          gamma <- getLocalCtx
-          err [DS "Expected", DD n2,
+          gamma <- Env.getLocalCtx
+          Env.err [DS "Expected", DD n2,
                DS "but found", DD n1,
                DS "in context:", DD gamma]
        recEquate x n2 = do
-         mrd <- lookupRecDef x 
+         mrd <- Env.lookupRecDef x 
          case mrd of 
            Just d -> equate d n2
            Nothing -> tyErr (Var x) n2
 
-  
+
+-- | Match up args
+equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
+equateArgs (a1:t1s) (a2:t2s) = do
+  equate (unArg a1) (unArg a2)
+  equateArgs t1s t2s
+
+equateArgs [] [] = return ()
+equateArgs a1 a2 = do 
+          gamma <- Env.getLocalCtx
+          Env.err [DS "Expected", DD (length a2),
+                   DS "but found", DD (length a1),
+                   DS "in context:", DD gamma]
+
   
 -------------------------------------------------------
 
@@ -105,17 +113,16 @@ equate t1 t2 = if (aeq t1 t2) then return () else do
 -- (or could be normalized to be such) and return the components of 
 -- the type.
 -- Throws an error if this is not the case.
-ensurePi :: Type -> TcMonad (TName, Type, Type)
+ensurePi :: Type -> 
+  TcMonad (TName,  Type, Type)
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
     (Pi bnd) -> do 
-      ((x, unembed -> tyA), tyB) <- unbind bnd
-      return (x, tyA, tyB)
-
-    _ -> err [DS "Expected a function type, instead found", DD nf]
+      ((x,  Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
+      return (x,  tyA, tyB)
+    _ -> Env.err [DS "Expected a function type, instead found", DD nf]
     
-
     
     
     
@@ -133,29 +140,28 @@ whnf t = do
   
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
-  maybeDef <- lookupDef x
+  maybeDef <- Env.lookupDef x
   case (maybeDef) of 
     (Just d) -> whnf' b d 
     _ -> 
       if b then do
-          maybeRecDef <- lookupRecDef x 
+          maybeRecDef <- Env.lookupRecDef x 
           case maybeRecDef of 
             (Just d) -> whnf' False d
             _ -> return (Var x)
         else 
           return (Var x)
 
-whnf' b (App t1 t2) = do
+whnf' b (App t1 a2) = do
   nf <- whnf' b t1 
   case nf of 
     (Lam bnd) -> do
-      ((x,_),body) <- unbind bnd 
-      whnf' b (subst x t2 body)
+      ((x,  _),body) <- Unbound.unbind bnd 
+      whnf' b (Unbound.subst x (unArg a2) body)
       
     _ -> do
-      return (App nf t2)
+      return (App nf a2)
       
-
       
 whnf' b (If t1 t2 t3 ann) = do
   nf <- whnf' b t1
@@ -167,8 +173,8 @@ whnf' b (Pcase a bnd ann) = do
   nf <- whnf' b a 
   case nf of 
     Prod b1 c _ -> do
-      ((x,y), body) <- unbind bnd
-      whnf' b (subst x b1 (subst y c body))
+      ((x,y), body) <- Unbound.unbind bnd
+      whnf' b (Unbound.subst x b1 (Unbound.subst y c body))
     _ -> return (Pcase nf bnd ann)
 
 -- We should only be calling whnf on elaborated terms
@@ -176,16 +182,14 @@ whnf' b (Pcase a bnd ann) = do
 -- So we'll throw errors to detect the case where we are 
 -- normalizing source terms    
 whnf' b t@(Ann tm ty) = 
-  err [DS "Unexpected arg to whnf:", DD t]
+  Env.err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Paren x)   = 
-  err [DS "Unexpected arg to whnf:", DD t]
+  Env.err [DS "Unexpected arg to whnf:", DD t]
 whnf' b t@(Pos _ x)   = 
-  err [DS "Unexpected position arg to whnf:", DD t]
+  Env.err [DS "Unexpected position arg to whnf:", DD t]
   
     
             
-
-
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 

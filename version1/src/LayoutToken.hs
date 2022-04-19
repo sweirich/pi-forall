@@ -18,11 +18,6 @@
 -- 
 -----------------------------------------------------------------------------
 
-
-{-# LANGUAGE PolymorphicComponents,
-             NoMonomorphismRestriction,
-             KindSignatures,
-             FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-unused-do-bind -fno-warn-unused-matches #-}
 
 module LayoutToken
@@ -77,24 +72,24 @@ data GenLanguageDef s u m
     -- | This parser should accept any start characters of identifiers. For
     -- example @letter \<|> char \"_\"@. 
 
-    identStart     :: ParsecT s u m Char,
+    identStart     :: ParsecT String [Column] m Char,
 
     -- | This parser should accept any legal tail characters of identifiers.
     -- For example @alphaNum \<|> char \"_\"@. 
 
-    identLetter    :: ParsecT s u m Char,
+    identLetter    :: ParsecT String [Column] m Char,
 
     -- | This parser should accept any start characters of operators. For
     -- example @oneOf \":!#$%&*+.\/\<=>?\@\\\\^|-~\"@ 
 
-    opStart        :: ParsecT s u m Char,
+    opStart        :: ParsecT String [Column] m Char,
 
     -- | This parser should accept any legal tail characters of operators.
     -- Note that this parser should even be defined if the language doesn't
     -- support user-defined operators, or otherwise the 'reservedOp'
     -- parser won't work correctly. 
 
-    opLetter       :: ParsecT s u m Char,
+    opLetter       :: ParsecT String [Column] m Char,
 
     -- | The list of reserved identifiers. 
 
@@ -129,14 +124,14 @@ data GenTokenParser s u m
         -- 'makeTokenParser'. An @identifier@ is treated as
         -- a single token using 'try'.
 
-        identifier       :: ParsecT s u m String,
+        identifier       :: ParsecT String [Column] m String,
         
         -- | The lexeme parser @reserved name@ parses @symbol 
         -- name@, but it also checks that the @name@ is not a prefix of a
         -- valid identifier. A @reserved@ word is treated as a single token
         -- using 'try'. 
 
-        reserved         :: String -> ParsecT s u m (),
+        reserved         :: String -> ParsecT String [Column] m (),
 
         -- | This lexeme parser parses a legal operator. Returns the name of the
         -- operator. This parser will fail on any operators that are reserved
@@ -145,14 +140,14 @@ data GenTokenParser s u m
         -- 'makeTokenParser'. An @operator@ is treated as a
         -- single token using 'try'. 
 
-        operator         :: ParsecT s u m String,
+        operator         :: ParsecT String [Column] m String,
 
         -- |The lexeme parser @reservedOp name@ parses @symbol
         -- name@, but it also checks that the @name@ is not a prefix of a
         -- valid operator. A @reservedOp@ is treated as a single token using
         -- 'try'. 
 
-        reservedOp       :: String -> ParsecT s u m (),
+        reservedOp       :: String -> ParsecT String [Column] m (),
 
 
         -- | This lexeme parser parses a single literal character. Returns the
@@ -161,7 +156,7 @@ data GenTokenParser s u m
         -- rules defined in the Haskell report (which matches most programming
         -- languages quite closely). 
 
-        charLiteral      :: ParsecT s u m Char,
+        charLiteral      :: ParsecT String [Column] m Char,
 
         -- | This lexeme parser parses a literal string. Returns the literal
         -- string value. This parsers deals correctly with escape sequences and
@@ -169,7 +164,7 @@ data GenTokenParser s u m
         -- defined in the Haskell report (which matches most programming
         -- languages quite closely). 
 
-        stringLiteral    :: ParsecT s u m String,
+        stringLiteral    :: ParsecT String [Column] m String,
 
         -- | This lexeme parser parses a natural number (a positive whole
         -- number). Returns the value of the number. The number can be
@@ -177,7 +172,7 @@ data GenTokenParser s u m
         -- 'octal'. The number is parsed according to the grammar
         -- rules in the Haskell report. 
 
-        natural          :: ParsecT s u m Integer,
+        natural          :: ParsecT String [Column] m Integer,
 
         -- | This lexeme parser parses an integer (a whole number). This parser
         -- is like 'natural' except that it can be prefixed with
@@ -186,42 +181,42 @@ data GenTokenParser s u m
         -- or 'octal'. The number is parsed according
         -- to the grammar rules in the Haskell report. 
         
-        integer          :: ParsecT s u m Integer,
+        integer          :: ParsecT String [Column] m Integer,
 
         -- | This lexeme parser parses a floating point value. Returns the value
         -- of the number. The number is parsed according to the grammar rules
         -- defined in the Haskell report. 
 
-        float            :: ParsecT s u m Double,
+        float            :: ParsecT String [Column] m Double,
 
         -- | This lexeme parser parses either 'natural' or a 'float'.
         -- Returns the value of the number. This parsers deals with
         -- any overlap in the grammar rules for naturals and floats. The number
         -- is parsed according to the grammar rules defined in the Haskell report. 
 
-        naturalOrFloat   :: ParsecT s u m (Either Integer Double),
+        naturalOrFloat   :: ParsecT String [Column] m (Either Integer Double),
 
         -- | Parses a positive whole number in the decimal system. Returns the
         -- value of the number. 
 
-        decimal          :: ParsecT s u m Integer,
+        decimal          :: ParsecT String [Column] m Integer,
 
         -- | Parses a positive whole number in the hexadecimal system. The number
         -- should be prefixed with \"0x\" or \"0X\". Returns the value of the
         -- number. 
 
-        hexadecimal      :: ParsecT s u m Integer,
+        hexadecimal      :: ParsecT String [Column] m Integer,
 
         -- | Parses a positive whole number in the octal system. The number
         -- should be prefixed with \"0o\" or \"0O\". Returns the value of the
         -- number. 
 
-        octal            :: ParsecT s u m Integer,
+        octal            :: ParsecT String [Column] m Integer,
 
         -- | Lexeme parser @symbol s@ parses 'string' @s@ and skips
         -- trailing white space. 
 
-        symbol           :: String -> ParsecT s u m String,
+        symbol           :: String -> ParsecT String [Column] m String,
 
         -- | @lexeme p@ first applies parser @p@ and than the 'whiteSpace'
         -- parser, returning the value of @p@. Every lexical
@@ -239,7 +234,7 @@ data GenTokenParser s u m
         -- >                     ; return (sum ds)
         -- >                     }
 
-        lexeme           :: forall a. ParsecT s u m a -> ParsecT s u m a,
+        lexeme           :: forall a. ParsecT String [Column] m a -> ParsecT String [Column] m a,
 
         -- | Parses any white space. White space consists of /zero/ or more
         -- occurrences of a 'space', a line comment or a block (multi
@@ -247,74 +242,74 @@ data GenTokenParser s u m
         -- started and ended is defined in the 'LanguageDef'
         -- that is passed to 'makeTokenParser'. 
 
-        whiteSpace       :: ParsecT s u m (),
+        whiteSpace       :: ParsecT String [Column] m (),
 
         -- | Lexeme parser @parens p@ parses @p@ enclosed in parenthesis,
         -- returning the value of @p@.
 
-        parens           :: forall a. ParsecT s u m a -> ParsecT s u m a,
+        parens           :: forall a. ParsecT String [Column] m a -> ParsecT String [Column] m a,
 
         -- | Lexeme parser @braces p@ parses @p@ enclosed in braces (\'{\' and
         -- \'}\'), returning the value of @p@. 
 
-        braces           :: forall a. ParsecT s u m a -> ParsecT s u m a,
+        braces           :: forall a. ParsecT String [Column] m a -> ParsecT String [Column] m a,
 
         -- | Lexeme parser @angles p@ parses @p@ enclosed in angle brackets (\'\<\'
         -- and \'>\'), returning the value of @p@. 
 
-        angles           :: forall a. ParsecT s u m a -> ParsecT s u m a,
+        angles           :: forall a. ParsecT String [Column] m a -> ParsecT String [Column] m a,
 
         -- | Lexeme parser @brackets p@ parses @p@ enclosed in brackets (\'[\'
         -- and \']\'), returning the value of @p@. 
 
-        brackets         :: forall a. ParsecT s u m a -> ParsecT s u m a,
+        brackets         :: forall a. ParsecT String [Column] m a -> ParsecT String [Column] m a,
 
         -- | DEPRECATED: Use 'brackets'.
 
-        squares          :: forall a. ParsecT s u m a -> ParsecT s u m a,
+        squares          :: forall a. ParsecT String [Column] m a -> ParsecT String [Column] m a,
 
         -- | Lexeme parser |semi| parses the character \';\' and skips any
         -- trailing white space. Returns the string \";\". 
 
-        semi             :: ParsecT s u m String,
+        semi             :: ParsecT String [Column] m String,
 
         -- | Lexeme parser @comma@ parses the character \',\' and skips any
         -- trailing white space. Returns the string \",\". 
 
-        comma            :: ParsecT s u m String,
+        comma            :: ParsecT String [Column] m String,
 
         -- | Lexeme parser @colon@ parses the character \':\' and skips any
         -- trailing white space. Returns the string \":\". 
 
-        colon            :: ParsecT s u m String,
+        colon            :: ParsecT String [Column] m String,
 
         -- | Lexeme parser @dot@ parses the character \'.\' and skips any
         -- trailing white space. Returns the string \".\". 
 
-        dot              :: ParsecT s u m String,
+        dot              :: ParsecT String [Column] m String,
 
         -- | Lexeme parser @semiSep p@ parses /zero/ or more occurrences of @p@
         -- separated by 'semi'. Returns a list of values returned by
         -- @p@.
 
-        semiSep          :: forall a . ParsecT s u m a -> ParsecT s u m [a],
+        semiSep          :: forall a . ParsecT String [Column] m a -> ParsecT String [Column] m [a],
 
         -- | Lexeme parser @semiSep1 p@ parses /one/ or more occurrences of @p@
         -- separated by 'semi'. Returns a list of values returned by @p@. 
 
-        semiSep1         :: forall a . ParsecT s u m a -> ParsecT s u m [a],
+        semiSep1         :: forall a . ParsecT String [Column] m a -> ParsecT String [Column] m [a],
 
         -- | Lexeme parser @commaSep p@ parses /zero/ or more occurrences of
         -- @p@ separated by 'comma'. Returns a list of values returned
         -- by @p@. 
 
-        commaSep         :: forall a . ParsecT s u m a -> ParsecT s u m [a],
+        commaSep         :: forall a . ParsecT String [Column] m a -> ParsecT String [Column] m [a],
 
         -- | Lexeme parser @commaSep1 p@ parses /one/ or more occurrences of
         -- @p@ separated by 'comma'. Returns a list of values returned
         -- by @p@. 
 
-        commaSep1        :: forall a . ParsecT s u m a -> ParsecT s u m [a]
+        commaSep1        :: forall a . ParsecT String [Column] m a -> ParsecT String [Column] m [a]
     }
 
 -----------------------------------------------------------
@@ -352,9 +347,11 @@ data GenTokenParser s u m
 -- >  reserved    = P.reserved lexer
 -- >  ...
 
-makeTokenParser :: (Monad m) => GenLanguageDef String [Column] m -> String -> String -> String 
+makeTokenParser :: Monad m => GenLanguageDef String [Column] m -> String -> String -> String
                    -> (GenTokenParser String [Column] m, LayoutFun String m)
+{-# INLINABLE makeTokenParser #-}
 -- MOD: add parameters open,sep,close.
+-- MOD: specialize to 
 makeTokenParser languageDef open sep close
     =(TokenParser{ identifier = identifier
                  , reserved = reserved
@@ -395,16 +392,20 @@ makeTokenParser languageDef open sep close
     -----------------------------------------------------------
     -- Bracketing
     -----------------------------------------------------------
+    parens, braces, angles, brackets :: Monad m =>
+       ParsecT String [Column] m a  -> ParsecT String [Column] m a
     parens p        = between (symbol "(") (symbol ")") p
     braces p        = between (symbol "{") (symbol "}") p
     angles p        = between (symbol "<") (symbol ">") p
     brackets p      = between (symbol "[") (symbol "]") p
 
+    comma, semi :: (Monad m) => ParsecT String [Column] m String
     semi            = symbol ";"
     comma           = symbol ","
     dot             = symbol "."
     colon           = symbol ":"
 
+    commaSep, semiSep :: Monad m => ParsecT String [Column] m a -> ParsecT String [Column] m [a]
     commaSep p      = sepBy p comma
     semiSep p       = sepBy p semi
 
@@ -423,7 +424,7 @@ makeTokenParser languageDef open sep close
     characterChar   = charLetter <|> charEscape
                     <?> "literal character"
 
-    charEscape      = do{ char '\\'; escapeCode }
+    charEscape      = do{ _ <- char '\\'; escapeCode }
     charLetter      = satisfy (\c -> (c /= '\'') && (c /= '\\') && (c > '\026'))
 
 
@@ -442,14 +443,14 @@ makeTokenParser languageDef open sep close
 
     stringLetter    = satisfy (\c -> (c /= '"') && (c /= '\\') && (c > '\026'))
 
-    stringEscape    = do{ char '\\'
-                        ;     do{ escapeGap  ; return Nothing }
-                          <|> do{ escapeEmpty; return Nothing }
+    stringEscape    = do{ _ <- char '\\'
+                        ;     do{ _ <- escapeGap  ; return Nothing }
+                          <|> do{ _ <- escapeEmpty; return Nothing }
                           <|> do{ esc <- escapeCode; return (Just esc) }
                         }
 
     escapeEmpty     = char '&'
-    escapeGap       = do{ many1 space
+    escapeGap       = do{ _ <- many1 space
                         ; char '\\' <?> "end of string gap"
                         }
 
@@ -459,24 +460,26 @@ makeTokenParser languageDef open sep close
     escapeCode      = charEsc <|> charNum <|> charAscii <|> charControl
                     <?> "escape code"
 
-    charControl     = do{ char '^'
+    charControl     = do{ _ <- char '^'
                         ; code <- upper
                         ; return (toEnum (fromEnum code - fromEnum 'A'))
                         }
 
     charNum         = do{ code <- decimal
-                                  <|> do{ char 'o'; number 8 octDigit }
-                                  <|> do{ char 'x'; number 16 hexDigit }
-                        ; return (toEnum (fromInteger code))
+                                  <|> do{ _ <- char 'o'; number 8 octDigit }
+                                  <|> do{ _ <- char 'x'; number 16 hexDigit }
+                        ; if code > 0x10FFFF
+                          then fail "invalid escape sequence"
+                          else return (toEnum (fromInteger code))
                         }
 
     charEsc         = choice (map parseEsc escMap)
                     where
-                      parseEsc (c,code)     = do{ char c; return code }
+                      parseEsc (c,code)     = do{ _ <- char c; return code }
 
     charAscii       = choice (map parseAscii asciiMap)
                     where
-                      parseAscii (asc,code) = try (do{ string asc; return code })
+                      parseAscii (asc,code) = try (do{ _ <- string asc; return code })
 
 
     -- escape code tables
@@ -512,7 +515,7 @@ makeTokenParser languageDef open sep close
                         }
 
 
-    natFloat        = do{ char '0'
+    natFloat        = do{ _ <- char '0'
                         ; zeroNumFloat
                         }
                       <|> decimalFloat
@@ -521,7 +524,7 @@ makeTokenParser languageDef open sep close
                          ; return (Left n)
                          }
                     <|> decimalFloat
-                    <|> fractFloat 0
+                    <|> fractFloat (0 :: Integer)
                     <|> return (Left 0)
 
     decimalFloat    = do{ n <- decimal
@@ -534,32 +537,32 @@ makeTokenParser languageDef open sep close
                         }
 
     fractExponent n = do{ fract <- fraction
-                        ; expo  <- option 1.0 exponent'
-                        ; return ((fromInteger n + fract)*expo)
+                        ; expo  <- option "" exponent'
+                        ; readDouble (show n ++ fract ++ expo)
                         }
                     <|>
                       do{ expo <- exponent'
-                        ; return ((fromInteger n)*expo)
+                        ; readDouble (show n ++ expo)
                         }
+                       where
+                        readDouble s =
+                          case reads s of
+                            [(x, "")] -> return x
+                            _         -> parserZero
 
-    fraction        = do{ char '.'
+    fraction        = do{ _ <- char '.'
                         ; digits <- many1 digit <?> "fraction"
-                        ; return (foldr op 0.0 digits)
+                        ; return ('.' : digits)
                         }
                       <?> "fraction"
-                    where
-                      op d f    = (f + fromIntegral (digitToInt d))/10.0
-
-    exponent'       = do{ oneOf "eE"
-                        ; f <- sign
+                      
+    exponent'       = do{ _ <- oneOf "eE"
+                         ; sign' <- fmap (:[]) (oneOf "+-") <|> return ""
                         ; e <- decimal <?> "exponent"
-                        ; return (power (f e))
+                        ; return ('e' : sign' ++ show e)
                         }
                       <?> "exponent"
-                    where
-                       power e  | e < 0      = 1.0/power(-e)
-                                | otherwise  = fromInteger (10^e)
-
+                    
 
     -- integers and naturals
     int             = do{ f <- lexeme sign
@@ -573,14 +576,14 @@ makeTokenParser languageDef open sep close
 
     nat             = zeroNumber <|> decimal
 
-    zeroNumber      = do{ char '0'
+    zeroNumber      = do{ _ <- char '0'
                         ; hexadecimal <|> octal <|> decimal <|> return 0
                         }
                       <?> ""
 
     decimal         = number 10 digit
-    hexadecimal     = do{ oneOf "xX"; number 16 hexDigit }
-    octal           = do{ oneOf "oO"; number 8 octDigit  }
+    hexadecimal     = do{ _ <- oneOf "xX"; number 16 hexDigit }
+    octal           = do{ _ <- oneOf "oO"; number 8 octDigit  }
 
     number base baseDigit
         = do{ digits <- many1 baseDigit
@@ -593,9 +596,9 @@ makeTokenParser languageDef open sep close
     -----------------------------------------------------------
     reservedOp name =
         lexeme $ try $
-        do{ string name
-          ; notFollowedBy (opLetter languageDef) <?> ("end of " ++ show name)
-          }
+        do{ _ <- string name
+           ; notFollowedBy (opLetter languageDef) <?> ("end of " ++ show name)
+           }
 
     operator =
         lexeme $ try $
@@ -621,7 +624,7 @@ makeTokenParser languageDef open sep close
     -----------------------------------------------------------
     reserved name =
         lexeme $ try $
-        do{ caseString name
+        do{ _ <- caseString name
           ; notFollowedBy (identLetter languageDef) <?> ("end of " ++ show name)
           }
 
@@ -630,7 +633,7 @@ makeTokenParser languageDef open sep close
         | otherwise               = do{ walk name; return name }
         where
           walk []     = return ()
-          walk (c:cs) = do{ caseChar c <?> msg; walk cs }
+          walk (c:cs) = do{ _ <- caseChar c <?> msg; walk cs }
 
           caseChar c  | isAlpha c  = char (toLower c) <|> char (toUpper c)
                       | otherwise  = char c
@@ -671,16 +674,17 @@ makeTokenParser languageDef open sep close
                             GT  -> False
 
     theReservedNames
-        | caseSensitive languageDef  = sortedNames
-        | otherwise               = map (map toLower) sortedNames
+        | caseSensitive languageDef  = sort reserved
+        | otherwise                  = sort . map (map toLower) $ reserved
         where
-          sortedNames   = sort (reservedNames languageDef)
+          reserved = reservedNames languageDef
 
 
 
     -----------------------------------------------------------
     -- White space & symbols
     -----------------------------------------------------------
+    symbol :: (Monad m) => String -> ParsecT String [Column] m String
     symbol name
         = lexeme (string name)
 
@@ -690,6 +694,7 @@ makeTokenParser languageDef open sep close
 
     --whiteSpace
     -- MOD: this function renamed from whiteSpace to ws, and changed to return the matched string.
+    ws :: forall (m :: * -> *). (Monad m) => ParsecT String [Column] m [String]
     ws
         | noLine && noMulti  = many (simpleSpace <?> "")
         | noLine             = many (simpleSpace <|> multiLineComment <?> "")
@@ -701,10 +706,12 @@ makeTokenParser languageDef open sep close
 
     --simpleSpace = skipMany1 (eoln ws <|> satisfy isSpace)        
     --MOD  simpleSpace WAS MODIFIED FOR LAYOUT TOKEN PARSERS by Tim Sheard 7/27/09
+    simpleSpace :: (Monad m) => ParsecT String [Column] m String
     simpleSpace =
-        many1 (satisfy isSpace)
+         many1 (satisfy isSpace)
 
     -- MOD return matched string
+    oneLineComment :: (Monad m) => ParsecT String [Column] m String
     oneLineComment =
         do{ xs <- try (string (commentLine languageDef))
           ; ys <- many (satisfy (/= '\n'))
@@ -712,17 +719,20 @@ makeTokenParser languageDef open sep close
           }
 
     -- MOD: return matched string
+    multiLineComment :: (Monad m) => ParsecT String [Column] m String
     multiLineComment =
         do { xs <- try (string (commentStart languageDef))
            ; ys <- inComment
            ; return (xs++ys)
            }
 
+    inComment :: (Monad m) =>  ParsecT String [Column] m String
     inComment
         | nestedComments languageDef  = inCommentMulti
         | otherwise                = inCommentSingle
 
     -- MOD: return matched string
+    inCommentMulti :: (Monad m) => ParsecT String [Column] m String
     inCommentMulti
         =   do{ xs <- try (string (commentEnd languageDef)) ; return xs }
         <|> do{ xs <- multiLineComment              ; ys <- inCommentMulti; return (xs++ys) }
@@ -732,6 +742,7 @@ makeTokenParser languageDef open sep close
         where
           startEnd   = nub (commentEnd languageDef ++ commentStart languageDef)
 
+    inCommentSingle :: (Monad m) => ParsecT String [Column] m String
     inCommentSingle
         =   do{ xs <- try (string (commentEnd languageDef)); return xs }
         <|> do{ xs <- many1 (noneOf startEnd)     ; ys <- inCommentSingle; return (xs++ys) }
@@ -743,12 +754,17 @@ makeTokenParser languageDef open sep close
 --MOD --------------------------------------------------------------------
 -- THE FOLLOWING WAS ADDED FOR LAYOUT TOKEN PARSERS by Tim Sheard 7/27/09
 
+    layoutSep, layoutEnd, layoutBegin :: (Monad m) => ParsecT String [Column] m String
     layoutSep   = (symbol sep)   <?> ("inserted layout separator ("++sep++")")
     layoutEnd   = (symbol close) <?> ("inserted layout closing symbol("++close++")")
     layoutBegin = (symbol open)  <?> ("layout opening symbol ("++open++")")
    
+    layout :: forall m a t. (Monad m) => ParsecT String [Column] m a
+             -> ParsecT String [Column] m t
+             -> ParsecT String [Column] m [a]
     layout p stop =
-           (do { try layoutBegin; xs <- sepBy p (symbol ";") 
+           (do { try layoutBegin 
+               ; xs <- sepBy p (symbol ";") 
                ; layoutEnd <?> "explicit layout closing brace"
                ; stop; return (xs)}) <|>
            (do { indent; xs <- align p stop; return xs})
@@ -762,7 +778,8 @@ makeTokenParser languageDef open sep close
                              -- removing indentation happens automatically
                              -- in function whiteSpace
                           (do { stop; undent; return ([x])})}
-  
+
+    whiteSpace :: forall m. (Monad m) => ParsecT String [Column] m ()
     whiteSpace =
        do { (col1,_,_) <- getInfo
           ; wsChars <- ws
@@ -793,24 +810,24 @@ getInfo =
       ; tokens <- getInput
       ; return(sourceColumn pos,tabs,tokens) }
 
-setInfo :: forall s u (m :: * -> *).
+setInfo :: forall (m :: * -> *).
                  Monad m =>
-                 (Column, u, s) -> ParsecT s u m ()
+                 (Column, [Column], String) -> ParsecT String [Column] m ()
 setInfo (col,tabs,tokens) =
   do { p <- getPosition
      ; setPosition (setSourceColumn p col)
      ; setState tabs
      ; setInput tokens }
 
-indent :: forall s (m :: * -> *).
+indent :: forall (m :: * -> *).
                 Monad m =>
-                ParsecT s [Column] m ()
+                ParsecT String [Column] m ()
 indent =
   do { pos <- getPosition
      ; tabs <- getState
      ; setState (sourceColumn pos : tabs)
      }
-undent :: forall s (m :: * -> *) t. Monad m => ParsecT s [t] m ()
+undent :: forall (m :: * -> *) t. Monad m => ParsecT String [t] m ()
 undent =
   do { (p:ps) <- getState
      ; setState ps
@@ -844,9 +861,10 @@ _eoln whiteSpace =
       ; return '\n' }    
       
 data LayoutFun s m = 
-   LayFun (forall a t. ParsecT s [Column] m a
-             -> ParsecT s [Column] m t
-             -> ParsecT s [Column] m [a])          
+   LayFun (forall a t. 
+    (Monad m) => ParsecT String [Column] m a
+             -> ParsecT String [Column] m t
+             -> ParsecT String [Column] m [a])          
           
 -- End of added code          
 --MOD --------------------------------------------------------------------

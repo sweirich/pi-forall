@@ -1,71 +1,87 @@
-Name: pi-forall
-Version: 0.1.1
-License: BSD3
-License-file: LICENSE
-Copyright: (c) 2013-2016 University of Pennsylvania
-Description: An implementation of a simple dependently typed language for OPLSS 2013
-Author: Stephanie Weirich <sweirich@cis.upenn.edu>, based on code by Trellys Team <trellys@...>
-Maintainer: Stephanie Weirich <sweirich@cis.upenn.edu>
-Cabal-Version: >= 1.8
-Build-type: Simple
-tested-with: GHC == 7.10.3, GHC == 8.0.1, GHC == 8.6.5, GHC == 8.8.3
-Category: Compilers/Interpreters
-Homepage: https://github.com/sweirich/pi-forall
-Synopsis: Demo implementation of typechecker for dependently-typed language
+cabal-Version: 2.2
+name: pi-forall
+version: 0.2
+license: BSD-3-Clause
+license-file: LICENSE
+copyright: (c) 2013-2022 University of Pennsylvania
+description: An implementation of a simple dependently typed language for OPLSS 2022
+author: Stephanie Weirich <sweirich@cis.upenn.edu>, based on code by Trellys Team <trellys@...>
+maintainer: Stephanie Weirich <sweirich@cis.upenn.edu>
+build-type: Simple
+tested-with: GHC == 8.10.7
+category: Compilers/Interpreters
+homepage: https://github.com/sweirich/pi-forall
+synopsis: Demo implementation of typechecker for dependently-typed language
 
-                    
+common shared-properties
+  default-language:
+    Haskell2010
+  ghc-options:
+    -Wall -fno-warn-unused-matches -fno-warn-orphans -fno-warn-unused-top-binds
+  default-extensions: 
+    EmptyDataDecls
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveDataTypeable
+    DeriveGeneric
+    DerivingStrategies
+    FlexibleContexts 
+    FlexibleInstances 
+    GADTs
+    GeneralizedNewtypeDeriving
+    ImportQualifiedPost
+    KindSignatures
+    MultiParamTypeClasses
+    NamedFieldPuns
+    ParallelListComp
+    PatternGuards
+    RankNTypes
+    ScopedTypeVariables
+    TupleSections
+    TypeSynonymInstances
+    UndecidableInstances 
+    ViewPatterns
+
+  hs-source-dirs: src/
+  build-depends:  
+    base >= 4 && < 5,
+    parsec >= 3.1.8 && < 3.2,
+    mtl >= 2.2.1,
+    pretty >= 1.0.1.0,
+    unbound-generics >= 0.2,
+    transformers,
+    array >= 0.3.0.2 && < 0.6,
+    containers,
+    directory,
+    filepath,
+    HUnit,
+    QuickCheck
+  if !impl(ghc >= 8.0)
+    build-depends: semigroups == 0.18.*      
+
 library
-  hs-source-dirs: src/
-  Exposed-modules: Syntax
-                   Parser
-                   TypeCheck
-                   Modules
-                   Environment
-                   PrettyPrint
-                   Equal
-                   LayoutToken
-                   Main
-  Build-depends:  base >= 4 && < 5,
-                  parsec >= 3.1.8 && < 3.2,
-                  mtl >= 2.2.1,
-                  pretty >= 1.0.1.0,
-                  unbound-generics >= 0.2,
-                  transformers,
-                  array >= 0.3.0.2 && < 0.6,
-                  containers,
-                  directory,
-                  filepath,
-                  HUnit,
-                  QuickCheck
-  if !impl(ghc >= 8.0)
-    build-depends: semigroups == 0.18.*                  
-
-executable pi-forall
-  hs-source-dirs: src/
-  Main-is: Main.hs
-  Build-depends: base >=4 && < 5, 
-                 parsec >= 3.1.8 && < 3.2,
-                 mtl >= 2.2.1,
-                 pretty >= 1.0.1.0,
-                 unbound-generics >= 0.2,
-                 transformers,
-                 array >= 0.3.0.2 && < 0.6,
-                 containers,
-                 directory,
-                 filepath,
-                 HUnit,
-                 QuickCheck
-  Ghc-Options:  -Wall -fno-warn-unused-matches
-  Other-modules: Environment
-                 Equal
-                 LayoutToken
-                 Modules
-                 Parser
-                 PrettyPrint
-                 Syntax
-                 TypeCheck
-
-  if !impl(ghc >= 8.0)
-    build-depends: semigroups == 0.18.*                  
+  import: shared-properties
+  exposed-modules: 
+    Syntax
+    Parser
+    TypeCheck
+    Modules
+    Environment
+    PrettyPrint
+    Equal
+    LayoutToken
+    Main
   
-
+executable pi-forall
+  import: shared-properties
+  main-is: Main.hs
+  other-modules: 
+    Environment
+    Equal
+    LayoutToken
+    Modules
+    Parser
+    PrettyPrint
+    Syntax
+    TypeCheck
+  

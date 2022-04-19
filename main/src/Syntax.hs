@@ -79,11 +79,11 @@ data Term
   | -- | variables
     Var TName
   | -- | abstraction
-    Lam (Unbound.Bind (TName , Unbound.Embed Annot) Term)
+    Lam (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Annot) Term)
   | -- | application
     App Term Arg
   | -- | function type
-    Pi (Unbound.Bind (TName , Unbound.Embed Term) Term)
+    Pi (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Term) Term)
   | -- | Annotated terms `( x : A )`
     Ann Term Term
   | -- | parenthesized term, useful for printing
@@ -112,14 +112,30 @@ data Term
     -- definition in the ctx
     Let (Unbound.Bind (TName, Unbound.Embed Term) Term )
   
-   
+  {- SOLN EQUAL -}
+  | -- | Equality type  `a = b`
+    TyEq Term Term
+  | -- | Proof of equality
+    Refl Annot
+  | -- | equality elimination
+    Subst Term Term Annot
+  | -- | witness to an equality contradiction
+    Contra Term Annot 
+  {- STUBWITH -} 
     
-  
+  {- SOLN DATA -}
+  | -- | type constructors (fully applied)
+    TCon String [Arg]
+  | -- | term constructors (fully applied, erased arguments first)
+    DCon String [Arg] Annot
+  | -- | case analysis
+    Case Term [Match] Annot
+  {- STUBWITH -}
   deriving (Show, Generic, Typeable, Unbound.Alpha)
 
 
 -- | An argument to a function.
-data Arg = Arg { unArg :: Term}
+data Arg = Arg {{- SOLN EP -} argEp :: Epsilon, {- STUBWITH -} unArg :: Term}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 
@@ -128,9 +144,32 @@ newtype Annot = Annot (Maybe Term)
   deriving (Show, Generic, Typeable) 
   deriving anyclass (Unbound.Subst Term)
 
+{- SOLN EP -}
 
+-- | Epsilon annotates the stage of a variable
+data Epsilon
+  = Runtime
+  | Erased
+  deriving (Eq, Show, Read, Bounded, Ord, Generic, Typeable, 
+            Unbound.Alpha, Unbound.Subst Term)
+  
+{- STUBWITH -}
 
+{- SOLN DATA -}
 
+-- | A 'Match' represents a case alternative
+data Match = Match (Unbound.Bind Pattern Term) 
+  deriving (Show, Generic, Typeable, Unbound.Alpha)
+  deriving anyclass (Unbound.Subst Term)
+
+-- | The patterns of case expressions bind all variables
+-- in their respective branches.
+data Pattern
+  = PatCon DCName [(Pattern, Epsilon)]
+  | PatVar TName
+  deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
+
+{- STUBWITH -}
 
 -----------------------------------------
 
@@ -143,7 +182,8 @@ newtype Annot = Annot (Maybe Term)
 data Module = Module
   { moduleName :: MName,
     moduleImports :: [ModuleImport],
-    moduleEntries :: [Decl] 
+    moduleEntries :: [Decl] {- SOLN DATA -},
+    moduleConstructors :: ConstructorNames {- STUBWITH -}
   }
   deriving (Show, Generic, Typeable)
 
@@ -153,21 +193,68 @@ newtype ModuleImport = ModuleImport MName
 -- | Declarations are the components of modules
 data Decl
   = -- | Declaration for the type of a term
-    Sig TName  Type
+    Sig TName {- SOLN EP -} Epsilon {-STUBWITH -} Type
   | -- | The definition of a particular name, must
     -- already have a type declaration in scope
     Def TName Term
   | -- | A potentially (recursive) definition of
     -- a particular name, must be declared
-    RecDef TName Term 
+    RecDef TName Term {- SOLN DATA -}
+  | -- | Declaration for a datatype including all of
+    -- its data constructors
+    Data TCName Telescope [ConstructorDef]
+  | -- | An abstract view of a datatype. Does
+    -- not include any information about its data
+    -- constructors
+    DataSig TCName Telescope
+  {- STUBWITH -}
   deriving (Show, Generic, Typeable)
 
+{- SOLN DATA -}
 
+-- | The names of type/data constructors used in the module
+data ConstructorNames = ConstructorNames
+  { tconNames :: Set String,
+    dconNames :: Set String
+  }
+  deriving (Show, Eq, Ord, Generic, Typeable)
+
+-- | A Data constructor has a name and a telescope of arguments
+data ConstructorDef = ConstructorDef SourcePos DCName Telescope
+  deriving (Show, Generic, Typeable)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+
+-- * Telescopes
+
+data Assn
+  = AssnVar TName Epsilon Type
+  | AssnProp Prop
+  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
+
+isAssnVar :: Assn -> Bool
+isAssnVar (AssnVar _ _ _) = True
+isAssnVar _ = False
+
+data Prop = Eq Term Term
+  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
+
+-- | A telescope is like a first class context. It binds each name
+-- in the rest of the telescope.  For example
+--     Delta = x:* , y:x, y = w, empty
+newtype Telescope = Telescope [Assn]
+  deriving (Show, Generic, Typeable)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+  
+{- STUBWITH -}
 
 -- * Auxiliary functions on syntax
 
 
+{- SOLN DATA -}
 
+-- | empty set of constructor names
+emptyConstructorNames :: ConstructorNames
+emptyConstructorNames = ConstructorNames Set.empty Set.empty {- STUBWITH -}
 
 -- | Default name for '_' occurring in patterns
 wildcardName :: TName
@@ -190,7 +277,23 @@ unPosDeep = unPos -- something (mkQ Nothing unPos) -- TODO: Generic version of t
 unPosFlaky :: Term -> SourcePos
 unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
 
+{- SOLN DATA -}
 
+-- | Is this the syntax of a literal (natural) number
+isNumeral :: Term -> Maybe Int
+isNumeral (Pos _ t) = isNumeral t
+isNumeral (Paren t) = isNumeral t
+isNumeral (DCon c [] _) | c == "Zero" = Just 0
+isNumeral (DCon c [Arg _ t] _) | c == "Succ" =
+  do n <- isNumeral t; return (n + 1)
+isNumeral _ = Nothing
+
+-- | Is this pattern a variable
+isPatVar :: Pattern -> Bool
+isPatVar (PatVar _) = True
+isPatVar _ = False
+
+{- STUBWITH -}
 
 -----------------
 

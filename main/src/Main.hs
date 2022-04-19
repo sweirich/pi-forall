@@ -1,7 +1,5 @@
 {- PiForall language, OPLSS -}
 
-{-# OPTIONS_GHC -Wall -fno-warn-unused-matches #-}
-
 -- | The command line interface to the pi type checker. 
 -- Also provides functions for type checking individual terms
 -- and files.
