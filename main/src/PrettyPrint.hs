@@ -119,12 +119,15 @@ instance Disp Module where
 instance Disp ModuleImport where
   disp (ModuleImport i) = text "import" <+> disp i
 
+instance Disp Sig where
+  disp (S n {- SOLN EP -} ep {- STUBWITH -} ty) =
+    {- SOLN EP -} bindParens ep {- STUBWITH -} (disp n <+> text ":" <+> disp ty)
+
 instance Disp Decl where
   disp (Def n term) = disp n <+> text "=" <+> disp term
   disp (RecDef n r) = disp (Def n r)
-  disp (Sig n {- SOLN EP -} ep {- STUBWITH -} ty) =
-    {- SOLN EP -} bindParens ep {- STUBWITH -} (disp n <+> text ":" <+> disp ty)
-  {- SOLN DATA -}
+  disp (Sig sig) = disp sig
+{- SOLN DATA -}
   disp (Data n params constructors) =
     hang
       ( text "data" <+> disp n <+> disp params
@@ -303,7 +306,9 @@ instance Display Term where
               <+> da
               <+> text "in",
             db
-          ] {- SOLN EQUAL -}
+          ]
+
+{- SOLN EQUAL -}
   display (Subst a b annot) = do
     da <- display a
     db <- display b
@@ -327,7 +332,7 @@ instance Display Term where
     return $ text "contra" <+> dty <+> da
   {- STUBWITH -}
 
-  {- SOLN DATA -}
+{- SOLN DATA -}
   display (isNumeral -> Just i) = display i
   display (TCon n args) = do
     st <- ask
@@ -378,10 +383,11 @@ instance Display Pattern where
   display (PatVar x) = display x
 
 instance Disp Assn where
-  disp (AssnProp (Eq t1 t2)) = do
-    brackets (disp t1 <+> char '=' <+> disp t2)
-  disp (AssnVar n ep ty) = do
-    mandatoryBindParens ep (disp n <+> colon <+> disp ty)
+  disp (AssnProp prop) = disp prop
+  disp (AssnSig sig) = disp sig
+
+instance Disp Prop where
+  disp (Eq t1 t2) = brackets (disp t1 <+> char '=' <+> disp t2)
 
 instance Disp Telescope where
   disp (Telescope t) = sep $ map disp t
@@ -446,11 +452,12 @@ wraparg st a = case unArg a of
   Prod _ _ _ -> annot
   Pos _ b -> wraparg st a {unArg = b}
   TrustMe _ -> annot
-  {- SOLN DATA -}
+{- SOLN DATA -}
   TCon _ [] -> std
   (isNumeral -> Just x) -> std
   DCon _ [] _ -> annot
-  {- STUBWITH -}{- SOLN EQUAL -}
+  {- STUBWITH -}
+{- SOLN EQUAL -}
   Refl _ -> annot
   {- STUBWITH -}
   _ -> force

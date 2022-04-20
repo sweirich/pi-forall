@@ -5,7 +5,6 @@ module Environment
   ( TcMonad,
     runTcMonad,
     Env,
-    Hint (..),
     emptyEnv,
     lookupTy,
     lookupTyMaybe,
@@ -66,9 +65,6 @@ runTcMonad env m =
 data SourceLocation where
   SourceLocation :: forall a. Disp a => SourcePos -> a -> SourceLocation
 
--- | Type declarations
-data Hint = Hint TName {- SOLN EP -}Epsilon{- STUBWITH -} Term
-
 -- | Environment manipulation and accessing functions
 -- The context 'gamma' is a list
 data Env = Env
@@ -80,7 +76,7 @@ data Env = Env
     -- | Type declarations (signatures): it's not safe to
     -- put these in the context until a corresponding term
     -- has been checked.
-    hints :: [Hint],
+    hints :: [Sig],
     -- | what part of the file we are in (for errors/warnings)
     sourceLocation :: [SourceLocation] {- SOLN EP -},
     epsilon :: Epsilon {- STUBWITH -}
@@ -102,30 +98,29 @@ getTys = do
   ctx <- asks ctx
   return $ catMaybes (map unwrap ctx)
   where
-    unwrap (Sig v {- SOLN EP -}ep{- STUBWITH -} ty) = Just (v,{- SOLN EP -} ep,{- STUBWITH -} ty)
+    unwrap (Sig (S v {- SOLN EP -}ep{- STUBWITH -} ty)) = Just (v,{- SOLN EP -} ep,{- STUBWITH -} ty)
     unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
-lookupHint :: (MonadReader Env m) => TName -> m (Maybe ({- SOLN EP -}Epsilon, {- STUBWITH -}Term))
+lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
 lookupHint v = do
   hints <- asks hints
-  return $ listToMaybe [({- SOLN EP -}ep,{- STUBWITH -}ty) | Hint v' {- SOLN EP -}ep{- STUBWITH -} ty <- hints, v == v']
+  return $ listToMaybe [ sig | sig <- hints, v == sigName sig]
 
 -- | Find a name's type in the context.
 lookupTyMaybe ::
   (MonadReader Env m) =>
   TName ->
-  m (Maybe ({- SOLN EP -}Epsilon,{- STUBWITH -} Type))
+  m (Maybe Sig)
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [({- SOLN EP -}ep,{- STUBWITH -}ty) | Sig v' {- SOLN EP -}ep{- STUBWITH -} ty <- ctx, v == v']
+  return $ listToMaybe [ sig | Sig sig <- ctx, v == sigName sig]
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
 lookupTy ::
   (MonadReader Env m, MonadError Err m) =>
-  TName ->
-  m ({- SOLN EP -}Epsilon,{- STUBWITH -} Type)
+  TName -> m Sig
 lookupTy v =
   do
     x <- lookupTyMaybe v
@@ -264,8 +259,8 @@ extendCtxTele (AssnProp (Eq (Var x) t2) : tele) m =
 extendCtxTele (AssnProp (Eq t1 t2) : tele) m = do
   warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
   extendCtxTele tele m
-extendCtxTele (AssnVar x ep ty : tele) m =
-  extendCtx (Sig x ep ty) $ extendCtxTele tele m
+extendCtxTele (AssnSig sig : tele) m =
+  extendCtx (Sig sig) $ extendCtxTele tele m
 
 {- STUBWITH -}
 
@@ -299,7 +294,7 @@ getSourceLocation :: MonadReader Env m => m [SourceLocation]
 getSourceLocation = asks sourceLocation
 
 -- | Add a type hint
-extendHints :: (MonadReader Env m) => Hint -> m a -> m a
+extendHints :: (MonadReader Env m) => Sig -> m a -> m a
 extendHints h = local (\m@(Env {hints = hs}) -> m {hints = h : hs})
 
 -- | An error that should be reported to the user

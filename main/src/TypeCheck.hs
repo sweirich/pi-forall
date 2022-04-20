@@ -39,15 +39,15 @@ checkType tm expectedTy = do
 -- an expected type (in weak-head-normal form) in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad (Term, Type)
 tcTerm t@(Var x) Nothing = do
-  ({- SOLN EP -} ep, {- STUBWITH -} ty) <- Env.lookupTy x {- SOLN EP -}
+  sig <- Env.lookupTy x {- SOLN EP -}
   -- make sure the variable is accessible
-  Env.checkStage ep {- STUBWITH -}
-  return (t, ty)
+  Env.checkStage (sigEp sig) {- STUBWITH -}
+  return (t, sigType sig)
 tcTerm t@(Type) Nothing = return (t, Type)
 tcTerm (Pi bnd) Nothing = do
   ((x, {- SOLN EP -}ep,{- STUBWITH -} Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
   atyA <- tcType tyA
-  atyB <- Env.extendCtx (Sig x {- SOLN EP -} ep {- STUBWITH -} atyA) $ tcType tyB
+  atyB <- Env.extendCtx (Sig (S x {- SOLN EP -} ep {- STUBWITH -} atyA)) $ tcType tyB
   return (Pi (Unbound.bind (x, {- SOLN EP -} ep, {- STUBWITH -} Unbound.embed atyA) atyB), Type)
 
 -- Check the type of a function
@@ -59,12 +59,12 @@ tcTerm (Lam bnd) (Just (Pi bnd2)) = do
     tyB
     ) <-
     Unbound.unbind2Plus bnd bnd2
-  {- SOLN EP -} -- epsilons should match up
+{- SOLN EP -} -- epsilons should match up
   guard (ep1 == ep2) {- STUBWITH -}
   -- check tyA matches type annotation on binder, if present
   maybe (return ()) (Equal.equate tyA) ma
   -- check the type of the body of the lambda expression
-  (ebody, etyB) <- Env.extendCtx (Sig x {- SOLN EP -} ep1 {- STUBWITH -} tyA) (checkType body tyB)
+  (ebody, etyB) <- Env.extendCtx (Sig (S x {- SOLN EP -} ep1 {- STUBWITH -} tyA)) (checkType body tyB)
   return
     ( Lam (Unbound.bind (x, {- SOLN EP -} ep1, {- STUBWITH -} Unbound.embed (Annot (Just tyA))) ebody),
       Pi bnd2
@@ -79,7 +79,7 @@ tcTerm (Lam bnd) Nothing = do
   -- check that the type annotation is well-formed
   atyA <- tcType tyA
   -- infer the type of the body of the lambda expression
-  (ebody, atyB) <- Env.extendCtx (Sig x {- SOLN EP -} ep {- STUBWITH -} atyA) (inferType body)
+  (ebody, atyB) <- Env.extendCtx (Sig (S x {- SOLN EP -} ep {- STUBWITH -} atyA)) (inferType body)
   return
     ( Lam (Unbound.bind (x, {- SOLN EP -} ep, {- STUBWITH -} Unbound.embed (Annot (Just atyA))) ebody),
       Pi (Unbound.bind (x, {- SOLN EP -} ep, {- STUBWITH -} Unbound.embed atyA) atyB)
@@ -87,7 +87,7 @@ tcTerm (Lam bnd) Nothing = do
 tcTerm (App t1 a2) Nothing = do
   (at1, ty1) <- inferType t1
   (x, {- SOLN EP -} ep2, {- STUBWITH -} tyA, tyB) <- Equal.ensurePi ty1
-  {- SOLN EP -}
+{- SOLN EP -}
   guard (argEp a2 == ep2) {- STUBWITH -}
   (at2, ty2) <- {- SOLN EP -}Env.withStage (argEp a2) ${- STUBWITH -} checkType (unArg a2) tyA
   let result = (App at1 a2{unArg=at2}, Unbound.subst x at2 tyB)
@@ -124,16 +124,14 @@ tcTerm t@(If t1 t2 t3 ann1) ann2 = {- SOLN HW -} do
 
 tcTerm (Let bnd) ann = {- SOLN HW -} do
   ((x, Unbound.unembed -> rhs), body) <- Unbound.unbind bnd
-  (arhs, aty) <- inferType rhs
-  ep <- Env.getStage
-  (abody, ty) <-
-    Env.extendCtxs [Sig x ep aty, Def x arhs] $
+  (arhs, aty) <- inferType rhs 
+  let sig = mkSig x aty
+  (abody, ty) <- Env.extendCtxs [Sig sig, Def x arhs] $
       tcTerm body ann
   when (x `elem` Unbound.toListOf Unbound.fv ty) $
     Env.err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]
   return (Let (Unbound.bind (x, Unbound.embed arhs) abody), ty)
 {- STUBWITH   Env.err [DS "unimplemented"] -}
-
 {- SOLN DATA -}
 -- Type constructor application
 tcTerm (TCon c params) Nothing = do
@@ -186,7 +184,7 @@ tcTerm t@(DCon c args ann1) ann2 = do
   case ty of
     (TCon tname params) -> do
       (Telescope delta, Telescope deltai) <- Env.lookupDCon c tname
-      let numArgs = length (filter isAssnVar deltai)
+      let numArgs = length (filter isAssnSig deltai)
       unless (length args == numArgs) $
         Env.err
           [ DS "Constructor",
@@ -223,14 +221,13 @@ tcTerm t@(Case scrut alts ann1) ann2 = do
           Env.extendCtxs (decls ++ decls') $
             checkType body ty
         {- STUBWITH -}
-        {- SOLN DATA -}
+{- SOLN DATA -}
         return (Match (Unbound.bind pat ebody))
   let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts
   aalts <- mapM checkAlt alts
   exhaustivityCheck scrut' sty pats
   return (Case ascrut aalts (Annot (Just ty)), ty)
 {- STUBWITH -}
-
 {- SOLN EQUAL -}
 tcTerm (TyEq a b) Nothing = do
   (aa, aTy) <- inferType a
@@ -274,12 +271,12 @@ tcTerm t@(Contra p ann1) ann2 = do
   b' <- Equal.whnf b
   case (a', b') of
     {- STUBWITH -}
-    {- SOLN DATA -}
+{- SOLN DATA -}
     (DCon da _ _, DCon db _ _)
       | da /= db ->
         return (Contra apf (Annot (Just ty)), ty)
     {- STUBWITH -}
-    {- SOLN EQUAL -}
+{- SOLN EQUAL -}
     (LitBool b1, LitBool b2)
       | b1 /= b2 ->
         return (Contra apf (Annot (Just ty)), ty)
@@ -296,7 +293,7 @@ tcTerm t@(Contra p ann1) ann2 = do
 tcTerm t@(Sigma bnd) Nothing = {- SOLN EQUAL -} do
   ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
   aa <- tcType tyA
-  ba <- Env.extendCtx (Sig x Runtime aa) $ tcType tyB
+  ba <- Env.extendCtx (Sig (mkSig x aa)) $ tcType tyB
   return (Sigma (Unbound.bind (x, Unbound.embed aa) ba), Type)
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
@@ -306,7 +303,7 @@ tcTerm t@(Prod a b ann1) ann2 = {- SOLN EQUAL -} do
     (Sigma bnd) -> do
       ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
       (aa, _) <- checkType a tyA
-      (ba, _) <- Env.extendCtxs [Sig x Runtime tyA, Def x aa] $ checkType b tyB
+      (ba, _) <- Env.extendCtxs [Sig (mkSig x tyA), Def x aa] $ checkType b tyB
       return (Prod aa ba (Annot (Just ty)), ty)
     _ ->
       Env.err
@@ -338,7 +335,7 @@ tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN EQUAL -} do
               ]
             _ -> []
       (abody, bTy) <-
-        Env.extendCtxs ([Sig x' Runtime tyA, Sig y' Runtime tyB'] ++ ctx) $
+        Env.extendCtxs ([Sig (mkSig x' tyA), Sig (mkSig y' tyB')] ++ ctx) $
           checkType body ty
       return (Pcase apr (Unbound.bind (x', y') abody) (Annot (Just ty)), bTy)
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
@@ -346,13 +343,11 @@ tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN EQUAL -} do
 
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm
-  {- SOLN EQUAL -}
+{- SOLN EQUAL -}
   Equal.equate ty' ty
-  {- STUBWITH unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
+{- STUBWITH   unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
   return (atm, ty)
 
-{- SOLN EQUAL -}
-{- STUBWITH -}
 
 ---------------------------------------------------------------------
 -- helper functions for type checking
@@ -396,16 +391,16 @@ tcArgTele [] [] = return []
 tcArgTele args (AssnProp (Eq tx ty) : tele) = do
   Equal.equate tx ty
   tcArgTele args tele
-tcArgTele (Arg ep1 tm : terms) (AssnVar x ep2 ty : tele') | ep1 == ep2 = do
-  (etm, ety) <- Env.withStage ep1 $ checkType tm ty
-  tele'' <- doSubst [(x, etm)] tele'
+tcArgTele (Arg ep1 tm : terms) (AssnSig sig : tele') | ep1 == sigEp sig = do
+  (etm, ety) <- Env.withStage ep1 $ checkType tm (sigType sig)
+  tele'' <- doSubst [(sigName sig, etm)] tele'
   eterms <- tcArgTele terms tele''
   return $ Arg ep1 etm : eterms
-tcArgTele (Arg ep1 _ : _) (AssnVar _ ep2 _ : _) =
+tcArgTele (Arg ep1 _ : _) (AssnSig sig2 : _) =
   Env.err
     [ DD ep1,
       DS "argument provided when",
-      DD ep2,
+      DD (sigEp sig2),
       DS "argument was expected"
     ]
 tcArgTele [] _ =
@@ -421,7 +416,7 @@ substTele :: [Assn] -> [Arg] -> [Assn] -> TcMonad [Assn]
 substTele tele args delta = doSubst (mkSubst tele (map unArg args)) delta
   where
     mkSubst [] [] = []
-    mkSubst (AssnVar x Runtime _ : tele') (tm : tms) =
+    mkSubst (AssnSig (S x Runtime _) : tele') (tm : tms) =
       (x, tm) : mkSubst tele' tms
     mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
@@ -478,10 +473,11 @@ doSubst ss (AssnProp (Eq tx ty) : tele') = do
   decls <- constraintToDecls tx' ty'
   tele <- Env.extendCtxs decls $ (doSubst ss tele')
   return $ (AssnProp (Eq tx' ty') : tele)
-doSubst ss (AssnVar x ep ty : tele') = do
-  tynf <- Equal.whnf (Unbound.substs ss ty)
+doSubst ss (AssnSig sig : tele') = do
+  tynf <- Equal.whnf (Unbound.substs ss (sigType sig))
+  let sig' = sig{sigType = tynf}
   tele'' <- doSubst ss tele'
-  return $ AssnVar x ep tynf : tele''
+  return $ AssnSig sig' : tele''
 
 -----------------------------------------------------------
 -- helper functions for checking pattern matching
@@ -490,7 +486,7 @@ doSubst ss (AssnVar x ep ty : tele') = do
 -- the pattern.
 -- Also returns the erased variables so that they can be checked
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
-declarePat (PatVar x) ep y = return ([Sig x ep y], [])
+declarePat (PatVar x) ep y = return ([Sig (S x ep y)], [])
 declarePat (PatCon d pats) Runtime (TCon c params) = do
   (Telescope delta, Telescope deltai) <- Env.lookupDCon d c
   tele <- substTele delta params deltai
@@ -506,7 +502,7 @@ declarePats dc pats (AssnProp (Eq tx ty) : tele) = do
   new_decls <- constraintToDecls tx ty
   (decls, names) <- Env.extendCtxs new_decls $ declarePats dc pats tele
   return (new_decls ++ decls, names)
-declarePats dc ((pat, _) : pats) (AssnVar x ep ty : tele) = do
+declarePats dc ((pat, _) : pats) (AssnSig (S x ep ty) : tele) = do
   (ds1, v1) <- declarePat pat ep ty
   tm <- pat2Term pat ty
   (ds2, v2) <- declarePats dc pats (Unbound.subst x tm tele)
@@ -529,7 +525,7 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
     pats2Terms ps (AssnProp (Eq tx' ty') : tele') = do
       decls <- constraintToDecls tx' ty'
       Env.extendCtxs decls $ pats2Terms ps tele'
-    pats2Terms ((p, _) : ps) (AssnVar x ep ty1 : d) = do
+    pats2Terms ((p, _) : ps) (AssnSig (S x ep ty1) : d) = do
       ty' <- Equal.whnf ty1
       t <- pat2Term p ty'
       ts <- pats2Terms ps (Unbound.subst x t d)
@@ -555,7 +551,7 @@ equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
         eqWithPats ts ps (AssnProp (Eq tx ty) : tl) = do
           decls <- constraintToDecls tx ty
           Env.extendCtxs decls $ eqWithPats ts ps tl
-        eqWithPats (t : ts) ((p, _) : ps) (AssnVar x _ ty : tl) = do
+        eqWithPats (t : ts) ((p, _) : ps) (AssnSig (S x _ ty) : tl) = do
           t' <- Equal.whnf t
           decls <- equateWithPat t' p ty
           decls' <- eqWithPats ts ps (Unbound.subst x t' tl)
@@ -584,10 +580,11 @@ tcTypeTele (AssnProp (Eq tm1 tm2) : tl) = do
   decls <- constraintToDecls tm1' tm2'
   tele' <- Env.extendCtxs decls $ tcTypeTele tl
   return (AssnProp (Eq tm1' tm2') : tele')
-tcTypeTele (AssnVar x ep ty : tl) = do
-  ty' <- tcType ty
-  tele' <- Env.extendCtx (Sig x ep ty') $ tcTypeTele tl
-  return (AssnVar x ep ty' : tele')
+tcTypeTele (AssnSig sig : tl) = do
+  ty' <- tcType (sigType sig)
+  let sig' = sig{sigType = ty'}
+  tele' <- Env.extendCtx (Sig sig') $ tcTypeTele tl
+  return (AssnSig sig' : tele')
 
 {- STUBWITH -}
 
@@ -639,7 +636,7 @@ tcModule defs m' = do
 
 -- | The Env-delta returned when type-checking a top-level Decl.
 data HintOrCtx
-  = AddHint Env.Hint
+  = AddHint Sig
   | AddCtx [Decl]
 
 -- | Check each sort of declaration in a module
@@ -655,24 +652,24 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           (aterm, ty) <- inferType term
-          return $ AddCtx [Sig n {- SOLN EP -}Runtime{- STUBWITH -} ty, Def n aterm]
-        Just ({- SOLN EP -}ep,{- STUBWITH -} ty) ->
-          let handler (Env.Err ps msg) = throwError $ Env.Err (ps) (msg $$ msg')
+          return $ AddCtx [Sig (S n {- SOLN EP -}Runtime{- STUBWITH -} ty), Def n aterm]
+        Just sig ->
+          let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
                 disp
                   [ DS "When checking the term ",
                     DD term,
                     DS "against the signature",
-                    DD ty
+                    DD sig
                   ]
            in do
                 (eterm, ety) <-
-                  Env.extendCtx (Sig n {- SOLN EP -}ep{- STUBWITH -} ty) $
-                    checkType term ty `catchError` handler
+                  Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
                 -- Put the elaborated version of term into the context.
+                let esig = sig{sigType = ety}
                 if (n `elem` Unbound.toListOf Unbound.fv eterm)
-                  then return $ AddCtx [Sig n {- SOLN EP -}ep{- STUBWITH -}  ety, RecDef n eterm]
-                  else return $ AddCtx [Sig n {- SOLN EP -}ep{- STUBWITH -}  ety, Def n eterm]
+                  then return $ AddCtx [Sig esig, RecDef n eterm]
+                  else return $ AddCtx [Sig esig, Def n eterm]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -681,10 +678,10 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (Sig n {- SOLN EP -}ep{- STUBWITH -} ty) = do
-  duplicateTypeBindingCheck n ty
-  ety <- tcType ty
-  return $ AddHint (Env.Hint n {- SOLN EP -}ep{- STUBWITH -} ety)
+tcEntry (Sig sig) = do
+  duplicateTypeBindingCheck sig
+  ety <- tcType (sigType sig)
+  return $ AddHint (sig{sigType=ety})
 
 {- SOLN DATA -}
 -- rule Decl_data
@@ -714,26 +711,25 @@ tcEntry (RecDef _ _) = Env.err [DS "internal construct"]
 
 -- | Make sure that we don't have the same name twice in the
 -- environment. (We don't rename top-level module definitions.)
-duplicateTypeBindingCheck :: TName -> Term -> TcMonad ()
-duplicateTypeBindingCheck n ty = do
+duplicateTypeBindingCheck :: Sig -> TcMonad ()
+duplicateTypeBindingCheck sig = do
   -- Look for existing type bindings ...
+  let n = sigName sig
   l <- Env.lookupTyMaybe n
   l' <- Env.lookupHint n
   -- ... we don't care which, if either are Just.
   case catMaybes [l, l'] of
     [] -> return ()
     -- We already have a type in the environment so fail.
-    ({- SOLN EP -}ep,{- STUBWITH -} ty') : _ ->
-      let (Pos p _) = ty
+    sig' : _ ->
+      let (Pos p _) = sigType sig
           msg =
             [ DS "Duplicate type signature ",
-              DD ty,
-              DS "for name ",
-              DD n,
-              DS "Previous typing was",
-              DD ty'
+              DD sig,
+              DS "Previous was",
+              DD sig'
             ]
-       in Env.extendSourceLocation p ty $ Env.err msg
+       in Env.extendSourceLocation p sig $ Env.err msg
 
 {- SOLN DATA -}
 -----------------------------------------------------------
@@ -830,7 +826,7 @@ relatedPats dc (pc@(PatVar _) : pats) = ([], pc : pats)
 checkSubPats :: DCName -> [Assn] -> [[(Pattern, Epsilon)]] -> TcMonad ()
 checkSubPats dc [] _ = return ()
 checkSubPats dc (AssnProp _ : tele) patss = checkSubPats dc tele patss
-checkSubPats dc (AssnVar name _ tyP : tele) patss
+checkSubPats dc (AssnSig _ : tele) patss
   | length patss > 0 && (all ((> 0) . length) patss) = do
     let hds = map (fst . head) patss
     let tls = map tail patss

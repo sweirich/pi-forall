@@ -1,8 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE CPP #-}
-
--- | A parsec-based parser for the concrete syntax.
+-- | A parsec-based parser for the concrete syntax
 module Parser
   (
    parseModuleFile, 
@@ -14,7 +12,7 @@ module Parser
 
 import Syntax hiding (moduleImports)
 
-import Unbound.Generics.LocallyNameless
+import qualified Unbound.Generics.LocallyNameless as Unbound
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
@@ -113,7 +111,7 @@ parseModuleFile :: (MonadError ParseError m, MonadIO m) => ConstructorNames -> S
 parseModuleFile cnames name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
-  liftError $ runFreshM $ 
+  liftError $ Unbound.runFreshM $ 
     flip evalStateT cnames $
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 {- STUBWITH      
@@ -122,7 +120,7 @@ parseModuleFile :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleFile name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
-  liftError $ runFreshM $ 
+  liftError $ Unbound.runFreshM $ 
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 -}
 
@@ -130,7 +128,7 @@ parseModuleFile name = do
 parseModuleImports :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleImports name = do
   contents <- liftIO $ readFile name
-  liftError $ runFreshM $ 
+  liftError $ Unbound.runFreshM $ 
 {- SOLN DATA -}
     flip evalStateT emptyConstructorNames $
 {- STUBWITH -}
@@ -138,7 +136,7 @@ parseModuleImports name = do
 
 -- | Test an 'LParser' on a String.
 testParser :: (LParser t) -> String -> Either ParseError t
-testParser parser str = runFreshM $ 
+testParser parser str = Unbound.runFreshM $ 
 {- SOLN DATA -}
    flip evalStateT emptyConstructorNames $
 {- STUBWITH -}
@@ -153,15 +151,15 @@ type LParser a = ParsecT
                     String                      -- The input is a sequence of Char
                     [Column] (                  -- The internal state for Layout tabs
 {- SOLN DATA -}     StateT ConstructorNames {- STUBWITH -}
-                       FreshM)                  -- The internal state for generating fresh names, 
+                    Unbound.FreshM)                  -- The internal state for generating fresh names, 
                     a                           -- the type of the object being parsed
 
 {- SOLN DATA -}
-instance Fresh (ParsecT s u (StateT ConstructorNames FreshM))  where
-  fresh = lift . lift . fresh
+instance Unbound.Fresh (ParsecT s u (StateT ConstructorNames Unbound.FreshM))  where
+  fresh = lift . lift . Unbound.fresh
 {- STUBWITH 
-instance Fresh (ParsecT s u FreshM)  where
-  fresh = lift . fresh -}
+instance Unbound.Fresh (ParsecT s u Unbound.FreshM)  where
+  fresh = lift . Unbound.fresh -}
 
 
 -- Based on Parsec's haskellStyle (which we can not use directly since
@@ -202,8 +200,8 @@ piforallStyle = Token.LanguageDef
                  ["!","?","\\",":",".",",","<", "=", "+", "-", "^", "()", "_","|","{", "}"]
                 }
 {- SOLN DATA -}
-tokenizer :: Token.GenTokenParser String [Column] (StateT ConstructorNames FreshM)
-{- STUBWITH tokenizer :: Token.GenTokenParser String [Column] (FreshM) -}
+tokenizer :: Token.GenTokenParser String [Column] (StateT ConstructorNames Unbound.FreshM)
+{- STUBWITH tokenizer :: Token.GenTokenParser String [Column] (Unbound.FreshM) -}
 layout :: forall a t. LParser a -> LParser t -> LParser [a]
 (tokenizer, Token.LayFun layout) = Token.makeTokenParser piforallStyle  "{" ";" "}"
 
@@ -221,8 +219,8 @@ variable =
      if (i `S.member` (tconNames cnames) || 
          i `S.member` (dconNames cnames))
        then fail "Expected a variable, but a constructor was found"
-       else return $ string2Name i
-     {- STUBWITH      return $ string2Name i -}
+       else return $ Unbound.string2Name i
+     {- STUBWITH      return $ Unbound.string2Name i -}
      
 {- SOLN DATA -}
 wildcard :: LParser TName
@@ -261,7 +259,7 @@ varOrCon = do i <- identifier
                 then return (DCon i [] (Annot Nothing))
                 else if  (i `S.member` tconNames cnames)
                        then return (TCon i [])
-                       else return (Var (string2Name i))
+                       else return (Var (Unbound.string2Name i))
 {- STUBWITH -}
 
 colon, dot, comma :: LParser ()
@@ -327,14 +325,14 @@ telebindings = many teleBinding
   where
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
-                <|>    ((,) <$> (fresh wildcardName) <*> expr)
-      return (AssnVar x Runtime ty :)
+                <|>    ((,) <$> (Unbound.fresh wildcardName) <*> expr)
+      return (AssnSig (mkSig x ty):)
 
     imp = do
         v <- varOrWildcard
         colon
         t <- expr
-        return (AssnVar v Erased t :)
+        return (AssnSig (S v Erased t):)
     
     equal = do
         v <- variable
@@ -387,7 +385,7 @@ constructorDef = do
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ Sig n {- SOLN EP -}Runtime{- STUBWITH -} ty 
+  return $ Sig (mkSig n ty)
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -411,7 +409,7 @@ refl =
   do reserved "refl"
      return $ Refl (Annot Nothing)
 {- STUBWITH -}
-     
+
 -- Expressions
 
 expr,term,factor :: LParser Term
@@ -429,9 +427,9 @@ expr = do
         ifix  assoc op f = Infix (reservedOp op >> return f) assoc {- STUBWITH -}
         ifixM assoc op f = Infix (reservedOp op >> f) assoc
         mkArrow  = 
-          do n <- fresh wildcardName
+          do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (bind (n, {- SOLN EP -}Runtime, {- STUBWITH -} embed tyA) tyB)
+               Pi (Unbound.bind (n, {- SOLN EP -}Runtime, {- STUBWITH -} Unbound.embed tyA) tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -517,8 +515,8 @@ lambda = do reservedOp "\\"
             return $ foldr lam body binds 
   where
 {- SOLN EP -}
-    lam (x, ep) m = Lam (bind (x, ep, embed $ Annot Nothing) m)           
-{- STUBWITH lam x m = Lam (bind (x, embed $ Annot Nothing) m) -}  
+    lam (x, ep) m = Lam (Unbound.bind (x, ep, Unbound.embed $ Annot Nothing) m)           
+{- STUBWITH lam x m = Lam (Unbound.bind (x, Unbound.embed $ Annot Nothing) m) -}  
 
                             
 
@@ -550,7 +548,7 @@ letExpr =
      boundExp <- expr
      reserved "in"
      body <- expr
-     return $ (Let (bind (x,embed boundExp) body))
+     return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
 
 {- SOLN EP -}
 -- impProd - implicit dependent products
@@ -559,10 +557,10 @@ impProd :: LParser Term
 impProd =
   do (x,tyA) <- brackets 
        (try ((,) <$> variable <*> (colon >> expr))
-        <|> ((,) <$> fresh wildcardName <*> expr))
+        <|> ((,) <$> Unbound.fresh wildcardName <*> expr))
      reservedOp "->" 
      tyB <- expr
-     return $ Pi (bind (x,Erased, embed tyA) tyB)
+     return $ Pi (Unbound.bind (x,Erased, Unbound.embed tyA) tyB)
 {- STUBWITH -}
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
@@ -599,7 +597,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (bind (x,{- SOLN EP -}Runtime,{- STUBWITH -}embed a) b))
+                      return $ Pi (Unbound.bind (x,{- SOLN EP -}Runtime,{- STUBWITH -}Unbound.embed a) b))
          Colon a b -> return $ Ann a b
          Comma a b -> return $ Prod a b (Annot Nothing)
          Nope a    -> return $ Paren a
@@ -626,7 +624,7 @@ match =
   do pat <- pattern 
      reservedOp "->"
      body <- term
-     return $ Match (bind pat body)
+     return $ Match (Unbound.bind pat body)
 
 caseExpr :: LParser Term
 caseExpr = do
@@ -649,7 +647,7 @@ pcaseExpr = do
     reservedOp ")"
     reservedOp "->"
     a <- expr
-    return $ Pcase scrut (bind (x,y) a) (Annot Nothing)
+    return $ Pcase scrut (Unbound.bind (x,y) a) (Annot Nothing)
 
 {- SOLN EQUAL -}
 -- subst e0 by e1 
@@ -677,6 +675,6 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return (Sigma (bind (x, embed a) b))
+  return (Sigma (Unbound.bind (x, Unbound.embed a) b))
   
   

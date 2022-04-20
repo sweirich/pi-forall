@@ -4,5 +4,13 @@ Overview of the implementation
 So you've made your way to the implementation. Now what are all of these
 files? 
 
-  Syntax.hs     The abstract syntax of the language
-  Parser.hs     
+  Syntax       The abstract syntax of the language
+  LayoutToken  Lexer, break input into tokens
+  Parser       Combinator parser based on parsec library
+  PrettyPrint  Display AST nicely
+
+  Environment
+  Typecheck
+  Equal
+  Modules
+  Main

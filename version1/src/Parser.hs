@@ -1,8 +1,6 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE CPP #-}
-
--- | A parsec-based parser for the concrete syntax.
+-- | A parsec-based parser for the concrete syntax
 module Parser
   (
    parseModuleFile, 
@@ -14,7 +12,7 @@ module Parser
 
 import Syntax hiding (moduleImports)
 
-import Unbound.Generics.LocallyNameless
+import qualified Unbound.Generics.LocallyNameless as Unbound
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
@@ -85,20 +83,20 @@ parseModuleFile :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleFile name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
-  liftError $ runFreshM $ 
+  liftError $ Unbound.runFreshM $ 
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 
 -- | Parse only the imports part of a module from the given filepath.
 parseModuleImports :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleImports name = do
   contents <- liftIO $ readFile name
-  liftError $ runFreshM $ 
+  liftError $ Unbound.runFreshM $ 
 
      (runParserT (do { whiteSpace; moduleImports }) [] name contents)
 
 -- | Test an 'LParser' on a String.
 testParser :: (LParser t) -> String -> Either ParseError t
-testParser parser str = runFreshM $ 
+testParser parser str = Unbound.runFreshM $ 
 
      runParserT (do { whiteSpace; v <- parser; eof; return v}) [] "<interactive>" str
 
@@ -111,11 +109,11 @@ type LParser a = ParsecT
                     String                      -- The input is a sequence of Char
                     [Column] (                  -- The internal state for Layout tabs
 
-                       FreshM)                  -- The internal state for generating fresh names, 
+                    Unbound.FreshM)                  -- The internal state for generating fresh names, 
                     a                           -- the type of the object being parsed
 
-instance Fresh (ParsecT s u FreshM)  where
-  fresh = lift . fresh
+instance Unbound.Fresh (ParsecT s u Unbound.FreshM)  where
+  fresh = lift . Unbound.fresh
 
 
 -- Based on Parsec's haskellStyle (which we can not use directly since
@@ -155,7 +153,7 @@ piforallStyle = Token.LanguageDef
                , Token.reservedOpNames =
                  ["!","?","\\",":",".",",","<", "=", "+", "-", "^", "()", "_","|","{", "}"]
                 }
-tokenizer :: Token.GenTokenParser String [Column] (FreshM)
+tokenizer :: Token.GenTokenParser String [Column] (Unbound.FreshM)
 layout :: forall a t. LParser a -> LParser t -> LParser [a]
 (tokenizer, Token.LayFun layout) = Token.makeTokenParser piforallStyle  "{" ";" "}"
 
@@ -168,7 +166,7 @@ whiteSpace = Token.whiteSpace tokenizer
 variable :: LParser TName
 variable =
   do i <- identifier 
-     return $ string2Name i
+     return $ Unbound.string2Name i
      
 
 
@@ -226,7 +224,7 @@ decl =  sigDef <|> valDef
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ Sig n  ty 
+  return $ Sig (mkSig n ty)
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -245,7 +243,7 @@ trustme = do reserved "TRUSTME"
              return (TrustMe (Annot Nothing))
 
 
-     
+
 -- Expressions
 
 expr,term,factor :: LParser Term
@@ -261,9 +259,9 @@ expr = do
 
         ifixM assoc op f = Infix (reservedOp op >> f) assoc
         mkArrow  = 
-          do n <- fresh wildcardName
+          do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (bind (n,  embed tyA) tyB)
+               Pi (Unbound.bind (n,  Unbound.embed tyA) tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -314,7 +312,7 @@ lambda = do reservedOp "\\"
             body <- expr
             return $ foldr lam body binds 
   where
-lam x m = Lam (bind (x, embed $ Annot Nothing) m)  
+lam x m = Lam (Unbound.bind (x, Unbound.embed $ Annot Nothing) m)  
 
                             
 
@@ -346,7 +344,7 @@ letExpr =
      boundExp <- expr
      reserved "in"
      body <- expr
-     return $ (Let (bind (x,embed boundExp) body))
+     return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
 
 
 
@@ -384,7 +382,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (bind (x,embed a) b))
+                      return $ Pi (Unbound.bind (x,Unbound.embed a) b))
          Colon a b -> return $ Ann a b
          Comma a b -> return $ Prod a b (Annot Nothing)
          Nope a    -> return $ Paren a
@@ -403,7 +401,7 @@ pcaseExpr = do
     reservedOp ")"
     reservedOp "->"
     a <- expr
-    return $ Pcase scrut (bind (x,y) a) (Annot Nothing)
+    return $ Pcase scrut (Unbound.bind (x,y) a) (Annot Nothing)
 
 
 
@@ -416,6 +414,6 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return (Sigma (bind (x, embed a) b))
+  return (Sigma (Unbound.bind (x, Unbound.embed a) b))
   
   

@@ -17,29 +17,27 @@ all: version1 version2 full
 
 test : all
 
+BUILD = cabal new-build --disable-documentation
+EXEC = cabal new-exec pi-forall -- 
 
 version1: $(VERSION1)
-	cd ../version1 && cabal install --overwrite-policy=always --disable-documentation . 
+	cd ../version1 && $(BUILD) 
 
 test_version1: ../version1
-	../version1/dist/build/pi-forall/pi-forall ../version1/test/Lec1.pi
+	cd ../version1 && $(EXEC) test/Lec1.pi
 
 version2: $(VERSION2)
-	cd ../version2 && cabal install --overwrite-policy=always  --disable-documentation . 
+	cd ../version2 && $(BUILD)
 
 test_version2 : ../version2
-	../version2/dist/build/pi-forall/pi-forall ../version2/test/Lec1.pi
-	../version2/dist/build/pi-forall/pi-forall ../version2/test/Lec2.pi
-	../version2/dist/build/pi-forall/pi-forall ../version2/test/Hw1.pi
-	../version2/dist/build/pi-forall/pi-forall ../version2/test/Hw2.pi
-	../version2/dist/build/pi-forall/pi-forall ../version2/test/NatChurch.pi
+	cd ../version2 && $(EXEC) test/Lec1.pi
+	cd ../version2 && $(EXEC) test/Lec2.pi
+	cd ../version2 && $(EXEC) test/Hw1.pi
+	cd ../version2 && $(EXEC) test/Hw2.pi
+	cd ../version2 && $(EXEC) test/NatChurch.pi
 
-# full: $(SOLNS) Makefile
-# 	cd ../full && cabal install --disable-documentation . 
-
-# --force-reinstalls needed only on debian testing / ghc 7.8.4
 full: $(SOLNS) Makefile $(EXTRA)
-	cd ../full && cabal install --overwrite-policy=always --disable-documentation $(flags) . 
+	cd ../full && $(BUILD)
 
 
 test_full: ../full

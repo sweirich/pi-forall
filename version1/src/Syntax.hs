@@ -150,10 +150,16 @@ data Module = Module
 newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
+data Sig = S {sigName :: TName,  sigType :: Type }
+  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
+
+mkSig :: TName -> Type -> Sig
+mkSig n t = S n  t
+
 -- | Declarations are the components of modules
 data Decl
   = -- | Declaration for the type of a term
-    Sig TName  Type
+    Sig Sig
   | -- | The definition of a particular name, must
     -- already have a type declaration in scope
     Def TName Term

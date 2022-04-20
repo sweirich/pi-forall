@@ -23,7 +23,6 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
   n1 <- whnf' False t1  
   n2 <- whnf' False t2
   case (n1, n2) of 
-
     (Type, Type) -> return ()
     (Var x,  Var y)  | x == y -> return ()
     (Lam bnd1, Lam bnd2) -> do
@@ -34,7 +33,8 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
       equateArgs [a2] [b2]
     (Pi bnd1, Pi bnd2) -> do
       ((_, {- SOLN EP -}ep1,{- STUBWITH -} Unbound.unembed -> tyA1), tyB1, 
-       (_, {- SOLN EP -}ep2,{- STUBWITH -} Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 {- SOLN EP -}
+       (_, {- SOLN EP -}ep2,{- STUBWITH -} Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+{- SOLN EP -}
       unless (ep1 == ep2) $
           tyErr n1 n2 {- STUBWITH -}
       equate tyA1 tyA2                                             

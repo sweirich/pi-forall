@@ -5,7 +5,6 @@ module Environment
   ( TcMonad,
     runTcMonad,
     Env,
-    Hint (..),
     emptyEnv,
     lookupTy,
     lookupTyMaybe,
@@ -58,9 +57,6 @@ runTcMonad env m =
 data SourceLocation where
   SourceLocation :: forall a. Disp a => SourcePos -> a -> SourceLocation
 
--- | Type declarations
-data Hint = Hint TName  Term
-
 -- | Environment manipulation and accessing functions
 -- The context 'gamma' is a list
 data Env = Env
@@ -72,7 +68,7 @@ data Env = Env
     -- | Type declarations (signatures): it's not safe to
     -- put these in the context until a corresponding term
     -- has been checked.
-    hints :: [Hint],
+    hints :: [Sig],
     -- | what part of the file we are in (for errors/warnings)
     sourceLocation :: [SourceLocation] 
   }
@@ -93,30 +89,29 @@ getTys = do
   ctx <- asks ctx
   return $ catMaybes (map unwrap ctx)
   where
-    unwrap (Sig v  ty) = Just (v, ty)
+    unwrap (Sig (S v  ty)) = Just (v, ty)
     unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
-lookupHint :: (MonadReader Env m) => TName -> m (Maybe (Term))
+lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
 lookupHint v = do
   hints <- asks hints
-  return $ listToMaybe [(ty) | Hint v'  ty <- hints, v == v']
+  return $ listToMaybe [ sig | sig <- hints, v == sigName sig]
 
 -- | Find a name's type in the context.
 lookupTyMaybe ::
   (MonadReader Env m) =>
   TName ->
-  m (Maybe ( Type))
+  m (Maybe Sig)
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [(ty) | Sig v'  ty <- ctx, v == v']
+  return $ listToMaybe [ sig | Sig sig <- ctx, v == sigName sig]
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
 lookupTy ::
   (MonadReader Env m, MonadError Err m) =>
-  TName ->
-  m ( Type)
+  TName -> m Sig
 lookupTy v =
   do
     x <- lookupTyMaybe v
@@ -202,7 +197,7 @@ getSourceLocation :: MonadReader Env m => m [SourceLocation]
 getSourceLocation = asks sourceLocation
 
 -- | Add a type hint
-extendHints :: (MonadReader Env m) => Hint -> m a -> m a
+extendHints :: (MonadReader Env m) => Sig -> m a -> m a
 extendHints h = local (\m@(Env {hints = hs}) -> m {hints = h : hs})
 
 -- | An error that should be reported to the user

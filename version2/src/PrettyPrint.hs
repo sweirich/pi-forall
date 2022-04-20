@@ -108,12 +108,15 @@ instance Disp Module where
 instance Disp ModuleImport where
   disp (ModuleImport i) = text "import" <+> disp i
 
+instance Disp Sig where
+  disp (S n  ty) =
+     (disp n <+> text ":" <+> disp ty)
+
 instance Disp Decl where
   disp (Def n term) = disp n <+> text "=" <+> disp term
   disp (RecDef n r) = disp (Def n r)
-  disp (Sig n  ty) =
-     (disp n <+> text ":" <+> disp ty)
-  
+  disp (Sig sig) = disp sig
+
 
 -------------------------------------------------------------------------
 
@@ -274,7 +277,9 @@ instance Display Term where
               <+> da
               <+> text "in",
             db
-          ]   display (Subst a b annot) = do
+          ]
+
+  display (Subst a b annot) = do
     da <- display a
     db <- display b
     dat <- display annot
@@ -297,7 +302,7 @@ instance Display Term where
     return $ text "contra" <+> dty <+> da
   
 
-  
+
 
 instance Display Arg where
   display arg = do
@@ -357,7 +362,8 @@ wraparg st a = case unArg a of
   Prod _ _ _ -> annot
   Pos _ b -> wraparg st a {unArg = b}
   TrustMe _ -> annot
-    Refl _ -> annot
+
+  Refl _ -> annot
   
   _ -> force
   where

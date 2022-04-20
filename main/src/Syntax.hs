@@ -190,10 +190,16 @@ data Module = Module
 newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
+data Sig = S {sigName :: TName, {- SOLN EP -} sigEp :: Epsilon,  {- STUBWITH -} sigType :: Type }
+  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
+
+mkSig :: TName -> Type -> Sig
+mkSig n t = S n {- SOLN EP -} Runtime {- STUBWITH -} t
+
 -- | Declarations are the components of modules
 data Decl
   = -- | Declaration for the type of a term
-    Sig TName {- SOLN EP -} Epsilon {-STUBWITH -} Type
+    Sig Sig
   | -- | The definition of a particular name, must
     -- already have a type declaration in scope
     Def TName Term
@@ -227,13 +233,13 @@ data ConstructorDef = ConstructorDef SourcePos DCName Telescope
 -- * Telescopes
 
 data Assn
-  = AssnVar TName Epsilon Type
+  = AssnSig Sig
   | AssnProp Prop
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
-isAssnVar :: Assn -> Bool
-isAssnVar (AssnVar _ _ _) = True
-isAssnVar _ = False
+isAssnSig :: Assn -> Bool
+isAssnSig (AssnSig _) = True
+isAssnSig _ = False
 
 data Prop = Eq Term Term
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)

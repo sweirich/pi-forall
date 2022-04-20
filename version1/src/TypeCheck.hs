@@ -37,13 +37,13 @@ checkType tm expectedTy = do
 -- an expected type (in weak-head-normal form) in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad (Term, Type)
 tcTerm t@(Var x) Nothing = do
-  ( ty) <- Env.lookupTy x 
-  return (t, ty)
+  sig <- Env.lookupTy x 
+  return (t, sigType sig)
 tcTerm t@(Type) Nothing = return (t, Type)
 tcTerm (Pi bnd) Nothing = do
   ((x,  Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
   atyA <- tcType tyA
-  atyB <- Env.extendCtx (Sig x  atyA) $ tcType tyB
+  atyB <- Env.extendCtx (Sig (S x  atyA)) $ tcType tyB
   return (Pi (Unbound.bind (x,  Unbound.embed atyA) atyB), Type)
 
 -- Check the type of a function
@@ -55,11 +55,11 @@ tcTerm (Lam bnd) (Just (Pi bnd2)) = do
     tyB
     ) <-
     Unbound.unbind2Plus bnd bnd2
-  
+
   -- check tyA matches type annotation on binder, if present
   maybe (return ()) (Equal.equate tyA) ma
   -- check the type of the body of the lambda expression
-  (ebody, etyB) <- Env.extendCtx (Sig x  tyA) (checkType body tyB)
+  (ebody, etyB) <- Env.extendCtx (Sig (S x  tyA)) (checkType body tyB)
   return
     ( Lam (Unbound.bind (x,  Unbound.embed (Annot (Just tyA))) ebody),
       Pi bnd2
@@ -74,7 +74,7 @@ tcTerm (Lam bnd) Nothing = do
   -- check that the type annotation is well-formed
   atyA <- tcType tyA
   -- infer the type of the body of the lambda expression
-  (ebody, atyB) <- Env.extendCtx (Sig x  atyA) (inferType body)
+  (ebody, atyB) <- Env.extendCtx (Sig (S x  atyA)) (inferType body)
   return
     ( Lam (Unbound.bind (x,  Unbound.embed (Annot (Just atyA))) ebody),
       Pi (Unbound.bind (x,  Unbound.embed atyA) atyB)
@@ -82,7 +82,7 @@ tcTerm (Lam bnd) Nothing = do
 tcTerm (App t1 a2) Nothing = do
   (at1, ty1) <- inferType t1
   (x,  tyA, tyB) <- Equal.ensurePi ty1
-  
+
   (at2, ty2) <-  checkType (unArg a2) tyA
   let result = (App at1 a2{unArg=at2}, Unbound.subst x at2 tyB)
   return result
@@ -106,11 +106,9 @@ tcTerm t@(If t1 t2 t3 ann1) ann2 = Env.err [DS "unimplemented"]
 tcTerm (Let bnd) ann =   Env.err [DS "unimplemented"]
 
 
-        
 
 
-    
-    
+
 
 tcTerm t@(Sigma bnd) Nothing = Env.err [DS "unimplemented"]
 
@@ -122,7 +120,6 @@ tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm
   unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty']
   return (atm, ty)
-
 
 
 ---------------------------------------------------------------------
@@ -202,7 +199,7 @@ tcModule defs m' = do
 
 -- | The Env-delta returned when type-checking a top-level Decl.
 data HintOrCtx
-  = AddHint Env.Hint
+  = AddHint Sig
   | AddCtx [Decl]
 
 -- | Check each sort of declaration in a module
@@ -218,24 +215,24 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           (aterm, ty) <- inferType term
-          return $ AddCtx [Sig n  ty, Def n aterm]
-        Just ( ty) ->
-          let handler (Env.Err ps msg) = throwError $ Env.Err (ps) (msg $$ msg')
+          return $ AddCtx [Sig (S n  ty), Def n aterm]
+        Just sig ->
+          let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
                 disp
                   [ DS "When checking the term ",
                     DD term,
                     DS "against the signature",
-                    DD ty
+                    DD sig
                   ]
            in do
                 (eterm, ety) <-
-                  Env.extendCtx (Sig n  ty) $
-                    checkType term ty `catchError` handler
+                  Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
                 -- Put the elaborated version of term into the context.
+                let esig = sig{sigType = ety}
                 if (n `elem` Unbound.toListOf Unbound.fv eterm)
-                  then return $ AddCtx [Sig n   ety, RecDef n eterm]
-                  else return $ AddCtx [Sig n   ety, Def n eterm]
+                  then return $ AddCtx [Sig esig, RecDef n eterm]
+                  else return $ AddCtx [Sig esig, Def n eterm]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -244,34 +241,33 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (Sig n  ty) = do
-  duplicateTypeBindingCheck n ty
-  ety <- tcType ty
-  return $ AddHint (Env.Hint n  ety)
+tcEntry (Sig sig) = do
+  duplicateTypeBindingCheck sig
+  ety <- tcType (sigType sig)
+  return $ AddHint (sig{sigType=ety})
 
 tcEntry _ = Env.err "unimplemented"
 
 -- | Make sure that we don't have the same name twice in the
 -- environment. (We don't rename top-level module definitions.)
-duplicateTypeBindingCheck :: TName -> Term -> TcMonad ()
-duplicateTypeBindingCheck n ty = do
+duplicateTypeBindingCheck :: Sig -> TcMonad ()
+duplicateTypeBindingCheck sig = do
   -- Look for existing type bindings ...
+  let n = sigName sig
   l <- Env.lookupTyMaybe n
   l' <- Env.lookupHint n
   -- ... we don't care which, if either are Just.
   case catMaybes [l, l'] of
     [] -> return ()
     -- We already have a type in the environment so fail.
-    ( ty') : _ ->
-      let (Pos p _) = ty
+    sig' : _ ->
+      let (Pos p _) = sigType sig
           msg =
             [ DS "Duplicate type signature ",
-              DD ty,
-              DS "for name ",
-              DD n,
-              DS "Previous typing was",
-              DD ty'
+              DD sig,
+              DS "Previous was",
+              DD sig'
             ]
-       in Env.extendSourceLocation p ty $ Env.err msg
+       in Env.extendSourceLocation p sig $ Env.err msg
 
 

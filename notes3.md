@@ -68,7 +68,7 @@ the argument vector is equal to `succ n` for some n.  This is ok if we know
 the length of the vector outright
 
     v1 : Vec Bool (succ 0)
-	 v1 = VCons True VNil
+	v1 = VCons True VNil
 	 
 So the application `head Bool 0 v1` will type check. (Note that pi-forall
 cannot infer the types `A` and `n`.)
@@ -76,7 +76,7 @@ cannot infer the types `A` and `n`.)
 However, if we construct the vector, its length may not be a literal natural number:
 	 
     append : (n : Nat) -> (m : Nat) -> Vec A m -> Vec A n -> Vec A (plus m n)
-	 append = ...
+	append = ...
 
 In that case, to get `head Bool 1 (append v1 v1)` to type check, we need to
 show that the type `Vec Bool (succ 1)` is equal to the type `Vec Bool (plus 1
@@ -88,7 +88,7 @@ it equates more terms.
 
 The main idea is that we will: 
 
- - establish a new judgement to define when types are equal
+ - establish a new judgement that defines when types are equal
 
         G |- A = B
 
@@ -115,8 +115,8 @@ We'd like to make sure that our relation *contains beta-equivalence*:
 
 Is an *equivalence relation*:
 
-    ----------  refl
-    G |- A = A
+     ----------  refl
+     G |- A = A
 	 
 	 G |- A = B
 	 -----------  sym
@@ -128,17 +128,17 @@ Is an *equivalence relation*:
 
 and a *congruence relation* (i.e. if subterms are equal, then larger terms are equal):
 
-    G |- A1 = A2       G,x:A1 |- B1 = B2
+     G |- A1 = A2       G,x:A1 |- B1 = B2
 	 ------------------------------------ pi
 	 G |- (x:A1) -> B1 = (x:A2) -> B2
 
 
-    G,x:A1 |- b1 = b2
+     G,x:A1 |- b1 = b2
 	 ------------------- lam
 	 G |- \x.b1 = \x.b2
 
 
-    G |- a1 = a2    G |- b1 b2 
+     G |- a1 = a2    G |- b1 b2 
 	 -------------------------- app
 	 G |- a1 b1 = a2 b2
 
@@ -155,7 +155,7 @@ that has "functionality" (i.e. we can lift equalities over `b`):
 
 We would like to consider our type system as having the following rule:
 
-    G |- a : A    G |- A = B
+     G |- a : A    G |- A = B
 	 ------------------------ conv
 	 G |- a : B
 
@@ -167,7 +167,7 @@ few places.
   we need to ensure that the type that we infer is the same as the type that 
   is passed to the checker.
 
-      G |- a => A    G |- A = B
+       G |- a => A    G |- A = B
 	   -------------------------- :: infer
 	   G |- a <= B
 
@@ -248,27 +248,27 @@ those normal forms for equivalence.
 One way to do this is with the following algorithm:
 
      equate t1 t2 = do 
-	    nf1 <- reduce t1
-       nf2 <- reduce t2
-		 aeq nf1 nf2
+        nf1 <- reduce t1
+        nf2 <- reduce t2
+        aeq nf1 nf2
 		 
 However, we can do better. We'd like to only reduce as much as
 necessary. Sometimes we can equate the terms without completely 
 reducing them.
 
-     equate t1 t2 = do
-  	     when (aeq t1 t1) $ return ()
-		  nf1 <- whnf t1  -- reduce only to 'weak head normal form'
-		  nf2 <- whnf t2
-		  case (nf1,nf2) of 
-		    (App a1 a2, App b1 b2) -> 
-			    -- make sure subterms are equal
-			    equate a1 b1 >> equate a2 b2
-   	    (Lam bnd1, Lam bnd2) -> do
-			    -- ignore variable name and typing annot (if present)
-			    (_, b1, _, b2) <- unbind2Plus bnd1 bnd2
-				 equate b1 b2
-			 (_,_) -> err ...
+      equate t1 t2 = do
+         when (aeq t1 t1) $ return ()
+          nf1 <- whnf t1  -- reduce only to 'weak head normal form'
+          nf2 <- whnf t2
+          case (nf1,nf2) of 
+            (App a1 a2, App b1 b2) -> 
+                -- make sure subterms are equal
+                equate a1 b1 >> equate a2 b2
+            (Lam bnd1, Lam bnd2) -> do
+                -- ignore variable name and typing annot (if present)
+                (_, b1, _, b2) <- unbind2Plus bnd1 bnd2
+                 equate b1 b2
+            (_,_) -> err ...
 
 Therefore, we reuse our mechanism for reducing terms to weak-head normal form.
 
@@ -283,7 +283,7 @@ Why weak-head reduction vs. full reduction?
   
 - Furthermore, we allow recursive definitions in pi-forall, so normalization
   may just fail completely. However, this definition based on wnhf only
-  unfolds recursive definitions when they are needed, and then only once, so
+  unfolds recursive definitions when necessary, and then only once, so
   avoids some infinite loops in the type checker.
   
   Note that we don't have a complete treatment of equality though. There will
@@ -461,15 +461,15 @@ when it implements *homogeneous* equality.
 The elimination rule for propositional equality allows us to convert the type of 
 one expression to another. 
     
-	 G |- a : A { a1 / x}   G |- b : a1 = a2  
-    --------------------------------- subst
-    G |- subst	a by b : A { a2 / x }
+	 G |- a : A { a1 / x }   G |- b : a1 = a2
+    ------------------------------------------------------- subst
+     G |- subst	a by b : A { a2 / x }
 
 How can we implement this rule? For simplicity, we'll play the same trick that
 we did with booleans, requiring that one of the sides of the equality be a
 variable.
 
-    G |- a <= A { a1 / x }    G |- b => x = a1
+     G |- a <= A { a1 / x }    G |- b => x = a1
 	 ------------------------------------------- subst-left
 	 G |- subst a by b => A 
 
@@ -486,8 +486,18 @@ that propositional equality is symmetric and transitive.
 
     
 Furthermore, we can also extend `subst`, the elimination form for
-propositional equality as we did for booleans. As above, this rule only
-applies when `b` is also a variable.
+propositional equality as we did for booleans. This corresponds to the 
+following elimination rule for subst, that observes that the only way 
+to construct a proof of equality is with the term `refl`. (This version
+of subst is very close to an eliminator for propositional equality called `J`).
+
+	 G |- a : A { a1 / x }{ refl / y }   G |- b : a1 = a2
+    ------------------------------------------------------- subst
+     G |- subst	a by b : A { a2 / x }{ b / y }
+
+
+As above, this rule (and the corresponding subst-right rule) only applies when
+`b` is also a variable.
 
     G |- a <= A { a1 / x } { refl / y }    G |- y => x = a1
 	 -------------------------------------------------------- subst-left

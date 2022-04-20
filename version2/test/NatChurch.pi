@@ -35,7 +35,7 @@ pred : nat -> nat
 pred = TRUSTME
 
 test_pred : pred two = one
-test_pred = refl
+test_pred = TRUSTME -- replace with refl
 
 -- Since pi-forall allows recursive definitions, we also have Scott encodings
 -- of datatypes available. (See http://en.wikipedia.org/wiki/Mogensen%E2%80%93Scott_encoding.
@@ -65,7 +65,7 @@ scott_pred : scott_nat -> scott_nat
 scott_pred = TRUSTME
 
 test1 : scott_pred scott_two = scott_one
-test1 = refl
+test1 = TRUSTME -- replace with refl
 
 -- Now write plus: with Scott encoded nats, note that you need to use recursion.
 
@@ -73,4 +73,4 @@ scott_plus : scott_nat -> scott_nat -> scott_nat
 scott_plus = TRUSTME
 
 test2 : scott_plus scott_one scott_two = scott_three
-test2 = refl
+test2 = TRUSTME -- replace with refl

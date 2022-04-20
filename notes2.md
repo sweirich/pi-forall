@@ -49,10 +49,10 @@ above, using the following datatype.
 
     data Term = 
          Type                               -- ^ universe 
-       | Var TName                          -- ^ variables      
-       | Lam (Bind TName, Embed Annot) Term)             
-                                            -- ^ abstraction    
-       | App Term Term                      -- ^ application    
+       | Var TName                          -- ^ variables
+       | Lam (Bind TName, Embed Annot) Term)
+                                            -- ^ abstraction
+       | App Term Term                      -- ^ application
        | Pi (Bind (TName, Embed Term) Term) -- ^ function type
 
 As you can see, variables are represented by names.  The `Bind` type
@@ -72,15 +72,12 @@ single datatype for both the versions of the language (the one where lambdas
 are annotated and the one where they aren't). We'll start with an expression
 that has no annotations on lambdas, and elaborate it to one that does. 
 
-The bottom of the Syntax file contains instances for unbound. The library uses
-generic programming to create all of the definitions in an instance of the
-`Alpha` type class. 
+The definitions of the AST datatypes derive instances for two type classes from 
+the `unbound-generics` library: `Unbound.Alpha` and `Unbound.Subst`.
 	 
-    instance Alpha Term
-	 
-Among other things, the Alpha class enables functions for alpha equivalence
-and free variable calculation. Because unbound creates these instances for us,
-we don't have to worry about defining them.
+Among other things, the `Alpha` class enables functions for alpha equivalence
+and free variable calculation, with the types shown below. Because unbound
+creates these instances for us, we don't have to worry about defining them.
 
     aeq :: Alpha a => a -> a -> Bool
     fv  :: Alpha a => a -> [Name a]	 
@@ -95,12 +92,9 @@ We also need to be able to substitute terms through annotations, but
 annotations don't contain free variables directly, they only have them within
 the terms inside them.
 	 
-	 instance Subst Term Annot
-	 
-For more information about unbound, see
-[The Unbound Tutorial](https://code.google.com/p/replib/source/browse/trunk/Unbound/tutorial/Tutorial.lhs)
-and the
-[unbound hackage page](http://hackage.haskell.org/package/unbound-0.4.3.1).
+
+For more information about unbound, see the
+[unbound-generics hackage page](https://hackage.haskell.org/package/unbound-generics).
 	 
 ### A TypeChecking monad [Environment.hs]
 
