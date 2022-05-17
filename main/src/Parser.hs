@@ -42,11 +42,12 @@ Optional components in this BNF are marked with < >
     | (a : A)                  Annotations
     | (a)                      Parens
     | TRUSTME                  An axiom 'TRUSTME', inhabits all types 
+    | PRINTME                  Show the current goal and context
 
     | let x = a in b           Let expression
 
-    | One                      Unit type
-    | tt                       Unit value
+    | Unit                     Unit type
+    | ()                       Unit value
 
     | Bool                     Boolean type
     | True | False             Boolean values
@@ -54,7 +55,8 @@ Optional components in this BNF are marked with < >
 
     | { x : A | B }            Dependent pair type
     | (a, b)                   Prod introduction
-    | pcase a of (x,y) -> b    Prod elimination
+    | let (x,y) = a in b       Prod elimination
+
 {- SOLN EQUAL -}
     | a = b                    Equality type
     | refl                     Equality proof
@@ -187,16 +189,16 @@ piforallStyle = Token.LanguageDef
                   ,"of"
                   ,"with"
                   ,"contra"
-                  ,"subst", "by", "at"
+                  ,"subst", "by"
                   ,"let", "in"
                   ,"axiom"
                   ,"erased"
                   ,"TRUSTME"
+                  ,"PRINTME"
                   ,"ord" 
-                  , "pcase"
-                  , "Bool", "True", "False" 
+                  ,"Bool", "True", "False" 
                   ,"if","then","else"
-                  , "One", "tt"                               
+                  ,"Unit", "()"                               
                   ]
                , Token.reservedOpNames =
                  ["!","?","\\",":",".",",","<", "=", "+", "-", "^", "()", "_","|","{", "}"]
@@ -402,8 +404,10 @@ valDef = do
 ------------------------
 
 trustme :: LParser Term
-trustme = do reserved "TRUSTME" 
-             return (TrustMe (Annot Nothing))
+trustme = reserved "TRUSTME" *> return (TrustMe (Annot Nothing))
+
+printme :: LParser Term
+printme = reserved "PRINTME" *> return (PrintMe (Annot Nothing))
 
 {- SOLN EQUAL -}
 refl :: LParser Term
@@ -483,6 +487,7 @@ factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data con
                 , refl       <?> "refl"
                 , contra     <?> "a contra" {- STUBWITH -}
                 , trustme    <?> "TRUSTME"
+                , printme    <?> "PRINTME"
                   {- SOLN EP -}
                 , impProd    <?> "an implicit function type"
                   {- STUBWITH -}
@@ -527,8 +532,8 @@ bconst  :: LParser Term
 bconst = choice [reserved "Bool"  >> return TyBool,
                  reserved "False" >> return (LitBool False),
                  reserved "True"  >> return (LitBool True),
-                 reserved "One"   >> return TyUnit,
-                 reserved "tt"    >> return LitUnit]
+                 reserved "Unit"   >> return TyUnit,
+                 reserved "()"    >> return LitUnit]
 
 ifExpr :: LParser Term
 ifExpr = 
@@ -644,17 +649,17 @@ caseExpr = do
     
 pcaseExpr :: LParser Term
 pcaseExpr = do
-    reserved "pcase"
-    scrut <- expr
-    reserved "of"
+    reserved "let"
     reservedOp "("
     x <- variable
     reservedOp ","
     y <- variable
     reservedOp ")"
-    reservedOp "->"
+    reservedOp "="
+    scrut <- expr
+    reserved "in"
     a <- expr
-    return $ Pcase scrut (Unbound.bind (x,y) a) (Annot Nothing)
+    return $ LetPair scrut (Unbound.bind (x,y) a) (Annot Nothing)
 
 {- SOLN EQUAL -}
 -- subst e0 by e1 

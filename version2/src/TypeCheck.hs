@@ -13,19 +13,21 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
 import Syntax
-import Text.PrettyPrint.HughesPJ (($$))
+import Text.PrettyPrint.HughesPJ (($$),render)
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
+import Debug.Trace
+
 -- | Infer the type of a term, producing an annotated version of the
--- term (whose type can *always* be inferred).
+-- term (whose type can *always* be inferred)
 inferType :: Term -> TcMonad (Term, Type)
 inferType t = tcTerm t Nothing
 
 -- | Check that the given term has the expected type.
 -- The provided type does not necessarily need to be in whnf, but it should be
--- elaborated (i.e. already checked to be a good type).
+-- elaborated (i.e. already checked to be a good type)
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
   nf <- Equal.whnf expectedTy
@@ -65,7 +67,7 @@ tcTerm (Lam bnd) (Just (Pi bnd2)) = do
       Pi bnd2
     )
 tcTerm (Lam _) (Just nf) =
-  Env.err [DS "Lambda expression has a function type, not", DD nf]
+  Env.err [DS "Lambda expression should have a function type, not", DD nf]
 -- infer the type of a lambda expression, when an annotation
 -- on the binder is present
 tcTerm (Lam bnd) Nothing = do
@@ -207,7 +209,7 @@ tcTerm t@(Prod a b ann1) ann2 = do
         ]
 
 
-tcTerm t@(Pcase p bnd ann1) ann2 = do
+tcTerm t@(LetPair p bnd ann1) ann2 = do
   ty <- matchAnnots t ann1 ann2
   (apr, pty) <- inferType p
   pty' <- Equal.whnf pty
@@ -231,9 +233,16 @@ tcTerm t@(Pcase p bnd ann1) ann2 = do
       (abody, bTy) <-
         Env.extendCtxs ([Sig (mkSig x' tyA), Sig (mkSig y' tyB')] ++ ctx) $
           checkType body ty
-      return (Pcase apr (Unbound.bind (x', y') abody) (Annot (Just ty)), bTy)
+      return (LetPair apr (Unbound.bind (x', y') abody) (Annot (Just ty)), bTy)
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
 
+
+tcTerm t@(PrintMe ann1) ann2 = do
+  expectedTy <- matchAnnots t ann1 ann2
+  gamma <- Env.getLocalCtx
+  Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
+        DS "\nGoal: ", DD expectedTy]
+  return (PrintMe (Annot (Just expectedTy)), expectedTy)
 
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm
@@ -248,7 +257,7 @@ tcTerm tm (Just ty) = do
 -- | Merge together two sources of type information
 -- The first annotation is assumed to come from an annotation on
 -- the syntax of the term itself, the second as an argument to
--- 'checkType'.
+-- 'checkType'
 matchAnnots :: Term -> Annot -> Maybe Type -> TcMonad Type
 matchAnnots e (Annot Nothing) Nothing =
   Env.err
@@ -263,7 +272,6 @@ matchAnnots e (Annot (Just t1)) (Just t2) = do
   return at1
 
 -- | Make sure that the term is a type (i.e. has type 'Type')
--- And permit erased variables to be used
 tcType :: Term -> TcMonad Term
 tcType tm = do
   (atm, _) <- (checkType tm Type)

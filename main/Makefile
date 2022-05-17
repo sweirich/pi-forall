@@ -2,7 +2,7 @@ SOURCES=TypeCheck.hs PrettyPrint.hs LayoutToken.hs Parser.hs Syntax.hs Environme
 TESTS=Makefile Logic.pi Equality.pi Nat.pi Product.pi Fin.pi Vec.pi List.pi Lambda0.pi Lambda1.pi Lambda2.pi
 SRCS=$(addprefix src/,$(SOURCES)) 
 
-EXTRA=LICENSE README.md pi-forall.cabal Setup.hs stack.yaml
+EXTRA=LICENSE README.md pi-forall.cabal stack.yaml
 
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi) $(EXTRA)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi) $(EXTRA)
@@ -18,8 +18,11 @@ all: version1 version2 version3 full
 
 test : all
 
-BUILD = cabal new-build --disable-documentation
-EXEC = cabal new-exec pi-forall -- 
+# BUILD = cabal new-build --disable-documentation
+# EXEC = cabal new-exec pi-forall -- 
+
+BUILD = stack build
+EXEC = stack exec pi-forall --
 
 version1: $(VERSION1)
 	cd ../version1 && $(BUILD) 
@@ -84,7 +87,6 @@ cabal-dev:
 	cp pi-forall.cabal ../version1/pi-forall.cabal
 	cp LICENSE ../version1/LICENSE
 	cp README.md  ../version1/README.md
-	cp Setup.hs ../version1/Setup.hs
 	cp stack.yaml ../version1/stack.yaml
 
 
@@ -102,7 +104,6 @@ cabal-dev:
 	cp pi-forall.cabal ../version2/pi-forall.cabal
 	cp LICENSE ../version2/LICENSE
 	cp README.md  ../version2/README.md
-	cp Setup.hs ../version2/Setup.hs
 	cp stack.yaml ../version2/stack.yaml
 
 ../version3/% : % Makefile $(EXTRA)
@@ -119,7 +120,6 @@ cabal-dev:
 	cp pi-forall.cabal ../version3/pi-forall.cabal
 	cp LICENSE ../version3/LICENSE
 	cp README.md  ../version3/README.md
-	cp Setup.hs ../version3/Setup.hs
 	cp stack.yaml ../version3/stack.yaml
 
 ../full/% : % Makefile $(EXTRA)
@@ -136,6 +136,5 @@ cabal-dev:
 	cp pi-forall.cabal ../full/pi-forall.cabal
 	cp LICENSE ../full/LICENSE
 	cp README.md  ../full/README.md
-	cp Setup.hs ../full/Setup.hs
 	cp stack.yaml ../full/stack.yaml
    # chmod 440 $@ # prevent inadvertent modification of stub code

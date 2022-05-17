@@ -10,6 +10,10 @@ import Environment ( D(DS, DD), TcMonad )
 import qualified Environment as Env
 import qualified Unbound.Generics.LocallyNameless as Unbound
 
+import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
+
+-- | Mark the type of terms that have been converted to whnf
+newtype Whnf = WhnfType Term
 
 -- | compare two expressions for equality
 --   if the two terms and not already in whnf, first check if they are alpha equivalent 
@@ -72,7 +76,7 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
       equate a1 a2
       equate b1 b2
       
-    (Pcase s1 bnd1 _, Pcase s2 bnd2 _) -> do  
+    (LetPair s1 bnd1 _, LetPair s2 bnd2 _) -> do  
       equate s1 s2
       Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
       equate body1 body2
@@ -136,7 +140,7 @@ ensurePi ty = do
 -- ones. But only unfold once.
 whnf :: Term -> TcMonad Term
 whnf t = do
-  whnf' False t
+  whnf' True t
   
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
@@ -169,13 +173,13 @@ whnf' b (If t1 t2 t3 ann) = do
     (LitBool bo) -> if bo then whnf' b t2 else whnf' b t3
     _ -> return (If nf t2 t3 ann)
 
-whnf' b (Pcase a bnd ann) = do
+whnf' b (LetPair a bnd ann) = do
   nf <- whnf' b a 
   case nf of 
     Prod b1 c _ -> do
       ((x,y), body) <- Unbound.unbind bnd
       whnf' b (Unbound.subst x b1 (Unbound.subst y c body))
-    _ -> return (Pcase nf bnd ann)
+    _ -> return (LetPair nf bnd ann)
 
 -- We should only be calling whnf on elaborated terms
 -- Such terms don't contain annotations, parens or pos info    

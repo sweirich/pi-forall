@@ -313,7 +313,7 @@ tcTerm t@(Prod a b ann1) ann2 = {- SOLN EQUAL -} do
         ]
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
-tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN EQUAL -} do
+tcTerm t@(LetPair p bnd ann1) ann2 = {- SOLN EQUAL -} do
   ty <- matchAnnots t ann1 ann2
   (apr, pty) <- inferType p
   pty' <- Equal.whnf pty
@@ -337,9 +337,16 @@ tcTerm t@(Pcase p bnd ann1) ann2 = {- SOLN EQUAL -} do
       (abody, bTy) <-
         Env.extendCtxs ([Sig (mkSig x' tyA), Sig (mkSig y' tyB')] ++ ctx) $
           checkType body ty
-      return (Pcase apr (Unbound.bind (x', y') abody) (Annot (Just ty)), bTy)
+      return (LetPair apr (Unbound.bind (x', y') abody) (Annot (Just ty)), bTy)
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
 {- STUBWITH Env.err [DS "unimplemented"] -}
+
+tcTerm t@(PrintMe ann1) ann2 = do
+  expectedTy <- matchAnnots t ann1 ann2
+  gamma <- Env.getLocalCtx
+  Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
+        DS "\nGoal: ", DD expectedTy]
+  return (PrintMe (Annot (Just expectedTy)), expectedTy)
 
 tcTerm tm (Just ty) = do
   (atm, ty') <- inferType tm
@@ -428,7 +435,7 @@ amb (App t1 t2) = True
 amb (Pi _) = True
 amb (If _ _ _ _) = True
 amb (Sigma _) = True
-amb (Pcase _ _ _) = True
+amb (LetPair _ _ _) = True
 amb (Let _) = True
 amb (Case _ _ _) = True
 amb _ = False

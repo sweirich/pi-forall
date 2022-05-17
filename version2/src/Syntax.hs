@@ -1,5 +1,4 @@
 {- PiForall language, OPLSS -}
-{-# LANGUAGE TemplateHaskell #-}
 
 -- | The abstract syntax of the simple dependently typed language
 -- See comment at the top of 'Parser' for the concrete syntax of this language
@@ -10,37 +9,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
-import Text.ParserCombinators.Parsec.Pos (SourcePos, newPos)
+import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, newPos)
 import Unbound.Generics.LocallyNameless qualified as Unbound
-import Unbound.Generics.LocallyNameless.TH (makeClosedAlpha)
-
--- We use a small bit of Template Haskell to derive the instance
--- of the Alpha class for source positions.
--- TODO: this does not equate the source positions, we still need
--- to ignore them
-makeClosedAlpha ''SourcePos
-
--- We want to ignore source positions during comparison, so the definition
--- above is equivalent to the following:
-{-
-instance Unbound.Alpha SourcePos where
-   aeq' _ _ _ = True
-   fvAny' _ _ = pure
-   open _ _ = id
-   close _ _ = id
-   isPat _ = mempty
-   isTerm _ = mempty
-   nthPatFind _ = undefined
-   namePatFind _ = undefined
-   swaps' _ _ = id
-   freshen' _ x = return (x, mempty)
-   lfreshen' _ x cont = cont x mempty
--}
-
--- Substitutions also ignore source positions
-instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id
-
-
 
 -----------------------------------------
 
@@ -56,11 +26,7 @@ type TName = Unbound.Name Term
 -- | module names
 type MName = String
 
--- | type constructor names
-type TCName = String
 
--- | data constructor names
-type DCName = String
 
 -----------------------------------------
 
@@ -68,21 +34,21 @@ type DCName = String
 
 -----------------------------------------
 
--- | Combined syntax for types and terms 
+-- | Combined syntax for types and terms
 -- (type synonym for documentation)
 type Type = Term
 
 -- | basic language
 data Term
-  = -- | type of types
+  = -- | type of types  `Type`
     Type
-  | -- | variables
+  | -- | variables  `x`
     Var TName
-  | -- | abstraction
+  | -- | abstraction  `\x. a`
     Lam (Unbound.Bind (TName , Unbound.Embed Annot) Term)
-  | -- | application
+  | -- | application `a b`
     App Term Arg
-  | -- | function type
+  | -- | function type   `(x : A) -> B`
     Pi (Unbound.Bind (TName , Unbound.Embed Term) Term)
   | -- | Annotated terms `( x : A )`
     Ann Term Term
@@ -92,11 +58,16 @@ data Term
     Pos SourcePos Term
   | -- | an axiom 'TRUSTME', inhabits all types
     TrustMe Annot
-  | -- | The type with a single inhabitant `One`
+  | -- | a directive to the type checker to print out the current context (like a typed hole)
+    PrintMe Annot
+  | -- | let expression, introduces a new (potentially recursive) definition in the ctx
+    -- | `let x = a in b`
+    Let (Unbound.Bind (TName, Unbound.Embed Term) Term)
+  | -- | The type with a single inhabitant `Unit`
     TyUnit
-  | -- | The inhabitant, written `tt`
+  | -- | The inhabitant, written `()`
     LitUnit
-  | -- | The type with two inhabitants (homework)
+  | -- | The type with two inhabitants (homework) `Bool`
     TyBool
   | -- | True and False
     LitBool Bool
@@ -106,34 +77,29 @@ data Term
     Sigma (Unbound.Bind (TName, Unbound.Embed Term) Term)
   | -- | introduction for sigmas `( a , b )`
     Prod Term Term Annot
-  | -- | elimination form  `pcase p of (x,y) -> p`
-    Pcase Term (Unbound.Bind (TName, TName) Term) Annot
-  | -- | let expression, introduces a new (potentially recursive) -- homwork
-    -- definition in the ctx
-    Let (Unbound.Bind (TName, Unbound.Embed Term) Term )
-  
-    | -- | Equality type  `a = b`
+  | -- | elimination form  `let (x,y) = a in b`
+    LetPair Term (Unbound.Bind (TName, TName) Term) Annot
+
+     | -- | Equality type  `a = b`
     TyEq Term Term
-  | -- | Proof of equality
+  | -- | Proof of equality `refl`
     Refl Annot
-  | -- | equality elimination
+  | -- | equality elimination  `subst a by pf`
     Subst Term Term Annot
   | -- | witness to an equality contradiction
-    Contra Term Annot 
+    Contra Term Annot
    
-    
-  
+
+   
   deriving (Show, Generic, Typeable, Unbound.Alpha)
 
-
--- | An argument to a function.
+-- | An argument to a function
 data Arg = Arg { unArg :: Term}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
-
 -- | An 'Annot' is optional type information
-newtype Annot = Annot (Maybe Term) 
-  deriving (Show, Generic, Typeable) 
+newtype Annot = Annot (Maybe Term)
+  deriving (Show, Generic, Typeable)
   deriving anyclass (Unbound.Subst Term)
 
 
@@ -158,7 +124,7 @@ data Module = Module
 newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
-data Sig = S {sigName :: TName,  sigType :: Type }
+data Sig = S {sigName :: TName , sigType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 mkSig :: TName -> Type -> Sig
@@ -179,7 +145,6 @@ data Decl
 
 
 -- * Auxiliary functions on syntax
-
 
 
 
@@ -208,27 +173,11 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
 
 -----------------
 
--- * Alpha equivalence and free variables
+-- We use the unbound-generics library to mark the binding occurrences of
+-- variables in the syntax. That allows us to automatically derive
+-- functions for alpha-equivalence, free variables and substitution
+-- using generic programming. 
 
-{- We use the unbound library to mark the binding occurrences of
-   variables in the syntax. That allows us to automatically derive
-   functions for alpha-equivalence, free variables and substitution
-   using the default class instances below.
--}
-
--- Among other things, the Alpha class enables the following
--- functions:
---    aeq :: Alpha a => a -> a -> Bool
---    fv  :: Alpha a => a -> [Unbound.Name a]
-
-------------------
-
-instance Unbound.Alpha Annot where
-  -- override default behavior so that type annotations are ignored
-  -- when comparing for alpha-equivalence
-  aeq' _ _ _ = True
-
------------------
 
 -- * Substitution
 
@@ -240,11 +189,61 @@ instance Unbound.Alpha Annot where
 --    subst  :: Name b -> b -> a -> a       -- single substitution
 --    substs :: [(Name b, b)] -> a -> a     -- multiple substitution
 
-------------------
-
 instance Unbound.Subst Term Term where
   isvar (Var x) = Just (Unbound.SubstName x)
   isvar _ = Nothing
 
+------------------
 
+-- * Alpha equivalence and free variables
 
+-- Among other things, the Alpha class enables the following
+-- functions:
+--    -- Compare terms for alpha equivalence
+--    aeq :: Alpha a => a -> a -> Bool
+--    -- Calculate the free variables of a term
+--    fv  :: Alpha a => a -> [Unbound.Name a]
+
+------------------
+
+instance Unbound.Alpha Annot where
+  -- override default behavior so that type annotations are ignored
+  -- when comparing for alpha-equivalence
+  aeq' _ _ _ = True
+  fvAny' _ _ = pure
+  open _ _ = id
+  close _ _ = id
+  isPat _ = mempty
+  isTerm _ = mempty
+  nthPatFind _ = mempty
+  namePatFind _ = mempty
+  swaps' _ _ = id
+  freshen' _ x = return (x, mempty)
+  lfreshen' _ x cont = cont x mempty
+  acompare' _ _ _ = EQ
+
+-----------------
+
+-- * Source Positions
+
+-- We want to ignore source positions during comparison
+instance Unbound.Alpha SourcePos where
+  aeq' _ _ _ = True
+  fvAny' _ _ = pure
+  open _ _ = id
+  close _ _ = id
+  isPat _ = mempty
+  isTerm _ = mempty
+  nthPatFind _ = mempty
+  namePatFind _ = mempty
+  swaps' _ _ = id
+  freshen' _ x = return (x, mempty)
+  lfreshen' _ x cont = cont x mempty
+  acompare' _ _ _ = EQ
+
+-- Substitutions ignore source positions
+instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id
+
+-- Internally generated source positions
+internalPos :: SourcePos
+internalPos = initialPos "internal"

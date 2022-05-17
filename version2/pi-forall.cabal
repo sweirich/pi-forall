@@ -74,6 +74,7 @@ library
   
 executable pi-forall
   import: shared-properties
+  build-depends: pi-forall
   main-is: Main.hs
   other-modules: 
     Environment

@@ -3,7 +3,7 @@
 -- | The command line interface to the pi type checker. 
 -- Also provides functions for type checking individual terms
 -- and files.
-module Main(goFilename,go,main, test) where
+module Main(goFilename,go,main) where
 
 import Modules (getModules)
 import PrettyPrint
@@ -69,26 +69,6 @@ goFilename pathToMainFile = do
   putStrLn $ render $ disp (last defs)
 
 
-test :: IO ()
-test = do
-  goFilename "../test/Lec1.pi"
-  goFilename "../test/Hw1.pi"  
-  goFilename "../test/Lec2.pi"
-  goFilename "../test/Hw2.pi"  
-  goFilename "../test/Lec3.pi"
-  goFilename "../test/Fin1.pi"
-  goFilename "../test/Lec4.pi"
-      
-  goFilename "../test/Logic.pi"  
-  goFilename "../test/Equality.pi"  
-  goFilename "../test/Product.pi"  
-  goFilename "../test/Nat.pi"  
-  goFilename "../test/Fin.pi"  
-  goFilename "../test/Vec.pi"  
-  
-  goFilename "../test/Lambda0.pi"
-  goFilename "../test/Lambda1.pi"
-  goFilename "../test/Lambda2.pi"
 
         
   

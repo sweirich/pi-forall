@@ -17,6 +17,22 @@ proj2 : (A:Type) -> (B:A -> Type) -> (x : Sig A B) -> B (proj1 A B  x)
 proj2 = \ A B  x . case x of 
   Prod z y -> y
 
+proj1_cong : (A:Type) -> (B :A -> Type) -> (x : Sig A B) -> (y : Sig A B) 
+   -> x = y -> proj1 A B x = proj1 A B y
+proj1_cong = \ A B x y p. 
+   subst refl by p
+
+app_cong : (A:Type) -> (B : A -> Type) -> (x : A) -> (y : A) -> x = y -> B x = B x 
+app_cong = \ A B x y p . 
+   subst refl by p
+
+proj2_cong : (A:Type) -> (B :A -> Type) -> (x : Sig A B) -> (y : Sig A B) 
+   -> (p : x = y) -> 
+    let p1 = (proj1_cong A B x y p : (proj1 A B x = proj1 A B y)) in
+   	   proj2 A B (subst x by (app_cong A B (proj1 A B x) (proj1 A B y) p1) = proj2 A B y
+proj2_cong = \ A B x y p . 
+   TRUSTME -- subst refl by p
+
 injectivity1 : (A:Type) -> (B:A -> Type) -> (x1 : A) -> (y1 : B x1)
 				 -> (x2 : A) -> (y2 : B x2) 
 				 -> ((Prod x1 y1 : Sig A B) = Prod x2 y2) -> x1 = x2

@@ -248,8 +248,11 @@ instance Display Term where
   display (TrustMe ma) = do
     da <- display ma
     return $ text "TRUSTME" <+> da
-  display (TyUnit) = return $ text "One"
-  display (LitUnit) = return $ text "tt"
+  display (PrintMe ma) = do
+    da <- display ma
+    return $ text "PRINTME" <+> da
+  display (TyUnit) = return $ text "Unit"
+  display (LitUnit) = return $ text "()"
   display (TyBool) = return $ text "Bool"
   display (LitBool b) = return $ if b then text "True" else text "False"
   display (If a b c ann) = do
@@ -277,7 +280,7 @@ instance Display Term where
     db <- display b
     dann <- display ann
     return $ parens (da <+> text "," <+> db) <+> dann
-  display (Pcase a bnd ann) = do
+  display (LetPair a bnd ann) = do
     da <- display a
     dann <- display ann
     Unbound.lunbind bnd $ \((x, y), body) -> do
@@ -285,13 +288,15 @@ instance Display Term where
       dy <- display y
       dbody <- display body
       return $
-        text "pcase" <+> da <+> text "of"
+        text "let" 
           <+> text "("
           <+> dx
           <+> text ","
           <+> dy
           <+> text ")"
-          <+> text "->"
+          <+> text "="
+          <+> da 
+          <+> text "in"
           <+> dbody
           <+> dann
   display (Let bnd) = do
