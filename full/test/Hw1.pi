@@ -1,0 +1,31 @@
+module Hw1 where
+
+-- HW #1: get this file to type check by adding typing rules
+-- for booleans and let expressions to TypeCheck.hs and Equal.hs 
+
+z0 : Bool
+z0 = if True then False else True
+
+-- prelude operations on boolean values
+
+or : Bool -> Bool -> Bool
+or = \b1 b2. if b1 then True else b2
+
+not : Bool -> Bool
+not = \b . if b then False else True
+
+and : Bool -> Bool -> Bool
+and = \b1 b2. if b1 then b2 else False
+
+eq_bool : Bool -> Bool -> Bool
+eq_bool = \ b1 b2 . 
+  if b1 then b2 else (not b2)  
+
+-- sigma types
+
+double : (A:Type) -> (x : A) -> { x : A | A }
+double = \A x. (x,x) 
+
+fst : (A:Type) -> (B : A -> Type) -> { x : A | B x } -> A
+fst = \A B p. pcase p of (x0,y) -> x0
+

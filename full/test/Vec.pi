@@ -1,0 +1,148 @@
+-----------------------------------------------------------------------
+-- PI library for finite-length vectors
+--
+-- Some of these are adapted from Vec.agda
+--
+-- Author: Stephanie Weirich
+-----------------------------------------------------------------------
+
+module Vec where
+
+import Equality
+import Nat
+import Fin
+import Product
+
+data Vec (A : Type) (n : Nat) : Type where
+  Nil  of                       [n = Zero] 
+  Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
+
+
+head : [A :Type] -> [n:Nat] -> Vec A (Succ n) -> A
+head = \ [A][n] x.  case x of 
+     Cons [m] y ys -> y
+	  -- Nil case is impossible
+
+tail : [A :Type] -> [n:Nat] -> Vec A (Succ n) -> Vec A n
+tail = \ [A][n] x.  case x of 
+     -- Nil case impossible
+     Cons [m] y ys -> ys
+
+append : [A :Type] ->[m:Nat] -> [n:Nat] -> Vec A m -> Vec A n -> Vec A (plus m n)
+append = \[A] [m] [n] v1 ys . case v1 of 
+     Cons [m0] x xs -> Cons [plus m0 n] x (append [A] [m0][n] xs ys)
+     Nil -> ys
+
+
+zap : [A:Type] -> [B: Type] -> [n:Nat] -> Vec (A -> B) n -> Vec A n -> Vec B n
+zap = \[A][B] [n] vs1 vs2 . 
+  case vs1 of 
+    Nil -> case vs2 of 
+       Nil   -> Nil 
+       -- Cons case impossible
+    Cons [m1] f fs -> case vs2 of 
+       -- Nil case impossible
+       Cons [m2] x xs -> 
+		    Cons [m1] (f x) (zap [A][B][m1] fs xs)
+
+replicate : [A:Type] -> (n:Nat) -> A -> Vec A n
+replicate = \[A] n x. 
+   case n of 
+     Zero   -> Nil 
+     Succ m -> Cons [m] x (replicate [A] m x)
+
+map : [A:Type] -> [B:Type] -> [n:Nat] -> (A -> B) -> Vec A n -> Vec B n
+map = \[A][B][n] f v.
+  case v of 
+    Nil -> Nil
+    Cons [m] x xs -> Cons [m] (f x) (map[A][B] [m] f xs)
+
+-- note: this version of map needs n at runtime
+
+mapn : [A:Type] -> [B:Type] -> (n:Nat) -> (A -> B) -> Vec A n -> Vec B n
+mapn = \[A][B] n f v. zap[A][B][n] (replicate [A->B] n f) v
+
+zipWith : [A:Type]->[B:Type]->[C:Type] -> (n:Nat) -> (A -> B -> C) 
+		  -> Vec A n -> Vec B n -> Vec C n
+zipWith = \[A][B][C] n f v1 v2. 
+  zap[B][C][n] (zap [A][B -> C][n] (replicate [A -> B -> C] n f) v1) v2
+
+zip : [A:Type] -> [B:Type] -> (n:Nat) -> Vec A n -> Vec B n -> Vec (Times A B) n
+zip = \[A][B] n . zipWith [A][B][Times A B] n (prod[A][B])
+
+-- easiest version of foldr makes m irrelevant
+foldr : [A:Type]-> [B:Nat -> Type] -> [m:Nat] -> 
+        (f : [n:Nat] -> A -> B n -> B (Succ n)) ->    
+        B Zero ->
+        Vec A m -> B m
+foldr = \[A][B] [m] f n v . 
+  case v of 
+    Nil -> n
+    Cons [m'] x xs -> f [m'] x (foldr [A][B][m'] f n xs)
+
+-- we can also make m relevant
+foldr' : [A:Type]-> [B:Nat -> Type] -> (m:Nat) -> 
+        (f : (n:Nat) -> A -> B n -> B (Succ n)) ->    
+        B Zero ->
+        Vec A m -> B m
+foldr' = \[A][B] m f n v . 
+  case v of 
+    Nil -> n
+    Cons [m'] x xs -> f (pred m) x (foldr' [A][B] (pred m) f n xs)
+
+
+-- we can also define foldr' by induction on m
+foldr'' : [A:Type]-> [B:Nat -> Type] -> (m:Nat) -> 
+        (f : (n:Nat) -> A -> B n -> B (Succ n)) ->    
+        B Zero ->
+        Vec A m -> B m
+foldr'' = \[A][B] m f n v . 
+  case m of 
+    Zero -> 
+      case v of 
+        Nil -> n
+    Succ m1 -> 
+      case v of 
+        Cons [m2] x xs -> 
+          f m1 x (foldr'' [A][B] m1 f n xs)
+          
+data In (A:Type) (x:A) (n:Nat) (v:Vec A n) : Type where
+  Here  of [m:Nat][n = Succ m][xs : Vec A m] 
+           [v = Cons [m] x xs]
+  There of [m:Nat][n = Succ m][xs : Vec A m] 
+           [y:A][v = Cons [m] y xs]
+           (In A x m xs)
+
+singleton : [A:Type] -> A -> Vec A 1
+singleton = \[A] x. Cons [0] x Nil
+          
+
+
+
+foldr1 : [A:Type] -> [m:Nat] -> 
+       (A -> A -> A) -> Vec A (Succ m) -> A
+foldr1 = \[A] [m] f v . case v of 
+  Cons [m'] x ys -> 
+      case ys of 
+         Nil -> x
+         Cons [m''] y xs ->
+            f x (foldr1 [A][m''] f (Cons [m''] y xs))
+
+
+concat : [A:Type] -> [m : Nat] -> [n : Nat] -> Vec (Vec A m) n -> Vec A (mult n m)
+concat = \[A][m] [n] v. case v of 
+   Nil -> Nil
+   Cons [n'] xs xss -> append[A][m][mult n' m] xs (concat[A][m] [n'] xss)
+
+
+foldl : [A: Type] -> [m : Nat] -> [B : Nat -> Type] -> 
+      ([n:Nat] -> B n -> A -> B (Succ n)) ->
+      B Zero ->
+      Vec A m -> B m
+foldl = \[A] [m] [B] f z v . 
+  case v of 
+    Nil  -> z
+    Cons [m'] x xs -> 
+	    let n' = f [0] z x in
+       foldl [A][m'][\ n'. B (Succ n')] (\[n] b a . f [Succ n] b a) n' xs
+

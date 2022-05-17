@@ -9,3 +9,9 @@ cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.config
+.DS_Store
+doc/oplss.tex
+doc/pi-rules.tex
+.stack-work/
+dist-newstyle/
+stack.yaml.lock
