@@ -1,22 +1,19 @@
-Pi-Forall language
+PiForall language
 ------------------
 
 This language implementation is designed to accompany four lectures at
 OPLSS during Summer 2022. Notes for these lectures are included in the 
 distribution:
 
-- [notes.md](notes.md):    Basic language with Type:Type 
-- [notes2.md](notes2.md):  Implementation of basic languages
-- [notes3.md](notes3.md):  Definitional and propositional equality
-- [notes4.md](notes4.md):  Datatypes, with parameters and indices, erased arguments
+- [notes.md](doc/notes.md):    Basic language with Type:Type 
+- [notes2.md](doc/notes2.md):  Implementation of basic languages
+- [notes3.md](doc/notes3.md):  Definitional and propositional equality
+- [notes4.md](doc/notes4.md):  Datatypes, with parameters and indices, erased arguments
 
-Videos for these lectures are also available from the 
-[OPLSS website](https://www.cs.uoregon.edu/research/summerschool/summer14/curriculum.html).
+There is also a LaTeX document that typesets the notes above and includes 
+the specification of the PiForall language.
 
-An abridged version of these lectures was given at the Compose
-Conference, January 2015. 
-
-- [compose.md](old/compose.md): Overview of pi-forall implementation
+- [oplss.pdf](doc/oplss.pdf)
 
 These lecture notes corresponds to an increasingly expressive demo
 implementation of dependently-typed lambda calculus.
@@ -33,6 +30,15 @@ All of these versions are excerpted from the marked up files in the directory:
 
 All edits should be to the code in the `main` directory. The above versions
 are included in the repo just for convenience.
+
+Videos from the 2014 lectures are also available from the 
+[OPLSS website](https://www.cs.uoregon.edu/research/summerschool/summer14/curriculum.html). If you want to watch these videos, you should look at the 
+2014 branch of the repository.
+
+An abridged version of these lectures was given at the Compose
+Conference, January 2015. 
+
+- [compose.md](old/compose.md): Overview of pi-forall implementation
 
 --
 Stephanie Weirich
