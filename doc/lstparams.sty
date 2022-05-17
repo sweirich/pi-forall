@@ -1,0 +1,49 @@
+\RequirePackage{etoolbox}
+
+\colorlet{StringColor}{blue}
+\colorlet{CommentColor}{red}
+%\colorlet{Keyword1Color}{violet}
+%\colorlet{Keyword2Color}{Green}
+
+
+\newcommand*{\basecodestyle}{\ttfamily}
+\newcommand*{\codestyle}{\small\basecodestyle}
+\newcommand*{\footnotecodestyle}{\footnotesize\basecodestyle}
+
+\lstset{
+  language         = haskell,
+  basicstyle       = \codestyle,
+  showspaces       = false,
+  showstringspaces = false,
+  upquote          = true,
+  keepspaces       = true,
+  breaklines       = false,
+  columns          = fullflexible,
+  aboveskip        = \medskipamount,
+  mathescape       = true,
+  %
+  stringstyle  = {\codestyle\color{StringColor}},
+  commentstyle = {\codestyle\itshape\color{CommentColor}},
+  xleftmargin      = .15in,
+  morekeywords     = {unit,Unit,zero,suc,Nat,Type},
+  literate =%
+     {∀}{$\forall$}1
+     {Σ}{$\Sigma$}1
+     {Π}{$\Pi$}1
+     {→}{$\rightarrow$}1
+     {⇒}{$\Rightarrow$}1
+     {×}{$\times$}1
+     {∈}{$\in$}1
+     {ℂ}{$\mathbb{C}$}1
+     {α}{$\alpha$}1
+     {λ}{$\lambda$}1
+     {⊤}{$\top$}1
+     {⊥}{$\bot$}1
+}
+
+\pretocmd{\@makefntext}{\lstset{basicstyle=\footnotecodestyle}}
+  {}
+  {\PackageError{lstparams}
+     {Could not set up footnote-sized code font}
+     {I either couldn't find the \protect\@makefntext\space command or
+      couldn't patch it.}}

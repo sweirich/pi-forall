@@ -1,0 +1,349 @@
+%%
+%% This is file `listproc.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% listproc.dtx  (with options: `package')
+%% 
+%% Copyright (C) 2011 by Jesse A. Tov
+%% 
+%% This file may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.2 of this license or (at
+%% your option) any later version. The latest version of this license is
+%% in:
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%% 
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{listproc}[2011/08/03 v0.2 (list processing)]
+\newcommand\newlist{\@lstp@def{}\newcommand}
+\newcommand\renewlist{\@lstp@def{}\renewcommand}
+\newcommand\deflist{\@lstp@def{}\def}
+\newcommand\gdeflist{\@lstp@def\global\def}
+\newcommand\@lstp@def[4]{%
+  #2#3{}%
+  \@for\lstp@def@temp:=#4\do{%
+    \expandafter\SnocTo\expandafter{\lstp@def@temp}#3%
+  }%
+  #1\let#3#3%
+  \let\lstp@def@temp\@undefined
+}
+\newtoks\lstp@ta
+\newtoks\lstp@tb
+\newcommand\ConsTo{\@lstp@ConsTo\relax\def}
+\newcommand\gConsTo{\@lstp@ConsTo\global\def}
+\newcommand\eConsTo{\@lstp@ConsTo\relax\edef}
+\newcommand\xConsTo{\@lstp@ConsTo\global\edef}
+\newcommand\@lstp@ConsTo[4]{%
+  \long#2\lstp@temp{#3}%
+  \lstp@ta=\expandafter{\expandafter\listitem\expandafter{\lstp@temp}}%
+  \lstp@tb=\expandafter{#4}%
+  #1\edef#4{\the\lstp@ta\the\lstp@tb}%
+}
+\newcommand\SnocTo{\@lstp@SnocTo\relax\def}
+\newcommand\gSnocTo{\@lstp@SnocTo\global\def}
+\newcommand\eSnocTo{\@lstp@SnocTo\relax\edef}
+\newcommand\xSnocTo{\@lstp@SnocTo\global\edef}
+\newcommand\@lstp@SnocTo[4]{%
+  \long#2\lstp@temp{#3}%
+  \lstp@ta=\expandafter{\expandafter\listitem\expandafter{\lstp@temp}}%
+  \lstp@tb=\expandafter{#4}%
+  #1\edef#4{\the\lstp@tb\the\lstp@ta}%
+}
+\newcommand\AppendTo{\@lstp@AppendTo\relax}
+\newcommand\gAppendTo{\@lstp@AppendTo\global}
+\newcommand\@lstp@AppendTo[3]{%
+  \lstp@ta=\expandafter{#2}%
+  \lstp@tb=\expandafter{#3}%
+  #1\edef#3{\the\lstp@ta\the\lstp@tb}%
+}
+\long\def\@LopOff\listitem#1#2\@LopOff#3#4{%
+  #3{#1}%
+  #4{#2}%
+}
+\newcommand\@lstp@LopTo[4]{\expandafter\@LopOff#3\@LopOff{#1\def#4}{#2\def#3}}
+\newcommand\@lstp@RestTo[3]{\expandafter\@LopOff#2\@LopOff{\@gobble}{#1\def#3}}
+\newcommand\LopTo{\@lstp@LopTo\relax\relax}
+\newcommand\gLopTo{\@lstp@LopTo\global\global}
+\newcommand\glLopTo{\@lstp@LopTo\global\relax}
+\newcommand\lgLopTo{\@lstp@LopTo\relax\global}
+\newcommand\FirstTo{\@lstp@LopTo\relax\@gobblethree}
+\newcommand\gFirstTo{\@lstp@LopTo\global\@gobblethree}
+\newcommand\RestTo{\@lstp@RestTo\relax}
+\newcommand\gRestTo{\@lstp@RestTo\global}
+\newcommand*\IfList[1]{%
+  {%
+  \expandafter\@IfList#1\@IfList
+  }%
+}
+\def\@IfList#1#2\@IfList{%
+  \ifx\listitem#1\relax
+    \aftergroup\@firstoftwo
+  \else
+    \aftergroup\@secondoftwo
+  \fi
+}
+\def\@forList#1:=#2\do#3{%
+  \long\def\lstp@for@listitem##1{%
+    \long\def#1{##1}%
+    #3%
+    \let\listitem\lstp@for@listitem%
+  }%
+  \let\listitem\lstp@for@listitem%
+  #2%
+  \let\listitem\@undefined%
+}
+\newcommand\SetToListLength[2]{%
+  \lstp@length{#2}{\value{#1}}%
+}
+\newcommand\lstp@length[2]{%
+  #2=0 %
+  \long\def\listitem##1{\advance#2 by1 }%
+  #1\let\listitem\@undefined%
+}
+\newcommand\MapListTo{\@lstp@MapListTo\relax}
+\newcommand\gMapListTo{\@lstp@MapListTo\global}
+\newcommand\MapAndAppendTo{\@lstp@MapAndAppendTo\relax}
+\newcommand\gMapAndAppendTo{\@lstp@MapAndAppendTo\global}
+\newcommand\@lstp@MapListTo[4]{%
+  \let\lstp@map@temp#3%
+  #1\let#4\empty%
+  \@lstp@MapAndAppendTo{#1}{#2}\lstp@map@temp#4%
+  \let\lstp@map@temp\@undefined%
+}
+\newcommand\@lstp@MapAndAppendTo[4]{%
+  \long\def\listitem##1{\@lstp@SnocTo{#1}\def{#2}{#4}}%
+  #3%
+  \let\listitem\@undefined%
+}
+\newcommand\lstp@insert[3]{%
+  \edef\lstp@insert@temp@a{#2{#1}}%
+  \let\lstp@insert@temp@i#3%
+  \let#3\empty
+  \long\def\lstp@insert@listitem##1{%
+    \edef\lstp@insert@temp@b{#2{##1}}%
+    \ifnum\lstp@insert@temp@a<\lstp@insert@temp@b
+      \SnocTo{#1}{#3}%
+      \let\listitem\lstp@insert@listitem@done
+    \else
+      \let\listitem\lstp@insert@listitem
+    \fi
+    \SnocTo{##1}{#3}%
+  }%
+  \long\def\lstp@insert@listitem@done##1{\SnocTo{##1}{#3}}%
+  \let\listitem\lstp@insert@listitem
+  \lstp@insert@temp@i%
+  \ifx\listitem\lstp@insert@listitem%
+    \SnocTo{#1}{#3}%
+  \fi%
+  \let\lstp@insert@temp@i\@undefined%
+  \let\listitem\@undefined%
+}
+\providecommand\@apply@group[2]{#1#2}
+\newcommand\SortList[2][\@apply@group{}]{%
+  \let\lstp@sort@temp@i#2%
+  \let#2\empty
+  \long\def\lstp@sort@listitem##1{%
+    \lstp@insert{##1}{#1}{#2}%
+    \let\listitem\lstp@sort@listitem
+  }%
+  \let\listitem\lstp@sort@listitem
+  \lstp@sort@temp@i
+  \let\lstp@sort@temp@i\@undefined
+  \let\listitem\@undefined
+}
+\newcounter{lstp@ifsucc}
+\newcommand\lstp@ifsucc[2]{%
+  \setcounter{lstp@ifsucc}{#1}%
+  \addtocounter{lstp@ifsucc}{1}%
+  \ifnum#2=\value{lstp@ifsucc}%
+    \let\@lstp@ifsucc@kont\@firstoftwo
+  \else
+    \let\@lstp@ifsucc@kont\@secondoftwo
+  \fi
+  \@lstp@ifsucc@kont
+}
+\newcommand\CompressList[2][\@apply@group{}]{%
+  \let\lstp@compress@temp@i#2%
+  \let#2\empty
+  \def\lstp@compress@add@single{%
+    \expandafter\SnocTo\expandafter
+    {\expandafter\@single\expandafter{\lstp@compress@temp@a}}{#2}%
+  }%
+  \def\lstp@compress@add@range{%
+    \expandafter\expandafter\expandafter\SnocTo
+    \expandafter\expandafter\expandafter{%
+    \expandafter\expandafter\expandafter\@range
+    \expandafter\expandafter\expandafter{%
+    \expandafter\lstp@compress@temp@a\expandafter}%
+    \expandafter{\lstp@compress@temp@b}}#2%
+  }%
+  \long\def\lstp@compress@listitem@start##1{%
+    \def\lstp@compress@temp@a{##1}%
+    \edef\lstp@compress@temp@a@key{#1{##1}}%
+    \let\listitem\lstp@compress@listitem@single
+  }%
+  \long\def\lstp@compress@listitem@single##1{%
+    \def\lstp@compress@temp@b{##1}%
+    \edef\lstp@compress@temp@b@key{#1{##1}}%
+    \ifnum\lstp@compress@temp@a@key=\lstp@compress@temp@b@key
+      \let\listitem\lstp@compress@listitem@single
+    \else
+      \lstp@ifsucc{\lstp@compress@temp@a@key}{\lstp@compress@temp@b@key}
+        {\let\listitem\lstp@compress@listitem@range}
+        {\lstp@compress@add@single
+         \let\lstp@compress@temp@a\lstp@compress@temp@b
+         \let\lstp@compress@temp@a@key\lstp@compress@temp@b@key
+         \let\listitem\lstp@compress@listitem@single}%
+    \fi
+  }%
+  \long\def\lstp@compress@listitem@range##1{%
+    \def\lstp@compress@temp@c{##1}%
+    \edef\lstp@compress@temp@c@key{#1{##1}}%
+    \ifnum\lstp@compress@temp@b@key=\lstp@compress@temp@c@key
+      \let\listitem\lstp@compress@listitem@range
+    \else
+      \lstp@ifsucc{\lstp@compress@temp@b@key}{\lstp@compress@temp@c@key}
+        {%
+          \let\lstp@compress@temp@b\lstp@compress@temp@c
+          \let\lstp@compress@temp@b@key\lstp@compress@temp@c@key
+          \let\listitem\lstp@compress@listitem@range
+        }
+        {%
+          \lstp@compress@add@range
+          \let\lstp@compress@temp@a\lstp@compress@temp@c
+          \let\lstp@compress@temp@a@key\lstp@compress@temp@c@key
+          \let\listitem\lstp@compress@listitem@single
+        }%
+    \fi
+  }%
+  \let\listitem\lstp@compress@listitem@start
+  \lstp@compress@temp@i
+  \ifx\listitem\lstp@compress@listitem@single
+    \lstp@compress@add@single
+  \else
+    \ifx\listitem\lstp@compress@listitem@range
+      \lstp@compress@add@range
+    \fi
+  \fi
+  \let\lstp@compress@temp@a\@undefined
+  \let\lstp@compress@temp@b\@undefined
+  \let\lstp@compress@temp@c\@undefined
+  \let\lstp@compress@temp@a@key\@undefined
+  \let\lstp@compress@temp@b@key\@undefined
+  \let\lstp@compress@temp@c@key\@undefined
+  \let\lstp@compress@temp@i\@undefined
+  \let\listitem\@undefined
+}
+\newcommand\FormatListSepTwo{ and }
+\newcommand\FormatListSepMore{, }
+\newcommand\FormatListSepLast{, and }
+\newcounter{lstp@FormatList@length}
+\newcounter{lstp@FormatList@posn}
+\newcommand\FormatList[4]{{%
+  \deflist\lstp@FormatList@list{#4}%
+  \SetToListLength{lstp@FormatList@length}\lstp@FormatList@list%
+  \setcounter{lstp@FormatList@posn}{0}%
+  \ifnum\value{lstp@FormatList@length}=1%
+    #1%
+  \else%
+    #2%
+  \fi%
+  \def\listitem##1{%
+    \addtocounter{lstp@FormatList@posn}{1}%
+    \ifnum1<\value{lstp@FormatList@posn}%
+      \ifnum2=\value{lstp@FormatList@length}%
+        \FormatListSepTwo
+      \else
+        \ifnum\value{lstp@FormatList@length}=\value{lstp@FormatList@posn}%
+          \FormatListSepLast
+        \else
+          \FormatListSepMore
+        \fi
+      \fi
+    \fi
+    #3{##1}%
+  }%
+  \lstp@FormatList@list
+}}
+\newcommand\ListExpr[1]{\@lstp@ListExpr{#1}\relax}
+\newcommand\ListExprTo[2]{\@lstp@ListExpr{#1}{\def#2}}
+\newcommand\gListExprTo[2]{\@lstp@ListExpr{#1}{\gdef#2}}
+\newcommand\@lstp@defbinop[2]{%
+  \newcommand#1[2]{%
+    \Eval{##1}\let\@lstp@tmp\@lstp@acc
+    {\Eval{##2}}%
+    #2\@lstp@tmp\@lstp@acc
+  }%
+}
+\newcommand\@lstp@defunop[2]{%
+  \newcommand#1[1]{%
+    \Eval{##1}%
+    #2\@lstp@acc\@lstp@acc
+  }%
+}
+\newcommand\@lstp@definplaceunopopt[3][]{%
+  \newcommand#2[2][#1]{%
+    \Eval{##2}%
+    #3[##1]\@lstp@acc
+    \global\let\@lstp@acc\@lstp@acc
+  }%
+}
+\newcommand\@lstp@ListExpr[2]{%
+  {%
+    \gdef\@lstp@acc{}%
+    \def\Eval##1{%
+      \IfList{##1}{%
+        \global\let\@lstp@acc##1%
+      }{%
+        \@lstp@ifListOp##1\@lstp@ifListOp{%
+          ##1%
+        }{%
+          \xdef\@lstp@acc{##1}%
+        }%
+      }%
+    }%
+    \def\Q##1{\gdef\@lstp@acc{##1}}%
+    \def\Nil{\global\let\@lstp@acc\empty}%
+    \def\List##1{\gdeflist\@lstp@acc{##1}}%
+    \@lstp@defbinop\Cons\xConsTo
+    \@lstp@defbinop\Snoc\xSnocTo
+    \@lstp@defunop\First\gFirstTo
+    \@lstp@defunop\Rest\gRestTo
+    \@lstp@defbinop\Append\gAppendTo
+    \@lstp@definplaceunopopt[\@apply@group{}]\Sort\SortList
+    \@lstp@definplaceunopopt[\@apply@group{}]\Compress\CompressList
+    \newcommand\Map[2]{%
+      \Eval{##2}%
+      \gMapListTo{##1}\@lstp@acc\@lstp@acc
+    }%
+    \Eval{#1}%
+  }%
+  \def\@lstp@finish##1{#2{##1}}%
+  \expandafter\@lstp@finish\expandafter{\@lstp@acc}%
+}
+\def\@lstp@ifListOp#1#2\@lstp@ifListOp{%
+  \@lstp@ifInToks#1{
+    \Q\Nil\List\Cons\Snoc\Append
+    \First\Rest\Sort\Compress\Map
+  }
+}
+\newcommand\@lstp@ifInToks[2]{%
+  {%
+    \def\@tester##1#1##2\@tester{%
+      \ifx\@notfound##2\relax
+        \aftergroup\@secondoftwo
+      \else
+        \aftergroup\@firstoftwo
+      \fi
+    }%
+    \@tester#2\@lstp@ifInToks#1\@notfound\@tester
+  }%
+}
+\endinput
+%%
+%% End of file `listproc.sty'.

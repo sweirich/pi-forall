@@ -1,0 +1,317 @@
+metavar tname, x, y, z, f, g, n ::=
+  {{ com variables }}
+  {{ lex alphanum }}
+
+metavar mname, M ::=
+  {{ com module names }}
+  {{ lex alphanum }}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Core language
+
+grammar
+
+
+tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+
+  | Type        ::    :: Type {{ com sort }}
+
+  | x           ::    :: Var {{ com variable }}
+
+  | \ x . a            ::  :: Lam 
+    {{ tex \lambda [[x]]. [[a]] }}
+    {{ com function }}    
+
+  | a b                ::   :: App 
+    {{ tex [[a]] \; [[b]] }}
+    {{ com function application }}
+
+  | ( x : A ) -> B    ::    :: Pi   
+    {{ tex ([[x]]\!:\![[A]]) [[->]] [[B]] }}
+    {{ com dependent function type }}
+
+  %% Practicalities
+  | a { b / x } :: S  :: SubstOp 
+    {{ com substitution }}
+
+  | A -> B      :: M  :: Arrow
+    {{ com syntactic sugar for function types }}
+
+  | ( a : A )   ::    :: Ann 
+    {{ com type annotation }}
+
+  | ( a )       :: S  :: Paren 
+    {{ com parenthesis }}
+
+  | TRUSTME         ::   :: TrustMe   {{ com A term that has any type }}
+  | PRINTME         ::   :: PrintMe   {{ com Print the current context }}
+
+  | let x = a in b  ::   :: Let {{ com Name an expression }}
+
+
+  %% Unit
+
+  | Unit          ::   :: TyUnit  {{ com unit type }}
+  | ()            ::   :: LitUnit  {{ com unit term }}
+
+  %% Booleans
+
+  | Bool                  ::   :: TyBool {{ com boolean type }}
+  | True                  ::   :: LitTrue {{ com boolean value true }}
+  | False                 ::   :: LitFalse {{ com boolean value false }}
+  | if a then b1 else b2  ::   :: If {{ com conditional }}
+
+  %% Sigma types
+
+  | { x : A | B } ::   :: Sigma
+    {{ tex \{ [[x]]\!:\![[A]]\ |\ [[B]] \} }}
+    {{ com $\Sigma$-type (i.e. dependent products/dependent sums) }}
+
+  | ( a , b )     ::   :: Prod {{ com product }}
+
+  | let ( x , y ) = a in b ::  :: LetPair {{ com elimination form for pairs }}
+
+  %% Equality
+  | a = b         ::   :: TyEq   {{ com equality type }}
+  | refl          ::   :: Refl   {{ com reflexivity proof }}
+  | subst a by b  ::   :: Subst  {{ com equality type elimination }}
+  | contra a      ::   :: Contra {{ com false elimination }}
+
+
+substitutions
+  single a x     :: subst_tm
+
+freevars
+  a x   :: fv_tm
+
+parsing 
+Ann right Arrow
+Arrow right Arrow
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+grammar
+
+context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
+
+   |                 ::    :: Nil  
+
+   | G , x : A       ::    :: Cons   {{ tex [[G]], [[x]]\! :\![[A]] }}
+
+   | x : A           ::    :: Single {{ tex [[x]]\! :\![[A]] }}
+
+terminals :: 'terminals_' ::=
+  | <->               ::   :: iso           {{ tex \leftrightarrow }}
+  | <=>               ::   :: lrarrow       {{ tex \Leftrightarrow }}
+  | -->               ::   :: step          {{ tex \longrightarrow }}
+  | min               ::   :: min           {{ tex \mathsf{min} }}
+  | ==                ::   :: definitional  {{ tex \equiv }}
+  | all               ::   :: forall        {{ tex \forall }}
+  | elem              ::   :: elem          {{ tex \in }}
+  | notin             ::   :: notin         {{ tex \not\in }}
+  | <=                ::   :: check         {{ tex \Leftarrow }}
+  | =>                ::   :: infer         {{ tex \Rightarrow }}
+  | =>*               ::   :: minfer        {{ tex \Rightarrow^{\ast} }}
+  | ->                ::   :: arrow         {{ tex \to }}
+  | /\                ::   :: ilam          {{ tex \mathrm{\Lambda} }}   
+  | []                ::   :: box        {{ tex \Box }}
+  | |-                ::   :: entails    {{ tex \vdash }}
+  | |=                ::   :: hs_entails {{ tex \vDash }}
+  | /=                ::   :: neq        {{ tex \neq }}
+  | |>                ::   :: cast       {{ tex \triangleright }}
+  | ok                ::   :: ok         {{ tex \ \mathsf{ok} }}
+  | _                 ::   :: blank      {{ tex \_ }}
+  | ~>                ::   :: produce    {{ tex \leadsto }}
+  | ~>*               ::   :: multistep  {{ tex \leadsto^{\ast} }}
+  | empty             ::   :: empty      {{ tex \varnothing }}
+  | hole              ::   :: hole       {{ tex \circ }}
+  | fv                ::   :: fv         {{ tex \mathsf{fv}\! }}
+  | dom               ::   :: dom        {{ tex \mathsf{dom} }}
+  | ~                 ::   :: twiddle    {{ tex \sim }}
+  | ~~                ::   :: compatible {{ tex \asymp }}
+  | '|'               ::   :: bar        {{ tex | }}
+  | o                 ::   :: bullet     {{ tex \bullet }}
+  | fst               ::   :: fst
+  | snd               ::   :: snd
+  | ==>               ::   :: impl       {{ tex \implies }}
+
+formula :: 'formula_' ::=
+  | judgement                ::   :: judgement
+  | x : A elem G             ::   :: inG
+
+defns 
+  
+JOp :: '' ::=
+
+defn
+a ~> b ::   :: step :: ''
+{{ com single-step operational semantics }}
+by
+
+
+
+----------------------------------  :: AppAbs
+(\x.a) b ~> a { b / x}
+
+
+--------------------------------- :: Let
+let x = a in b ~> b { a / x } 
+
+
+---------------------------------- :: IfTrue
+if True then b1 else b2 ~> b1
+
+
+---------------------------------- :: IfFalse
+if False then b1 else b2 ~> b1
+
+
+-------------------------------------------------- :: LetPairProd
+let (x,y) = (a1,a2) in b ~> b { a1 /x } {a2 /y }
+
+a ~> a'
+------------------------  :: App
+a b ~> a' b
+
+a ~> a'
+--------------------------------- :: If
+if a then b1 else b2 ~> if a' then b1 else b2
+
+a ~> a'
+-------------------------------------------------- :: LetPair
+let (x,y) = a in b ~> let (x,y) = a' in b
+
+
+defn
+a ~>* b ::  :: reduction :: ''
+{{ com multi-step }}
+by
+
+------------------- :: Equal
+a ~>* a
+
+a ~> b
+b ~>* a'
+------------------- :: Step
+a ~>* a'
+
+defns
+JTyping :: '' ::= 
+
+defn 
+
+G |- a : A   ::   :: typing :: 't_'
+by
+
+x : A elem G
+----------- :: var 
+G |- x : A
+
+
+G, x:A |- a : B
+------------------------  ::  slambda
+G |- \x.a : (x:A) -> B
+
+
+G, x:A |- a : B
+G |- a : Type
+------------------------  ::  lambda
+G |- \x.a : (x:A) -> B
+
+
+G |- A : Type     
+G, x:A |- B : Type
+-------------------------------------- :: pi
+G |- (x:A) -> B : Type
+
+----------------  :: type
+G |- Type : Type
+
+
+G |- a : (x:A) -> B 
+G |- b : A
+--------------------------- ::  app
+G |- a b : B { b / x }
+
+
+%% booleans
+
+---------------- :: bool
+G |- Bool : Type
+
+---------------- :: true
+G |- True : Bool
+
+---------------- :: false
+G |- False : Bool
+     
+G |- a : Bool 
+G |- b1 : A
+G |- b2 : A
+---------------------------- :: if
+ |- if a then b1 else b2 : A
+
+%% sigma types
+
+G |- A : Type     
+G, x:A |- B : Type
+------------------------------------- :: sigma
+G |- { x : A | B } : Type
+
+G |- a : A      
+G |- b : B { a / x }
+------------------------------------ :: pair
+G |- (a,b) : { x : A | B }
+
+
+G |- a : { x : A1 | A2 }
+G, x:A1, y:A2 |- b : B
+G |- B : Type
+------------------------------ :: letpair_weak
+G |- let (x,y) = a in b : B
+
+
+defns
+JBidirectional :: '' ::= 
+
+defn 
+G |- a => A ::    :: infer :: 'i_'
+by
+
+x : A elem G
+----------- :: var 
+G |- x => A
+
+
+G |- a <= A 
+------------------ :: annot
+G |- (a : A) => A
+
+G |- a => (x:A) -> B 
+G |- b <= A
+---------------------------  :: app
+G |- a b => B { b / x }	  
+
+G |- A <= Type     
+G, x:A |- B <= Type
+-------------------------------------- :: pi
+G |- (x:A) -> B => Type
+
+------------------- :: type
+G |- Type => Type
+
+
+defn 
+G |- a <= B ::    :: check :: 'c_'
+by
+
+G, x:A |- a <= B       
+G |- A <= Type
+--------------------------- ::  lambda
+G |- \x.a <= (x:A) -> B
+
+G |- a => A
+------------- :: infer 
+G |- a <= A 

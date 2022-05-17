@@ -1,0 +1,328 @@
+%%
+%% This is file `ottalt.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% ottalt.dtx  (with options: `package')
+%% 
+%% Copyright (C) 2011 by Jesse A. Tov
+%% 
+%% This file may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.2 of this license or (at
+%% your option) any later version. The latest version of this license is
+%% in:
+%% 
+%%    http://www.latex-project.org/lppl.txt
+%% 
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%% 
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{ottalt}
+ [2013/03/14 v0.11 alternate Ott layout style]
+\RequirePackage{mathpartir}
+\RequirePackage{ifthen}
+\RequirePackage{keyval}
+\RequirePackage{listproc}
+\DeclareOption{implicitPremiseBreaks}{
+  \renewcommand\ottaltpremisesep{\\}
+  \renewcommand\ottaltpremisebreak{\\}
+}
+\DeclareOption{lineBreakHack}{
+  \renewcommand\ottaltpremisesep{\mpr@andcr}
+  \renewcommand\ottaltpremisebreak{\\\\}
+}
+\DeclareOption{implicitLineBreakHack}{
+  \renewcommand\ottaltpremisesep{\\}
+  \renewcommand\ottaltpremisebreak{\\\\}
+}
+\DeclareOption{alternateNonterms}{
+  \let\ifnotalternateNonterms\@secondoftwo
+}
+\DeclareOption{supertabular}{
+  \ottalt@supertabulartrue
+}
+\newcommand\ottaltpremisesep{\\}
+\newcommand\ottaltpremisebreak{\\}
+\let\ifnotalternateNonterms\@firstoftwo
+\newif\ifottalt@supertabular
+\ProcessOptions
+\ifottalt@supertabular
+  \RequirePackage{supertabular}
+\fi
+\newcommand\inputott[2][ott]{
+  \input{#2}
+  \renewottcommands[#1]
+}
+\newcommand\ottaltcurrentprefix{ott}
+\newcommand\renewottcommands[1][ott]{
+  \renewcommand\ottaltcurrentprefix{#1}
+  \def\renewottcomm@nd##1{
+    \expandafter\renewcommand\csname #1##1\endcsname
+  }
+  \renewottcomm@nd{drule}[4][]{
+    \def\ottalt@nextpremise{}
+    \ottalt@premisetoks={ }
+    ##2
+    \expandafter\ottalt@inferrule\expandafter
+      {\the\ottalt@premisetoks}{##3}{##4}{##1}
+  }
+  \renewottcomm@nd{premise}[1]{%
+    \ottalt@premisetoks=
+        \expandafter\expandafter\expandafter
+                {\expandafter\the\expandafter\ottalt@premisetoks
+                 \ottalt@nextpremise##1}
+    \ottalt@iflinebreakhack##1\ottlinebreakhack\ottalt@iflinebreakhack{
+      \let\ottalt@nextpremise\ottaltpremisebreak
+    }{
+      \let\ottalt@nextpremise\ottaltpremisesep
+    }
+  }
+  \renewottcomm@nd{usedrule}[1]{%
+    \ifottalt@firstrule
+      \ottalt@firstrulefalse
+    \else
+      %\and
+      %% sigart.cls uses \and for the title and mangles it horribly
+      %% so we cannot use it here. Instead, we drop down to what 
+      %% mathpartir wants to redefine the \and command to be anyways
+      \mpr@andcr
+      %%\quad
+    \fi
+    \ensuremath{##1}
+  }
+  \renewenvironment{#1defnblock}[3][]
+    {\begin{drulepar}{##2}{##3}}
+    {\end{drulepar}}
+  \renewottcomm@nd{drulename}[1]{%
+    \ottalt@replace@cs\ranchor\_-{}##1\\
+  }
+  \renewottcomm@nd{prodline}[6]{
+    \ifthenelse{\equal{##3}{}}{
+      \\ & & $##1$ & $##2$ & & $##5$ & $##6$
+    }{}
+  }
+  \renewottcomm@nd{prodnewline}{\relax}
+  \renewottcomm@nd{grammartabular}[1]{%
+    \begin{ottaltgrammar}##1\end{ottaltgrammar}%
+  }
+}
+\newcommand*\drule@h@lper[3]{%
+  \expandafter\ifx\csname\ottaltcurrentprefix drule#3\endcsname\relax
+    \PackageWarning{ottalt}{Unknown ott rule: #3}%
+    \mbox{\textbf{(#2?)}}%
+  \else
+    \csname\ottaltcurrentprefix usedrule\endcsname
+      {\csname\ottaltcurrentprefix drule#3\endcsname{#1}}%
+  \fi
+}
+\newcommand*\nonterm@h@lper[1]{\csname\ottaltcurrentprefix#1\endcsname}
+\newcommand\rrefruletext{rule}
+\newcommand\Rrefruletext{\expandafter\MakeUppercase\rrefruletext}
+\newcommand\rrefrulestext{\rrefruletext s}
+\newcommand\Rrefrulestext{\Rrefruletext s}
+\newcommand\rrefstyle{\normalfont\scshape}
+\newcommand\ranchorstyle{\rrefstyle}
+\providecommand\wraparoundrref{\relax}
+\newcommand*\rref{%
+  \@ifnextchar*
+    {\rref@star}
+    {\rref@with\rrefruletext\rrefrulestext}}
+\newcommand*\Rref{%
+  \@ifnextchar*
+    {\rref@star}
+    {\rref@with\Rrefruletext\Rrefrulestext}}
+\newcommand*\rref@with[2]{\FormatList{#1~}{#2~}{\one@rref}}
+\newcommand*\rref@star[1]{\FormatList{}{}{\one@rref}}
+\newcommand*\@one@rref@nohyper[1]{\wraparoundrref{{\rrefstyle{#1}}}}
+\newcommand*\@ranchor@nohyper[1]{{\ranchorstyle{#1}}}
+\AtBeginDocument{
+  \ifcsname hypertarget\endcsname
+    \newcommand*\one@rref[1]{%
+      \hyperlink
+        {ottalt:rule:\ottaltcurrentprefix:#1}
+        {\@one@rref@nohyper{#1}}%
+    }
+    \newcommand*\ranchor[1]{%
+      \hypertarget
+        {ottalt:rule:\ottaltcurrentprefix:#1}
+        {\@ranchor@nohyper{#1}}%
+    }
+  \else
+    \newcommand\one@rref{\@one@rref@nohyper}
+    \newcommand\ranchor{\@ranchor@nohyper}
+  \fi
+}
+\newcommand*{\drules}[4][\relax]{%
+  \begin{drulepar}[#1]{#2}{#3}
+    \@for\@ottalt@each:=#4\do{%
+      \expandafter\drule\expandafter{\@ottalt@each}
+    }
+  \end{drulepar}%
+}
+\newenvironment{drulepar}[3][\relax]
+  {\begin{rulesection}[#1]{#2}{#3}%
+   \begin{mathparpagebreakable}}
+  {\end{mathparpagebreakable}%
+   \end{rulesection}}
+\newenvironment{drulepar*}[3][\relax]
+  {\begin{rulesection*}[#1]{#2}{#3}%
+   \begin{mathparpagebreakable}}
+  {\end{mathparpagebreakable}%
+   \end{rulesection*}}
+\newenvironment{rulesection}[3][\relax]
+  {\trivlist\item
+   \ifx#1\relax\else\def\ottalt@rulesection@prefix{#1-}\fi
+   \drulesectionhead{#2}{#3}%
+   \nopagebreak[4]%
+   \noindent}
+  {\endtrivlist}
+\newenvironment{rulesection*}[3][\relax]
+  {\trivlist\item
+   \ifx#1\relax\else\def\ottalt@rulesection@prefix{#1-}\fi
+   \drulesectionhead*{#2}{#3}%
+   \nopagebreak[4]%
+   \noindent}
+  {\endtrivlist}
+\newcommand\ottalt@rulesection@prefix{}
+\newcommand*{\drulesectionhead}{%
+  \@ifnextchar *{\drulesectionheadMany}{\drulesectionheadOne}%
+}
+\newcommand*{\drulesectionheadOne}[2]{%
+  \FormatDruleSectionHead{#1}%
+  \hfill\FormatDruleSectionHeadRight{#2}%
+  \par
+}
+\newcommand*{\drulesectionheadMany}[3]{%
+  {%
+    \let\FormatListSepTwo\FormatDruleSepTwo
+    \let\FormatListSepMore\FormatDruleSepMore
+    \let\FormatListSepLast\FormatDruleSepLast
+    \FormatList{}{}{\FormatDruleSectionHeads}{#2}%
+  }%
+  \hfill\FormatDruleSectionHeadRight{#3}%
+  \par
+}
+\newcommand*\FormatDruleSepTwo{\,,~}
+\newcommand*\FormatDruleSepMore{\FormatDruleSepTwo}
+\newcommand*\FormatDruleSepLast{\FormatDruleSepTwo}
+\newcommand*\FormatDruleSectionHead[1]{\fbox{#1}}
+\newcommand*\FormatDruleSectionHeads[1]{\fbox{\strut#1}}
+\newcommand*\FormatDruleSectionHeadRight[1]{\emph{(#1)}}
+\newcommand*\drule[2][]{%
+  \expandafter\drule@helper\expandafter{\ottalt@rulesection@prefix}{#1}{#2}%
+}
+\newcommand*\drule@helper[3]{%
+  \ottalt@replace@cs{\drule@h@lper{#2}{#1#3}}-{XX}{}#1#3\\
+}
+\newcommand\ottaltinferrule[4]{
+  \inferrule*[narrower=0.3,lab=#1,#2]
+    {#3}
+    {#4}
+}
+\newcommand\ottalt@inferrule[4]{
+  \ottaltinferrule{#3}{#4}{#1}{#2}
+}
+\newif\ifottalt@firstrule \ottalt@firstruletrue
+\newcommand{\ottalt@nextpremise}{\relax}
+\newtoks\ottalt@premisetoks
+\newcommand{\ottlinebreakhack}{\relax}
+\def\ottalt@iflinebreakhack#1\ottlinebreakhack #2\ottalt@iflinebreakhack{%
+  \ifthenelse{\equal{#2}{}}\@secondoftwo\@firstoftwo
+}
+\newcommand\ottalt@replace@cs[5]{%
+  \ifx\\#5\relax
+    \def\ottalt@replace@cs@kont{#1{#4}}%
+  \else
+    \ifx#2#5\relax
+      \def\ottalt@replace@cs@kont{\ottalt@replace@cs{#1}{#2}{#3}{#4#3}}%
+    \else
+      \def\ottalt@replace@cs@kont{\ottalt@replace@cs{#1}{#2}{#3}{#4#5}}%
+    \fi
+  \fi
+  \ottalt@replace@cs@kont
+}
+\newcommand*\nonterms[2][8pt]{
+  \begin{ottaltgrammar}[#1]
+    \@for\@ottalt@each:=#2\do{%
+      \expandafter\nt\expandafter{\@ottalt@each}
+    }
+  \end{ottaltgrammar}
+}
+\newenvironment{ottaltgrammar}[1][8pt]{%
+  \begingroup
+  \trivlist\item
+  \def\OTTALTNEWLINE{\\[#1]}%
+  \def\nt##1{\OTTALTNEWLINE\relax\nonterm@h@lper{##1}\ignorespaces}%
+  \newcommand\ottaltintertext[2]{%
+    \multicolumn{8}{l}{%
+      \begin{minipage}{##1}%
+        ##2%
+      \end{minipage}%
+    }%
+  }%
+  \ifottalt@supertabular
+    \begin{supertabular}{llcllllll}
+  \else
+    \begin{tabular}{llcllllll}
+  \fi
+  \let\OTTALTNEWLINE\relax
+  \ignorespaces
+}
+{%
+  \@ifundefined{ottafterlastrule}{\\}{\ottafterlastrule}%
+  \ifottalt@supertabular
+    \end{supertabular}
+  \else
+    \end{tabular}
+  \fi
+  \endtrivlist
+  \endgroup
+  \ignorespaces
+}
+\newcommand\newNTclass[2][\ifnotalternateNonterms]{
+  \expandafter\newcommand\csname new#2s\endcsname[4][]{
+    #1{
+      \expandafter\newcommand\csname ottalt@NT@#2@##2\endcsname{##1{##3}}
+    }{
+      \expandafter\newcommand\csname ottalt@NT@#2@##2\endcsname{##4}
+    }
+  }
+  \expandafter\newcommand\csname new#2\endcsname[3][]{
+    \csname new#2s\endcsname[##1]{##2}{##3}{##3}
+  }
+  \expandafter\newcommand\csname #2\endcsname[1]{%
+    \csname ottalt@NT@#2@##1\endcsname
+  }
+}
+\providecommand\@ifToif[1]{%
+  #1\iftrue\iffalse
+}
+\providecommand\ifTo@if[1]{%
+  #1%
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+\newcommand\NTOVERLINE{\NTCAPTURE\overline}
+\newcommand\NTUNDERLINE{\NTCAPTURE\underline}
+\newcommand\NTTEXTCOLOR[1]{\NTCAPTURE{\textcolor{#1}}}
+\newcommand\NTCAPTURE[1]{\NTCAPTURELOW{\NTCAPTURE@FINISH{#1}}}
+\newcommand\NTCAPTURE@FINISH[4]{#1{#2_{#3}#4}}
+\newcommand\NTCAPTURELOW[2]{\NT@CAPTURE@LOOP{#1}{#2}\relax\relax}
+\newcommand\NT@CAPTURE@LOOP[4]{%
+  \@ifnextchar _{%
+    \NT@CAPTURE@SUB{#1}{#2}{#3}{#4}%
+  }{\@ifnextchar '{%
+    \NT@CAPTURE@PRIME{#1}{#2}{#3}{#4}%
+  }{%
+    {#1{#2}{#3}{#4}}%
+  }}%
+}
+\def\NT@CAPTURE@SUB#1#2#3#4_#5{\NT@CAPTURE@LOOP{#1}{#2}{#3#5}{#4}}
+\def\NT@CAPTURE@PRIME#1#2#3#4'{\NT@CAPTURE@LOOP{#1}{#2}{#3}{#4'}}
+\endinput
+%%
+%% End of file `ottalt.sty'.
