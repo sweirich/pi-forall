@@ -1,5 +1,9 @@
 TODO = Summer 2022
 * revise irrelevance 
+* switch to unbound-generics
+* update unbound-generics
+* remove TemplateHaskell and pick a minimum GHC version
+
 
 TODO - Summer 2014
 * Switch to cayenne style, remove "inductive" types

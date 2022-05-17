@@ -103,7 +103,7 @@ instance Disp Match
 instance Disp [Decl] where
   disp = vcat . map disp
 
-{- SOLN DATA -}
+{- SOLN EP -}
 instance Disp Epsilon where
   disp Erased = text "-"
   disp Runtime = text "+"
@@ -381,6 +381,8 @@ instance Display Pattern where
   display (PatCon c args) =
     parens <$> ((<+>) <$> (display c) <*> (hsep <$> (mapM display args)))
   display (PatVar x) = display x
+  display (PatBool b)= display (LitBool b)
+  display PatUnit = display LitUnit
 
 instance Disp Assn where
   disp (AssnProp prop) = disp prop

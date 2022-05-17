@@ -1,6 +1,5 @@
 module Hw2 where
 
-
 -- show that propositional equality is transitive 
 
 trans : (A:Type) -> (x:A) -> (y:A) -> (z:A) -> (x = z) -> (z = y) -> (x = y)

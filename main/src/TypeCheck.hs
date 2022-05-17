@@ -15,19 +15,21 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
 import Syntax
-import Text.PrettyPrint.HughesPJ (($$))
+import Text.PrettyPrint.HughesPJ (($$),render)
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
+import Debug.Trace
+
 -- | Infer the type of a term, producing an annotated version of the
--- term (whose type can *always* be inferred).
+-- term (whose type can *always* be inferred)
 inferType :: Term -> TcMonad (Term, Type)
 inferType t = tcTerm t Nothing
 
 -- | Check that the given term has the expected type.
 -- The provided type does not necessarily need to be in whnf, but it should be
--- elaborated (i.e. already checked to be a good type).
+-- elaborated (i.e. already checked to be a good type)
 checkType :: Term -> Type -> TcMonad (Term, Type)
 checkType tm expectedTy = do
   nf <- Equal.whnf expectedTy
@@ -70,7 +72,7 @@ tcTerm (Lam bnd) (Just (Pi bnd2)) = do
       Pi bnd2
     )
 tcTerm (Lam _) (Just nf) =
-  Env.err [DS "Lambda expression has a function type, not", DD nf]
+  Env.err [DS "Lambda expression should have a function type, not", DD nf]
 -- infer the type of a lambda expression, when an annotation
 -- on the binder is present
 tcTerm (Lam bnd) Nothing = do
@@ -201,24 +203,22 @@ tcTerm t@(DCon c args ann1) ann2 = do
     _ ->
       Env.err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
 
--- If we are in inference mode, then
---      we do not use refinement
+-- If we are in inference mode, then we do not use refinement
 -- otherwise, we must have a typing annotation
 tcTerm t@(Case scrut alts ann1) ann2 = do
   ty <- matchAnnots t ann1 ann2
   (ascrut, sty) <- inferType scrut
   scrut' <- Equal.whnf ascrut
-  (n, params) <- Equal.ensureTCon sty
+  whnfTCon <- Equal.ensureTCon sty
   let checkAlt (Match bnd) = do
         (pat, body) <- Unbound.unbind bnd
         -- add variables from pattern to context
         -- could fail if branch is in-accessible
-        (decls, evars) <- declarePat pat Runtime (TCon n params)
+        (decls, evars) <- declarePatTCon pat whnfTCon
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
-        decls' <- equateWithPat scrut' pat (TCon n params)
-        (ebody, _) <-
-          Env.extendCtxs (decls ++ decls') $
+        decls' <- equateWithPatTCon scrut' pat whnfTCon
+        (ebody, _) <- Env.extendCtxs (decls ++ decls') $
             checkType body ty
         {- STUBWITH -}
 {- SOLN DATA -}
@@ -355,7 +355,7 @@ tcTerm tm (Just ty) = do
 -- | Merge together two sources of type information
 -- The first annotation is assumed to come from an annotation on
 -- the syntax of the term itself, the second as an argument to
--- 'checkType'.
+-- 'checkType'
 matchAnnots :: Term -> Annot -> Maybe Type -> TcMonad Type
 matchAnnots e (Annot Nothing) Nothing =
   Env.err
@@ -370,7 +370,6 @@ matchAnnots e (Annot (Just t1)) (Just t2) = do
   return at1
 
 -- | Make sure that the term is a type (i.e. has type 'Type')
--- And permit erased variables to be used
 tcType :: Term -> TcMonad Term
 tcType tm = do
   (atm, _) <- {- SOLN EP -} Env.withStage Erased {- STUBWITH -}(checkType tm Type)
@@ -482,19 +481,38 @@ doSubst ss (AssnSig sig : tele') = do
 -----------------------------------------------------------
 -- helper functions for checking pattern matching
 
+forgetTCon :: Equal.WhnfTCon -> Type
+forgetTCon (Equal.WhnfTCon n ps) = 
+  case n of
+    "Bool" -> TyBool
+    "One" -> TyUnit
+    _ -> TCon n ps
+
 -- | Create a binding in the context for each of the variables in
 -- the pattern.
 -- Also returns the erased variables so that they can be checked
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
 declarePat (PatVar x) ep y = return ([Sig (S x ep y)], [])
-declarePat (PatCon d pats) Runtime (TCon c params) = do
+declarePat pat Runtime ty = do 
+  whnfTCon <- Equal.ensureTCon ty
+  declarePatTCon pat whnfTCon
+declarePat pat Erased _ty =
+  Env.err [DS "Cannot pattern match erased arguments in pattern ", DD pat]
+
+declarePatTCon :: Pattern -> Equal.WhnfTCon -> TcMonad ([Decl], [TName])
+declarePatTCon (PatCon d pats) (Equal.WhnfTCon c params) = do
   (Telescope delta, Telescope deltai) <- Env.lookupDCon d c
   tele <- substTele delta params deltai
   declarePats d pats tele
-declarePat (PatCon d pats) Erased (TCon c params) =
-  Env.err [DS "Cannot pattern match erased arguments"]
-declarePat pat ep ty =
-  Env.err [DS "Cannot match pattern", DD pat, DS "with type", DD ty]
+declarePatTCon (PatBool _) (Equal.WhnfTCon "Bool" []) = do
+  return ([],[])
+declarePatTCon PatUnit (Equal.WhnfTCon "One" []) = do
+  return ([],[])
+declarePatTCon (PatVar x) y = 
+  Env.err [DS "Internal error: declarePatTCon, found ", DD (PatVar x)]
+declarePatTCon pat ty =
+  Env.err [DS "Cannot match pattern", DD pat, DS "with type", DD (forgetTCon ty)]
+
 
 declarePats :: DCName -> [(Pattern, Epsilon)] -> [Assn] -> TcMonad ([Decl], [TName])
 declarePats dc [] [] = return ([], [])
@@ -526,13 +544,14 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
       decls <- constraintToDecls tx' ty'
       Env.extendCtxs decls $ pats2Terms ps tele'
     pats2Terms ((p, _) : ps) (AssnSig (S x ep ty1) : d) = do
-      ty' <- Equal.whnf ty1
-      t <- pat2Term p ty'
+      t <- pat2Term p ty1
       ts <- pats2Terms ps (Unbound.subst x t d)
       return (Arg ep t : ts)
     pats2Terms _ _ = Env.err [DS "Invalid number of args to pattern", DD dc]
-pat2Term (PatCon _ _) ty = error "Internal error: should be a tcon"
+pat2Term (PatBool b) ty = pure $ LitBool b
+pat2Term (PatUnit) ty = pure $ LitUnit
 pat2Term (PatVar x) ty = return (Var x)
+pat2Term _ _ = Env.err [DS "Internal error: pat2Term"]
 
 -- | Create a list of variable definitions from the scrutinee
 -- of a case expression and the pattern in a branch. Scrutinees
@@ -542,7 +561,17 @@ equateWithPat :: Term -> Pattern -> Type -> TcMonad [Decl]
 equateWithPat (Var x) pat ty = do
   tm <- pat2Term pat ty
   return [Def x tm]
-equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
+equateWithPat tm pat ty = do 
+  whnfTCon <- Equal.ensureTCon ty
+  equateWithPatTCon tm pat whnfTCon
+
+equateWithPatTCon :: Term -> Pattern -> Equal.WhnfTCon -> TcMonad [Decl]
+equateWithPatTCon (Var x) pat ty = do
+  tm <- pat2Term pat (forgetTCon ty)
+  return [Def x tm]
+equateWithPatTCon (LitBool b) (PatBool b') (Equal.WhnfTCon "Bool" []) | b == b' = pure []
+equateWithPatTCon LitUnit PatUnit (Equal.WhnfTCon "One" []) = pure []
+equateWithPatTCon (DCon dc args _) (PatCon dc' pats) (Equal.WhnfTCon n params)
   | dc == dc' = do
     (Telescope delta, Telescope deltai) <- Env.lookupDCon dc n
     tele <- substTele delta params deltai
@@ -559,7 +588,7 @@ equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params)
         eqWithPats _ _ _ =
           Env.err [DS "Invalid number of args to pattern", DD dc]
     eqWithPats (map unArg args) pats tele
-equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params) = do
+equateWithPatTCon (DCon dc args _) (PatCon dc' pats) (Equal.WhnfTCon n params) = do
   Env.warn
     [ DS "The case for",
       DD dc',
@@ -568,7 +597,7 @@ equateWithPat (DCon dc args _) (PatCon dc' pats) (TCon n params) = do
       DS "to be omitted."
     ]
     >> return []
-equateWithPat _ _ _ = return []
+equateWithPatTCon _ _ _ = return []
 
 -- | Check all of the types contained within a telescope
 -- returns a telescope where all of the types have been annotated
@@ -747,8 +776,10 @@ duplicateTypeBindingCheck sig = do
 -- there are patterns for each one.
 exhaustivityCheck :: Term -> Type -> [Pattern] -> TcMonad ()
 exhaustivityCheck scrut ty (PatVar x : _) = return ()
+exhaustivityCheck scrut TyUnit [PatUnit] = return ()
+exhaustivityCheck scrut TyBool [PatBool b] = return ()
 exhaustivityCheck scrut ty pats = do
-  (tcon, tys) <- Equal.ensureTCon ty
+  (Equal.WhnfTCon tcon tys) <- Equal.ensureTCon ty
   (Telescope delta, mdefs) <- Env.lookupTCon tcon
   case mdefs of
     Just datacons -> loop pats datacons
@@ -759,6 +790,12 @@ exhaustivityCheck scrut ty pats = do
           if null l
             then return ()
             else Env.err $ [DS "Missing case for "] ++ map DD l
+        loop [PatUnit] [ConstructorDef _ "tt" (Telescope [])]  = do
+          return ()
+        loop (PatUnit : _) _ = Env.err [DS "loop PatUnit"]
+        loop (PatBool b : pats') dcons = do
+          (cd@(ConstructorDef _ _ _, dcons')) <- removeDcon (show b) dcons
+          loop pats' dcons'
         loop ((PatVar x) : _) dcons = return ()
         loop ((PatCon dc args) : pats') dcons = do
           (cd@(ConstructorDef _ _ (Telescope tele), dcons')) <- removeDcon dc dcons
@@ -807,14 +844,15 @@ removeDcon dc [] = Env.err [DS $ "Internal error: Can't find" ++ show dc]
 -- constructor and return them paired with the remaining patterns.
 relatedPats :: DCName -> [Pattern] -> ([[(Pattern, Epsilon)]], [Pattern])
 relatedPats dc [] = ([], [])
+relatedPats dc (pc@(PatVar _) : pats) = ([], pc : pats)
 relatedPats dc ((PatCon dc' args) : pats)
   | dc == dc' =
     let (aargs, rest) = relatedPats dc pats
      in (args : aargs, rest)
-relatedPats dc (pc@(PatCon _ _) : pats) =
+relatedPats dc (pc : pats) =
   let (aargs, rest) = relatedPats dc pats
    in (aargs, pc : rest)
-relatedPats dc (pc@(PatVar _) : pats) = ([], pc : pats)
+
 
 -- | Occurs check for the subpatterns of a data constructor. Given
 -- the telescope specifying the types of the arguments, plus the

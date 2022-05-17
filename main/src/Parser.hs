@@ -22,7 +22,9 @@ import qualified LayoutToken as Token
 import Control.Monad.State.Lazy hiding (join)
 import Control.Monad.Except ( MonadError(throwError) )
 import Data.List ( foldl' )
+{- SOLN DATA -}
 import qualified Data.Set as S
+{- STUBWITH -}
 
 {- 
 
@@ -417,7 +419,7 @@ expr,term,factor :: LParser Term
 -- expr is the toplevel expression grammar
 expr = do
     p <- getPosition
-    Pos p <$> (buildExpressionParser table term)
+    Pos p <$> buildExpressionParser table term
   where table = [
 {- SOLN EQUAL -}
                  [ifix  AssocLeft "=" TyEq],{- STUBWITH -}
@@ -492,7 +494,7 @@ factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data con
                     <?> "an explicit function type or annotated expression"
                 ]
 
-{- SOLN DATA -}
+{- SOLN EP -}
 impOrExpVar :: LParser (TName, Epsilon)
 impOrExpVar = try ((,Erased) <$> (brackets variable)) 
               <|> (,Runtime) <$> variable
@@ -508,7 +510,7 @@ typen =
   -- Lambda abstractions have the syntax '\x . e' 
 lambda :: LParser Term
 lambda = do reservedOp "\\"
-            binds <- many1 {- SOLN DATA -}
+            binds <- many1 {- SOLN EP -}
                      impOrExpVar{- STUBWITH variable -}
             dot
             body <- expr
@@ -611,6 +613,9 @@ pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
     arg_pattern    =  ((,Erased) <$> brackets pattern) 
                   <|> ((,Runtime) <$> atomic_pattern)
     atomic_pattern =    (parens pattern)
+                  <|> reserved "True" *> pure (PatBool True)
+                  <|> reserved "False" *> pure (PatBool False)
+                  <|> reserved "tt" *> pure PatUnit
                   <|> (PatVar <$> wildcard)
                   <|> do t <- varOrCon
                          case t of
@@ -623,16 +628,18 @@ match :: LParser Match
 match = 
   do pat <- pattern 
      reservedOp "->"
+     pos <- getPosition
      body <- term
-     return $ Match (Unbound.bind pat body)
+     return $ Match (Unbound.bind pat (Pos pos body))
 
 caseExpr :: LParser Term
 caseExpr = do
     reserved "case"
+    pos <- getPosition
     scrut <- factor
     reserved "of"
     alts <- layout match (return ())
-    return $ Case scrut alts (Annot Nothing)
+    return $ Case (Pos pos scrut) alts (Annot Nothing)
 {- STUBWITH -}    
     
 pcaseExpr :: LParser Term

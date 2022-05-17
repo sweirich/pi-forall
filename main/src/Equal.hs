@@ -3,15 +3,17 @@
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
               {- SOLN EQUAL -} ensureTyEq, {- STUBWITH -} 
-              {- SOLN DATA -} ensureTCon {- STUBWITH -} ) where
+              {- SOLN DATA -} ensureTCon, WhnfTCon(..) {- STUBWITH -} ) where
 
 import Syntax
 import Environment ( D(DS, DD), TcMonad )
 import qualified Environment as Env
 import qualified Unbound.Generics.LocallyNameless as Unbound
-{- SOLN DATA -}
+
 import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
-{- STUBWITH -}
+
+-- | Mark the type of terms that have been converted to whnf
+newtype Whnf = WhnfType Term
 
 -- | compare two expressions for equality
 --   if the two terms and not already in whnf, first check if they are alpha equivalent 
@@ -175,16 +177,19 @@ ensureTyEq ty = do
 {- STUBWITH -}    
     
 {- SOLN DATA -}
+data WhnfTCon = WhnfTCon TCName [Arg]
+
 -- | Ensure that the given type 'ty' is some tycon applied to 
---  params (or could be normalized to be such).
--- Throws an error if this is not the case.    
-ensureTCon :: Term -> TcMonad (TCName, [Arg])
+--  params (or could be normalized to be such)
+-- Throws an error if this is not the case 
+ensureTCon :: Term -> TcMonad WhnfTCon
 ensureTCon aty = do
   nf <- whnf aty
   case nf of 
-    (TCon n params) -> return (n, params)    
-    _ -> Env.err [DS "Expected a data type", 
-              DS ", but found", DD nf]
+    TyBool -> return (WhnfTCon "Bool" [])
+    TyUnit -> return (WhnfTCon "One"  [])
+    TCon n params -> return (WhnfTCon n params)    
+    _ -> Env.err [DS "Expected a data type but found", DD nf]
 {- STUBWITH -}
     
 
@@ -195,7 +200,7 @@ ensureTCon aty = do
 -- ones. But only unfold once.
 whnf :: Term -> TcMonad Term
 whnf t = do
-  whnf' False t
+  whnf' True t
   
 whnf' :: Bool -> Term -> TcMonad Term       
 whnf' b (Var x) = do      
@@ -288,14 +293,16 @@ whnf' b tm = return tm
 -- otherwise throws an error
 patternMatches :: Arg -> Pattern -> TcMonad [(TName, Term)]
 patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
-patternMatches (Arg Runtime t) pat@(PatCon d' pats) = do
+patternMatches (Arg Runtime t) pat = do
   nf <- whnf t
-  case nf of 
-    (DCon d [] _)   | d == d' -> return []
-    (DCon d args _) | d == d' -> 
+  case (nf, pat) of 
+    (DCon d [] _, PatCon d' pats)   | d == d' -> return []
+    (DCon d args _, PatCon d' pats) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
+    (LitBool b, PatBool b') | b == b' -> return []
+    (LitUnit, PatUnit) -> return []
     _ -> Env.err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
-patternMatches (Arg Erased _) pat@(PatCon _ _) = do
+patternMatches (Arg Erased _) pat = do
   Env.err [DS "Cannot match against irrelevant args"]
 {- STUBWITH -}
 

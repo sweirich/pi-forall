@@ -42,6 +42,4 @@ true' = \A x y . x
 false' : bool' false
 false' = \ A x y. y
 
-
-
 {- STUBWITH -}

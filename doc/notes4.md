@@ -165,7 +165,7 @@ building up to that version.)
 								 
 For example, a declaration for the `Bool` type would be 
    
-	   boolDecl :: Decl 
+	  boolDecl :: Decl 
       boolDecl = Data "Bool" [ConstructorDef "False" Empty, 
 		                        ConstructorDef "True" Empty]
 										

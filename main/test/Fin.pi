@@ -1,4 +1,4 @@
--- PI library for finite numbers
+-- pi-forall library for finite numbers
 --
 -- Some of these are adapted from Fin.agda
 

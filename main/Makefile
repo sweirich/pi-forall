@@ -6,6 +6,7 @@ EXTRA=LICENSE README.md pi-forall.cabal Setup.hs stack.yaml
 
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/test/,Lec1.pi Hw1.pi) $(EXTRA)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi) $(EXTRA)
+VERSION3=$(addprefix ../version3/,$(SRCS)) $(addprefix ../version3/test/,Lec1.pi Hw1.pi Lec2.pi Hw2.pi NatChurch.pi) $(EXTRA)
 SOLNS=$(addprefix ../full/,$(SRCS)) $(addprefix ../full/test/, $(TESTS) Lec1.pi Hw1.pi Lec2.pi Hw2.pi Lec3.pi Fin1.pi Lec4.pi)
 
 STUBREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN.*?STUBWITH(\s*\r?\n|\s)(.*?)\s*[-][\}]/$$2/sg' 
@@ -13,7 +14,7 @@ SOLNREGEX='BEGIN { undef $$/; } s/[\{][-]\s*?SOLN\s*?[-][\}](\s*\r?\n|\s)(.*?)[\
 
 flags=
 
-all: version1 version2 full
+all: version1 version2 version3 full
 
 test : all
 
@@ -35,6 +36,9 @@ test_version2 : ../version2
 	cd ../version2 && $(EXEC) test/Hw1.pi
 	cd ../version2 && $(EXEC) test/Hw2.pi
 	cd ../version2 && $(EXEC) test/NatChurch.pi
+
+version3: $(VERSION3)
+	cd ../version3 && $(BUILD)
 
 full: $(SOLNS) Makefile $(EXTRA)
 	cd ../full && $(BUILD)
@@ -100,6 +104,23 @@ cabal-dev:
 	cp README.md  ../version2/README.md
 	cp Setup.hs ../version2/Setup.hs
 	cp stack.yaml ../version2/stack.yaml
+
+../version3/% : % Makefile $(EXTRA)
+	@echo ========== Creating ../Version 3 ==========
+	@mkdir -p ../version3
+	@mkdir -p ../version3/src
+	@mkdir -p ../version3/test
+	-chmod 640 $@
+	cp $< $@
+	perl -i -pe $(subst SOLN,SOLN HW,$(SOLNREGEX)) $@
+	perl -i -pe $(subst SOLN,SOLN EQUAL,$(SOLNREGEX)) $@
+	perl -i -pe $(subst SOLN,SOLN DATA,$(STUBREGEX)) $@
+	perl -i -pe $(subst SOLN,SOLN EP,$(SOLNREGEX)) $@
+	cp pi-forall.cabal ../version3/pi-forall.cabal
+	cp LICENSE ../version3/LICENSE
+	cp README.md  ../version3/README.md
+	cp Setup.hs ../version3/Setup.hs
+	cp stack.yaml ../version3/stack.yaml
 
 ../full/% : % Makefile $(EXTRA)
 	@echo ========== Creating .hs Fulls ==========

@@ -1,3 +1,44 @@
+# GOALS and What to Expect
+
+Over the next four lectures, I will describe a small dependently-typed language
+called "pi-forall" and walk through the implementation of its type checker.
+
+What do I want you to get out of these lectures?
+
+1. An understanding of how to translate mathematical specifications of type
+   systems and logics into implementations, i.e. how to represent the syntax
+   and implement a type checker. More generally, how to turn a declarative
+   specification of a system of judgments into an algorithm.
+   
+2. Exposure to the issues in implmenting dependently-typed languages. Because
+   there are only four lectures, my goal is breadth not depth. As a result, I
+   will provide you with *simple* solutions to some of the problems you might
+   face and sidestep other problems entirely. Overally, the solutions you see 
+   here will not be the best solution, but I will give you pointers if you 
+   want to go deeper.
+   
+3. Exposure to the Haskell programming language. I think Haskell is an awesome
+   tool for this sort of work and, if there is an advanced feature that
+   exactly addresses our design goal (e.g. monads, generic programming,
+   laziness) I want to show you how that can work.
+   
+4. A tool that you can use as a basis for experimentation. How do you know what 
+   programs you can and cannot express in your new type system? Having 
+   an implementation around lets you work out (smallish) examples and will 
+   help to convince you (and your reviewers) that you are developing something
+   useful.
+
+Questions should you be thinking about during these sessions:
+
+- How to represent the abstract syntax of the language, including variable binding?
+- How much information do we need to include in terms to make type checking
+  algorithmic?
+- How can we include less?
+- How to decide when types (and terms) are equal?
+- How to decide what parts of the term are irrelevant during computation? Can
+  be ignored when checking for equality?
+
+
 ## A Simple Core language with Type in Type
 
 Let's consider a simple dependently-typed lambda calculus. What should it
@@ -326,6 +367,18 @@ of a type checker will be a term that works purely in inference mode.
 * Augustsson, [Cayenne -- a Language With Dependent Types](http://dl.acm.org/citation.cfm?id=289451)
 * A. Löh, C. McBride, W. Swierstra, [A tutorial implementation of a dependently typed lambda calculus](http://www.andres-loeh.de/LambdaPi/)
 * Andrej Bauer, [How to implement dependent type theory](http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/)
-
+* Dunfield and Krishnaswami, [Bidirectional Typing](https://www.cl.cam.ac.uk/~nk480/bidir-survey.pdf)
     
+* Friedman and Christiansen, The Little Typer.
 
+* Christiansen, Tutorial on Bidirectional Typing.
+https://www.davidchristiansen.dk/tutorials/bidirectional.pdf
+* Peyton Jones, Vytiniotis, Weirich, Shields. [Practical type inference for arbitrary-rank types](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/putting.pdf)
+
+
+* Coquand, Kinoshita, Nordstrom, Takeyama.  A simple type-theoretic language: Mini-TT
+https://www.cse.chalmers.se/~bengt/papers/GKminiTT.pdf
+* Daniel Gratzer, NBE for MLTT
+https://github.com/jozefg/nbe-for-mltt
+* Andras Kovacs, Elaboration Zoo
+https://github.com/AndrasKovacs/elaboration-zoo/ 

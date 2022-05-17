@@ -7,7 +7,7 @@ t0 = id [Bool] True
 
 t1 = id [Bool] (id [Bool] True)
 
-{-  This shouldn't work
+{-  This shouldn't work 
 id' : [x:Type] -> [y:x] -> x
 id' = \[x][y]. y
 -}

@@ -10,7 +10,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
-import Text.ParserCombinators.Parsec.Pos (SourcePos, newPos)
+import Text.ParserCombinators.Parsec.Pos (SourcePos, newPos, initialPos)
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.TH (makeClosedAlpha)
 
@@ -40,7 +40,8 @@ instance Unbound.Alpha SourcePos where
 -- Substitutions also ignore source positions
 instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id
 
-
+internalPos :: SourcePos
+internalPos = initialPos "internal"
 
 -----------------------------------------
 
@@ -167,6 +168,8 @@ data Match = Match (Unbound.Bind Pattern Term)
 data Pattern
   = PatCon DCName [(Pattern, Epsilon)]
   | PatVar TName
+  | PatBool Bool  -- True / False 
+  | PatUnit       -- unit
   deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 {- STUBWITH -}

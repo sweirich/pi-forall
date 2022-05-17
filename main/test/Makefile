@@ -13,8 +13,11 @@
 SHELL=/bin/bash
 
 # PASS are tests that *should* always pass.
-PASS=Logic Equality Product Nat Fin Vec
-
+PASS=Logic Equality Product Nat Fin Vec BoolLib Hw1 Hw2 \
+    Lambda Lambda0 Lambda1 Lambda2 \
+	Lec1 Lec2 Lec3 Lec4 \
+	List NatChurch Product1
+ 
 # TODO_FAIL are tests that *should* fail but currently pass.
 TODO_FAIL=
 # TODO_PASS are tests that *should* pass but currently fail.
@@ -22,9 +25,9 @@ TODO_PASS=
 # stale?
 UNKNOWN=
 # A symlink to the local pi-forall, installed by top level make.
-PI=../dist/build/pi-forall/pi-forall
+PI=pi-forall
 # typecheck *quietly*
-TYPECHECK=$(PI) 1>/dev/null # 2>&1
+TYPECHECK=stack exec pi-forall 1>/dev/null # 2>&1
 
 .PHONY: pass fail todo_pass todo_fail todo
 

@@ -158,6 +158,13 @@ lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
   m (Telescope, Maybe [ConstructorDef])
+lookupTCon "Bool" = do
+  return (Telescope [], Just 
+    [ ConstructorDef internalPos "True" (Telescope []), 
+      ConstructorDef internalPos "False" (Telescope [])])
+lookupTCon "One" = do
+  return (Telescope [], Just 
+    [ ConstructorDef internalPos "tt" (Telescope []) ] )
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
