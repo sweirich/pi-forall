@@ -142,12 +142,70 @@ formula :: 'formula_' ::=
   | x : A elem G             ::   :: inG
 
 defns 
-  
+Jwhnf :: '' ::= 
+
+% For closed terms, these rules correspond to a big-step evaluation relation.
+% This relation is semi-decidable, so we can express it as a Haskell function
+% that may diverge. 
+
+defn
+whnf a = v ::    :: whnf :: 'whnf_' 
+{{ com evaluate a to v }}
+by
+
+whnf a = (\x.a)
+whnf (a { b / x}) = v
+---------------------- :: Lam
+whnf a b = v
+
+
+whnf (b { a / x}) = v
+------------------------------- :: Let
+whnf (let x = a in b) = v
+
+whnf a = True
+whnf b1 = v
+--------------------------- :: IfTrue
+whnf if a then b1 else b2 = v
+
+whnf a = False
+whnf b2 = v
+------------------------------- :: IfFalse
+whnf if a then b1 else b2 = v
+
+
+whnf a = (a1, a2) 
+whnf b { a1 / x} {a2 /y} = v
+------------------------------- :: Prod
+whnf let (x,y) = a in b = v
+
+%% congruence rules 
+%% for open terms (i.e terms with free variables), the result is not a value
+%% but a term in "head normal form" i.e.
+%%    v ::= value (i.e.  Type, \x.a, (x:A) -> B, {x:A | B},  True/False, (a,b) )
+%%          x 
+%%          v b
+%%          if v then b1 else b2
+%%          let (x,y) = v in b
+
+whnf a = v
+---------------------- :: LamCong
+whnf a b = v b
+
+whnf a = v
+---------------------------------------------------- :: IfCong
+whnf if a then b1 else b2 = if v then b1 else b2
+
+whnf a = v
+------------------------------------------ :: ProdCong
+whnf let (x,y) = a in b = let (x,y) = v in b
+
+defns
 JOp :: '' ::=
 
 defn
-a ~> b ::   :: step :: ''
-{{ com single-step operational semantics }}
+a ~> b ::   :: step :: 's_'
+{{ com single-step operational semantics, i. e. head reduction }}
 by
 
 
@@ -186,7 +244,7 @@ let (x,y) = a in b ~> let (x,y) = a' in b
 
 defn
 a ~>* b ::  :: reduction :: ''
-{{ com multi-step }}
+{{ com multi-step head reduction }}
 by
 
 ------------------- :: Equal
@@ -197,12 +255,91 @@ b ~>* a'
 ------------------- :: Step
 a ~>* a'
 
+
+defns 
+JEq :: '' ::=
+
+defn
+G |- A = B ::  :: eq :: 'e_'
+{{ com Definitional equality }}
+by
+
+-------------------------- :: beta
+G |- (\x.a)b = a {b / x}
+
+----------------------------- :: if_true
+G |- if true then a else b = a
+
+------------------------------- :: if_false
+G |- if false then a else b = b
+
+---------------------------------------------------------- :: letpairprod
+G |- let (x,y) = (a1,a2) in b = b { a1 /x } {a2 / y} 
+
+ ----------  :: refl
+ G |- A = A
+ 
+ G |- A = B
+ -----------  :: sym
+ G |- B = A
+ 
+ G |- A = B    
+ G |- B = C
+ ------------------------- :: trans
+ G |- A = C
+
+ G |- A1 = A2       
+ G,x:A1 |- B1 = B2
+ ------------------------------------ :: pi
+ G |- (x:A1) -> B1 = (x:A2) -> B2
+
+
+ G,x:A1 |- b1 = b2
+ ------------------- :: lam
+ G |- \x.b1 = \x.b2
+
+
+ G |- a1 = a2    
+ G |- b1 = b2 
+ -------------------------- :: app
+ G |- a1 b1 = a2 b2
+
+
+G |- a = a'
+G |- b1 = b1'
+G |- b2 = b2'
+-------------- :: if
+G |- if a then b1 else b2 = if a' then b1' else b2'
+
+G |- A1 = A2       
+G,x:A1 |- B1 = B2
+------------------------------------ :: sigma
+G |- { x:A1 | B1 } = { x:A2 |  B2} 
+
+
+G |- b1 = b1'
+G |- b2 = b2'
+-------------- :: prod
+G |- (b1, b2) = (b1', b2')
+
+G |- a = a'
+G |- b = b'
+----------------------------------------------- :: letpair
+G |- let (x,y) = a in b = let (x,y) = a' in b'
+
+G, x : A |- b : B   
+G |- a1 = a2     
+---------------------------------- :: subst
+G |- b {a1 / x} = b {a2 / x}
+
+
 defns
 JTyping :: '' ::= 
 
 defn 
 
 G |- a : A   ::   :: typing :: 't_'
+{{ com Typing }}
 by
 
 x : A elem G
@@ -272,12 +409,46 @@ G |- B : Type
 ------------------------------ :: letpair_weak
 G |- let (x,y) = a in b : B
 
+%% equality
+
+G |- a : A    
+G |- A = B
+------------ :: conv
+G |- a : B
+
+
+G |- a = b
+------------------- :: refl
+G |- refl : a = b
+
+------------------- :: refl_s
+G |- refl : a = a
+
+G |- a : A    
+G |- b : A
+------------------------- :: eq
+G |- a = b : Type
+
+G |- a : A { a1 / x }  
+G |- b : a1 = a2
+--------------------------------- :: subst
+G |- subst a by b : A { a2 / x }
+
+
+defns
+Jalgeq :: '' ::= 
+
+defn 
+G |- A <=> A' ::    :: equate :: 'q_'
+{{ com algorithmic equality }}
+by
 
 defns
 JBidirectional :: '' ::= 
 
 defn 
-G |- a => A ::    :: infer :: 'i_'
+G |- a => A ::    :: inferType :: 'i_'
+{{ com type synthesis (algorithmic) }}
 by
 
 x : A elem G
@@ -291,8 +462,9 @@ G |- (a : A) => A
 
 G |- a => (x:A) -> B 
 G |- b <= A
----------------------------  :: app
+---------------------------  :: app_simple
 G |- a b => B { b / x }	  
+
 
 G |- A <= Type     
 G, x:A |- B <= Type
@@ -302,9 +474,33 @@ G |- (x:A) -> B => Type
 ------------------- :: type
 G |- Type => Type
 
+G |- a <= A
+------------------ :: ann
+G |- (a : A) => A
 
+%% booleans
+
+---------------- :: bool
+G |- Bool => Type
+
+---------------- :: true
+G |- True => Bool
+
+---------------- :: false
+G |- False => Bool
+
+%% app with arrow reduction
+
+G |- a => A 
+whnf A = (x:A1) -> B 
+G |- b <= A1
+---------------------------  :: app
+G |- a b => B { b / x }	  
+
+     
 defn 
-G |- a <= B ::    :: check :: 'c_'
+G |- a <= B ::    :: checkType :: 'c_'
+{{ com type checking (algorithmic) }}
 by
 
 G, x:A |- a <= B       
@@ -313,5 +509,38 @@ G |- A <= Type
 G |- \x.a <= (x:A) -> B
 
 G |- a => A
-------------- :: infer 
+------------- :: infer_simple 
 G |- a <= A 
+
+G |- a => A    
+G |- A = B
+-------------------------- :: infer
+G |- a <= B
+
+
+%% booleans
+
+G |- a <= Bool 
+G |- b1 <= A
+G |- b2 <= A
+---------------------------- :: if
+ |- if a then b1 else b2 <= A
+
+%% sigma types
+
+G |- A <= Type     
+G, x:A |- B <= Type
+------------------------------------- :: sigma
+G |- { x : A | B } <= Type
+
+G |- a <= A      
+G |- b <= B { a / x }
+------------------------------------ :: pair
+G |- (a,b) <= { x : A | B }
+
+G |- a => { x : A1 | A2 }
+G, x:A1, y:A2 |- b <= B
+G |- B <= Type
+------------------------------ :: letpair_weak
+G |- let (x,y) = a in b <= B
+

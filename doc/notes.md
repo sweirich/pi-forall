@@ -363,6 +363,12 @@ of a type checker will be a term that works purely in inference mode.
 
 ### References 
 
+
+Topic areas: Representing lambda terms, Bidirectional Typing, Equality
+checking in Dependent Type Theories, Implicit argument inference
+    (elaboration), Compile-time and runtime irrelevance.
+
+
 * Cardelli, [A polymorphic lambda calculus with Type:Type](http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-10.pdf)
 * Augustsson, [Cayenne -- a Language With Dependent Types](http://dl.acm.org/citation.cfm?id=289451)
 * A. Löh, C. McBride, W. Swierstra, [A tutorial implementation of a dependently typed lambda calculus](http://www.andres-loeh.de/LambdaPi/)
@@ -378,7 +384,13 @@ https://www.davidchristiansen.dk/tutorials/bidirectional.pdf
 
 * Coquand, Kinoshita, Nordstrom, Takeyama.  A simple type-theoretic language: Mini-TT
 https://www.cse.chalmers.se/~bengt/papers/GKminiTT.pdf
+
+
 * Daniel Gratzer, NBE for MLTT
 https://github.com/jozefg/nbe-for-mltt
 * Andras Kovacs, Elaboration Zoo
 https://github.com/AndrasKovacs/elaboration-zoo/ 
+
+* Tiark Rompf, Implementing Dependent Types. https://tiarkrompf.github.io/notes/?/dependent-types/
+  20/12/28
+  Uses Javascript. HOAS (tagless final), Normalization by evaluation.
