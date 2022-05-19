@@ -237,7 +237,7 @@ varOrCon :: LParser Term
 varOrCon = do i <- identifier
               cnames <- get
               if  (i `S.member` (dconNames cnames))
-                then return (DCon i [] (Annot Nothing))
+                then return (DCon i [] )
                 else if  (i `S.member` tconNames cnames)
                        then return (TCon i [])
                        else return (Var (Unbound.string2Name i))
@@ -264,9 +264,8 @@ natenc :: LParser Term
 natenc =
   do n <- natural
      return $ encode n 
-   where encode 0 = DCon "Zero" [] natty
-         encode n = DCon "Succ" [Arg Runtime (encode (n-1))] natty
-         natty    = Annot $ Just (TCon "Nat" [])
+   where encode 0 = DCon "Zero" []
+         encode n = DCon "Succ" [Arg Runtime (encode (n-1))]
 
 
 moduleImports :: LParser Module
@@ -375,15 +374,15 @@ valDef = do
 ------------------------
 
 trustme :: LParser Term
-trustme = reserved "TRUSTME" *> return (TrustMe (Annot Nothing))
+trustme = reserved "TRUSTME" *> return (TrustMe )
 
 printme :: LParser Term
-printme = reserved "PRINTME" *> return (PrintMe (Annot Nothing))
+printme = reserved "PRINTME" *> return (PrintMe )
 
 refl :: LParser Term
 refl =
   do reserved "refl"
-     return $ Refl (Annot Nothing)
+     return $ Refl 
 
 
 -- Expressions
@@ -418,7 +417,7 @@ dconapp :: LParser Term
 dconapp = do 
   c <- dconstructor
   args <- many arg
-  return $ DCon c args (Annot Nothing)
+  return $ DCon c args 
   
 tconapp :: LParser Term  
 tconapp = do
@@ -442,7 +441,8 @@ factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                                   
                 , typen      <?> "Type"
                 , lambda     <?> "a lambda"
-                , letExpr    <?> "a let"
+                , try pcaseExpr  <?> "a let pair"
+                , letExpr <?> "a let"
                                   , natenc     <?> "a literal"                  
                 , caseExpr   <?> "a case" 
                                   , substExpr  <?> "a subst"
@@ -455,7 +455,7 @@ factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                 , bconst     <?> "a constant"  
                 , ifExpr     <?> "an if expression" 
                 , sigmaTy    <?> "a sigma type"  
-                , pcaseExpr  <?> "a pcase"
+                
                 , expProdOrAnnotOrParens
                     <?> "an explicit function type or annotated expression"
                 ]
@@ -480,7 +480,7 @@ lambda = do reservedOp "\\"
             body <- expr
             return $ foldr lam body binds 
   where
-    lam (x, ep) m = Lam (Unbound.bind (x, ep, Unbound.embed $ Annot Nothing) m)           
+    lam (x, ep) m = Lam (Unbound.bind (x, ep) m)           
   
 
                             
@@ -501,7 +501,7 @@ ifExpr =
      b <- expr
      reserved "else"
      c <- expr
-     return (If a b c (Annot Nothing))
+     return (If a b c )
     
 
 -- 
@@ -514,6 +514,21 @@ letExpr =
      reserved "in"
      body <- expr
      return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
+
+pcaseExpr :: LParser Term
+pcaseExpr = do
+    reserved "let"
+    reservedOp "("
+    x <- variable
+    reservedOp ","
+    y <- variable
+    reservedOp ")"
+    reservedOp "="
+    scrut <- expr
+    reserved "in"
+    a <- expr
+    return $ LetPair scrut (Unbound.bind (x,y) a) 
+
 
 -- impProd - implicit dependent products
 -- These have the syntax [x:a] -> b or [a] -> b .
@@ -563,7 +578,7 @@ expProdOrAnnotOrParens =
                   (do b <- afterBinder
                       return $ Pi (Unbound.bind (x,{- SOLN EP -}Runtime,{- STUBWITH -}Unbound.embed a) b))
          Colon a b -> return $ Ann a b
-         Comma a b -> return $ Prod a b (Annot Nothing)
+         Comma a b -> return $ Prod a b 
          Nope a    -> return $ Paren a
 
 pattern :: LParser Pattern 
@@ -581,7 +596,7 @@ pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
                   <|> do t <- varOrCon
                          case t of
                            (Var x) -> return $ PatVar x
-                           (DCon c [] _) -> return $ PatCon c []
+                           (DCon c []) -> return $ PatCon c []
                            (TCon c []) -> fail "expected a data constructor but a type constructor was found"
                            _ -> error "internal error in atomic_pattern"
 
@@ -600,22 +615,9 @@ caseExpr = do
     scrut <- factor
     reserved "of"
     alts <- layout match (return ())
-    return $ Case (Pos pos scrut) alts (Annot Nothing)
+    return $ Case (Pos pos scrut) alts 
     
     
-pcaseExpr :: LParser Term
-pcaseExpr = do
-    reserved "let"
-    reservedOp "("
-    x <- variable
-    reservedOp ","
-    y <- variable
-    reservedOp ")"
-    reservedOp "="
-    scrut <- expr
-    reserved "in"
-    a <- expr
-    return $ LetPair scrut (Unbound.bind (x,y) a) (Annot Nothing)
 
 -- subst e0 by e1 
 substExpr :: LParser Term
@@ -624,13 +626,13 @@ substExpr = do
   a <- expr
   reserved "by"
   b <- expr
-  return $ Subst a b (Annot Nothing)
+  return $ Subst a b 
 
 contra :: LParser Term
 contra = do
   reserved "contra"
   witness <- expr
-  return $ Contra witness (Annot Nothing)
+  return $ Contra witness 
 
 
 sigmaTy :: LParser Term 

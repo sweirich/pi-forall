@@ -6,6 +6,8 @@
 
 module Product1 where
 
+import Equal
+
 data Sig (A:Type)(B: A -> Type) : Type where
   Prod of (x:A) (B x)
 
@@ -22,16 +24,22 @@ proj1_cong : (A:Type) -> (B :A -> Type) -> (x : Sig A B) -> (y : Sig A B)
 proj1_cong = \ A B x y p. 
    subst refl by p
 
-app_cong : (A:Type) -> (B : A -> Type) -> (x : A) -> (y : A) -> x = y -> B x = B x 
+app_cong : (A:Type) -> (B : A -> Type) -> (x : A) -> (y : A) -> x = y -> B x = B y 
 app_cong = \ A B x y p . 
    subst refl by p
 
+
+sym : [A:Type] -> [x:A] -> [y:A] -> (x = y) -> y = x
+sym = \ [A] [x][y] pf .
+  subst refl by pf
+
 proj2_cong : (A:Type) -> (B :A -> Type) -> (x : Sig A B) -> (y : Sig A B) 
-   -> (p : x = y) -> 
-    let p1 = (proj1_cong A B x y p : (proj1 A B x = proj1 A B y)) in
-   	   proj2 A B (subst x by (app_cong A B (proj1 A B x) (proj1 A B y) p1) = proj2 A B y
+                 -> (p : x = y) -> 
+					   (subst (proj2 A B x) by p : B (proj1 A B y)) = 
+                     	   proj2 A B y
 proj2_cong = \ A B x y p . 
-   TRUSTME -- subst refl by p
+   subst refl by p
+
 
 injectivity1 : (A:Type) -> (B:A -> Type) -> (x1 : A) -> (y1 : B x1)
 				 -> (x2 : A) -> (y2 : B x2) 

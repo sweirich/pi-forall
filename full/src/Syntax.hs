@@ -8,9 +8,10 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Typeable (Typeable)
-import GHC.Generics (Generic)
+import GHC.Generics (Generic,from)
 import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, newPos)
 import Unbound.Generics.LocallyNameless qualified as Unbound
+import Data.Function (on)
 
 -----------------------------------------
 
@@ -51,21 +52,21 @@ data Term
   | -- | variables  `x`
     Var TName
   | -- | abstraction  `\x. a`
-    Lam (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Annot) Term)
+    Lam (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}) Term)
   | -- | application `a b`
     App Term Arg
   | -- | function type   `(x : A) -> B`
     Pi (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Term) Term)
-  | -- | Annotated terms `( x : A )`
-    Ann Term Term
+  | -- | Annotated terms `( a : A )`
+    Ann Term Type
   | -- | parenthesized term, useful for printing
     Paren Term
   | -- | marked source position, for error messages
     Pos SourcePos Term
   | -- | an axiom 'TRUSTME', inhabits all types
-    TrustMe Annot
+    TrustMe
   | -- | a directive to the type checker to print out the current context (like a typed hole)
-    PrintMe Annot
+    PrintMe
   | -- | let expression, introduces a new (potentially recursive) definition in the ctx
     -- | `let x = a in b`
     Let (Unbound.Bind (TName, Unbound.Embed Term) Term)
@@ -78,32 +79,32 @@ data Term
   | -- | True and False
     LitBool Bool
   | -- | If expression for eliminating booleans
-    If Term Term Term Annot
+    If Term Term Term
   | -- | sigma type `{ x : A | B }`   -- homework
     Sigma (Unbound.Bind (TName, Unbound.Embed Term) Term)
   | -- | introduction for sigmas `( a , b )`
-    Prod Term Term Annot
+    Prod Term Term
   | -- | elimination form  `let (x,y) = a in b`
-    LetPair Term (Unbound.Bind (TName, TName) Term) Annot
+    LetPair Term (Unbound.Bind (TName, TName) Term) 
 
      | -- | Equality type  `a = b`
     TyEq Term Term
   | -- | Proof of equality `refl`
-    Refl Annot
+    Refl 
   | -- | equality elimination  `subst a by pf`
-    Subst Term Term Annot
+    Subst Term Term 
   | -- | witness to an equality contradiction
-    Contra Term Annot
+    Contra Term
    
 
      | -- | type constructors (fully applied)
     TCon TCName [Arg]
   | -- | term constructors (fully applied)
-    DCon DCName [Arg] Annot
+    DCon DCName [Arg] 
   | -- | case analysis  `case a of matches`
-    Case Term [Match] Annot
+    Case Term [Match]
   
-  deriving (Show, Generic, Typeable, Unbound.Alpha)
+  deriving (Show, Generic, Typeable)
 
 -- | An argument to a function
 data Arg = Arg {argEp :: Epsilon,  unArg :: Term}
@@ -258,8 +259,8 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
 isNumeral :: Term -> Maybe Int
 isNumeral (Pos _ t) = isNumeral t
 isNumeral (Paren t) = isNumeral t
-isNumeral (DCon c [] _) | c == "Zero" = Just 0
-isNumeral (DCon c [Arg _ t] _) | c == "Succ" =
+isNumeral (DCon c []) | c == "Zero" = Just 0
+isNumeral (DCon c [Arg _ t]) | c == "Succ" =
   do n <- isNumeral t; return (n + 1)
 isNumeral _ = Nothing
 
@@ -304,6 +305,20 @@ instance Unbound.Subst Term Term where
 --    fv  :: Alpha a => a -> [Unbound.Name a]
 
 ------------------
+
+-- For Terms, we'd like Alpha equivalence to ignore 
+-- source positions, type annotations and parentheses in terms
+-- We can add these special cases to the definition of `aeq'` 
+-- and then defer all other cases to the generic version of 
+-- the function.
+instance Unbound.Alpha Term where
+  aeq' ctx (Ann a _) b = Unbound.aeq' ctx a b
+  aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
+  aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
+  aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
+  aeq' ctx (Paren a) b = Unbound.aeq' ctx a b
+  aeq' ctx a (Paren b) = Unbound.aeq' ctx a b
+  aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
 
 instance Unbound.Alpha Annot where
   -- override default behavior so that type annotations are ignored

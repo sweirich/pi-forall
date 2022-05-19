@@ -20,90 +20,89 @@ import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
 import Debug.Trace
 
--- | Infer the type of a term, producing an annotated version of the
--- term (whose type can *always* be inferred)
-inferType :: Term -> TcMonad (Term, Type)
+-- | Infer the type of a term. The returned type is not guaranteed to be checkable(?)
+inferType :: Term -> TcMonad Type
 inferType t = tcTerm t Nothing
 
 -- | Check that the given term has the expected type.
--- The provided type does not necessarily need to be in whnf, but it should be
--- elaborated (i.e. already checked to be a good type)
-checkType :: Term -> Type -> TcMonad (Term, Type)
+-- The provided type does not necessarily to be in whnf, but it should be
+-- already checked to be a good type
+checkType :: Term -> Type -> TcMonad Type
 checkType tm expectedTy = do
   nf <- Equal.whnf expectedTy
   tcTerm tm (Just nf)
-
+  
+-- | Make sure that the term is a type (i.e. has type 'Type')
+tcType :: Term -> TcMonad ()
+tcType tm = (checkType tm Type) >> return ()
+    
 -- | check a term, producing an elaborated term
 -- where all type annotations have been filled in.
 -- The second argument is 'Nothing' in inference mode and
 -- an expected type (in weak-head-normal form) in checking mode
-tcTerm :: Term -> Maybe Type -> TcMonad (Term, Type)
+tcTerm :: Term -> Maybe Type -> TcMonad Type
+-- i-var
 tcTerm t@(Var x) Nothing = do
   sig <- Env.lookupTy x 
-  return (t, sigType sig)
-tcTerm t@(Type) Nothing = return (t, Type)
+  return (sigType sig)
+-- i-type
+tcTerm Type Nothing = return Type
+-- i-pi
 tcTerm (Pi bnd) Nothing = do
   ((x,  Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
-  atyA <- tcType tyA
-  atyB <- Env.extendCtx (Sig (S x  atyA)) $ tcType tyB
-  return (Pi (Unbound.bind (x,  Unbound.embed atyA) atyB), Type)
-
--- Check the type of a function
+  tcType tyA
+  Env.extendCtx (Sig (S x  tyA)) $ tcType tyB
+  return Type
+-- c-lam: check the type of a function
 tcTerm (Lam bnd) (Just (Pi bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
-  ( (x,  Unbound.unembed -> Annot ma),
+  ( (x ),
     body,
     (_,  Unbound.unembed -> tyA),
     tyB
     ) <-
     Unbound.unbind2Plus bnd bnd2
 
-  -- check tyA matches type annotation on binder, if present
-  maybe (return ()) (Equal.equate tyA) ma
   -- check the type of the body of the lambda expression
-  (ebody, etyB) <- Env.extendCtx (Sig (S x  tyA)) (checkType body tyB)
-  return
-    ( Lam (Unbound.bind (x,  Unbound.embed (Annot (Just tyA))) ebody),
-      Pi bnd2
-    )
+  etyB <- Env.extendCtx (Sig (S x  tyA)) (checkType body tyB)
+  return (Pi bnd2)
+   
 tcTerm (Lam _) (Just nf) =
-  Env.err [DS "Lambda expression should have a function type, not", DD nf]
--- infer the type of a lambda expression, when an annotation
--- on the binder is present
-tcTerm (Lam bnd) Nothing = do
-  ((x,  (Unbound.unembed -> Annot annot)), body) <- Unbound.unbind bnd
-  tyA <- maybe (Env.err [DS "Must annotate lambda"]) return annot
-  -- check that the type annotation is well-formed
-  atyA <- tcType tyA
-  -- infer the type of the body of the lambda expression
-  (ebody, atyB) <- Env.extendCtx (Sig (S x  atyA)) (inferType body)
-  return
-    ( Lam (Unbound.bind (x,  Unbound.embed (Annot (Just atyA))) ebody),
-      Pi (Unbound.bind (x,  Unbound.embed atyA) atyB)
-    )
+  Env.err [DS "Lambda expression should have a function type, not ", DD nf]
+
+-- i-app
 tcTerm (App t1 a2) Nothing = do
-  (at1, ty1) <- inferType t1
+  ty1 <- inferType t1
   (x,  tyA, tyB) <- Equal.ensurePi ty1
 
-  (at2, ty2) <-  checkType (unArg a2) tyA
-  let result = (App at1 a2{unArg=at2}, Unbound.subst x at2 tyB)
-  return result
+  ty2 <-  checkType (unArg a2) tyA
+  return (Unbound.subst x (Ann (unArg a2) tyA) tyB)
+
+-- i-ann
 tcTerm (Ann tm ty) Nothing = do
   ty' <- tcType ty
-  (tm', ty'') <- checkType tm ty'
-  return (tm', ty'')
+  checkType tm ty
+  
+-- practicalities
+-- remember the current position in the type checking monad
 tcTerm (Pos p tm) mTy =
   Env.extendSourceLocation p tm $ tcTerm tm mTy
+-- ignore parentheses
 tcTerm (Paren tm) mTy = tcTerm tm mTy
-tcTerm t@(TrustMe ann1) ann2 = do
-  expectedTy <- matchAnnots t ann1 ann2
-  return (TrustMe (Annot (Just expectedTy)), expectedTy)
-tcTerm (TyUnit) Nothing = return (TyUnit, Type)
-tcTerm (LitUnit) Nothing = return (LitUnit, TyUnit)
+-- ignore term, just return type annotation
+tcTerm t@(TrustMe) (Just ty) = return ty
+  
+tcTerm (TyUnit) Nothing = return Type
+tcTerm (LitUnit) Nothing = return TyUnit
+
+-- i-bool
 tcTerm (TyBool) Nothing = Env.err [DS "unimplemented"]
+
+-- i-true/false
 tcTerm (LitBool b) Nothing = Env.err [DS "unimplemented"]
 
-tcTerm t@(If t1 t2 t3 ann1) ann2 = Env.err [DS "unimplemented"]
+-- c-if
+tcTerm t@(If t1 t2 t3) (Just ty) = Env.err [DS "unimplemented"]
 
 tcTerm (Let bnd) ann =   Env.err [DS "unimplemented"]
 
@@ -114,48 +113,37 @@ tcTerm (Let bnd) ann =   Env.err [DS "unimplemented"]
 
 tcTerm t@(Sigma bnd) Nothing = Env.err [DS "unimplemented"]
 
-tcTerm t@(Prod a b ann1) ann2 = Env.err [DS "unimplemented"]
+tcTerm t@(Prod a b) (Just ty) = Env.err [DS "unimplemented"]
 
-tcTerm t@(LetPair p bnd ann1) ann2 = Env.err [DS "unimplemented"]
+tcTerm t@(LetPair p bnd) (Just ty) = Env.err [DS "unimplemented"]
 
-tcTerm t@(PrintMe ann1) ann2 = do
-  expectedTy <- matchAnnots t ann1 ann2
+tcTerm t@(PrintMe) (Just ty) = do
   gamma <- Env.getLocalCtx
   Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
-        DS "\nGoal: ", DD expectedTy]
-  return (PrintMe (Annot (Just expectedTy)), expectedTy)
+        DS "\nGoal: ", DD ty]
+  return ty
 
+-- c-infer
 tcTerm tm (Just ty) = do
-  (atm, ty') <- inferType tm
+  ty' <- inferType tm
   unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty']
-  return (atm, ty)
+  return ty'
 
+tcTerm tm Nothing = 
+  Env.err [DS "Must have a type annotation to check ", DD tm]
 
 ---------------------------------------------------------------------
 -- helper functions for type checking
 
--- | Merge together two sources of type information
--- The first annotation is assumed to come from an annotation on
--- the syntax of the term itself, the second as an argument to
--- 'checkType'
-matchAnnots :: Term -> Annot -> Maybe Type -> TcMonad Type
-matchAnnots e (Annot Nothing) Nothing =
-  Env.err
-    [DD e, DS "requires annotation"]
-matchAnnots e (Annot Nothing) (Just t) = return t
-matchAnnots e (Annot (Just t)) Nothing = do
-  at <- tcType t
-  return at
-matchAnnots e (Annot (Just t1)) (Just t2) = do
-  at1 <- tcType t1
-  Equal.equate at1 t2
-  return at1
-
--- | Make sure that the term is a type (i.e. has type 'Type')
-tcType :: Term -> TcMonad Term
-tcType tm = do
-  (atm, _) <- (checkType tm Type)
-  return atm
+-- | Create a Def if either side normalizes to a single variable
+def :: Term -> Term -> TcMonad [Decl]
+def t1 t2 = do
+    nf1 <- Equal.whnf t1
+    nf2 <- Equal.whnf t2
+    case (nf1, nf2) of
+      (Var x, _) -> return [Def x nf2]
+      (_, Var x) -> return [Def x nf1]
+      _ -> return []
 
 
 
@@ -222,8 +210,8 @@ tcEntry (Def n term) = do
       lkup <- Env.lookupHint n
       case lkup of
         Nothing -> do
-          (aterm, ty) <- inferType term
-          return $ AddCtx [Sig (S n  ty), Def n aterm]
+          ty <- inferType term
+          return $ AddCtx [Sig (S n  ty), Def n term]
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -234,13 +222,13 @@ tcEntry (Def n term) = do
                     DD sig
                   ]
            in do
-                (eterm, ety) <-
+                ety <-
                   Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
                 -- Put the elaborated version of term into the context.
                 let esig = sig{sigType = ety}
-                if (n `elem` Unbound.toListOf Unbound.fv eterm)
-                  then return $ AddCtx [Sig esig, RecDef n eterm]
-                  else return $ AddCtx [Sig esig, Def n eterm]
+                if (n `elem` Unbound.toListOf Unbound.fv term)
+                  then return $ AddCtx [Sig esig, RecDef n term]
+                  else return $ AddCtx [Sig esig, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -251,8 +239,8 @@ tcEntry (Def n term) = do
           ]
 tcEntry (Sig sig) = do
   duplicateTypeBindingCheck sig
-  ety <- tcType (sigType sig)
-  return $ AddHint (sig{sigType=ety})
+  tcType (sigType sig)
+  return $ AddHint sig
 
 tcEntry _ = Env.err "unimplemented"
 

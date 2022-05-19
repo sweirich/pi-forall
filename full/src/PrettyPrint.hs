@@ -236,31 +236,30 @@ instance Display Term where
               else da
       return $ lhs <+> text "->" <+> db
   display (Ann a b) = do
+    st <- ask
     da <- display a
     db <- display b
-    return $ parens (da <+> text ":" <+> db)
+    if showAnnots st then
+      return $ parens (da <+> text ":" <+> db)
+      else return da 
   display (Paren e) = parens <$> display e
   display (Pos _ e) = display e
-  display (TrustMe ma) = do
-    da <- display ma
-    return $ text "TRUSTME" <+> da
-  display (PrintMe ma) = do
-    da <- display ma
-    return $ text "PRINTME" <+> da
+  display (TrustMe) = do
+    return $ text "TRUSTME"
+  display (PrintMe) = do
+    return $ text "PRINTME"
   display (TyUnit) = return $ text "Unit"
   display (LitUnit) = return $ text "()"
   display (TyBool) = return $ text "Bool"
   display (LitBool b) = return $ if b then text "True" else text "False"
-  display (If a b c ann) = do
+  display (If a b c) = do
     da <- display a
     db <- display b
     dc <- display c
-    dann <- display ann
     return $
       text "if" <+> da <+> text "then" <+> db
         <+> text "else"
         <+> dc
-        <+> dann
   display (Sigma bnd) =
     Unbound.lunbind bnd $ \((x, Unbound.unembed -> tyA), tyB) -> do
       dx <- display x
@@ -271,14 +270,12 @@ instance Display Term where
           <+> text "|"
           <+> dB
           <+> text "}"
-  display (Prod a b ann) = do
+  display (Prod a b) = do
     da <- display a
     db <- display b
-    dann <- display ann
-    return $ parens (da <+> text "," <+> db) <+> dann
-  display (LetPair a bnd ann) = do
+    return $ parens (da <+> text "," <+> db)
+  display (LetPair a bnd) = do
     da <- display a
-    dann <- display ann
     Unbound.lunbind bnd $ \((x, y), body) -> do
       dx <- display x
       dy <- display y
@@ -294,7 +291,6 @@ instance Display Term where
           <+> da 
           <+> text "in"
           <+> dbody
-          <+> dann
   display (Let bnd) = do
     Unbound.lunbind bnd $ \((x, a), b) -> do
       da <- display (Unbound.unembed a)
@@ -309,27 +305,23 @@ instance Display Term where
             db
           ]
 
-  display (Subst a b annot) = do
+  display (Subst a b) = do
     da <- display a
     db <- display b
-    dat <- display annot
     return $
       fsep
         [ text "subst" <+> da,
-          text "by" <+> db,
-          dat
+          text "by" <+> db
         ]
   display (TyEq a b) = do
     da <- display a
     db <- display b
     return $ da <+> text "=" <+> db
-  display (Refl mty) = do
-    da <- display mty
-    return $ text "refl" <+> da
-  display (Contra ty mty) = do
+  display (Refl) = do
+    return $ text "refl"
+  display (Contra ty) = do
     dty <- display ty
-    da <- display mty
-    return $ text "contra" <+> dty <+> da
+    return $ text "contra" <+> dty
   
 
   display (isNumeral -> Just i) = display i
@@ -339,18 +331,16 @@ instance Display Term where
     dargs <- mapM display args
     let wargs = zipWith (wraparg st) args dargs
     return $ dn <+> hsep wargs
-  display (DCon n args annot) = do
+  display (DCon n args) = do
     dn <- display n
     dargs <- mapM display args
-    dannot <- display annot
-    return $ dn <+> hsep dargs <+> dannot
-  display (Case scrut alts annot) = do
+    return $ dn <+> hsep dargs
+  display (Case scrut alts) = do
     dscrut <- display scrut
     dalts <- mapM display alts
-    dannot <- display annot
     return $
       text "case" <+> dscrut <+> text "of"
-        $$ (nest 2 $ vcat $ dalts) <+> dannot
+        $$ (nest 2 $ vcat $ dalts)
 
 
 
@@ -405,10 +395,9 @@ instance Display a => Display (a, Epsilon) where
 
 gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
 gatherBinders (Lam b) =
-  Unbound.lunbind b $ \((n {- SOLN EP -}, ep {- STUBWITH -}, Unbound.unembed -> ma), body) -> do
+  Unbound.lunbind b $ \((n {- SOLN EP -}, ep {- STUBWITH -}), body) -> do
     dn <- display n
-    dt <- display ma
-    let db = if isEmpty dt then dn else (mandatoryBindParens ep  (dn <+> dt))
+    let db = (mandatoryBindParens ep  dn)
     (rest, body') <- gatherBinders body
     return $ (db : rest, body')
 gatherBinders body = do
@@ -433,8 +422,10 @@ wrapf f = case f of
   Var _ -> id
   App _ _ -> id
   Paren _ -> id
+  Ann a _ -> wrapf a
   Pos _ a -> wrapf a
-  TrustMe _ -> id
+  TrustMe -> id
+  PrintMe -> id
   _ -> parens
 
 -- | decide whether to add parens to an argument
@@ -447,14 +438,16 @@ wraparg st a = case unArg a of
   TyBool -> std
   LitBool b -> std
   Sigma _ -> std
-  Prod _ _ _ -> annot
+  Prod _ _ -> force
+  Ann b _ -> wraparg st a {unArg = b}
   Pos _ b -> wraparg st a {unArg = b}
-  TrustMe _ -> annot
+  TrustMe -> std
+  PrintMe -> std
   TCon _ [] -> std
   (isNumeral -> Just x) -> std
-  DCon _ [] _ -> annot
+  DCon _ [] -> std
   
-  Refl _ -> annot
+  Refl -> std
   
   _ -> force
   where
@@ -462,10 +455,7 @@ wraparg st a = case unArg a of
     
     force = mandatoryBindParens (argEp a)
     
-    annot =
-      if showAnnots st
-        then force
-        else std
+    
 
 -------------------------------------------------------------------------
 

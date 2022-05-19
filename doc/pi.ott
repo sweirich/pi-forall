@@ -332,6 +332,9 @@ G |- a1 = a2
 ---------------------------------- :: subst
 G |- b {a1 / x} = b {a2 / x}
 
+-------------------------------- :: if_eta
+G |- if a then b else b = b
+
 
 defns
 JTyping :: '' ::= 
@@ -387,8 +390,21 @@ G |- False : Bool
 G |- a : Bool 
 G |- b1 : A
 G |- b2 : A
----------------------------- :: if
+---------------------------- :: if_weak
  |- if a then b1 else b2 : A
+
+G |- a : Bool 
+G |- b1 : A { true/x }
+G |- b2 : A { false/x }
+-------------------------------- :: if_full
+G |- if a then b1 else b2 : A{a/x}
+
+G |- x : Bool 
+G |- b1 : A { true / x }
+G |- b2 : A { false / x }
+---------------------------- :: if
+G |- if x then b1 else b2 : A 
+
 
 %% sigma types
 
@@ -435,6 +451,8 @@ G |- b : a1 = a2
 G |- subst a by b : A { a2 / x }
 
 
+
+
 defns
 Jalgeq :: '' ::= 
 
@@ -442,6 +460,10 @@ defn
 G |- A <=> A' ::    :: equate :: 'q_'
 {{ com algorithmic equality }}
 by
+
+
+
+
 
 defns
 JBidirectional :: '' ::= 
@@ -498,6 +520,13 @@ G |- b <= A1
 G |- a b => B { b / x }	  
 
      
+G |- a => Bool 
+G |- b1 => B1
+G |- b2 => B2
+----------------------------------------------- :: if_alt
+G |- if a then b1 else b2 => if a then B1 else B2
+
+
 defn 
 G |- a <= B ::    :: checkType :: 'c_'
 {{ com type checking (algorithmic) }}
@@ -523,8 +552,16 @@ G |- a <= B
 G |- a <= Bool 
 G |- b1 <= A
 G |- b2 <= A
----------------------------- :: if
+---------------------------- :: if_weak
  |- if a then b1 else b2 <= A
+
+
+ G |- x => Bool 
+ G |- b1 <= A { true / x }
+ G |- b2 <= A { false / x }
+ ------------------------------ :: if
+ G |- if x then b1 else b2 <= A
+
 
 %% sigma types
 
@@ -544,3 +581,8 @@ G |- B <= Type
 ------------------------------ :: letpair_weak
 G |- let (x,y) = a in b <= B
 
+G |- z => { x : A1 | A2 }
+G, x:A1, y:B2 |- b <= B { (x,y) / z }
+G |- B <= Type
+-------------------------------------- :: letpair
+G |- let (x,y) = z in b <= B

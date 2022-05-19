@@ -49,7 +49,7 @@ eq_true = \b1 b2 pf.
 t : Bool -> Type
 t = \ b . 
   case b of 
-    True -> One
+    True -> Unit
     False -> Void
 
 is_true : Bool -> Type

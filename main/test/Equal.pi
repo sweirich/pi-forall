@@ -2,8 +2,8 @@ module Equality where
 
 sym : [A:Type] -> [x:A] -> [y:A] -> (x = y) -> y = x
 sym = \ [A] [x][y] pf .
-  subst refl by pf at h. h = x
+  subst refl by pf
 
 trans : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (x = z) -> (z = y) -> (x = y)
 trans = \[A][x][y][z] pf1 pf2 . 
-  subst pf1 by pf2 at h. x = h
+  subst pf1 by pf2

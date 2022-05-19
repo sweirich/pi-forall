@@ -13,10 +13,10 @@ false' : bool' False
 false' = \ A x y. y
 
 T : Bool -> Type
-T = \b. if b then One else Bool
+T = \b. if b then Unit else Bool
 
 z1 : T True
-z1 = tt
+z1 = ()
 
 z2 : T False
 z2 = True
@@ -32,18 +32,18 @@ not : Bool -> Bool
 not = \x. if x then False else True
 
 bar : (b : Bool) -> T b
-bar = \b .if b then tt else True
+bar = \b. if b then () else True
 
 barnot : (b : Bool) -> T (not b) 
-barnot = \b. if b then False else tt
+barnot = \b. if b then False else ()
 
 -- projections for sigma types
 
 fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
-fst = \A B p. pcase p of (x,y) -> x
+fst = \A B p. let (x,y) = p in x
 
 snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
-snd = \A B p. pcase p of (x1,y) -> y
+snd = \A B p. let (x1,y) = p in y
 
 -- examples of propositional equality
 

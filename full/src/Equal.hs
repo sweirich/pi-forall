@@ -12,9 +12,6 @@ import qualified Unbound.Generics.LocallyNameless as Unbound
 
 import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
 
--- | Mark the type of terms that have been converted to whnf
-newtype Whnf = WhnfType Term
-
 -- | compare two expressions for equality
 --   if the two terms and not already in whnf, first check if they are alpha equivalent 
 
@@ -22,6 +19,7 @@ newtype Whnf = WhnfType Term
 --   throw an error if the two types cannot be matched up
 equate :: Term -> Term -> TcMonad ()
 equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
+  --Env.warn [DS "Equating: ", DD t1, DS " and  ", DD t2]
   n1 <- whnf' False t1  
   n2 <- whnf' False t2
   case (n1, n2) of 
@@ -41,15 +39,17 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
-
+{-
     (Ann at1 _, at2) -> equate at1 at2
     (at1, Ann at2 _) -> equate at1 at2
     (Paren at1, at2) -> equate at1 at2
     (at1, Paren at2) -> equate at1 at2
     (Pos _ at1, at2) -> equate at1 at2
     (at1, Pos _ at2) -> equate at1 at2
-    
-    (TrustMe _, TrustMe _) ->  return ()
+  -}
+
+    (TrustMe, TrustMe) ->  return ()
+    (PrintMe, PrintMe) ->  return ()
     
     (TyUnit, TyUnit)   -> return ()
     (LitUnit, LitUnit) -> return ()
@@ -58,7 +58,7 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
     
     (LitBool b1, LitBool b2) | b1 == b2 -> return ()
     
-    (If a1 b1 c1 _, If a2 b2 c2 _) -> 
+    (If a1 b1 c1, If a2 b2 c2) -> 
       equate a1 a2 >> equate b1 b2 >> equate c1 c2
       
     (Let bnd1, Let bnd2) -> do
@@ -73,11 +73,11 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
-    (Prod a1 b1 _, Prod a2 b2 _) -> do
+    (Prod a1 b1, Prod a2 b2) -> do
       equate a1 a2
       equate b1 b2
       
-    (LetPair s1 bnd1 _, LetPair s2 bnd2 _) -> do  
+    (LetPair s1 bnd1, LetPair s2 bnd2) -> do  
       equate s1 s2
       Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
       equate body1 body2
@@ -85,19 +85,19 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
       equate a c 
       equate b d      
     
-    (Refl _,  Refl _) -> return ()
+    (Refl,  Refl) -> return ()
     
     -- Substitutions are never relevant for equality, nor are their proofs
-    (Subst at1 _ _, ty2) -> equate at1 ty2 
-    (ty1, Subst at2 _ _) -> equate ty1 at2 
+    (Subst at1 _, ty2) -> equate at1 ty2 
+    (ty1, Subst at2 _) -> equate ty1 at2 
         
-    (Contra a1 _, Contra a2 _) -> return ()
+    (Contra a1, Contra a2) -> return ()
       
     (TCon c1 ts1, TCon c2 ts2) | c1 == c2 -> 
       zipWithM_ equateArgs [ts1] [ts2]
-    (DCon d1 a1 _, DCon d2 a2 _) | d1 == d2 -> do
+    (DCon d1 a1, DCon d2 a2) | d1 == d2 -> do
       equateArgs a1 a2
-    (Case s1 brs1 ann1, Case s2 brs2 ann2) 
+    (Case s1 brs1, Case s2 brs2) 
       | length brs1 == length brs2 -> do
       equate s1 s2
       -- require branches to be in the same order
@@ -216,7 +216,7 @@ whnf' b (App t1 a2) = do
   nf <- whnf' b t1 
   case nf of 
     (Lam bnd) -> do
-      ((x, {- SOLN EP -}_,{- STUBWITH -} _),body) <- Unbound.unbind bnd 
+      ((x {- SOLN EP -},_{- STUBWITH -}), body) <- Unbound.unbind bnd 
       whnf' b (Unbound.subst x (unArg a2) body)
         -- only unfold applications of recursive definitions
     -- if the argument is not a variable.
@@ -231,42 +231,37 @@ whnf' b (App t1 a2) = do
       return (App nf a2)
       
       
-whnf' b (If t1 t2 t3 ann) = do
+whnf' b (If t1 t2 t3) = do
   nf <- whnf' b t1
   case nf of 
     (LitBool bo) -> if bo then whnf' b t2 else whnf' b t3
-    _ -> return (If nf t2 t3 ann)
+    _ -> return (If nf t2 t3)
 
-whnf' b (LetPair a bnd ann) = do
+whnf' b (LetPair a bnd) = do
   nf <- whnf' b a 
   case nf of 
-    Prod b1 c _ -> do
+    Prod b1 c -> do
       ((x,y), body) <- Unbound.unbind bnd
       whnf' b (Unbound.subst x b1 (Unbound.subst y c body))
-    _ -> return (LetPair nf bnd ann)
+    _ -> return (LetPair nf bnd)
 
--- We should only be calling whnf on elaborated terms
--- Such terms don't contain annotations, parens or pos info    
--- So we'll throw errors to detect the case where we are 
--- normalizing source terms    
-whnf' b t@(Ann tm ty) = 
-  Env.err [DS "Unexpected arg to whnf:", DD t]
-whnf' b t@(Paren x)   = 
-  Env.err [DS "Unexpected arg to whnf:", DD t]
-whnf' b t@(Pos _ x)   = 
-  Env.err [DS "Unexpected position arg to whnf:", DD t]
+-- just ignore type annotations and source positions when normalizing  
+whnf' b (Ann tm _) = whnf' b tm
+whnf' b (Paren tm) = whnf' b tm
+whnf' b (Pos _ tm) = whnf' b tm
+ 
 whnf' b (Let bnd)  = do
   ((x,Unbound.unembed->rhs),body) <- Unbound.unbind bnd
   whnf' b (Unbound.subst x rhs body)  
-whnf' b (Subst tm pf annot) = do
+whnf' b (Subst tm pf) = do
   pf' <- whnf' b pf
   case pf' of 
-    Refl _ -> whnf' b tm
-    _ -> return (Subst tm pf' annot)    
-whnf' b (Case scrut mtchs annot) = do
+    Refl -> whnf' b tm
+    _ -> return (Subst tm pf')    
+whnf' b (Case scrut mtchs) = do
   nf <- whnf' b scrut        
   case nf of 
-    (DCon d args _) -> f mtchs where
+    (DCon d args) -> f mtchs where
       f (Match bnd : alts) = (do
           (pat, br) <- Unbound.unbind bnd
           ss <- patternMatches (Arg Runtime nf) pat 
@@ -274,7 +269,7 @@ whnf' b (Case scrut mtchs annot) = do
             `catchError` \ _ -> f alts
       f [] = Env.err $ [DS "Internal error: couldn't find a matching",
                     DS "branch for", DD nf, DS "in"] ++ (map DD mtchs)
-    _ -> return (Case nf mtchs annot)            
+    _ -> return (Case nf mtchs)            
 -- all other terms are already in WHNF
 whnf' b tm = return tm
 
@@ -287,8 +282,8 @@ patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
 patternMatches (Arg Runtime t) pat = do
   nf <- whnf t
   case (nf, pat) of 
-    (DCon d [] _, PatCon d' pats)   | d == d' -> return []
-    (DCon d args _, PatCon d' pats) | d == d' -> 
+    (DCon d [], PatCon d' pats)   | d == d' -> return []
+    (DCon d args, PatCon d' pats) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     (LitBool b, PatBool b') | b == b' -> return []
     (LitUnit, PatUnit) -> return []

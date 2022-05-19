@@ -37,8 +37,7 @@ go str = do
       res <- runTcMonad emptyEnv (inferType term)
       case res of 
         Left typeError -> putTypeError typeError
-        Right (aterm, ty) -> do
-          putStrLn $ render $ disp aterm
+        Right ty -> do
           putStrLn "typed with type"
           putStrLn $ render $ disp ty
   

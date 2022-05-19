@@ -241,10 +241,10 @@ valDef = do
 ------------------------
 
 trustme :: LParser Term
-trustme = reserved "TRUSTME" *> return (TrustMe (Annot Nothing))
+trustme = reserved "TRUSTME" *> return (TrustMe )
 
 printme :: LParser Term
-printme = reserved "PRINTME" *> return (PrintMe (Annot Nothing))
+printme = reserved "PRINTME" *> return (PrintMe )
 
 
 
@@ -286,7 +286,8 @@ funapp = do
 factor = choice [ Var <$> variable <?> "a variable"                
                 , typen      <?> "Type"
                 , lambda     <?> "a lambda"
-                , letExpr    <?> "a let"
+                , try pcaseExpr  <?> "a let pair"
+                , letExpr <?> "a let"
                   
                   
                 , trustme    <?> "TRUSTME"
@@ -295,7 +296,7 @@ factor = choice [ Var <$> variable <?> "a variable"
                 , bconst     <?> "a constant"  
                 , ifExpr     <?> "an if expression" 
                 , sigmaTy    <?> "a sigma type"  
-                , pcaseExpr  <?> "a pcase"
+                
                 , expProdOrAnnotOrParens
                     <?> "an explicit function type or annotated expression"
                 ]
@@ -317,7 +318,7 @@ lambda = do reservedOp "\\"
             body <- expr
             return $ foldr lam body binds 
   where
-lam x m = Lam (Unbound.bind (x, Unbound.embed $ Annot Nothing) m)  
+lam x m = Lam (Unbound.bind x m)  
 
                             
 
@@ -337,7 +338,7 @@ ifExpr =
      b <- expr
      reserved "else"
      c <- expr
-     return (If a b c (Annot Nothing))
+     return (If a b c )
     
 
 -- 
@@ -350,6 +351,21 @@ letExpr =
      reserved "in"
      body <- expr
      return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
+
+pcaseExpr :: LParser Term
+pcaseExpr = do
+    reserved "let"
+    reservedOp "("
+    x <- variable
+    reservedOp ","
+    y <- variable
+    reservedOp ")"
+    reservedOp "="
+    scrut <- expr
+    reserved "in"
+    a <- expr
+    return $ LetPair scrut (Unbound.bind (x,y) a) 
+
 
 
 
@@ -389,24 +405,11 @@ expProdOrAnnotOrParens =
                   (do b <- afterBinder
                       return $ Pi (Unbound.bind (x,Unbound.embed a) b))
          Colon a b -> return $ Ann a b
-         Comma a b -> return $ Prod a b (Annot Nothing)
+         Comma a b -> return $ Prod a b 
          Nope a    -> return $ Paren a
 
     
     
-pcaseExpr :: LParser Term
-pcaseExpr = do
-    reserved "let"
-    reservedOp "("
-    x <- variable
-    reservedOp ","
-    y <- variable
-    reservedOp ")"
-    reservedOp "="
-    scrut <- expr
-    reserved "in"
-    a <- expr
-    return $ LetPair scrut (Unbound.bind (x,y) a) (Annot Nothing)
 
 
 

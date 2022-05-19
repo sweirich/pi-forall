@@ -23,11 +23,12 @@
 \usepackage{supertabular}
 \usepackage{listings}
 \usepackage{lstpi}
+\usepackage{xspace}
  
-\newcommand\piforall{\texttt{pi-forall}\xspace}
+\newcommand\pif{\texttt{pi-forall}\xspace}
 \newcommand\unbound{\texttt{Unbound}\xspace}
 
-\title{Implementing Dependent Types in \Piforall}
+\title{Implementing Dependent Types in \pif}
 \author{Stephanie Weirich}
 
 \begin{document}
@@ -39,7 +40,7 @@
 \section{Goals and What to Expect}
 
 Over the next four lectures, I will describe a small dependently-typed language
-called ``\piforall'' and walk through the implementation of its type checker.
+called ``\pif'' and walk through the implementation of its type checker.
 
 What do I want you to get out of these lectures?
 
@@ -167,12 +168,12 @@ we will write the type of the polymorphic identity function as
 \end{piforall}		 
 
 The fact that the type of $x$ is $[[Type]]$ means that $x$ plays the role of a
-type variable, such as \texttt{a} above. Again, in \piforall we don't have a
+type variable, such as \texttt{a} above. Again, in \pif we don't have a
 syntactic distinction between types and terms (or expressions). Types are
 anything of type $[[Type]]$. Expressions are things of type $A$ where $A$ has
 type $[[Type]]$.
 
-In \piforall, we should eventually be able to write
+In \pif, we should eventually be able to write
 
 \begin{piforall}
      id : (x:Type) -> (y : x) -> x
@@ -186,7 +187,7 @@ or even (with some help from the parser)
      id = \x y . y 
 \end{piforall}
 
-Note that in Haskell, we don't bind a variable for x but in \piforall we do.
+Note that in Haskell, we don't bind a variable for x but in \pif we do.
 
 We can use the typing rules to construct a typing derivation for the identity function as
 follows.
@@ -253,7 +254,7 @@ we need to substitute the argument for $x$ in the result.
 
 \paragraph{Example: applying the polymorphic identity function}
 
-In \piforall we should be able to apply the polymorphic identity function to
+In \pif we should be able to apply the polymorphic identity function to
 itself. When we do this, we need to first provide the type of `id`, then we can
 apply `id` to `id`.
 
@@ -322,7 +323,7 @@ A type system is called \emph{syntax-directed} if it is readily apparent how to
 turn the typing rules into code. In other words, we would like to implement the 
 following function (in Haskell), that when given a term and a typing context 
 produces the type of the term (if it exists).\footnote{If you are looking at the
-\piforall implementation, this is not the final type of this function.}
+\pif implementation, this is not the final type of this function.}
 
 \begin{verbatim}
     inferType :: Term -> Ctx -> Maybe Type
@@ -501,10 +502,10 @@ perform \emph{capture-avoiding substitution.} When we work with a lambda
 expression, we will want to be sure that the binding variable is \emph{fresh},
 that is, distinct from all other variables in the program.
 
-In today's code, we'll use the \Unbound library to get all of these operations
+In today's code, we'll use the \unbound library to get all of these operations
 for free. This library defines a type for variable names, called
 \texttt{Name}. This type is indexed by the type of AST that this is a name
-for. That way \Unbound can make sure that substitutions make sense.
+for. That way \unbound can make sure that substitutions make sense.
 
 \begin{verbatim}
 type TName = Name Term
@@ -520,7 +521,7 @@ type TName = Name Term
 The \texttt{subst} function in this class ensures that when we see
 \texttt{subst\ x\ a\ b}, which means ``substitute a for x in b'' (also
 written $[[b{a/x}]]$ above) that \texttt{a} is the right sort of thing to
-stick in for \texttt{x}. The \Unbound library can automatically generate
+stick in for \texttt{x}. The \unbound library can automatically generate
 instances of the \texttt{Subst} class. Furthermore, although it seems
 like we only need to substitute within terms, we'll actually need to
 have substitution available at many types.
@@ -752,7 +753,7 @@ This part of the homework has two parts:
   are familiar with other systems, how do these rules compare?
 \item
   In Haskell, later: The code in \texttt{version1/} includes abstract
-  and concrete syntax for booleans and sigma types. The \piforall file
+  and concrete syntax for booleans and sigma types. The \pif file
   \texttt{version1/test/Hw1.pi} contains examples of using these new
   forms. However, to get this file to compile, you'll need to fill in
   the missing cases in \texttt{version1/src/TypeCheck.hs}.
@@ -776,7 +777,7 @@ definitional and propositional equality to the language.
 \subsubsection{Motivating Example: Type level
 reduction}
 
-In full dependently-typed languages (and in full \piforall) we can see
+In full dependently-typed languages (and in full \pif) we can see
 the need for definitional equality. We want to equate types that are not
 just \emph{syntactically} equal, so that more expressions type check.
 
@@ -849,7 +850,7 @@ v1 = VCons True VNil
 \end{verbatim}
 
 So the application \texttt{head\ Bool\ 0\ v1} will type check. (Note
-that \piforall cannot infer the types \texttt{A} and \texttt{n}.)
+that \pif cannot infer the types \texttt{A} and \texttt{n}.)
 
 However, if we construct the vector, its length may not be a literal
 natural number:
@@ -936,7 +937,7 @@ only a few places.
 \drule{c-infer}
 
 In this case, our equality algorithm must, when given two terms, decide
-whether they are equal. In \piforall we will use a semi-decision procedure based 
+whether they are equal. In \pif we will use a semi-decision procedure based 
 on reducing terms to normal forms. However, because reduction may not terminate, 
 our equality checking function could diverge.
 
@@ -969,13 +970,12 @@ ensures that the two provided types are equal, or throws a type error if
 they are not. This function corresponds directly to our definition of
 type equality.
 
-Second, we also need to be able to determine whether a given type is
-equal to some ``head'' form, without knowing exactly what that form is.
-For example, when \emph{checking} lambda expressions, we need to know
-that the provided type is of the form of a pi type
-(\texttt{(x:A)\ -\textgreater{}\ B}). Likewise, when inferring the type
-of an application, we need to know that the type inferred for the
-function is actually a pi type.
+Second, we also need to be able to determine whether a given type is equal to
+some ``head'' form, without knowing exactly what that form is.  For example,
+when \emph{checking} lambda expressions, we need to know that the provided
+type is of the form of a $\Pi$-type ($[[(x:A)-> B]]$). Likewise, when inferring
+the type of an application, we need to know that the type inferred for the
+function is actually a $\Pi$-type.
 
 We can determine this in two ways. Most directly, the function
 
@@ -984,7 +984,7 @@ ensurePi :: Type -> TcMonad (TName, Type, Type)
 \end{verbatim}
 
 checks the given type to see if it is equal to some pi type of the form
-\texttt{(x:A1)\ -\textgreater{}\ A2}, and if so returns \texttt{x},
+$[[(x:A1)-> A2]]$, and if so returns \texttt{x},
 \texttt{A1} and \texttt{A2}.\\
 This function is defined in terms of a helper function:
 
@@ -993,8 +993,8 @@ whnf :: Term -> TcMonad Term
  
 \end{verbatim}
 
-that reduces a type to its \emph{weak-head normal form}. Such terms have
-done all of the reductions to the outermost lambda abstraction (or pi)
+that reduces a type to its \emph{weak-head normal form (whnf)}. Such terms have
+done all of the reductions to the outermost lambda abstraction (or $\Pi$)
 but do not reduce subterms. In other words:
 
 \begin{verbatim}
@@ -1013,12 +1013,11 @@ possible:
 and
 
 \begin{verbatim}
- (y:Type) -> (\x.x)Bool 
+ (y:Type) -> (\x.x) Bool 
 \end{verbatim}
 
-are in weak head normal form. Likewise, the term \texttt{x\ y} is also
-in weak head normal form (if we don't have a definition available for
-\texttt{x}) because, even though we don't know what the head form is, we
+are in weak head normal form. Likewise, the term \texttt{x\ y} is also in weak
+head normal form, because, even though we don't know what the head form is, we
 cannot reduce the term any more.
 
 In \texttt{version2} of the the
@@ -1043,7 +1042,6 @@ One way to do this is with the following algorithm:
     nf1 <- reduce t1
     nf2 <- reduce t2
     aeq nf1 nf2
-     
 \end{verbatim}
 
 However, we can do better. We'd like to only reduce as much as
@@ -1060,7 +1058,7 @@ them.
             -- make sure subterms are equal
             equate a1 b1 >> equate a2 b2
         (Lam bnd1, Lam bnd2) -> do
-            -- ignore variable name and typing annot (if present)
+            -- ignore variable names
             (_, b1, _, b2) <- unbind2Plus bnd1 bnd2
              equate b1 b2
         (_,_) -> err ...
@@ -1080,7 +1078,7 @@ Why weak-head reduction vs.~full reduction?
   don't want to substitute all variables through eagerly---not only does
   this make extra work, but error messages can be extremely long.
 \item
-  Furthermore, we allow recursive definitions in \piforall, so
+  Furthermore, we allow recursive definitions in \pif, so
   normalization may just fail completely. However, this definition based
   on wnhf only unfolds recursive definitions when necessary, and then
   only once, so avoids some infinite loops in the type checker.
@@ -1100,26 +1098,12 @@ pcase}
 
 Consider our elimination rules for if:
 
-\begin{verbatim}
- G |- a : Bool 
- G |- b : A
- G |- c : A
- ---------------------------- if
- G |- if a then b else c : A
- 
-\end{verbatim}
+\drule{t-if-weak}
 
 We can do better by making the type \texttt{A} depend on whether the
 scrutinee is true or false.
 
-\begin{verbatim}
- G |- a : Bool 
- G |- b : A { true/x }
- G |- c : A { false/x }
- ---------------------------- if
- G |- if a then b else c : A{a/x}
- 
-\end{verbatim}
+\drule{t-if-full}
 
 For example, here is a simple definition that requires this rule:
 
@@ -1141,86 +1125,64 @@ anything that they are definitionally equal to!) how can we figure out
 whether they correspond to eachother?
 
 So, we'll not be so ambitious. We'll only allow this refinement when the
-scrutinee is a variable.
+scrutinee is a variable, deferring to the weaker typing rule for if in 
+all other cases.
 
-\begin{verbatim}
- G |- x : Bool 
- (G |- b : A) { true / x }
- (G |- c : A) { false / x }
- ---------------------------- if
- G |- if x then b else c : A 
-\end{verbatim}
+\drule{t-if}
 
 And, in going to our bidirectional system, we'll only allow refinement
 when we are in checking mode.
 
-\begin{verbatim}
- G |- x => Bool 
- G |- b <= A { true / x }
- G |- c <= A { false / x }
- ------------------------------ if
- G |- if x then b else c <= A
-\end{verbatim}
+\drule{c-if}
 
 Then, we only have to remember that x is true / false when checking the
 individual branches of the if expression.
 
+\footnote{
 Here is an alternative version, for inference mode only, suggested
 during lecture:
 
-\begin{verbatim}
- G |- a => Bool 
- G |- b => B
- G |- c => C 
- ----------------------------------------------- if
- G |- if a then b else c => if a then B else C
-\end{verbatim}
+\drule{i-if}
 
-It has a nice symmetry---if expressions are typed by if. Note however,
+It has a nice symmetry---if expressions are typed by if types. Note however,
 to make this rule work, we'll need a stronger definitional equivalence
 than we have. In particular, we'll want our definition of equivalence to
 support the following equality:
 
-\begin{verbatim}
- ---------------------- 
- if a then b else b = b
-\end{verbatim}
+\drule{e-if-eta}
 
 That way, if the type of the two branches of the if does not actually
 depend on the boolean value, we can convert the \texttt{if} expression
 into a more useful type.
+}
 
-We can modify the rule for sigma types similarly.
+We can modify the elimination rule for $\Sigma$-types similarly.
 
-\begin{verbatim}
-G |- z => { x : A | B }
- G, x:A, y:B |- b <= C { (x,y) / z }
- G |- C <= Type
----------------------------------- pcase
-G |- pcase z of (x,y) -> b <= C
-\end{verbatim}
+\drule{c-letpair}
 
-This modification changes our definition of Sigma types from weak Sigmas
-to strong Sigmas. With either typing rule, we can define the first
-projection
+This modification changes our definition of $\Sigma$-types from weak $\Sigma$s
+to strong $\Sigma$s. With either typing rule, we can define the first
+projection.
 
-\begin{verbatim}
+\begin{piforall}
 fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
- fst = \A B p. pcase p of (x,y) -> x
-\end{verbatim}
+fst = \A B p. let (x,y) = p in x
+\end{piforall}
 
-But, weak Sigmas cannot define the second projection using pcase. The
+But, weak Sigmas cannot define the second projection. The
 following code only type checks using the above rule.
 
-\begin{verbatim}
+\begin{piforall}
 snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
-snd = \A B p. pcase p of (x1,y) -> y
-\end{verbatim}
+snd = \A B p. let (x,y) = p in y
+\end{piforall}
 
+(Try this out using version2 of the implementation and the Lec2.pi 
+input file.)
 
 \section{Propositional equality}
 
-You started proving things right away in Coq with an equality
+You started proving things right away in Coq or Agda with an equality
 proposition. For example, in Coq, when you say
 
 \begin{verbatim}
@@ -1232,7 +1194,7 @@ You are using a built in type, \texttt{a\ =\ b} that represents the
 proposition that two terms are equal.
 
 As a step towards more general indexed datatypes, we'll start by adding
-just this type to \piforall.
+just this type to \pif.
 
 The main idea of the equality type is that it converts a
 \emph{judgement} that two types are equal into a \emph{type} that is
@@ -1312,22 +1274,27 @@ we'll use:
  G |- contra p : A
 \end{verbatim}
 
-\subsubsection{Homework (\piforall: more church
+\subsubsection{Homework (\pif: more church
 encodings)}
 
 The file \texttt{version2/test/NatChurch.pi} is a start at a Church
 encoding of natural numbers. Replace the TRUSTMEs in this file so that
 it compiles.
 
-\subsubsection{Homework (\piforall:
+\subsubsection{Homework (\pif:
 equality)}
 
 Complete the file \href{version2/test/Hw2.pi}{Hw2.pi}. This file gives
-you practice with working with equality propositions in \piforall.
+you practice with working with equality propositions in \pif.
 
 
-\section{Where to go for more}
+\section{Where to go for more depth:}
 
+\begin{enumerate}
+\item Type system does not enforce termination. That makes it convenient as a programming language, but less so as a logic. We do it this way because it sidesteps a number of issues in the implementation (universe levels, strict positivity in datatypes).
+\item Implementation of equivalence checking based on substitution, not normalization by evaluation. 
+\item Details with variable binding hidden by the \unbound library. This library uses a locally nameless representation and generic programming to automatically derive implementations of substitution and alpha-equivalence. Other tutorials describe how to represent variables using a locally nameless representation (McBride et al.) or de Bruijn representation (??) more directly.
+\end{enumerate}
 
 
 \appendix
