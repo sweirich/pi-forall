@@ -1,0 +1,53 @@
+module Lec2 where
+
+-- this code only type checks with a definition of type equality that 
+-- includes beta-equivalence
+
+bool' : Bool -> Type
+bool' = \b . (B : (b : Bool) -> Type) -> B True -> B False -> B b
+
+true' : bool' True
+true' = \A x y . x
+
+false' : bool' False
+false' = \ A x y. y
+
+T : Bool -> Type
+T = \b. if b then Unit else Bool
+
+z1 : T True
+z1 = ()
+
+z2 : T False
+z2 = True
+
+
+-- To get bar and barnot to work 
+-- the typing rule for 'if' expressions must be 
+-- context-dependent. In otherwords, it should add new 
+-- definitions to the context in the true/false branches
+-- when the scrutinee is a variable
+
+not : Bool -> Bool 
+not = \x. if x then False else True
+
+bar : (b : Bool) -> T b
+bar = \b. if b then () else True
+
+barnot : (b : Bool) -> T (not b) 
+barnot = \b. if b then False else ()
+
+-- projections for sigma types
+
+fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
+fst = \A B p. let (x,y) = p in x
+
+snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
+snd = \A B p. let (x1,y) = p in y
+
+-- examples of propositional equality
+
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  subst refl by pf 
+
