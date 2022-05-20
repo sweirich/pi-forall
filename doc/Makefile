@@ -1,6 +1,6 @@
 ## Makefile for paper
 
-OTT_SOURCE = pi
+OTT_SOURCE = pi sigma bool tyeq
 BIBFILES = weirich.bib 
 
 OTTFILES  = $(foreach i, $(OTT_SOURCE), $(i).ott) 
@@ -35,7 +35,7 @@ $(RULESFILE): $(OTTFILES)
           -tex_wrap false \
           -tex_show_meta false
 
-$(TOP).pdf : $(TOP).tex  $(BIBFILES) $(PAPER_SOURCE) Makefile lstparams.sty abstract.tex
+$(TOP).pdf : $(TOP).tex  $(BIBFILES) $(PAPER_SOURCE) Makefile lstparams.sty abstract.tex lstpi.sty
 	echo $(PAPER_SOURCE)
 	latexmk -bibtex -pdf $(TOP).tex; latexmk -c
 

@@ -1,9 +1,25 @@
 module Equality where
 
-sym : [A:Type] -> [x:A] -> [y:A] -> (x = y) -> y = x
-sym = \ [A] [x][y] pf .
-  subst refl by pf
+-- Defining propositional equality as an indexed datatype
 
-trans : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (x = z) -> (z = y) -> (x = y)
+data Eq (A : Type) (a : A) (b : A) : Type where
+  Refl of [a = b]
+
+j : [A : Type] -> [a1 : A] -> [a2 : A] 
+  -> (a : Eq A a1 a2) 
+  -> [B : ((x:A) -> (Eq A x a2) -> Type)] 
+  -> (b : B a2 Refl)
+  -> B a1 a
+j = \[A] [a1] [a2] a [B] b . 
+   case a of 
+      Refl -> b
+
+sym : [A:Type] -> [x:A] -> [y:A] -> (Eq A x y) -> Eq A y x
+sym = \ [A] [x][y] pf .
+  case pf of 
+     Refl -> Refl
+
+trans : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (Eq A x z) -> (Eq A z y) -> (Eq A x y)
 trans = \[A][x][y][z] pf1 pf2 . 
-  subst pf1 by pf2
+  case pf2 of 
+    Refl -> pf1 

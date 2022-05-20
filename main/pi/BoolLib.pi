@@ -22,7 +22,6 @@ orb = \b1 b2.
     True -> True
     False -> b2
 
-
 implb : Bool -> Bool -> Bool
 implb = \b1 b2. if b1 then b2 else True
 
@@ -30,7 +29,9 @@ negb : Bool -> Bool
 negb = \ b . if b then False else True
 
 andb_prop : (a : Bool) -> (b : Bool) -> andb a b = True -> And (a = True) (b = True)
-andb_prop = TRUSTME
+andb_prop = \a b p . 
+   if a then if b then Conj a b
+             else 
 
 andb_true_intro : (b1 : Bool) -> (b2 : Bool) -> And (b1 = True) (b2 = True) -> andb b1 b2 = True
 andb_true_intro = TRUSTME

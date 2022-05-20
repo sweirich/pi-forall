@@ -1,0 +1,144 @@
+% Language additions for Sigma types
+
+grammar
+
+tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+
+
+  %% Sigma types
+  | { x : A | B } ::   :: Sigma
+    {{ tex \{ [[x]]\!:\![[A]]\ |\ [[B]] \} }}
+    {{ com $\Sigma$-type (i.e. dependent products/dependent sums) }}
+  | ( a , b )              ::   :: Prod 
+    {{ com products }}
+  | let ( x , y ) = a in b ::   :: LetPair 
+    {{ com elimination form for pairs }}
+  | A * B      :: M  :: Times
+    {{ com syntactic sugar for product types }}
+
+
+defns 
+Jwhnf :: '' ::= 
+
+defn
+whnf a = v ::    :: whnf :: 'whnf_' 
+by
+
+whnf a = (a1, a2) 
+whnf (b [a1/x] [a2/y]) = v
+------------------------------- :: letpair
+whnf let (x,y) = a in b = v
+
+whnf a = v
+------------------------------------------ :: prodcong
+whnf let (x,y) = a in b = let (x,y) = v in b
+
+
+defns
+JOp :: '' ::=
+
+defn
+a ~> b ::   :: step :: 's_'
+{{ com single-step operational semantics, i. e. head reduction }}
+by
+
+
+-------------------------------------------------- :: LetPairProd
+let (x,y) = (a1,a2) in b ~> b [ a1 /x ] [a2 /y ]
+
+
+a ~> a'
+-------------------------------------------------- :: LetPair
+let (x,y) = a in b ~> let (x,y) = a' in b
+
+defns 
+JEq :: '' ::=
+
+defn
+G |- A = B ::  :: eq :: 'e_'
+{{ com Definitional equality }}
+by
+
+---------------------------------------------------------- :: letpairprod
+G |- let (x,y) = (a1,a2) in b = b [ a1 /x ] [a2 / y] 
+
+G |- A1 = A2       
+G,x:A1 |- B1 = B2
+------------------------------------ :: sigma
+G |- { x:A1 | B1 } = { x:A2 |  B2} 
+
+
+G |- b1 = b1'
+G |- b2 = b2'
+-------------- :: prod
+G |- (b1, b2) = (b1', b2')
+
+G |- a = a'
+G |- b = b'
+----------------------------------------------- :: letpair
+G |- let (x,y) = a in b = let (x,y) = a' in b'
+
+defns
+JTyping :: '' ::= 
+
+defn 
+
+G |- a : A   ::   :: typing :: 't_'
+{{ com Typing }}
+by
+
+%% sigma types
+
+G |- A : Type     
+G, x:A |- B : Type
+------------------------------------- :: sigma
+G |- { x : A | B } : Type
+
+G |- a : A      
+G |- b : B [ a / x ]
+------------------------------------ :: pair
+G |- (a,b) : { x : A | B }
+
+
+G |- a : { x : A1 | A2 }
+G, x:A1, y:A2 |- b : B
+G |- B : Type
+------------------------------ :: letpair_weak
+G |- let (x,y) = a in b : B
+
+
+defns
+JBidirectional :: '' ::= 
+
+defn 
+G |- a => A ::    :: inferType :: 'i_'
+{{ com type synthesis (algorithmic) }}
+by
+
+G |- A => Type     
+G, x:A |- B => Type
+------------------------------------- :: sigma
+G |- { x : A | B } => Type
+
+defn 
+G |- a <= B ::    :: checkType :: 'c_'
+{{ com type checking (algorithmic) }}
+by
+
+
+G |- a <= A      
+G |- b <= B [ a / x ]
+------------------------------------ :: pair
+G |- (a,b) <= { x : A | B }
+
+G |- a => { x : A1 | A2 }
+G, x:A1, y:A2 |- b <= B
+G |- B <= Type
+------------------------------ :: letpair_weak
+G |- let (x,y) = a in b <= B
+
+G |- z => { x : A1 | A2 }
+G, x:A1, y:B2 |- b <= B [ (x,y) / z ]
+G |- B <= Type
+-------------------------------------- :: letpair
+G |- let (x,y) = z in b <= B

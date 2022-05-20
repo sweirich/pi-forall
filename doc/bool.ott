@@ -1,0 +1,168 @@
+% Language additions for booleans
+
+grammar
+
+tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+
+  | Bool                  ::   :: TyBool {{ com boolean type }}
+  | True                  ::   :: LitTrue {{ com boolean value true }}
+  | False                 ::   :: LitFalse {{ com boolean value false }}
+  | if a then b1 else b2  ::   :: If {{ com conditional }}
+
+
+defns 
+Jwhnf :: '' ::= 
+
+defn
+whnf a = v ::    :: whnf :: 'whnf_' 
+by
+
+whnf a = True
+whnf b1 = v
+--------------------------- :: if_true
+whnf if a then b1 else b2 = v
+
+whnf a = False
+whnf b2 = v
+------------------------------- :: if_false
+whnf if a then b1 else b2 = v
+
+
+----------------- :: bool
+whnf Bool = Bool
+
+---------------- :: true
+whnf True = True
+
+------------------- :: false
+whnf False = False
+
+whnf a = v
+---------------------------------------------------- :: if_cong
+whnf if a then b1 else b2 = if v then b1 else b2
+
+
+defns
+JOp :: '' ::=
+
+defn
+a ~> b ::   :: step :: 's_'
+{{ com single-step operational semantics, i. e. head reduction }}
+by
+
+---------------------------------- :: if_true
+if True then b1 else b2 ~> b1
+
+
+---------------------------------- :: if_false
+if False then b1 else b2 ~> b1
+
+a ~> a'
+--------------------------------- :: if
+if a then b1 else b2 ~> if a' then b1 else b2
+
+
+defns 
+JEq :: '' ::=
+
+defn
+G |- A = B ::  :: eq :: 'e_'
+{{ com Definitional equality }}
+by
+
+----------------------------- :: if_true
+G |- if True then a else b = a
+
+------------------------------- :: if_false
+G |- if False then a else b = b
+
+
+G |- a = a'
+G |- b1 = b1'
+G |- b2 = b2'
+--------------------------------------------------- :: if
+G |- if a then b1 else b2 = if a' then b1' else b2'
+
+-------------------------------- :: if_eta
+G |- if a then b else b = b
+
+
+defns
+JTyping :: '' ::= 
+
+defn 
+
+G |- a : A   ::   :: typing :: 't_'
+{{ com Typing }}
+by
+
+---------------- :: bool
+G |- Bool : Type
+
+---------------- :: true
+G |- True : Bool
+
+---------------- :: false
+G |- False : Bool
+
+
+G |- a : Bool 
+G |- b1 : A
+G |- b2 : A
+---------------------------- :: if_weak
+ |- if a then b1 else b2 : A
+
+G |- a : Bool 
+G |- b1 : A [ True / x ]
+G |- b2 : A [ False / x ]
+-------------------------------- :: if_full
+G |- if a then b1 else b2 : A[a/x]
+
+G |- x : Bool 
+G |- b1 : A [ True / x ]
+G |- b2 : A [ False / x ]
+---------------------------- :: if
+G |- if x then b1 else b2 : A 
+
+
+defns
+JBidirectional :: '' ::= 
+
+defn 
+G |- a => A ::    :: inferType :: 'i_'
+{{ com type synthesis (algorithmic) }}
+by
+
+---------------- :: bool
+G |- Bool => Type
+
+---------------- :: true
+G |- True => Bool
+
+---------------- :: false
+G |- False => Bool
+
+G |- a => Bool 
+G |- b1 => B1
+G |- b2 => B2
+----------------------------------------------- :: if_alt
+G |- if a then b1 else b2 => if a then B1 else B2
+
+
+defn 
+G |- a <= B ::    :: checkType :: 'c_'
+{{ com type checking (algorithmic) }}
+by
+
+G |- a <= Bool 
+G |- b1 <= A
+G |- b2 <= A
+---------------------------- :: if_weak
+ |- if a then b1 else b2 <= A
+
+
+ G |- x => Bool 
+ G |- b1 <= A [ true / x ]
+ G |- b2 <= A [ false / x ]
+ ------------------------------ :: if
+ G |- if x then b1 else b2 <= A

@@ -58,7 +58,7 @@ data Term
   | -- | application `a b`
     App Term Arg
   | -- | function type   `(x : A) -> B`
-    Pi (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Term) Term)
+    Pi (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Type) Type)
   | -- | Annotated terms `( a : A )`
     Ann Term Type
   | -- | parenthesized term, useful for printing
@@ -67,22 +67,22 @@ data Term
     Pos SourcePos Term
   | -- | an axiom 'TRUSTME', inhabits all types
     TrustMe
-  | -- | a directive to the type checker to print out the current context (like a typed hole)
+  | -- | a directive to the type checker to print out the current context
     PrintMe
-  | -- | let expression, introduces a new (potentially recursive) definition in the ctx
+  | -- | let expression, introduces a new (recursive) definition in the ctx
     -- | `let x = a in b`
     Let (Unbound.Bind (TName, Unbound.Embed Term) Term)
-  | -- | The type with a single inhabitant `Unit`
+  | -- | The type with a single inhabitant, called `Unit`
     TyUnit
-  | -- | The inhabitant, written `()`
+  | -- | The inhabitant of `Unit`, written `()`
     LitUnit
   | -- | The type with two inhabitants (homework) `Bool`
     TyBool
-  | -- | True and False
+  | -- | `True` and `False`
     LitBool Bool
-  | -- | If expression for eliminating booleans
+  | -- | `if a then b1 else b2` expression for eliminating booleans
     If Term Term Term
-  | -- | sigma type `{ x : A | B }`   -- homework
+  | -- | sigma type (homework), written `{ x : A | B }`  
     Sigma (Unbound.Bind (TName, Unbound.Embed Term) Term)
   | -- | introduction for sigmas `( a , b )`
     Prod Term Term
@@ -101,7 +101,6 @@ data Term
    {- STUBWITH -}
 
    {- SOLN DATA -}
-
   | -- | type constructors (fully applied)
     TCon TCName [Arg]
   | -- | term constructors (fully applied)
@@ -109,16 +108,11 @@ data Term
   | -- | case analysis  `case a of matches`
     Case Term [Match]
   {- STUBWITH -}
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
 
 -- | An argument to a function
 data Arg = Arg {{- SOLN EP -} argEp :: Epsilon, {- STUBWITH -} unArg :: Term}
-  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
-
--- | An 'Annot' is optional type information
-newtype Annot = Annot (Maybe Term)
-  deriving (Show, Generic, Typeable)
-  deriving anyclass (Unbound.Subst Term)
+  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
 
 {- SOLN EP -}
 
@@ -131,9 +125,9 @@ data Epsilon
       Show,
       Read,
       Bounded,
+      Enum,
       Ord,
       Generic,
-      Typeable,
       Unbound.Alpha,
       Unbound.Subst Term
     )
@@ -253,8 +247,8 @@ wildcardName :: TName
 wildcardName = Unbound.string2Name "_"
 
 -- | empty Annotation
-noAnn :: Annot
-noAnn = Annot Nothing
+--noAnn :: Annot
+--noAnn = Annot Nothing
 
 -- | Partial inverse of Pos
 unPos :: Term -> Maybe SourcePos
@@ -294,6 +288,58 @@ isPatVar _ = False
 -- functions for alpha-equivalence, free variables and substitution
 -- using generic programming. 
 
+------------------
+
+-- * Alpha equivalence and free variables
+
+-- Among other things, the Alpha class enables the following
+-- functions:
+--    -- Compare terms for alpha equivalence
+--    aeq :: Alpha a => a -> a -> Bool
+--    -- Calculate the free variables of a term
+--    fv  :: Alpha a => a -> [Unbound.Name a]
+
+-- For Terms, we'd like Alpha equivalence to ignore 
+-- source positions, type annotations and parentheses in terms.
+-- We can add these special cases to the definition of `aeq'` 
+-- and then defer all other cases to the generic version of 
+-- the function.
+
+instance Unbound.Alpha Term where
+  aeq' ctx (Ann a _) b = Unbound.aeq' ctx a b
+  aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
+  aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
+  aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
+  aeq' ctx (Paren a) b = Unbound.aeq' ctx a b
+  aeq' ctx a (Paren b) = Unbound.aeq' ctx a b
+  aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
+
+-- For example, all occurrences of annotations, source positions, and internal 
+-- parenthesis are ignored by this definition.
+
+-- >>> Unbound.aeq (Pos internalPos (Ann TyBool Type)) (Paren (Paren TyBool))
+-- True
+
+-- At the same time, the generic operation equates terms that differ only 
+-- in the names of bound variables.
+
+x0 :: TName
+x0 = Unbound.string2Name "x"
+
+y0 :: TName
+y0 = Unbound.string2Name "y"
+
+idx :: Term
+idx = Lam (Unbound.bind (x0 {- STUBWITH EP -}, Runtime {- SOLN -}) (Var x0))
+
+idy :: Term
+idy = Lam (Unbound.bind (y0 {- STUBWITH EP -}, Runtime {- SOLN -}) (Var y0))
+
+-- >>> Unbound.aeq idx idy
+-- True
+
+
+---------------
 
 -- * Substitution
 
@@ -309,54 +355,28 @@ instance Unbound.Subst Term Term where
   isvar (Var x) = Just (Unbound.SubstName x)
   isvar _ = Nothing
 
-------------------
 
--- * Alpha equivalence and free variables
 
--- Among other things, the Alpha class enables the following
--- functions:
---    -- Compare terms for alpha equivalence
---    aeq :: Alpha a => a -> a -> Bool
---    -- Calculate the free variables of a term
---    fv  :: Alpha a => a -> [Unbound.Name a]
+pi1 :: Term 
+pi1 = Pi (Unbound.bind (x0, {- SOLN EP -} Runtime, {- STUBWITH -} Unbound.embed (Var x0)) (Var x0))
 
-------------------
+-- '(y : Bool) -> y'
+pi2 :: Term 
+pi2 = Pi (Unbound.bind (y0, {- SOLN EP -} Runtime, {- STUBWITH -} Unbound.embed TyBool) (Var y0))
 
--- For Terms, we'd like Alpha equivalence to ignore 
--- source positions, type annotations and parentheses in terms
--- We can add these special cases to the definition of `aeq'` 
--- and then defer all other cases to the generic version of 
--- the function.
-instance Unbound.Alpha Term where
-  aeq' ctx (Ann a _) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
-  aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
-  aeq' ctx (Paren a) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Paren b) = Unbound.aeq' ctx a b
-  aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
+-- >>> Unbound.aeq (Unbound.subst x0 TyBool pi1) pi2
+-- True
 
-instance Unbound.Alpha Annot where
-  -- override default behavior so that type annotations are ignored
-  -- when comparing for alpha-equivalence
-  aeq' _ _ _ = True
-  fvAny' _ _ = pure
-  open _ _ = id
-  close _ _ = id
-  isPat _ = mempty
-  isTerm _ = mempty
-  nthPatFind _ = mempty
-  namePatFind _ = mempty
-  swaps' _ _ = id
-  freshen' _ x = return (x, mempty)
-  lfreshen' _ x cont = cont x mempty
-  acompare' _ _ _ = EQ
+
 
 -----------------
 
 -- * Source Positions
 
--- We want to ignore source positions during comparison
+-- SourcePositions do not have an instance of the Generic class available
+-- so we cannot automatically define their Alpha and Subst instances. Instead
+-- we do by hand here. This also gives us a chance to ignore source 
+-- positions during comparisons.
 instance Unbound.Alpha SourcePos where
   aeq' _ _ _ = True
   fvAny' _ _ = pure

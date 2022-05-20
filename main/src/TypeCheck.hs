@@ -15,12 +15,13 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
 import Syntax
-import Text.PrettyPrint.HughesPJ (($$),render)
+
+import Text.PrettyPrint.HughesPJ (($$))
+
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
-import Debug.Trace
 
 -- | Infer the type of a term. The returned type is not guaranteed to be checkable(?)
 inferType :: Term -> TcMonad Type
@@ -29,17 +30,17 @@ inferType t = tcTerm t Nothing
 -- | Check that the given term has the expected type.
 -- The provided type does not necessarily to be in whnf, but it should be
 -- already checked to be a good type
-checkType :: Term -> Type -> TcMonad Type
+checkType :: Term -> Type -> TcMonad ()
 checkType tm expectedTy = do
   nf <- Equal.whnf expectedTy
-  tcTerm tm (Just nf)
+  void $ tcTerm tm (Just nf)
+
   
 -- | Make sure that the term is a type (i.e. has type 'Type')
 tcType :: Term -> TcMonad ()
-tcType tm = {- SOLN EP -} Env.withStage Erased {- STUBWITH -}(checkType tm Type) >> return ()
+tcType tm = void $ {- SOLN EP -} Env.withStage Erased $ {- STUBWITH -}checkType tm Type
     
--- | check a term, producing an elaborated term
--- where all type annotations have been filled in.
+-- | check a term, producing its type
 -- The second argument is 'Nothing' in inference mode and
 -- an expected type (in weak-head-normal form) in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad Type
@@ -82,12 +83,16 @@ tcTerm (App t1 a2) Nothing = do
 {- SOLN EP -}
   guard (argEp a2 == ep2) {- STUBWITH -}
   ty2 <- {- SOLN EP -}Env.withStage (argEp a2) ${- STUBWITH -} checkType (unArg a2) tyA
-  return (Unbound.subst x (Ann (unArg a2) tyA) tyB)
+  -- NOTE: we're replacing an inferrable variable with a 
+  -- a checkable term. So the result will not necessarily 
+  -- be checkable as a type.
+  return (Unbound.subst x (unArg a2) tyB)
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do
-  ty' <- tcType ty
+  tcType ty
   checkType tm ty
+  return ty
   
 -- practicalities
 -- remember the current position in the type checking monad
@@ -230,16 +235,17 @@ tcTerm Refl (Just ty@(TyEq a b)) = do
   Equal.equate a b
   return ty
 tcTerm Refl (Just ty) = 
-  Env.err [DS "refl annotated with", DD ty]
-tcTerm t@(Subst tm p) (Just ty) = do
-  -- infer the type of the proof p
-  tp <- inferType p
+  Env.err [DS "refl annotated with ", DD ty]
+tcTerm t@(Subst a b) (Just ty) = do
+  -- infer the type of the proof 'b'
+  tp <- inferType b
   -- make sure that it is an equality between m and n
   (m, n) <- Equal.ensureTyEq tp
   -- if either side is a variable, add a definition to the context
   edecl <- def m n
-  pdecl <- def p Refl
-  _ <- Env.extendCtxs (edecl ++ pdecl) $ checkType tm ty
+  -- if proof is a variable, add a definition to the context
+  pdecl <- def b Refl
+  _ <- Env.extendCtxs (edecl ++ pdecl) $ checkType a ty
   return ty
 tcTerm t@(Contra p) (Just ty) = do
   ty' <- inferType p
@@ -278,9 +284,9 @@ tcTerm t@(Prod a b) (Just ty) = {- SOLN EQUAL -} do
   case ty of
     (Sigma bnd) -> do
       ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
-      tyA' <- checkType a tyA
-      tyB' <- Env.extendCtxs [Sig (mkSig x tyA'), Def x a] $ checkType b tyB
-      return (Sigma (Unbound.bind (x, Unbound.embed tyA') tyB'))
+      checkType a tyA
+      Env.extendCtxs [Sig (mkSig x tyA), Def x a] $ checkType b tyB
+      return (Sigma (Unbound.bind (x, Unbound.embed tyA) tyB))
     _ ->
       Env.err
         [ DS "Products must have Sigma Type",
@@ -300,6 +306,7 @@ tcTerm t@(LetPair p bnd) (Just ty) = {- SOLN EQUAL -} do
       decl <- def p (Prod (Var x') (Var y'))
       Env.extendCtxs ([Sig (mkSig x' tyA), Sig (mkSig y' tyB')] ++ decl) $
           checkType body ty
+      return ty
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
@@ -349,8 +356,8 @@ tcArgTele args (AssnProp (Eq tx ty) : tele) = do
   Equal.equate tx ty
   tcArgTele args tele
 tcArgTele (Arg ep1 tm : terms) (AssnSig sig : tele') | ep1 == sigEp sig = do
-  ety <- Env.withStage ep1 $ checkType tm (sigType sig)
-  tele'' <- doSubst [(sigName sig, Ann tm ety)] tele'
+  Env.withStage ep1 $ checkType tm (sigType sig)
+  tele'' <- doSubst [(sigName sig, Ann tm (sigType sig))] tele'
   eterms <- tcArgTele terms tele''
   return $ Arg ep1 tm : eterms
 tcArgTele (Arg ep1 _ : _) (AssnSig sig2 : _) =
@@ -640,19 +647,17 @@ tcEntry (Def n term) = do
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
                 disp
-                  [ DS "When checking the term ",
+                  [ 
+                    DS "When checking the term ",
                     DD term,
                     DS "against the signature",
                     DD sig
                   ]
            in do
-                ety <-
-                  Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
-                -- Put the elaborated version of term into the context.
-                let esig = sig{sigType = ety}
+                Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
                 if (n `elem` Unbound.toListOf Unbound.fv term)
-                  then return $ AddCtx [Sig esig, RecDef n term]
-                  else return $ AddCtx [Sig esig, Def n term]
+                  then return $ AddCtx [Sig sig, RecDef n term]
+                  else return $ AddCtx [Sig sig, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err

@@ -6,10 +6,19 @@ import qualified Test.QuickCheck as QC
 
 import Syntax
 import PrettyPrint
+import Parser
 
 import qualified Unbound.Generics.LocallyNameless as Unbound
 
+bindSize :: Int
+bindSize = 1
 
+prop_roundtrip :: Term -> Bool
+prop_roundtrip tm = 
+    case parseExpr (render (disp tm))  of
+        Left _ -> False
+        Right tm' -> Unbound.aeq tm tm' 
+           
 quickCheckN :: QC.Testable prop => Int -> prop -> IO ()
 quickCheckN n = QC.quickCheckWith $ QC.stdArgs { QC.maxSuccess = n , QC.maxSize = 100 }
 
@@ -26,6 +35,12 @@ sampleTerm = QC.sample' (arbitrary :: Gen Term) >>=
 genName :: Gen (Unbound.Name a)
 genName = Unbound.string2Name <$> elements ["x", "y", "z", "x0" , "y0"]
 
+genTCName :: Gen TCName
+genTCName = elements ["T", "List", "Vec", "Nat"]
+
+genDCName :: Gen DCName
+genDCName = elements ["Nil", "Cons", "Zero", "Succ"]
+
 instance Arbitrary (Unbound.Name a) where
     arbitrary = genName where
         
@@ -34,9 +49,13 @@ instance Arbitrary Epsilon where
 
 instance Arbitrary Arg where
     arbitrary = sized genArg
+    shrink (Arg ep tm) = [ Arg ep tm' | tm' <- QC.shrink tm]
 
 genArg :: Int -> Gen Arg
 genArg n = Arg <$> arbitrary <*> genTerm (n `div` 2)
+
+genArgs :: Int -> Gen [Arg]
+genArgs n = QC.listOf (genArg n)
 
 base :: Gen Term
 base = elements [Type, 
@@ -46,18 +65,28 @@ base = elements [Type,
 
 genTerm :: Int -> Gen Term
 genTerm n 
-        | n == 1 = base
+        | n <= 1 = base
         | otherwise = 
             frequency [
               (1, base),
-              (1, Var <$> arbitrary),
+              (1, Var <$> genName),
               (1, genLam n'),
               (1, App <$> genTerm n' <*> genArg n'),
               (1, genPi n'),
               (1, Ann <$> genTerm n' <*> genTerm n'),
               (1, Paren <$> genTerm n'),
               (1, Pos internalPos <$> genTerm n'),
-              (1, genLet n')
+              (1, genLet n'),
+              (1, If <$> genTerm n' <*> genTerm n' <*> genTerm n'),
+              (1, genSigma n'),
+              (1, Prod <$> genTerm n' <*> genTerm n'),
+              (1, genLetPair n'),
+           --   (1, TyEq <$> genTerm n' <*> genTerm n'),
+           --   (1, Subst <$> genTerm n' <*> genTerm n'),
+           --   (1, Contra <$> genTerm n'),
+              (1, TCon <$> genTCName <*> genArgs n'),
+              (1, DCon <$> genDCName <*> genArgs n'),
+              (1, Case <$> genTerm n' <*> genMatches n')
             ]
     where n' = n `div` 2
 
@@ -73,6 +102,12 @@ genPi n = do
     tyB <- genTerm n
     return $ Pi (Unbound.bind p tyB)
 
+genSigma :: Int -> Gen Term
+genSigma n = do
+    p <- ((,) <$> genName <*> (Unbound.Embed <$> genTerm n))
+    tyB <- genTerm n
+    return $ Sigma (Unbound.bind p tyB)
+
 genLet :: Int -> Gen Term 
 genLet n = do
     p <- ( (,) <$> genName <*> (Unbound.Embed <$> genTerm n') ) 
@@ -80,8 +115,49 @@ genLet n = do
     return $ Let (Unbound.bind p b)
   where n' = n `div` 2
 
+genLetPair :: Int -> Gen Term 
+genLetPair n = do
+    p <- ( (,) <$> genName <*> genName ) 
+    a <- genTerm n'
+    b <- genTerm n'
+    return $ LetPair a (Unbound.bind p b)
+  where n' = n `div` 2
+
+genPattern :: Int -> Gen Pattern
+genPattern n | n == 0 = PatVar <$> genName
+  | otherwise = frequency 
+    [(1, PatVar <$> genName),
+     (1, PatCon <$> genDCName <*> genPatArgs n')]
+     where n' = n `div` 2
+
+genPatArgs :: Int -> Gen [(Pattern, Epsilon)]
+genPatArgs n = QC.listOf ( (,) <$> genPattern n <*> arbitrary )
+
+genMatch :: Int -> Gen Match
+genMatch n = Match <$> (Unbound.bind <$> genPattern n <*> genTerm n)
+  
+genMatches :: Int -> Gen [Match]
+genMatches n = QC.listOf (genMatch n)
+
+instance Arbitrary Pattern where
+    arbitrary = sized genPattern 
+    shrink (PatCon _ pats) = map fst pats
+    shrink _ = []
+
 instance Arbitrary Term where
     arbitrary = sized genTerm where
+    shrink (App tm arg) = 
+        [tm, unArg arg] ++ [App tm' arg | tm' <- QC.shrink tm] ++ [App tm arg' | arg' <- QC.shrink arg]
+    shrink (Ann tm ty) = [tm] ++ [Ann tm' ty | tm' <- QC.shrink tm]
+    shrink (Paren tm) = [tm] ++ [Paren tm' | tm' <- QC.shrink tm]
+    shrink _ = []
+       
       
      
-      
+x = "[z:Bool] -> refl"
+y = Pi (Unbound.bind (x0, Erased, Unbound.embed TyBool) TyBool)
+
+w = Let (Unbound.bind (y0, Unbound.embed (Pi (Unbound.bind (y0,Runtime, Unbound.embed TyBool) TyBool)))
+        (Var x0))
+z = Pi (Unbound.bind (x0, Runtime, Unbound.embed w)
+        (Pi (Unbound.bind (x0, Erased,Unbound.embed TyBool) (LitBool False))))

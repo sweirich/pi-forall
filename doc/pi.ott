@@ -9,13 +9,14 @@ metavar mname, M ::=
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% Core language
+%% pi-forall language
 
 grammar
 
 
 tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
 
+  %% Core syntax
   | Type        ::    :: Type {{ com sort }}
 
   | x           ::    :: Var {{ com variable }}
@@ -33,7 +34,7 @@ tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
     {{ com dependent function type }}
 
   %% Practicalities
-  | a { b / x } :: S  :: SubstOp 
+  | a [ b / x ] :: S  :: SubstOp 
     {{ com substitution }}
 
   | A -> B      :: M  :: Arrow
@@ -45,40 +46,17 @@ tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
   | ( a )       :: S  :: Paren 
     {{ com parenthesis }}
 
-  | TRUSTME         ::   :: TrustMe   {{ com A term that has any type }}
-  | PRINTME         ::   :: PrintMe   {{ com Print the current context }}
+  | TRUSTME         ::   :: TrustMe   
+    {{ com A term that has any type }}
+  | PRINTME         ::   :: PrintMe   
+    {{ com Print the current context }}
 
-  | let x = a in b  ::   :: Let {{ com Name an expression }}
-
+  | let x = a in b  ::   :: Let 
+    {{ com Name an expression }}
 
   %% Unit
-
   | Unit          ::   :: TyUnit  {{ com unit type }}
   | ()            ::   :: LitUnit  {{ com unit term }}
-
-  %% Booleans
-
-  | Bool                  ::   :: TyBool {{ com boolean type }}
-  | True                  ::   :: LitTrue {{ com boolean value true }}
-  | False                 ::   :: LitFalse {{ com boolean value false }}
-  | if a then b1 else b2  ::   :: If {{ com conditional }}
-
-  %% Sigma types
-
-  | { x : A | B } ::   :: Sigma
-    {{ tex \{ [[x]]\!:\![[A]]\ |\ [[B]] \} }}
-    {{ com $\Sigma$-type (i.e. dependent products/dependent sums) }}
-
-  | ( a , b )     ::   :: Prod {{ com product }}
-
-  | let ( x , y ) = a in b ::  :: LetPair {{ com elimination form for pairs }}
-
-  %% Equality
-  | a = b         ::   :: TyEq   {{ com equality type }}
-  | refl          ::   :: Refl   {{ com reflexivity proof }}
-  | subst a by b  ::   :: Subst  {{ com equality type elimination }}
-  | contra a      ::   :: Contra {{ com false elimination }}
-
 
 substitutions
   single a x     :: subst_tm
@@ -153,52 +131,45 @@ whnf a = v ::    :: whnf :: 'whnf_'
 {{ com evaluate a to v }}
 by
 
-whnf a = (\x.a)
-whnf (a { b / x}) = v
----------------------- :: Lam
+% reduction rules
+
+whnf a = (\x.a')
+whnf (a'[b/x]) = v
+---------------------- :: lam_beta
 whnf a b = v
 
-
-whnf (b { a / x}) = v
-------------------------------- :: Let
+whnf (b[a/x]) = v
+------------------------------- :: let_beta
 whnf (let x = a in b) = v
 
-whnf a = True
-whnf b1 = v
---------------------------- :: IfTrue
-whnf if a then b1 else b2 = v
+------------------ :: type
+whnf Type = Type
 
-whnf a = False
-whnf b2 = v
-------------------------------- :: IfFalse
-whnf if a then b1 else b2 = v
+------------------ :: lam
+whnf \x.a = \x.a
 
+----------------------------- :: pi
+whnf (x:A) -> B = (x:A) -> B
 
-whnf a = (a1, a2) 
-whnf b { a1 / x} {a2 /y} = v
-------------------------------- :: Prod
-whnf let (x,y) = a in b = v
-
-%% congruence rules 
+%% congruence rule
 %% for open terms (i.e terms with free variables), the result is not a value
 %% but a term in "head normal form" i.e.
-%%    v ::= value (i.e.  Type, \x.a, (x:A) -> B, {x:A | B},  True/False, (a,b) )
+%%    v ::= value (i.e.  Type, \x.a, (x:A) -> B
 %%          x 
 %%          v b
-%%          if v then b1 else b2
-%%          let (x,y) = v in b
+
+% value rules 
+
+---------- :: var
+whnf x = x
+
 
 whnf a = v
----------------------- :: LamCong
+---------------------- :: lam_cong
 whnf a b = v b
 
-whnf a = v
----------------------------------------------------- :: IfCong
-whnf if a then b1 else b2 = if v then b1 else b2
 
-whnf a = v
------------------------------------------- :: ProdCong
-whnf let (x,y) = a in b = let (x,y) = v in b
+
 
 defns
 JOp :: '' ::=
@@ -208,51 +179,29 @@ a ~> b ::   :: step :: 's_'
 {{ com single-step operational semantics, i. e. head reduction }}
 by
 
+----------------------------------  :: lambeta
+(\x.a) b ~> a [ b / x]
 
 
-----------------------------------  :: AppAbs
-(\x.a) b ~> a { b / x}
+--------------------------------- :: letbeta
+let x = a in b ~> b [ a / x ] 
 
-
---------------------------------- :: Let
-let x = a in b ~> b { a / x } 
-
-
----------------------------------- :: IfTrue
-if True then b1 else b2 ~> b1
-
-
----------------------------------- :: IfFalse
-if False then b1 else b2 ~> b1
-
-
--------------------------------------------------- :: LetPairProd
-let (x,y) = (a1,a2) in b ~> b { a1 /x } {a2 /y }
 
 a ~> a'
-------------------------  :: App
+------------------------  :: app
 a b ~> a' b
-
-a ~> a'
---------------------------------- :: If
-if a then b1 else b2 ~> if a' then b1 else b2
-
-a ~> a'
--------------------------------------------------- :: LetPair
-let (x,y) = a in b ~> let (x,y) = a' in b
-
 
 defn
 a ~>* b ::  :: reduction :: ''
 {{ com multi-step head reduction }}
 by
 
-------------------- :: Equal
+------------------- :: done
 a ~>* a
 
 a ~> b
 b ~>* a'
-------------------- :: Step
+------------------- :: step
 a ~>* a'
 
 
@@ -265,16 +214,7 @@ G |- A = B ::  :: eq :: 'e_'
 by
 
 -------------------------- :: beta
-G |- (\x.a)b = a {b / x}
-
------------------------------ :: if_true
-G |- if true then a else b = a
-
-------------------------------- :: if_false
-G |- if false then a else b = b
-
----------------------------------------------------------- :: letpairprod
-G |- let (x,y) = (a1,a2) in b = b { a1 /x } {a2 / y} 
+G |- (\x.a)b = a [b/x]
 
  ----------  :: refl
  G |- A = A
@@ -287,6 +227,11 @@ G |- let (x,y) = (a1,a2) in b = b { a1 /x } {a2 / y}
  G |- B = C
  ------------------------- :: trans
  G |- A = C
+
+G, x : A |- b : B   
+G |- a1 = a2     
+---------------------------------- :: lift
+G |- b [a1 / x] = b [a2 / x]
 
  G |- A1 = A2       
  G,x:A1 |- B1 = B2
@@ -304,36 +249,6 @@ G |- let (x,y) = (a1,a2) in b = b { a1 /x } {a2 / y}
  -------------------------- :: app
  G |- a1 b1 = a2 b2
 
-
-G |- a = a'
-G |- b1 = b1'
-G |- b2 = b2'
--------------- :: if
-G |- if a then b1 else b2 = if a' then b1' else b2'
-
-G |- A1 = A2       
-G,x:A1 |- B1 = B2
------------------------------------- :: sigma
-G |- { x:A1 | B1 } = { x:A2 |  B2} 
-
-
-G |- b1 = b1'
-G |- b2 = b2'
--------------- :: prod
-G |- (b1, b2) = (b1', b2')
-
-G |- a = a'
-G |- b = b'
------------------------------------------------ :: letpair
-G |- let (x,y) = a in b = let (x,y) = a' in b'
-
-G, x : A |- b : B   
-G |- a1 = a2     
----------------------------------- :: subst
-G |- b {a1 / x} = b {a2 / x}
-
--------------------------------- :: if_eta
-G |- if a then b else b = b
 
 
 defns
@@ -373,84 +288,12 @@ G |- Type : Type
 G |- a : (x:A) -> B 
 G |- b : A
 --------------------------- ::  app
-G |- a b : B { b / x }
-
-
-%% booleans
-
----------------- :: bool
-G |- Bool : Type
-
----------------- :: true
-G |- True : Bool
-
----------------- :: false
-G |- False : Bool
-     
-G |- a : Bool 
-G |- b1 : A
-G |- b2 : A
----------------------------- :: if_weak
- |- if a then b1 else b2 : A
-
-G |- a : Bool 
-G |- b1 : A { true/x }
-G |- b2 : A { false/x }
--------------------------------- :: if_full
-G |- if a then b1 else b2 : A{a/x}
-
-G |- x : Bool 
-G |- b1 : A { true / x }
-G |- b2 : A { false / x }
----------------------------- :: if
-G |- if x then b1 else b2 : A 
-
-
-%% sigma types
-
-G |- A : Type     
-G, x:A |- B : Type
-------------------------------------- :: sigma
-G |- { x : A | B } : Type
-
-G |- a : A      
-G |- b : B { a / x }
------------------------------------- :: pair
-G |- (a,b) : { x : A | B }
-
-
-G |- a : { x : A1 | A2 }
-G, x:A1, y:A2 |- b : B
-G |- B : Type
------------------------------- :: letpair_weak
-G |- let (x,y) = a in b : B
-
-%% equality
+G |- a b : B [ b / x ]
 
 G |- a : A    
 G |- A = B
 ------------ :: conv
 G |- a : B
-
-
-G |- a = b
-------------------- :: refl
-G |- refl : a = b
-
-------------------- :: refl_s
-G |- refl : a = a
-
-G |- a : A    
-G |- b : A
-------------------------- :: eq
-G |- a = b : Type
-
-G |- a : A { a1 / x }  
-G |- b : a1 = a2
---------------------------------- :: subst
-G |- subst a by b : A { a2 / x }
-
-
 
 
 defns
@@ -460,9 +303,6 @@ defn
 G |- A <=> A' ::    :: equate :: 'q_'
 {{ com algorithmic equality }}
 by
-
-
-
 
 
 defns
@@ -485,8 +325,13 @@ G |- (a : A) => A
 G |- a => (x:A) -> B 
 G |- b <= A
 ---------------------------  :: app_simple
-G |- a b => B { b / x }	  
+G |- a b => B [ b / x ]	  
 
+G |- a => A 
+whnf A = (x:A1) -> B 
+G |- b <= A1
+---------------------------  :: app
+G |- a b => B [ b / x ]	  
 
 G |- A <= Type     
 G, x:A |- B <= Type
@@ -500,33 +345,7 @@ G |- a <= A
 ------------------ :: ann
 G |- (a : A) => A
 
-%% booleans
-
----------------- :: bool
-G |- Bool => Type
-
----------------- :: true
-G |- True => Bool
-
----------------- :: false
-G |- False => Bool
-
-%% app with arrow reduction
-
-G |- a => A 
-whnf A = (x:A1) -> B 
-G |- b <= A1
----------------------------  :: app
-G |- a b => B { b / x }	  
-
-     
-G |- a => Bool 
-G |- b1 => B1
-G |- b2 => B2
------------------------------------------------ :: if_alt
-G |- if a then b1 else b2 => if a then B1 else B2
-
-
+   
 defn 
 G |- a <= B ::    :: checkType :: 'c_'
 {{ com type checking (algorithmic) }}
@@ -547,42 +366,3 @@ G |- A = B
 G |- a <= B
 
 
-%% booleans
-
-G |- a <= Bool 
-G |- b1 <= A
-G |- b2 <= A
----------------------------- :: if_weak
- |- if a then b1 else b2 <= A
-
-
- G |- x => Bool 
- G |- b1 <= A { true / x }
- G |- b2 <= A { false / x }
- ------------------------------ :: if
- G |- if x then b1 else b2 <= A
-
-
-%% sigma types
-
-G |- A <= Type     
-G, x:A |- B <= Type
-------------------------------------- :: sigma
-G |- { x : A | B } <= Type
-
-G |- a <= A      
-G |- b <= B { a / x }
------------------------------------- :: pair
-G |- (a,b) <= { x : A | B }
-
-G |- a => { x : A1 | A2 }
-G, x:A1, y:A2 |- b <= B
-G |- B <= Type
------------------------------- :: letpair_weak
-G |- let (x,y) = a in b <= B
-
-G |- z => { x : A1 | A2 }
-G, x:A1, y:B2 |- b <= B { (x,y) / z }
-G |- B <= Type
--------------------------------------- :: letpair
-G |- let (x,y) = z in b <= B

@@ -1,0 +1,176 @@
+% Language additions for propositional equality
+
+grammar
+
+tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+
+  | a = b         ::   :: TyEq   {{ com equality type }}
+  | refl          ::   :: Refl   {{ com reflexivity proof }}
+  | subst a by b  ::   :: Subst  {{ com equality type elimination }}
+  | contra a      ::   :: Contra {{ com false elimination }}
+
+defns 
+Jwhnf :: '' ::= 
+
+defn
+whnf a = v ::    :: whnf :: 'whnf_' 
+by
+
+----------------------- :: tyeq
+whnf (a = b) = (a = b)
+
+
+---------------- :: refl
+whnf refl = refl
+
+
+whnf b = refl
+whnf a = v
+------------------------ :: subst
+whnf (subst a by b) = v
+
+whnf b = b'
+whnf a = a'
+---------------------------------------- :: subst_cong
+whnf (subst a by b) = (subst a' by b')
+
+
+defns
+JOp :: '' ::=
+
+defn
+a ~> b ::   :: step :: 's_'
+{{ com single-step operational semantics, i. e. head reduction }}
+by
+
+defns 
+JEq :: '' ::=
+
+defn
+G |- A = B ::  :: eq :: 'e_'
+{{ com Definitional equality }}
+by
+
+
+------------------------- :: subst_beta
+G |- subst a by refl = a 
+
+G |- a = a'
+G |- b = b'
+------------------------------------ :: subst
+G |- subst a by b = subst a' by b'  
+
+G |- a1 = b1
+G |- a2 = b2
+--------------------------- :: tyeq
+G |- (a1 = a2) = (b1 = b2) 
+
+G |- a = a'
+---------------------------- :: contra
+G |- contra a = contra a'
+
+
+defns
+JTyping :: '' ::= 
+
+defn 
+
+G |- a : A   ::   :: typing :: 't_'
+{{ com Typing }}
+by
+
+%% equality
+
+
+G |- a : A    
+G |- b : A
+------------------------- :: eq
+G |- a = b : Type
+
+
+G |- a = b
+------------------- :: refl
+G |- refl : a = b
+
+------------------- :: refl_alt
+G |- refl : a = a
+
+
+G |- a : A [ a1 / x ]  
+G |- b : a1 = a2
+--------------------------------- :: subst_simple
+G |- subst a by b : A [ a2 / x ]
+
+
+G |- a : A [a1/x][refl/y]
+G |- b : a1 = a2
+----------------------------------- :: subst
+G |- subst a by b : A [a2/x][b/y]
+
+G |- a : True = False
+--------------------- :: contra 
+G |- contra a : A
+
+defns
+JBidirectional :: '' ::= 
+
+defn 
+G |- a => A ::    :: inferType :: 'i_'
+{{ com type synthesis (algorithmic) }}
+by
+
+G |- a => A1    
+G |- b => A2
+G |- A1 <=> A2
+---------------------- :: eq
+G |- (a = b) => Type
+
+% a trivial rule that does little
+G |- b => B 
+whnf B = (a1 = a2)
+G |- a => A 
+----------------------------------- :: subst
+G |- subst a by b => A
+
+defn 
+G |- a <= B ::    :: checkType :: 'c_'
+{{ com type checking (algorithmic) }}
+by
+
+G |- a <=> b
+------------------- :: refl
+G |- refl <= a = b
+
+
+G |- b => B 
+whnf B = (x = a2)
+G |- a <= A [a2/x]
+----------------------------------- :: subst_left
+G |- subst a by b <= A
+
+G |- b => B 
+whnf B = (a1 = x)
+G |- a <= A [a1/x]
+----------------------------------- :: subst_right
+G |- subst a by b <= A
+
+
+G |- y => B 
+whnf B = (x = a2)
+G |- a <= A [a2/x][refl/y]
+----------------------------------- :: subst_left_refl
+G |- subst a by y <= A
+
+G |- y => B 
+whnf B = (a1 = x)
+G |- a <= A [a1/x][refl/y]
+----------------------------------- :: subst_right_refl
+G |- subst a by y <= A
+
+
+G |- a : A
+whnf A = (a1 = a2)
+whnf a1 = True
+whnf a2 = False
+------------------------ :: contra 
+G |- contra a <= B
