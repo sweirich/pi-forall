@@ -1,0 +1,72 @@
+module Lec2 where
+
+-- this code only type checks with a definition of type equality that 
+-- includes definition unfolding and beta-equivalence
+
+-- logical "and"
+
+and : Type -> Type -> Type
+and = \p. \q. (c: Type) -> (p -> q -> c) -> c
+
+conj : (p:Type) -> (q:Type) -> p -> q -> and p q
+conj = \p.\q. \x.\y. \c. \f. f x y
+
+proj1 : (p:Type) -> (q:Type) -> and p q -> p
+proj1  = \p. \q. \a. a p (\x.\y.x)
+
+proj2 : (p:Type) -> (q:Type) -> and p q -> q
+proj2  = \p. \q. \a. a q (\x.\y.y)
+
+and_commutes : (p:Type) -> (q:Type) -> and p q -> and q p
+and_commutes = \p. \q. \a. conj q p (proj2 p q a) (proj1 p q a)
+
+-- "large eliminations" 
+
+bool' : Bool -> Type
+bool' = \b . (B : (b : Bool) -> Type) -> B True -> B False -> B b
+
+true' : bool' True
+true' = \A x y . x
+
+false' : bool' False
+false' = \ A x y. y
+
+T : Bool -> Type
+T = \b. if b then Unit else Bool
+
+z1 : T True
+z1 = ()
+
+z2 : T False
+z2 = True
+
+
+-- To get bar and barnot to work 
+-- the typing rule for 'if' expressions must be 
+-- context-dependent. In otherwords, it should add new 
+-- definitions to the context in the true/false branches
+-- when the scrutinee is a variable
+
+not : Bool -> Bool 
+not = \x. if x then False else True
+
+bar : (b : Bool) -> T b
+bar = \b. if b then () else True
+
+barnot : (b : Bool) -> T (not b) 
+barnot = \b. if b then False else ()
+
+-- projections for sigma types
+
+fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
+fst = \A B p. let (x,y) = p in x
+
+snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
+snd = \A B p. let (x1,y) = p in y
+
+-- examples of propositional equality
+
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  subst refl by pf 
+

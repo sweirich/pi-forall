@@ -13,12 +13,13 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
 import Syntax
-import Text.PrettyPrint.HughesPJ (($$),render)
+
+import Text.PrettyPrint.HughesPJ (($$))
+
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
-import Debug.Trace
 
 -- | Infer the type of a term. The returned type is not guaranteed to be checkable(?)
 inferType :: Term -> TcMonad Type
@@ -27,17 +28,17 @@ inferType t = tcTerm t Nothing
 -- | Check that the given term has the expected type.
 -- The provided type does not necessarily to be in whnf, but it should be
 -- already checked to be a good type
-checkType :: Term -> Type -> TcMonad Type
+checkType :: Term -> Type -> TcMonad ()
 checkType tm expectedTy = do
   nf <- Equal.whnf expectedTy
-  tcTerm tm (Just nf)
+  void $ tcTerm tm (Just nf)
+
   
 -- | Make sure that the term is a type (i.e. has type 'Type')
 tcType :: Term -> TcMonad ()
-tcType tm = (checkType tm Type) >> return ()
+tcType tm = void $ checkType tm Type
     
--- | check a term, producing an elaborated term
--- where all type annotations have been filled in.
+-- | check a term, producing its type
 -- The second argument is 'Nothing' in inference mode and
 -- an expected type (in weak-head-normal form) in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad Type
@@ -76,12 +77,16 @@ tcTerm (App t1 a2) Nothing = do
   (x,  tyA, tyB) <- Equal.ensurePi ty1
 
   ty2 <-  checkType (unArg a2) tyA
-  return (Unbound.subst x (Ann (unArg a2) tyA) tyB)
+  -- NOTE: we're replacing an inferrable variable with a 
+  -- a checkable term. So the result will not necessarily 
+  -- be checkable as a type.
+  return (Unbound.subst x (unArg a2) tyB)
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do
-  ty' <- tcType ty
+  tcType ty
   checkType tm ty
+  return ty
   
 -- practicalities
 -- remember the current position in the type checking monad
@@ -216,19 +221,17 @@ tcEntry (Def n term) = do
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
                 disp
-                  [ DS "When checking the term ",
+                  [ 
+                    DS "When checking the term ",
                     DD term,
                     DS "against the signature",
                     DD sig
                   ]
            in do
-                ety <-
-                  Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
-                -- Put the elaborated version of term into the context.
-                let esig = sig{sigType = ety}
+                Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
                 if (n `elem` Unbound.toListOf Unbound.fv term)
-                  then return $ AddCtx [Sig esig, RecDef n term]
-                  else return $ AddCtx [Sig esig, Def n term]
+                  then return $ AddCtx [Sig sig, RecDef n term]
+                  else return $ AddCtx [Sig sig, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err

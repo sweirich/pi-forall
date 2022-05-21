@@ -13,6 +13,10 @@ category: Compilers/Interpreters
 homepage: https://github.com/sweirich/pi-forall
 synopsis: Demo implementation of typechecker for dependently-typed language
 
+source-repository head
+  type: git
+  location: https://github.com/sweirich/pi-forall
+
 common shared-properties
   default-language:
     Haskell2010
@@ -41,8 +45,6 @@ common shared-properties
     TypeSynonymInstances
     UndecidableInstances 
     ViewPatterns
-
-  hs-source-dirs: src/
   build-depends:  
     base >= 4 && < 5,
     parsec >= 3.1.8 && < 3.2,
@@ -58,31 +60,32 @@ common shared-properties
     QuickCheck
   if !impl(ghc >= 8.0)
     build-depends: semigroups == 0.18.*      
+ 
 
 library
   import: shared-properties
+  hs-source-dirs: src
   exposed-modules: 
-    Syntax
-    Parser
-    TypeCheck
-    Modules
     Environment
-    PrettyPrint
     Equal
     LayoutToken
-    Main
+    Modules
+    Parser
+    PrettyPrint
+    Syntax
+    TypeCheck
+    Arbitrary
   
 executable pi-forall
   import: shared-properties
   build-depends: pi-forall
+  hs-source-dirs: app
   main-is: Main.hs
-  other-modules: 
-    Environment
-    Equal
-    LayoutToken
-    Modules
-    Parser
-    PrettyPrint
-    Syntax
-    TypeCheck
   
+test-suite test-pi-forall
+  import: shared-properties
+  build-depends: pi-forall
+    , QuickCheck >= 2.13.2
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Main.hs

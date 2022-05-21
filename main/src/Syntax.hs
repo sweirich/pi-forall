@@ -330,10 +330,10 @@ y0 :: TName
 y0 = Unbound.string2Name "y"
 
 idx :: Term
-idx = Lam (Unbound.bind (x0 {- STUBWITH EP -}, Runtime {- SOLN -}) (Var x0))
+idx = Lam (Unbound.bind (x0 {- SOLN EP -}, Runtime {- STUBWITH -}) (Var x0))
 
 idy :: Term
-idy = Lam (Unbound.bind (y0 {- STUBWITH EP -}, Runtime {- SOLN -}) (Var y0))
+idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Runtime {- STUBWITH -}) (Var y0))
 
 -- >>> Unbound.aeq idx idy
 -- True

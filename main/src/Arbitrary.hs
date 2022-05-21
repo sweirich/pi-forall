@@ -35,24 +35,28 @@ sampleTerm = QC.sample' (arbitrary :: Gen Term) >>=
 genName :: Gen (Unbound.Name a)
 genName = Unbound.string2Name <$> elements ["x", "y", "z", "x0" , "y0"]
 
+{- SOLN DATA -}
 genTCName :: Gen TCName
 genTCName = elements ["T", "List", "Vec", "Nat"]
 
 genDCName :: Gen DCName
 genDCName = elements ["Nil", "Cons", "Zero", "Succ"]
+{- STUBWITH -}
 
 instance Arbitrary (Unbound.Name a) where
     arbitrary = genName where
         
+{- SOLN EP -}        
 instance Arbitrary Epsilon where
     arbitrary = elements [ Runtime, Erased ]
+{- STUBWITH -}
 
 instance Arbitrary Arg where
     arbitrary = sized genArg
-    shrink (Arg ep tm) = [ Arg ep tm' | tm' <- QC.shrink tm]
+    shrink (Arg {- SOLN EP -} ep {- STUBWITH -} tm) = [ Arg {- SOLN EP -} ep {- STUBWITH -} tm' | tm' <- QC.shrink tm]
 
 genArg :: Int -> Gen Arg
-genArg n = Arg <$> arbitrary <*> genTerm (n `div` 2)
+genArg n = Arg <$> {- SOLN EP -} arbitrary <*> {- STUBWITH -} genTerm (n `div` 2)
 
 genArgs :: Int -> Gen [Arg]
 genArgs n = QC.listOf (genArg n)
@@ -61,14 +65,14 @@ base :: Gen Term
 base = elements [Type, 
                 TrustMe, PrintMe, 
                 TyUnit, LitUnit, TyBool, 
-                LitBool True, LitBool False, Refl ]
+                LitBool True, LitBool False {- SOLN EQUAL -}, Refl {- STUBWITH -} ]
 
 genTerm :: Int -> Gen Term
 genTerm n 
         | n <= 1 = base
         | otherwise = 
             frequency [
-              (1, base),
+
               (1, Var <$> genName),
               (1, genLam n'),
               (1, App <$> genTerm n' <*> genArg n'),
@@ -81,24 +85,33 @@ genTerm n
               (1, genSigma n'),
               (1, Prod <$> genTerm n' <*> genTerm n'),
               (1, genLetPair n'),
-           --   (1, TyEq <$> genTerm n' <*> genTerm n'),
-           --   (1, Subst <$> genTerm n' <*> genTerm n'),
-           --   (1, Contra <$> genTerm n'),
+              {- SOLN EQUAL -}
+              (1, TyEq <$> genTerm n' <*> genTerm n'),
+              (1, Subst <$> genTerm n' <*> genTerm n'),
+              (1, Contra <$> genTerm n'),
+              {- STUBWITH -}
+              {- SOLN DATA -}
               (1, TCon <$> genTCName <*> genArgs n'),
               (1, DCon <$> genDCName <*> genArgs n'),
-              (1, Case <$> genTerm n' <*> genMatches n')
+              (1, Case <$> genTerm n' <*> genMatches n'),
+              {- STUBWITH -}
+              (1, base)
             ]
     where n' = n `div` 2
 
 genLam :: Int -> Gen Term
-genLam n = do
+genLam n = do 
+{- SOLN EP -}
     p <- ( (,) <$> genName <*> arbitrary ) 
+    {- STUBWITH     p <- genName -}
     b <- genTerm n
     return $ Lam (Unbound.bind p b)
 
 genPi :: Int -> Gen Term
-genPi n = do
+genPi n = do 
+{- SOLN EP -}
     p <- ((,,) <$> genName <*> arbitrary <*> (Unbound.Embed <$> genTerm n))
+    {- STUBWITH     p <- ((,) <$> genName <*> (Unbound.Embed <$> genTerm n)) -}
     tyB <- genTerm n
     return $ Pi (Unbound.bind p tyB)
 
@@ -123,6 +136,7 @@ genLetPair n = do
     return $ LetPair a (Unbound.bind p b)
   where n' = n `div` 2
 
+{- SOLN DATA -}
 genPattern :: Int -> Gen Pattern
 genPattern n | n == 0 = PatVar <$> genName
   | otherwise = frequency 
@@ -143,6 +157,7 @@ instance Arbitrary Pattern where
     arbitrary = sized genPattern 
     shrink (PatCon _ pats) = map fst pats
     shrink _ = []
+{- STUBWITH -}
 
 instance Arbitrary Term where
     arbitrary = sized genTerm where
@@ -152,12 +167,4 @@ instance Arbitrary Term where
     shrink (Paren tm) = [tm] ++ [Paren tm' | tm' <- QC.shrink tm]
     shrink _ = []
        
-      
-     
-x = "[z:Bool] -> refl"
-y = Pi (Unbound.bind (x0, Erased, Unbound.embed TyBool) TyBool)
 
-w = Let (Unbound.bind (y0, Unbound.embed (Pi (Unbound.bind (y0,Runtime, Unbound.embed TyBool) TyBool)))
-        (Var x0))
-z = Pi (Unbound.bind (x0, Runtime, Unbound.embed w)
-        (Pi (Unbound.bind (x0, Erased,Unbound.embed TyBool) (LitBool False))))

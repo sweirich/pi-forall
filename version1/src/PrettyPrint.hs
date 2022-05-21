@@ -1,7 +1,7 @@
 {- PiForall language, OPLSS -}
 
 -- | A Pretty Printer.
-module PrettyPrint (Disp (..), D (..)) where
+module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render) where
 
 import Control.Monad.Reader (MonadReader (ask, local))
 import Data.Set qualified as S
@@ -84,8 +84,6 @@ instance Disp Term
 
 instance Disp Arg
 
-instance Disp Annot
-
 
 
 ------------------------------------------------------------------------
@@ -109,13 +107,12 @@ instance Disp ModuleImport where
   disp (ModuleImport i) = text "import" <+> disp i
 
 instance Disp Sig where
-  disp (S n  ty) =
-     (disp n <+> text ":" <+> disp ty)
+  disp (S n  ty) = disp n <+> text ":" <+> disp ty
 
 instance Disp Decl where
   disp (Def n term) = disp n <+> text "=" <+> disp term
   disp (RecDef n r) = disp (Def n r)
-  disp (Sig sig) = disp sig
+  disp (Sig sig)    = disp sig
 
 
 -------------------------------------------------------------------------
@@ -194,7 +191,7 @@ instance Display Term where
   display (Var n) = display n
   display a@(Lam b) = do
     (binds, body) <- gatherBinders a
-    return $ hang (text "\\" PP.<> sep binds <+> text ".") 2 body
+    return $ hang (text "\\" PP.<> sep binds PP.<> text ".") 2 body
   display (App f x) = do
     df <- display f
     dx <- display x
@@ -208,7 +205,7 @@ instance Display Term where
       let lhs =
             if (n `elem` toListOf Unbound.fv b)
               then parens (dn <+> colon <+> da)
-              else da
+              else  da
       return $ lhs <+> text "->" <+> db
   display (Ann a b) = do
     st <- ask
@@ -289,14 +286,6 @@ instance Display Arg where
     st <- ask
     wraparg st arg <$> display (unArg arg)
 
-instance Display Annot where
-  display (Annot Nothing) = return $ empty
-  display (Annot (Just x)) = do
-    st <- ask
-    if (showAnnots st)
-      then (text ":" <+>) <$> (display x)
-      else return $ empty
-
 
 
 -------------------------------------------------------------------------
@@ -309,7 +298,7 @@ gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
 gatherBinders (Lam b) =
   Unbound.lunbind b $ \((n ), body) -> do
     dn <- display n
-    let db = (parens dn)
+    let db = ( dn)
     (rest, body') <- gatherBinders body
     return $ (db : rest, body')
 gatherBinders body = do

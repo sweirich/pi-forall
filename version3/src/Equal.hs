@@ -13,18 +13,17 @@ import qualified Unbound.Generics.LocallyNameless as Unbound
 import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
 
 -- | compare two expressions for equality
---   if the two terms and not already in whnf, first check if they are alpha equivalent 
-
---   ignore type annotations during comparison
---   throw an error if the two types cannot be matched up
+-- first check if they are alpha equivalent then
+-- if not, weak-head normalize and compare
+-- throw an error if they cannot be matched up
 equate :: Term -> Term -> TcMonad ()
-equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
-  --Env.warn [DS "Equating: ", DD t1, DS " and  ", DD t2]
-  n1 <- whnf' False t1  
-  n2 <- whnf' False t2
+equate t1 t2 | Unbound.aeq t1 t2 = return () 
+equate t1 t2 = do
+  n1 <- whnf t1  
+  n2 <- whnf t2
   case (n1, n2) of 
     (Type, Type) -> return ()
-    (Var x,  Var y)  | x == y -> return ()
+    (Var x,  Var y) | x == y -> return ()
     (Lam bnd1, Lam bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       equate b1 b2
@@ -38,15 +37,6 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
           tyErr n1 n2 
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
-
-{-
-    (Ann at1 _, at2) -> equate at1 at2
-    (at1, Ann at2 _) -> equate at1 at2
-    (Paren at1, at2) -> equate at1 at2
-    (at1, Paren at2) -> equate at1 at2
-    (Pos _ at1, at2) -> equate at1 at2
-    (at1, Pos _ at2) -> equate at1 at2
-  -}
 
     (TrustMe, TrustMe) ->  return ()
     (PrintMe, PrintMe) ->  return ()
@@ -87,29 +77,25 @@ equate t1 t2 = if (Unbound.aeq t1 t2) then return () else do
     
     (Refl,  Refl) -> return ()
     
-    -- Substitutions are never relevant for equality, nor are their proofs
-    (Subst at1 _, ty2) -> equate at1 ty2 
-    (ty1, Subst at2 _) -> equate ty1 at2 
+    (Subst at1 pf1, Subst at2 pf2) -> do
+      equate at1 at2
+      equate pf1 pf2
         
-    (Contra a1, Contra a2) -> return ()
+    (Contra a1, Contra a2) -> 
+      equate a1 a2
       
 
-    (Var x, _) -> recEquate x n2
-    (_, Var x) -> recEquate x n1
     (_,_) -> tyErr n1 n2
  where tyErr n1 n2 = do 
           gamma <- Env.getLocalCtx
           Env.err [DS "Expected", DD n2,
                DS "but found", DD n1,
                DS "in context:", DD gamma]
-       recEquate x n2 = do
-         mrd <- Env.lookupRecDef x 
-         case mrd of 
-           Just d -> equate d n2
-           Nothing -> tyErr (Var x) n2
+       
 
 
 -- | Match up args
+-- TODO: add compile-time irrelevance here
 equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
 equateArgs (a1:t1s) (a2:t2s) = do
   equate (unArg a1) (unArg a2)
@@ -161,68 +147,57 @@ ensureTyEq ty = do
 
 -------------------------------------------------------
 -- | Convert a term to its weak-head normal form.             
-
--- Compute whnf while unfolding recursive definitions as well as non-recursive
--- ones. But only unfold once.
-whnf :: Term -> TcMonad Term
-whnf t = do
-  whnf' True t
-  
-whnf' :: Bool -> Term -> TcMonad Term       
-whnf' b (Var x) = do      
+whnf :: Term -> TcMonad Term  
+whnf (Var x) = do      
   maybeDef <- Env.lookupDef x
   case (maybeDef) of 
-    (Just d) -> whnf' b d 
-    _ -> 
-      if b then do
+    (Just d) -> whnf d 
+    _ -> do
           maybeRecDef <- Env.lookupRecDef x 
           case maybeRecDef of 
-            (Just d) -> whnf' False d
+            (Just d) -> whnf d
             _ -> return (Var x)
-        else 
-          return (Var x)
-
-whnf' b (App t1 a2) = do
-  nf <- whnf' b t1 
+        
+whnf (App t1 a2) = do
+  nf <- whnf t1 
   case nf of 
     (Lam bnd) -> do
       ((x {- SOLN EP -},_{- STUBWITH -}), body) <- Unbound.unbind bnd 
-      whnf' b (Unbound.subst x (unArg a2) body)
-      
+      whnf (Unbound.subst x (unArg a2) body)
     _ -> do
       return (App nf a2)
       
-      
-whnf' b (If t1 t2 t3) = do
-  nf <- whnf' b t1
+whnf (If t1 t2 t3) = do
+  nf <- whnf t1
   case nf of 
-    (LitBool bo) -> if bo then whnf' b t2 else whnf' b t3
+    (LitBool bo) -> if bo then whnf t2 else whnf t3
     _ -> return (If nf t2 t3)
 
-whnf' b (LetPair a bnd) = do
-  nf <- whnf' b a 
+whnf (LetPair a bnd) = do
+  nf <- whnf a 
   case nf of 
     Prod b1 c -> do
       ((x,y), body) <- Unbound.unbind bnd
-      whnf' b (Unbound.subst x b1 (Unbound.subst y c body))
+      whnf (Unbound.subst x b1 (Unbound.subst y c body))
     _ -> return (LetPair nf bnd)
 
--- just ignore type annotations and source positions when normalizing  
-whnf' b (Ann tm _) = whnf' b tm
-whnf' b (Paren tm) = whnf' b tm
-whnf' b (Pos _ tm) = whnf' b tm
+-- ignore/remove type annotations and source positions when normalizing  
+whnf (Ann tm _) = whnf tm
+whnf (Paren tm) = whnf tm
+whnf (Pos _ tm) = whnf tm
  
-whnf' b (Let bnd)  = do
+whnf (Let bnd)  = do
   ((x,Unbound.unembed->rhs),body) <- Unbound.unbind bnd
-  whnf' b (Unbound.subst x rhs body)  
-whnf' b (Subst tm pf) = do
-  pf' <- whnf' b pf
+  whnf (Unbound.subst x rhs body)  
+whnf (Subst tm pf) = do
+  pf' <- whnf pf
   case pf' of 
-    Refl -> whnf' b tm
+    Refl -> whnf tm
     _ -> return (Subst tm pf')    
             
 -- all other terms are already in WHNF
-whnf' b tm = return tm
+-- don't do anything special for them
+whnf tm = return tm
 
 
 
