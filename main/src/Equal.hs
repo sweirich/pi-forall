@@ -174,8 +174,6 @@ ensureTCon :: Term -> TcMonad WhnfTCon
 ensureTCon aty = do
   nf <- whnf aty
   case nf of 
-    TyBool -> return (WhnfTCon "Bool" [])
-    TyUnit -> return (WhnfTCon "Unit"  [])
     TCon n params -> return (WhnfTCon n params)    
     _ -> Env.err [DS "Expected a data type but found", DD nf]
 {- STUBWITH -}
@@ -262,8 +260,6 @@ patternMatches (Arg Runtime t) pat = do
     (DCon d [], PatCon d' pats)   | d == d' -> return []
     (DCon d args, PatCon d' pats) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
-    (LitBool b, PatBool b') | b == b' -> return []
-    (LitUnit, PatUnit) -> return []
     _ -> Env.err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
 patternMatches (Arg Erased _) pat = do
   Env.err [DS "Cannot match against irrelevant args"]

@@ -88,7 +88,7 @@ parseModuleFile name = do
   liftError $ Unbound.runFreshM $ 
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 
--- | Parse only the imports part of a module from the given filepath.
+-- | Parse only the imports part of a module from the given filepath
 parseModuleImports :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleImports name = do
   contents <- liftIO $ readFile name
@@ -329,6 +329,7 @@ bconst = choice [reserved "Bool"  >> return TyBool,
                  reserved "True"  >> return (LitBool True),
                  reserved "Unit"   >> return TyUnit,
                  reserved "()"    >> return LitUnit]
+
 
 ifExpr :: LParser Term
 ifExpr = 

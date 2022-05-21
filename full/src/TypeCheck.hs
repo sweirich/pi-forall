@@ -437,11 +437,7 @@ doSubst ss (AssnSig sig : tele') = do
 -- helper functions for checking pattern matching
 
 forgetTCon :: Equal.WhnfTCon -> Type
-forgetTCon (Equal.WhnfTCon n ps) = 
-  case n of
-    "Bool" -> TyBool
-    "One" -> TyUnit
-    _ -> TCon n ps
+forgetTCon (Equal.WhnfTCon n ps) = TCon n ps
 
 -- | Create a binding in the context for each of the variables in
 -- the pattern.
@@ -459,14 +455,9 @@ declarePatTCon (PatCon d pats) (Equal.WhnfTCon c params) = do
   (Telescope delta, Telescope deltai) <- Env.lookupDCon d c
   tele <- substTele delta params deltai
   declarePats d pats tele
-declarePatTCon (PatBool _) (Equal.WhnfTCon "Bool" []) = do
-  return ([],[])
-declarePatTCon PatUnit (Equal.WhnfTCon "One" []) = do
-  return ([],[])
 declarePatTCon (PatVar x) y = 
   Env.err [DS "Internal error: declarePatTCon, found ", DD (PatVar x)]
-declarePatTCon pat ty =
-  Env.err [DS "Cannot match pattern", DD pat, DS "with type", DD (forgetTCon ty)]
+
 
 
 declarePats :: DCName -> [(Pattern, Epsilon)] -> [Assn] -> TcMonad ([Decl], [TName])
@@ -503,10 +494,8 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
       ts <- pats2Terms ps (Unbound.subst x t d)
       return (Arg ep t : ts)
     pats2Terms _ _ = Env.err [DS "Invalid number of args to pattern", DD dc]
-pat2Term (PatBool b) ty = pure $ LitBool b
-pat2Term (PatUnit) ty = pure $ LitUnit
 pat2Term (PatVar x) ty = return (Var x)
-pat2Term _ _ = Env.err [DS "Internal error: pat2Term"]
+pat2Term p ty = Env.err [DS "Internal error: pat2Term", DS (show p), DS " ", DS (show ty) ]
 
 -- | Create a list of variable definitions from the scrutinee
 -- of a case expression and the pattern in a branch. Scrutinees
@@ -524,8 +513,6 @@ equateWithPatTCon :: Term -> Pattern -> Equal.WhnfTCon -> TcMonad [Decl]
 equateWithPatTCon (Var x) pat ty = do
   tm <- pat2Term pat (forgetTCon ty)
   return [Def x tm]
-equateWithPatTCon (LitBool b) (PatBool b') (Equal.WhnfTCon "Bool" []) | b == b' = pure []
-equateWithPatTCon LitUnit PatUnit (Equal.WhnfTCon "One" []) = pure []
 equateWithPatTCon (DCon dc args) (PatCon dc' pats) (Equal.WhnfTCon n params)
   | dc == dc' = do
     (Telescope delta, Telescope deltai) <- Env.lookupDCon dc n
@@ -723,8 +710,6 @@ duplicateTypeBindingCheck sig = do
 -- there are patterns for each one.
 exhaustivityCheck :: Term -> Type -> [Pattern] -> TcMonad ()
 exhaustivityCheck scrut ty (PatVar x : _) = return ()
-exhaustivityCheck scrut TyUnit [PatUnit] = return ()
-exhaustivityCheck scrut TyBool [PatBool b] = return ()
 exhaustivityCheck scrut ty pats = do
   (Equal.WhnfTCon tcon tys) <- Equal.ensureTCon ty
   (Telescope delta, mdefs) <- Env.lookupTCon tcon
@@ -737,12 +722,6 @@ exhaustivityCheck scrut ty pats = do
           if null l
             then return ()
             else Env.err $ [DS "Missing case for "] ++ map DD l
-        loop [PatUnit] [ConstructorDef _ "tt" (Telescope [])]  = do
-          return ()
-        loop (PatUnit : _) _ = Env.err [DS "loop PatUnit"]
-        loop (PatBool b : pats') dcons = do
-          (cd@(ConstructorDef _ _ _, dcons')) <- removeDcon (show b) dcons
-          loop pats' dcons'
         loop ((PatVar x) : _) dcons = return ()
         loop ((PatCon dc args) : pats') dcons = do
           (cd@(ConstructorDef _ _ (Telescope tele), dcons')) <- removeDcon dc dcons

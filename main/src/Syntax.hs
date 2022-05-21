@@ -146,8 +146,6 @@ data Match = Match (Unbound.Bind Pattern Term)
 data Pattern
   = PatCon DCName [(Pattern, Epsilon)]
   | PatVar TName
-  | PatBool Bool -- True / False
-  | PatUnit -- unit
   deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 {- STUBWITH -}

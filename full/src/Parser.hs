@@ -114,7 +114,7 @@ parseModuleFile cnames name = do
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 
 
--- | Parse only the imports part of a module from the given filepath.
+-- | Parse only the imports part of a module from the given filepath
 parseModuleImports :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleImports name = do
   contents <- liftIO $ readFile name
@@ -487,11 +487,13 @@ lambda = do reservedOp "\\"
 
 
 bconst  :: LParser Term
-bconst = choice [reserved "Bool"  >> return TyBool,
-                 reserved "False" >> return (LitBool False),
-                 reserved "True"  >> return (LitBool True),
-                 reserved "Unit"   >> return TyUnit,
-                 reserved "()"    >> return LitUnit]
+bconst = choice [reserved "Bool"  >> return (TCon "Bool" []),
+                 reserved "False" >> return (DCon "False" []),
+                 reserved "True"  >> return (DCon "True" []),
+                 reserved "Unit"  >> return (TCon "Unit" []),
+                 reserved "()"    >> return (DCon "()" [])]
+
+
 
 ifExpr :: LParser Term
 ifExpr = 
@@ -501,7 +503,9 @@ ifExpr =
      b <- expr
      reserved "else"
      c <- expr
-     return (If a b c )
+     return (Case a [Match $ Unbound.bind (PatCon "True" []) b, 
+                     Match $ Unbound.bind (PatCon "False" []) c])
+
     
 
 -- 
@@ -589,9 +593,9 @@ pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
     arg_pattern    =  ((,Erased) <$> brackets pattern) 
                   <|> ((,Runtime) <$> atomic_pattern)
     atomic_pattern =    (parens pattern)
-                  <|> reserved "True" *> pure (PatBool True)
-                  <|> reserved "False" *> pure (PatBool False)
-                  <|> reserved "tt" *> pure PatUnit
+                  <|> reserved "True" *> pure (PatCon "True" [])
+                  <|> reserved "False" *> pure (PatCon "False" [])
+                  <|> reserved "()" *> pure (PatCon "()" [])
                   <|> (PatVar <$> wildcard)
                   <|> do t <- varOrCon
                          case t of

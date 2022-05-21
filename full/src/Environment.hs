@@ -150,18 +150,18 @@ lookupRecDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
+trueConstructorDef = ConstructorDef internalPos "True" (Telescope [])
+falseConstructorDef = ConstructorDef internalPos "False" (Telescope [])
+unitConstructorDef = ConstructorDef internalPos "()" (Telescope []) 
 -- | Find a type constructor in the context
 lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
   m (Telescope, Maybe [ConstructorDef])
 lookupTCon "Bool" = do
-  return (Telescope [], Just 
-    [ ConstructorDef internalPos "True" (Telescope []), 
-      ConstructorDef internalPos "False" (Telescope [])])
+  return (Telescope [], Just [ trueConstructorDef, falseConstructorDef])
 lookupTCon "Unit" = do
-  return (Telescope [], Just 
-    [ ConstructorDef internalPos "()" (Telescope []) ] )
+  return (Telescope [], Just [ unitConstructorDef ] )
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
@@ -191,6 +191,9 @@ lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
   m [(TCName, (Telescope, ConstructorDef))]
+lookupDConAll "True" = return $ [ ("Bool", (Telescope [], trueConstructorDef))] 
+lookupDConAll "False" = return $ [ ("Bool", (Telescope [], falseConstructorDef))] 
+lookupDConAll "()" = return $ [ ("Unit", (Telescope [], unitConstructorDef))] 
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
