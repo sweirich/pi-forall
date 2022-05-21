@@ -98,7 +98,7 @@ getTys = do
   ctx <- asks ctx
   return $ catMaybes (map unwrap ctx)
   where
-    unwrap (Sig (S v {- SOLN EP -}ep{- STUBWITH -} ty)) = Just (v,{- SOLN EP -} ep,{- STUBWITH -} ty)
+    unwrap (TypeSig (Sig v {- SOLN EP -}ep{- STUBWITH -} ty)) = Just (v,{- SOLN EP -} ep,{- STUBWITH -} ty)
     unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
@@ -114,7 +114,7 @@ lookupTyMaybe ::
   m (Maybe Sig)
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [ sig | Sig sig <- ctx, v == sigName sig]
+  return $ listToMaybe [ sig | TypeSig sig <- ctx, v == sigName sig]
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
@@ -153,8 +153,11 @@ lookupRecDef v = do
 
 {- SOLN DATA -}
 
+trueConstructorDef :: ConstructorDef
 trueConstructorDef = ConstructorDef internalPos "True" (Telescope [])
+falseConstructorDef :: ConstructorDef
 falseConstructorDef = ConstructorDef internalPos "False" (Telescope [])
+unitConstructorDef :: ConstructorDef
 unitConstructorDef = ConstructorDef internalPos "()" (Telescope []) 
 -- | Find a type constructor in the context
 lookupTCon ::
@@ -270,7 +273,7 @@ extendCtxTele (AssnProp (Eq t1 t2) : tele) m = do
   warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
   extendCtxTele tele m
 extendCtxTele (AssnSig sig : tele) m =
-  extendCtx (Sig sig) $ extendCtxTele tele m
+  extendCtx (TypeSig sig) $ extendCtxTele tele m
 
 {- STUBWITH -}
 

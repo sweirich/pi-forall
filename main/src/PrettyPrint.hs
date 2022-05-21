@@ -118,12 +118,12 @@ instance Disp ModuleImport where
   disp (ModuleImport i) = text "import" <+> disp i
 
 instance Disp Sig where
-  disp (S n {- SOLN EP -} ep {- STUBWITH -} ty) = disp n <+> text ":" <+> disp ty
+  disp (Sig n {- SOLN EP -} ep {- STUBWITH -} ty) = disp n <+> text ":" <+> disp ty
 
 instance Disp Decl where
   disp (Def n term) = disp n <+> text "=" <+> disp term
   disp (RecDef n r) = disp (Def n r)
-  disp (Sig sig)    = disp sig
+  disp (TypeSig sig)    = disp sig
 {- SOLN DATA -}
   disp (Data n params constructors) =
     hang

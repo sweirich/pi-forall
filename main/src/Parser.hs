@@ -54,6 +54,7 @@ Optional components in this BNF are marked with < >
     | if a then b else c       If 
 
     | { x : A | B }            Dependent pair type
+    | A * B                    Nondependent pair syntactic sugar
     | (a, b)                   Prod introduction
     | let (x,y) = a in b       Prod elimination
 
@@ -201,7 +202,7 @@ piforallStyle = Token.LanguageDef
                   ,"Unit", "()"                               
                   ]
                , Token.reservedOpNames =
-                 ["!","?","\\",":",".",",","<", "=", "+", "-", "^", "()", "_","|","{", "}"]
+                 ["!","?","\\",":",".",",","<", "=", "+", "-", "*", "^", "()", "_","|","{", "}"]
                 }
 {- SOLN DATA -}
 tokenizer :: Token.GenTokenParser String [Column] (StateT ConstructorNames Unbound.FreshM)
@@ -335,7 +336,7 @@ telebindings = many teleBinding
         v <- varOrWildcard
         colon
         t <- expr
-        return (AssnSig (S v Erased t):)
+        return (AssnSig (Sig v Erased t):)
     
     equal = do
         v <- variable
@@ -388,7 +389,7 @@ constructorDef = do
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ Sig (mkSig n ty)
+  return $ TypeSig (mkSig n ty)
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -426,7 +427,8 @@ expr = do
   where table = [
 {- SOLN EQUAL -}
                  [ifix  AssocLeft "=" TyEq],{- STUBWITH -}
-                 [ifixM AssocRight "->" mkArrow]
+                 [ifixM AssocRight "->" mkArrow],
+                 [ifixM AssocRight "*" mkTuple]
                 ]   
 {- SOLN EQUAL -} 
         ifix  assoc op f = Infix (reservedOp op >> return f) assoc {- STUBWITH -}
@@ -435,6 +437,10 @@ expr = do
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
                Pi (Unbound.bind (n, {- SOLN EP -}Runtime, {- STUBWITH -} Unbound.embed tyA) tyB)
+        mkTuple = 
+          do n <- Unbound.fresh wildcardName
+             return $ \tyA tyB -> 
+               Sigma (Unbound.bind (n, Unbound.embed tyA) tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both

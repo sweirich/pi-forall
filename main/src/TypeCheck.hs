@@ -56,7 +56,7 @@ tcTerm Type Nothing = return Type
 tcTerm (Pi bnd) Nothing = do
   ((x, {- SOLN EP -}ep,{- STUBWITH -} Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (Sig (S x {- SOLN EP -} ep {- STUBWITH -} tyA)) $ tcType tyB
+  Env.extendCtx (TypeSig (Sig x {- SOLN EP -} ep {- STUBWITH -} tyA)) $ tcType tyB
   return Type
 -- c-lam: check the type of a function
 tcTerm (Lam bnd) (Just (Pi bnd2)) = do
@@ -70,7 +70,7 @@ tcTerm (Lam bnd) (Just (Pi bnd2)) = do
 {- SOLN EP -} -- epsilons should match up
   guard (ep1 == ep2) {- STUBWITH -}
   -- check the type of the body of the lambda expression
-  etyB <- Env.extendCtx (Sig (S x {- SOLN EP -} ep1 {- STUBWITH -} tyA)) (checkType body tyB)
+  etyB <- Env.extendCtx (TypeSig (Sig x {- SOLN EP -} ep1 {- STUBWITH -} tyA)) (checkType body tyB)
   return (Pi bnd2)
    
 tcTerm (Lam _) (Just nf) =
@@ -129,7 +129,7 @@ tcTerm (Let bnd) ann = {- SOLN HW -} do
   ((x, Unbound.unembed -> rhs), body) <- Unbound.unbind bnd
   aty <- inferType rhs 
   let sig = mkSig x aty
-  ty <- Env.extendCtxs [Sig sig, Def x rhs] $
+  ty <- Env.extendCtxs [TypeSig sig, Def x rhs] $
       tcTerm body ann
   when (x `elem` Unbound.toListOf Unbound.fv ty) $
     Env.err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]
@@ -276,7 +276,7 @@ tcTerm t@(Contra p) (Just ty) = do
 tcTerm t@(Sigma bnd) Nothing = {- SOLN EQUAL -} do
   ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (Sig (mkSig x tyA)) $ tcType tyB
+  Env.extendCtx (TypeSig (mkSig x tyA)) $ tcType tyB
   return Type
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
@@ -285,7 +285,7 @@ tcTerm t@(Prod a b) (Just ty) = {- SOLN EQUAL -} do
     (Sigma bnd) -> do
       ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
       checkType a tyA
-      Env.extendCtxs [Sig (mkSig x tyA), Def x a] $ checkType b tyB
+      Env.extendCtxs [TypeSig (mkSig x tyA), Def x a] $ checkType b tyB
       return (Sigma (Unbound.bind (x, Unbound.embed tyA) tyB))
     _ ->
       Env.err
@@ -304,7 +304,7 @@ tcTerm t@(LetPair p bnd) (Just ty) = {- SOLN EQUAL -} do
       ((x', y'), body) <- Unbound.unbind bnd
       let tyB' = Unbound.subst x (Var x') tyB
       decl <- def p (Prod (Var x') (Var y'))
-      Env.extendCtxs ([Sig (mkSig x' tyA), Sig (mkSig y' tyB')] ++ decl) $
+      Env.extendCtxs ([TypeSig (mkSig x' tyA), TypeSig (mkSig y' tyB')] ++ decl) $
           checkType body ty
       return ty
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
@@ -380,7 +380,7 @@ substTele :: [Assn] -> [Arg] -> [Assn] -> TcMonad [Assn]
 substTele tele args delta = doSubst (mkSubst tele (map unArg args)) delta
   where
     mkSubst [] [] = []
-    mkSubst (AssnSig (S x Runtime _) : tele') (tm : tms) =
+    mkSubst (AssnSig (Sig x Runtime _) : tele') (tm : tms) =
       (x, tm) : mkSubst tele' tms
     mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
@@ -453,7 +453,7 @@ forgetTCon (Equal.WhnfTCon n ps) = TCon n ps
 -- the pattern.
 -- Also returns the erased variables so that they can be checked
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
-declarePat (PatVar x) ep y = return ([Sig (S x ep y)], [])
+declarePat (PatVar x) ep y = return ([TypeSig (Sig x ep y)], [])
 declarePat pat Runtime ty = do 
   whnfTCon <- Equal.ensureTCon ty
   declarePatTCon pat whnfTCon
@@ -476,7 +476,7 @@ declarePats dc pats (AssnProp (Eq tx ty) : tele) = do
   new_decls <- constraintToDecls tx ty
   (decls, names) <- Env.extendCtxs new_decls $ declarePats dc pats tele
   return (new_decls ++ decls, names)
-declarePats dc ((pat, _) : pats) (AssnSig (S x ep ty) : tele) = do
+declarePats dc ((pat, _) : pats) (AssnSig (Sig x ep ty) : tele) = do
   (ds1, v1) <- declarePat pat ep ty
   tm <- pat2Term pat ty
   (ds2, v2) <- declarePats dc pats (Unbound.subst x tm tele)
@@ -499,7 +499,7 @@ pat2Term (PatCon dc pats) ty@(TCon n params) = do
     pats2Terms ps (AssnProp (Eq tx' ty') : tele') = do
       decls <- constraintToDecls tx' ty'
       Env.extendCtxs decls $ pats2Terms ps tele'
-    pats2Terms ((p, _) : ps) (AssnSig (S x ep ty1) : d) = do
+    pats2Terms ((p, _) : ps) (AssnSig (Sig x ep ty1) : d) = do
       t <- pat2Term p ty1
       ts <- pats2Terms ps (Unbound.subst x t d)
       return (Arg ep t : ts)
@@ -532,7 +532,7 @@ equateWithPatTCon (DCon dc args) (PatCon dc' pats) (Equal.WhnfTCon n params)
         eqWithPats ts ps (AssnProp (Eq tx ty) : tl) = do
           decls <- constraintToDecls tx ty
           Env.extendCtxs decls $ eqWithPats ts ps tl
-        eqWithPats (t : ts) ((p, _) : ps) (AssnSig (S x _ ty) : tl) = do
+        eqWithPats (t : ts) ((p, _) : ps) (AssnSig (Sig x _ ty) : tl) = do
           t' <- Equal.whnf t
           decls <- equateWithPat t' p ty
           decls' <- eqWithPats ts ps (Unbound.subst x t' tl)
@@ -561,7 +561,7 @@ tcTypeTele (AssnProp (Eq tm1 tm2) : tl) = do
   Env.extendCtxs decls $ tcTypeTele tl
 tcTypeTele (AssnSig sig : tl) = do
   tcType (sigType sig)
-  Env.extendCtx (Sig sig) $ tcTypeTele tl
+  Env.extendCtx (TypeSig sig) $ tcTypeTele tl
 
 {- STUBWITH -}
 
@@ -629,7 +629,7 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [Sig (S n {- SOLN EP -}Runtime{- STUBWITH -} ty), Def n term]
+          return $ AddCtx [TypeSig (Sig n {- SOLN EP -}Runtime{- STUBWITH -} ty), Def n term]
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -641,10 +641,10 @@ tcEntry (Def n term) = do
                     DD sig
                   ]
            in do
-                Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
+                Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) `catchError` handler
                 if (n `elem` Unbound.toListOf Unbound.fv term)
-                  then return $ AddCtx [Sig sig, RecDef n term]
-                  else return $ AddCtx [Sig sig, Def n term]
+                  then return $ AddCtx [TypeSig sig, RecDef n term]
+                  else return $ AddCtx [TypeSig sig, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -653,7 +653,7 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (Sig sig) = do
+tcEntry (TypeSig sig) = do
   duplicateTypeBindingCheck sig
   tcType (sigType sig)
   return $ AddHint sig

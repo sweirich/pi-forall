@@ -1,5 +1,7 @@
 module Lec4 where
 
+import Nat
+
 id : [x:Type] -> (y : x) -> x
 id = \[x] y. (y : x)
 
@@ -12,3 +14,35 @@ id' : [x:Type] -> [y:x] -> x
 id' = \[x][y]. y
 -}
 
+
+-- Existential type
+data Exists (B: Type -> Type) : Type where
+  Pack of [x:Type] (B x)
+
+counter : (Nat -> Nat) * (Nat -> Nat) * (Nat -> Nat)
+counter = (\x . 0, ( \x. Succ x , \x . x))
+
+
+-- Doesn't type check
+{-
+ty : [B: Type -> Type] -> Exists B -> Type 
+ty = \ [B]  x . case x of 
+  Pack [x] y -> x
+-}
+
+-- type checks
+open : [B:Type -> Type] -> (x : Exists B) -> B (case x of Pack [x] y -> x)
+open = \ [B]  x . case x of 
+  Pack [z] y -> y
+
+Abs : Type
+Abs = Exists (\t. (Nat -> t) * (t -> t) * (t -> Nat))
+
+abs : Abs
+abs = Pack [Nat] counter
+
+example : Nat
+example = 
+  let (constr, rest) = open abs in 
+  let (incr, toNat) = rest in 
+  toNat (incr 0) 
