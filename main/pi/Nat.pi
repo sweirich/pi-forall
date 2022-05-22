@@ -24,7 +24,7 @@ pred = \n . case n of
 
 m_eq_n_Sm_eq_Sn : (m:Nat) -> (n:Nat) -> m = n -> ((Succ m : Nat) = Succ n)
 m_eq_n_Sm_eq_Sn = {- SOLN EP -} \m n pf . 
-  subst refl by pf {- STUBWITH TRUSTME -}
+  subst Refl by pf {- STUBWITH TRUSTME -}
 
 nat_eq : Nat -> Nat -> Bool
 nat_eq = \ x y .
@@ -64,14 +64,14 @@ minus = \n m .
 minus_same_zero : (n : Nat) -> (minus n n = 0)
 minus_same_zero = \ n .
     case n of
-      Zero -> refl 
+      Zero -> Refl 
       Succ p -> (minus_same_zero p : minus p p = 0)
 
 lemma_minus_zero_id : (n : Nat) -> (minus n 0 = n)
 lemma_minus_zero_id = {- SOLN EP -}
   \n . case n of 
-    Zero -> refl 
-    Succ n' -> refl {- STUBWITH TRUSTME -}
+    Zero -> Refl 
+    Succ n' -> Refl {- STUBWITH TRUSTME -}
 
 
 lemma_minus_plus_id : (m : Nat) -> (n : Nat) -> ((minus (plus m n) m) = n)
@@ -83,8 +83,8 @@ lemma_minus_plus_id = \m n .
 plus_associates : (i:Nat) -> (j:Nat) -> (k:Nat) -> plus (plus i j) k = plus i (plus j k)
 plus_associates = \ i j k .
   case i of
-     -- `refl` away `Zero`s on the left of `(+)`: (0+j)+k = j+k = 0+(j+k)
-    Zero -> refl
+     -- `Refl` away `Zero`s on the left of `(+)`: (0+j)+k = j+k = 0+(j+k)
+    Zero -> Refl
     -- associate `plus` in `Succ` of the inductive case:
     -- S ((i'+j)+k) = S (i'+(j+k))
     Succ i' -> 

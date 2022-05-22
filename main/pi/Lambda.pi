@@ -39,10 +39,10 @@ one : Fin 2
 one = Succ [1] (Zero [0])
 
 t1 : interp [0] Nil (App (Lam (Var (Zero[0]))) (Lit 3)) = VNat 3
-t1 = refl
+t1 = Refl
 
 -- t2 : interp [0] Nil (App (Lam (Var one)) (Lit 2)) = TRUSTME
--- t2 = refl
+-- t2 = Refl
 
 t3 : interp [0] Nil (App (Lit 1) (Lit 2)) = TRUSTME
-t3 = refl
+t3 = Refl

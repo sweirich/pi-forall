@@ -31,7 +31,7 @@ negb = \ b . if b then False else True
 
 andb_prop : (a : Bool) -> (b : Bool) -> andb a b = True -> And (a = True) (b = True)
 andb_prop = \a b p . 
-   if a then (if b then Conj refl refl
+   if a then (if b then Conj Refl Refl
              else contra p)
    else (contra p)
 
@@ -43,8 +43,8 @@ eq_bool =  \ x y . if x then y else not y
 
 eq_true : (b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = True -> (b1 = b2)
 eq_true = \b1 b2 pf. 
-  if b1 then if b2 then refl else contra pf
-                  else if b2 then contra pf else refl
+  if b1 then if b2 then Refl else contra pf
+                  else if b2 then contra pf else Refl
 
 -- A function mapping true to an inhabited type and false to an empty
 -- type.

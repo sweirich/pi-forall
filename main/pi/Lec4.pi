@@ -20,11 +20,11 @@ id' = \[x][y]. y
 --  Irrelevant arguments ignored during type equality
 
 irrelevance : (p : [i : Nat] -> Nat) -> p [1] = p [2]
-irrelevance = \p . refl
+irrelevance = \p . Refl
 
 -----------------------------------------------------
 -- Propositional equality is relevant
--- Cannot erase proofs that are used for casts. 
+-- Cannot ignore/erase proofs that are used for casts. 
 -- Need a terminating system to even think about this possibility.
 
 proprel : [a : Type] -> (pf : a = Bool) -> (x : a) -> Bool
@@ -32,8 +32,9 @@ proprel = \[a] pf x .
   subst x by pf 
 
 -----------------------------------------------------
--- The trade off for Sigma types. Weak elimination
--- if the first argument is irrelevant.
+-- The trade off for Sigma types in the context of irrelevance. 
+-- If the first argument is irrelevant, we only have weak elimination
+-- available.
 
 -- Existential type
 data Exists (B: Type -> Type) : Type where
@@ -42,7 +43,7 @@ data Exists (B: Type -> Type) : Type where
 counter : (Nat -> Nat) * (Nat -> Nat) * (Nat -> Nat)
 counter = (\x . 0, ( \x. Succ x , \x . x))
 
--- This also doesn't work
+-- This doesn't work
 {-
 ty : [B: Type -> Type] -> Exists B -> Type 
 ty = \ [B]  x . case x of 
@@ -52,6 +53,10 @@ open : [B:Type -> Type] -> (x : Exists B) -> B (case x of Pack [x] y -> x)
 open = \ [B]  x . case x of 
   Pack [z] y -> y
 -}
+
+-----------------------------------------------------------
+-- Example of an abstract type with an irrelevant first component
+-- must use case to destruct
 
 Abs : Type
 Abs = Exists (\t. (Nat -> t) * (t -> t) * (t -> Nat))
@@ -68,6 +73,9 @@ example = \ a .
       toNat (incr (constr 0))
 
 -----------------------------------------------
+-- Example of an abstract type with an "relevant" first component
+-- can define strong elimnators 
+
 
 Abs2 : Type
 Abs2 = { t : Type | (Nat -> t) * (t -> t) * (t -> Nat) }
@@ -98,3 +106,10 @@ toNat = \a. let (x,y) = a in
 example2 : Abs2 -> Nat
 example2 = \ a .   
   toNat a (incr a (constr a 0))
+
+-- This doesn't type check. The type system prevents us from 
+-- confusing two different abstract types
+-- 
+example2 : Abs2 -> Abs2 -> Nat
+example2 = \ a b .   
+  toNat a (incr b (constr a 0))

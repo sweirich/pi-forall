@@ -6,7 +6,7 @@ import Logic
 
 sym : [A:Type] -> [x:A] -> [y:A] -> (x = y) -> y = x
 sym = \ [A] [x] [y] pf .
-  subst refl by pf 
+  subst Refl by pf 
 
 -- and transitive
 
@@ -18,12 +18,12 @@ trans = \ [A] [x] [y] [z]  pf1 pf2 .
 
 f_equal :  [A:Type] -> [B : Type] -> [f : A -> B] -> [x:A] -> [y:A] -> x = y -> f x = f y
 f_equal = \[A][B][f][x][y] pf . 
-  subst refl by pf
+  subst Refl by pf
 
 f_equal2 :  [A:Type] -> [B : Type] -> [C:Type] -> [f : A -> B -> C] -> [x1:A] -> [y1:A] -> [x2:B] -> [y2:B] -> 
    x1 = y1 -> x2 = y2 -> f x1 x2 = f y1 y2
 f_equal2 = \[A][B][C][f][x1][y1][x2][y2] pf1 pf2. 
-  subst (subst refl by pf1) by pf2
+  subst (subst Refl by pf1) by pf2
 
 -- not equal is symmetric
 
@@ -35,15 +35,15 @@ neg_eq_sym = \[A][x][y] neg.
 
 uip : [A:Type] -> [x:A] -> [y :A] -> (p : x = y) -> (q:x = y) -> (p = q)
 uip = \ [A][x][y] p q . 
-  subst (subst refl by p : p = refl) by q
+  subst (subst Refl by p : p = Refl) by q
 
 -- "axiom" K
 
-k : [A:Type] -> [x:A] -> (p : x = x) -> (p = refl)
+k : [A:Type] -> [x:A] -> (p : x = x) -> (p = Refl)
 k = \ [A][x] p . 
-  subst refl by p
+  subst Refl by p
 
 -- another version of the above
-k2 : [A:Type] -> [x:A] -> [P : (x = x) -> Type] -> P refl -> (h:x = x) -> P h
+k2 : [A:Type] -> [x:A] -> [P : (x = x) -> Type] -> P Refl -> (h:x = x) -> P h
 k2 = \ [A][x][P] pf h . 
   subst pf by h

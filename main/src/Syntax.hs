@@ -92,7 +92,7 @@ data Term
    {- SOLN EQUAL -}
   | -- | Equality type  `a = b`
     TyEq Term Term
-  | -- | Proof of equality `refl`
+  | -- | Proof of equality `Refl`
     Refl 
   | -- | equality elimination  `subst a by pf`
     Subst Term Term 
@@ -198,6 +198,7 @@ data Decl
 
 {- SOLN DATA -}
 
+
 -- | The names of type/data constructors used in the module
 data ConstructorNames = ConstructorNames
   { tconNames :: Set String,
@@ -207,29 +208,28 @@ data ConstructorNames = ConstructorNames
 
 -- | A Data constructor has a name and a telescope of arguments
 data ConstructorDef = ConstructorDef SourcePos DCName Telescope
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 -- * Telescopes
 
+-- | A telescope is like a first class context. It is a list of 
+-- assumptions, binding each variable in terms that appear
+-- later in the list.  q 
+-- For example
+--     Delta = [ x:Type , y:x, y = w ]
+newtype Telescope = Telescope [Assn]
+  deriving (Show, Generic)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+
 data Assn
   = AssnSig  Sig
-  | AssnProp Prop
-  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
+  | AssnEq Term Term
+  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
 
 isAssnSig :: Assn -> Bool
 isAssnSig (AssnSig _) = True
 isAssnSig _ = False
-
-data Prop = Eq Term Term
-  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
-
--- | A telescope is like a first class context. It binds each name
--- in the rest of the telescope.  For example
---     Delta = x:* , y:x, y = w, empty
-newtype Telescope = Telescope [Assn]
-  deriving (Show, Generic, Typeable)
-  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 {- STUBWITH -}
 
@@ -239,15 +239,11 @@ newtype Telescope = Telescope [Assn]
 
 -- | empty set of constructor names
 emptyConstructorNames :: ConstructorNames
-emptyConstructorNames = ConstructorNames Set.empty Set.empty {- STUBWITH -}
+emptyConstructorNames = ConstructorNames initialTCNames initialDCNames {- STUBWITH -}
 
 -- | Default name for '_' occurring in patterns
 wildcardName :: TName
 wildcardName = Unbound.string2Name "_"
-
--- | empty Annotation
---noAnn :: Annot
---noAnn = Annot Nothing
 
 -- | Partial inverse of Pos
 unPos :: Term -> Maybe SourcePos
@@ -277,6 +273,54 @@ isNumeral _ = Nothing
 isPatVar :: Pattern -> Bool
 isPatVar (PatVar _) = True
 isPatVar _ = False
+
+xname :: Unbound.Name Term
+xname = Unbound.string2Name "x"
+yname :: Unbound.Name Term
+yname = Unbound.string2Name "y"
+aname :: Unbound.Name Term
+aname = Unbound.string2Name "a"
+bname :: Unbound.Name Term
+bname = Unbound.string2Name "b"
+
+preludeDataDecls :: [Decl]
+preludeDataDecls = 
+  [ Data sigmaName  sigmaTele      [prodConstructorDef]
+  , Data tyUnitName (Telescope []) [unitConstructorDef]
+  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef]
+  ]  where
+        trueConstructorDef = ConstructorDef internalPos trueName (Telescope [])
+        falseConstructorDef = ConstructorDef internalPos falseName (Telescope [])
+
+        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
+
+        sigmaTele = Telescope [AssnSig sigA, AssnSig sigB]
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [AssnSig sigX, AssnSig sigY])
+        sigA = Sig aname Rel Type
+        sigB = Sig bname Rel (Pi (Unbound.bind (xname, Rel, Unbound.embed (Var aname)) Type))
+        sigX = Sig xname Rel (Var aname)
+        sigY = Sig yname Rel (App (Var bname) (Arg Rel (Var xname)))
+
+-- prelude names
+sigmaName :: TCName
+sigmaName = "Sigma"
+prodName :: DCName
+prodName = "Product"
+boolName :: TCName
+boolName = "Bool"
+trueName :: DCName
+trueName = "True"
+falseName :: DCName
+falseName = "False"
+tyUnitName :: TCName
+tyUnitName = "Unit"
+litUnitName :: DCName
+litUnitName = "()"
+
+initialTCNames :: Set TCName
+initialTCNames = Set.fromList [sigmaName, boolName, tyUnitName]
+initialDCNames :: Set DCName
+initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
 {- STUBWITH -}
 

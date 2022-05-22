@@ -8,20 +8,19 @@ mathescape=true,
 % Comments may or not include Latex commands
 texcl=false, 
 %
-% Vernacular commands
-morekeywords=[1]{Module},
+% module system
+morekeywords=[1]{Module,import},
 %
-% Gallina
-morekeywords=[2]{let, if, then, else },
+morekeywords=[2]{let, in, if, then, else, case, of, data},
 %
 % Sorts
 morekeywords=[3]{},
 %
-% Various tactics, some are std Coq subsumed by ssr, for the manual purpose
-morekeywords=[4]{},
+% Data Constructors
+morekeywords=[4]{True, False, Refl, Cons, Nil},
 %
-% Terminators
-morekeywords=[5]{},
+% Types/Sorts
+morekeywords=[5]{Type, Bool, Unit, Eq},
 %
 % Control
 morekeywords=[6]{},

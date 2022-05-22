@@ -3,7 +3,7 @@
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
               {- SOLN EQUAL -} ensureTyEq, {- STUBWITH -} 
-              {- SOLN DATA -} ensureTCon, WhnfTCon(..) {- STUBWITH -} ) where
+              {- SOLN DATA -} ensureTCon{- STUBWITH -} ) where
 
 import Syntax
 import Environment ( D(DS, DD), TcMonad )
@@ -114,7 +114,6 @@ equate t1 t2 = do
        
 
 -- | Match up args
--- TODO: add compile-time irrelevance here
 equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
 equateArgs (a1:t1s) (a2:t2s) = do
   equateArg a1 a2
@@ -127,8 +126,10 @@ equateArgs a1 a2 = do
                    DS "in context:", DD gamma]
 
 equateArg :: Arg -> Arg -> TcMonad ()
+{- SOLN EP -}
 equateArg (Arg Irr t1) (Arg Irr t2) = return ()
-equateArg (Arg Rel t1) (Arg Rel t2) = equate t1 t2
+{- STUBWITH -}
+equateArg (Arg {- SOLN EP -}Rel{- STUBWITH -} t1) (Arg {- SOLN EP -}Rel{-STUBWITH-} t2) = equate t1 t2
 equateArg a1 a2 =  
   Env.err [DS "Arg stage mismatch",
               DS "Expected " , DD a2, 
@@ -164,16 +165,15 @@ ensureTyEq ty = do
 {- STUBWITH -}    
     
 {- SOLN DATA -}
-data WhnfTCon = WhnfTCon TCName [Arg]
 
 -- | Ensure that the given type 'ty' is some tycon applied to 
 --  params (or could be normalized to be such)
 -- Throws an error if this is not the case 
-ensureTCon :: Term -> TcMonad WhnfTCon
+ensureTCon :: Term -> TcMonad (TCName, [Arg])
 ensureTCon aty = do
   nf <- whnf aty
   case nf of 
-    TCon n params -> return (WhnfTCon n params)    
+    TCon n params -> return (n, params)    
     _ -> Env.err [DS "Expected a data type but found", DD nf]
 {- STUBWITH -}
     

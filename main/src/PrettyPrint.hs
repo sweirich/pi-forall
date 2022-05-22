@@ -325,7 +325,7 @@ instance Display Term where
     db <- display b
     return $ da <+> text "=" <+> db
   display (Refl) = do
-    return $ text "refl"
+    return $ text "Refl"
   display (Contra ty) = do
     dty <- display ty
     return $ text "contra" <+> dty
@@ -379,11 +379,8 @@ instance Display Pattern where
   display (PatVar x) = display x
 
 instance Disp Assn where
-  disp (AssnProp prop) = disp prop
-  disp (AssnSig sig)   = mandatoryBindParens (sigEp sig) (disp sig)
-
-instance Disp Prop where
-  disp (Eq t1 t2) = brackets (disp t1 <+> char '=' <+> disp t2)
+  disp (AssnEq t1 t2) = brackets (disp t1 <+> char '=' <+> disp t2)
+  disp (AssnSig sig)  = mandatoryBindParens (sigEp sig) (disp sig)
 
 instance Disp Telescope where
   disp (Telescope t) = sep $ map disp t

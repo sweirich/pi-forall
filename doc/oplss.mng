@@ -97,7 +97,7 @@ Haskell, or any typed functional programming language.
 
 \paragraph{What do these notes cover?}
 
-These notes are broken into several sections, that incrementally build up the
+These notes are broken into several sections that incrementally build up the
 design and implementation of a type checker for a dependently-typed
 programming language.
 
@@ -129,18 +129,25 @@ programming language.
   system. Section~\ref{sec:pattern-matching} shows how to extend \pif with a
   simple form of dependent pattern matching.
 
-\item Section~\ref{sec:datatypes} generalizes pattern matching to arbitrary
-  datatypes.
-
-\item Section~\ref{sec:erasure} introduces the idea of tracking the
+\item Section~\ref{sec:irrelevance} introduces the idea of tracking the
   \emph{relevence} of arguments. Ask yourself ''How can we decide what parts
   of the term are irrelevant during computation? Can be ignored when checking
   for equality?''
 
+\item Section~\ref{sec:datatypes} generalizes pattern matching to arbitrary
+  datatypes.
+
 \item The appendix includes the complete specification of the full \pif
   language.
-
 \end{itemize}
+
+
+\begin{tabular}{lll}
+\texttt{version1} & Sections~\ref{sec:simple}\ref{sec:bidirectional}\ref{sec:implementation} \\
+\texttt{version2} & Sections~\ref{sec:equality} and ~\ref{sec:pattern-matching}\\
+\texttt{version3} & Section ~\ref{sec:irrelevance} \\
+\texttt{full}     & Section ~\ref{sec:datatypes}
+\end{tabular}
 
 \paragraph{What do these notes \textbf{not} cover?}
 The goal of this notes is to provide an introductory overview. As a result,
@@ -892,17 +899,17 @@ We saw yesterday an example where we wanted a definition of equality
 that was more expressive than alpha-equivalence. Recall our encoding for
 the logical \texttt{and} proposition:
 
-\begin{verbatim}
+\begin{piforall}
 and : Type -> Type -> Type
 and = \p. \q. (c: Type) -> (p -> q -> c) -> c
-\end{verbatim}
+\end{piforall}
 
 Unfortunately, our definition of \texttt{conj} still doesn't type check:
 
-\begin{verbatim}
+\begin{piforall}
 conj : (p:Type) -> (q:Type) -> p -> q -> and p q
 conj = \p.\q. \x.\y. \c. \f. f x y
-\end{verbatim}
+\end{piforall}
 
 Running this example with \texttt{version1} of the type checker produces
 the following error:
@@ -940,21 +947,21 @@ length \texttt{n} can be given the type \texttt{Vec\ A\ n}. In this
 language we may have a safe head operation, that allows us to access the
 first element of the vector, as long as it is nonzero.
 
-\begin{verbatim}
+\begin{piforall}
 head : (A : Nat) -> (n : Nat) -> Vec A (succ n) -> Vec A n
 head = ...
  
-\end{verbatim}
+\end{piforall}
 
 However, to call this function, we need to be able to show that the
 length of the argument vector is equal to \texttt{succ\ n} for some
 n.~This is ok if we know the length of the vector outright
 
-\begin{verbatim}
+\begin{piforall}
 v1 : Vec Bool (succ 0)
 v1 = VCons True VNil
  
-\end{verbatim}
+\end{piforall}
 
 So the application \texttt{head\ Bool\ 0\ v1} will type check. (Note
 that \pif cannot infer the types \texttt{A} and \texttt{n}.)
@@ -962,10 +969,10 @@ that \pif cannot infer the types \texttt{A} and \texttt{n}.)
 However, if we construct the vector, its length may not be a literal
 natural number:
 
-\begin{verbatim}
+\begin{piforall}
 append : (n : Nat) -> (m : Nat) -> Vec A m -> Vec A n -> Vec A (plus m n)
 append = ...
-\end{verbatim}
+\end{piforall}
 
 In that case, to get \texttt{head\ Bool\ 1\ (append\ v1\ v1)} to type
 check, we need to show that the type \texttt{Vec\ Bool\ (succ\ 1)} is
@@ -982,12 +989,12 @@ The main idea is that we will:
 \item
   establish a new judgement that defines when types are equal
 
-\fbox{$[[ G |- A = B]]$}
+\[ \fbox{$[[ G |- A = B]]$} \]
 \item
   add the following rule to our type system so that it works ``up-to''
   our defined notion of type equivalence
 
-\[ \drule{t-conv} \]
+\[ \drule[width=3in]{t-conv} \]
 
 \item
   Figure out how to revise the \emph{algorithmic} version of our type
@@ -1107,24 +1114,24 @@ This function reduces a type to its \emph{weak-head normal form (whnf)}. Such
 terms have done all of the reductions to the outermost lambda abstraction (or
 $\Pi$) but do not reduce subterms. In other words:
 
-\begin{verbatim}
+\begin{piforall}
  (\x.x) (\x.x)  
   
-\end{verbatim}
+\end{piforall}
 
 is not in whnf, because there is more reduction to go to get to the
 head. On the other hand, even though there are still internal reductions
 possible:
 
-\begin{verbatim}
+\begin{piforall}
   \y. (\x.x) (\x.x)   
-\end{verbatim}
+\end{piforall}
 
 and
 
-\begin{verbatim}
+\begin{piforall}
  (y:Type) -> (\x.x) Bool 
-\end{verbatim}
+\end{piforall}
 
 are in weak head normal form. Likewise, the term \texttt{x\ y} is also in weak
 head normal form, because, even though we don't know what the head form is, we
@@ -1342,11 +1349,11 @@ variable.
 Note that this elimination form for equality is powerful. We can use it to
 show that propositional equality is symmetric and transitive.
 
-\begin{verbatim}
+\begin{piforall}
 sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
 trans : (A:Type) -> (x:A) -> (y:A) -> (z:A)
       -> (x = z) -> (z = y) -> (x = y)
-\end{verbatim}
+\end{piforall}
 
 Furthermore, we can also extend the elimination form for propositional
 equality with dependent pattern matching as we did for booleans. This
@@ -1404,25 +1411,25 @@ marks erasable arguments. We mark forall quantified arguments with
 brackets. For example, we can mark the type argument of the polymorphic
 identity function as erasable.
 
-\begin{verbatim}
+\begin{piforall}
 id : [x:Type] -> (y : x) -> x
 id = \ [x] y. y
-\end{verbatim}
+\end{piforall}
 
 When we apply such functions, we'll put the argument in brackets too, so
 we remember that \texttt{id} is not really using that type.
 
-\begin{verbatim}
+\begin{piforall}
 t = id [Bool] True
-\end{verbatim}
+\end{piforall}
 
-However, we need to make sure that erasable arguments really are
-eraseable. We wouldn't want to allow this definition:
+However, we need to make sure that irrelevant arguments really are
+irrelevant. We wouldn't want to allow this definition:
 
-\begin{verbatim}
+\begin{piforall}
 id' : [x:Type] -> [y:x] -> x
 id' = \ [x][y]. y
-\end{verbatim}
+\end{piforall}
 
 Here \texttt{id'} claims that its second argument is
 erasable, but it is not.
@@ -1432,37 +1439,104 @@ erasable, but it is not.
 We need to make sure that an irrelevant variable, like $x$ above, is not
 ``used'' in the body of a $\lambda$-abstraction. How can we do so?
 
+The approach we will take will seem a bit round about at first. But this 
+approach is the most future-proof, for reasons that we discuss below. 
 
-\begin{verbatim}
-G |- A : Type
-G, x:A |- a : B
- << x is not used in a >>
----------------------------- erased-lam
-G |- \ [x].a : [x:A] -> B
-\end{verbatim}
+The key idea is that we will mark variables in the context with an
+$[[epsilon]]$ annotation, which is either $[[Rel]]$ or $[[Irr]]$.  ``Normal''
+variables, introduced by $\lambda$-expressions will always be marked as
+relevant ($[[Rel]]$). Only relevant variables can be used in terms and 
+we revise the variable typing rule to require this annotation:
 
-What is a use? Does a type annotation count? Does it change the runtime
-behavior of the program?
+\[ 
+\drule{t-evar}
+\]
 
-\begin{piforall}
-m : [x:Type] -> (y:x) -> x
-m = \ [x] y . (y : x)
-\end{piforall}
+An irrelevant abstraction introduces its variable into the context tagged with
+$[[Irr]]$. Because of this tag, this variable will be inaccessible in the body
+of the function.
 
-\subsection{Erased arguments and equality}
+\[
+\drule{t-elambda}
+\]
+
+However, this variable should be available for use in \emph{types} and other
+\emph{irrelevant} parts of the term. To enable this use, we use a special
+context operation $[[G Irr]]$, as in the second premise in \rref{t-elambda}, and
+in the \rref{t-eapp} rule below.
+
+\[
+\drule{t-eapp}
+\]
+
+This operation on the context, called \emph{demotion}, converts all $[[Irr]]$
+tags on variables to be $[[Rel]]$. It represents a shift in our perspective:
+the variables that were not visible before are now available after this
+context modification. 
+
+Finally, when checking irrelevant $\Pi$ types, we mark the variable with $[[Rel]]$ when 
+we add it to the context so that it may be used in the range of the $\Pi$ type. Otherwise, we would not be able to verify the type of the polymorphic identity function above.
+\[
+\drule{t-epi}
+\]
+
+\subsection{Compile-time irrelevance}
+
+What does checking irrelevance buy us? Because we know taht irrelevant
+arguments are not actually used by the function, we know that they can be
+\emph{erased} prior to execution. We don't need this information to compute
+the answer, so why provide it?
+
+An additional benefit is during equivalence checking. When deciding whether 
+two terms are equal, we don't need to look at their irrelevant components. 
+
+\[ 
+\drule{e-eapp}
+\]
 
 We've been alluding to this the whole time, but now we'll come down to
-it. We're actually \emph{defining} equality over ``erased'' terms
-instead of the terms themselves. Note how the definition of equate
-ignores `eraseable' elements like type annotations, erasable arguments,
-etc.
+it. We're actually \emph{defining} equality over just the computationally
+relevant parts of the term instead of the entire term. In \texttt{version3} of the 
+implementatin, note how the definition
+of \texttt{equate} ignores arguments that are tagged as `irrelevant'. 
+(And from the beginning, our system already ignores types that appear only in 
+type annotations. Our justification for doing this is the same.)
 
-Why is this important? - faster comparison: don't have to look at the
+Why is compile-time irrelevance important? 
+\begin{itemize}
+\item faster comparison: don't have to look at the
 whole term when comparing for equality. Coq / Adga look at type
-annotations - more expressive: don't have to \emph{prove} that those
-parts are equal (proof irrelevance!) - this gets really crazy with
-heterogeneous equality - and it is sound: see Miquel (ICC), Barras
+annotations 
+\item more expressive: don't have to \emph{prove} that those
+parts are equal
+\end{itemize}
 
+For example, consider the example below. The function $p$ has an irrelevant
+argument, so it must be a constant function. Another name for $p$ might be a
+\emph{phantom} type.  Therefore it is sound to equate any two applications of
+$p$ because we know that we will always get the same result.
+
+\begin{piforall}
+irrelevance : (p : [i : Nat] -> Type) -> p [1] = p [2]
+irrelevance = \p . Refl
+\end{piforall}
+
+
+However, note that casting is a relevant use of propositional equality. In the 
+example below, \pif will prevent us from marking the argument \texttt{pf} as 
+irrelevant. 
+
+\begin{piforall}
+proprel : [a : Type] -> (pf : a = Bool) -> (x : a) -> Bool
+proprel = \ [a] pf x . 
+  subst x by pf 
+\end{piforall}
+
+The reason for this restriction is because the language includes
+non-termination. We don't know whether this proof is \texttt{Refl} or some
+infinite loop. So this argument must be evaluated to be sure that the two
+types are actually equal. If (somehow) we knew that the argument would always
+evaluate to \texttt{Refl} we could erase it.
 
 \section{Datatypes and Indexed Datatypes}
 \label{sec:datatypes}
@@ -1478,14 +1552,17 @@ Unfortunately, datatypes are both:
   Really important (you see them \emph{everywhere} when working with
   languages like Coq, Agda, Idris, etc.)
 \item
-  Really complicated (there are a \emph{lot} of details.)
+  Really complicated (there are a \emph{lot} of details). In general, datatypes 
+  subsume booleans, $\Sigma$-types, propositional equality, and can carry 
+  irrelevant arguments. So they combine all of the complexity of the previous
+  sections in one construct.
 \end{itemize}
 
 Unlike the previous sections, where we could walk through all of the details
 of the specification of the type system, not to mention its implementation, we
-won't be able to do that here. There is just too much! My goal is to give you
-enough information so that you can pick up the Haskell code and understand
-what is going on.
+won't be able to do that here. There is just too much! The goal of this part
+is to give you enough information so that you can pick up the Haskell code and
+understand what is going on.
 
 Even then, realize that the implementation that I'm giving you is not the
 complete story! Recall that we're not considering termination. That means that
@@ -1511,48 +1588,48 @@ you might see in Haskell or ML, such as \texttt{Bool}, \texttt{Void} and
 For example, one homework assignment was to implement booleans. Once we
 have booleans then we can
 
-\begin{verbatim}
+\begin{piforall}
   data Bool : Type where
      True 
      False
-\end{verbatim}
+\end{piforall}
 
 In the homework assignment, we used \texttt{if} as the elimination form
 for boolean values.
 
-\begin{verbatim}
+\begin{piforall}
  not : Bool -> Bool
  not = \ b . if b then False else True
-\end{verbatim}
+\end{piforall}
 
 For uniformity, we'll have a common elimination form for all datatypes,
 called \texttt{case} that has branches for all cases. (We'll steal
 Haskell syntax for case expressions, including layout.) For example, we
 might rewrite \texttt{not} with case like this:
 
-\begin{verbatim}
+\begin{piforall}
 not : Bool -> Bool
 not = \ b . 
   case b of 
        True -> False
        False -> True
-\end{verbatim}
+\end{piforall}
 
 \subsubsection{Void}\label{void}
 
 The simplest datatype of all is one that has no constructors!
 
-\begin{verbatim}
+\begin{piforall}
 data Void : Type where {}
-\end{verbatim}
+\end{piforall}
 
 Because there are no constructors, the elimination form for values of
 this type doesn't need any cases!
 
-\begin{verbatim}
+\begin{piforall}
 false_elim : (A:Type) -> Void -> A
 false_elim = \ A v . case v of {} 
-\end{verbatim}
+\end{piforall}
 
 Void brings up the issue of \emph{exhaustiveness} in case analysis. Can
 we tell whether there are enough patterns so that all of the cases are
@@ -1563,21 +1640,21 @@ covered? This is something that our implementation should be able to do.
 Natural numbers include a data constructor with an argument. For
 simplicity in the parser, those parens must be there.
 
-\begin{verbatim}
+\begin{piforall}
 data Nat : Type where
    Zero
    Succ of (Nat)
-\end{verbatim}
+\end{piforall}
 
 In case analysis, we can give a name to that argument in the pattern.
 
-\begin{verbatim}
+\begin{piforall}
 is_zero : Nat -> Bool
 is_zero = \ x . case x of 
    Zero -> True
    Succ n -> False
    
-\end{verbatim}
+\end{piforall}
 
 \subsubsection{Dependently-typed data constructor args}
 
@@ -1588,12 +1665,12 @@ yet, but as we add parameters and indices to our datatypes, they will
 be. For example, here's an example of a datatype declaration where the
 data constructors have dependent types.
 
-\begin{verbatim}
+\begin{piforall}
 data SillyBool : Type where      
    ImTrue  of (b : Bool) (_ : b = True)
    ImFalse of (b: Bool)  (_ : b = False)
    
-\end{verbatim}
+\end{piforall}
 
 \subsection{Specifying the type system with basic datatypes}
 
@@ -1602,36 +1679,18 @@ or \texttt{data\ Nat} extend the context with new type constants (aka
 type constructors) and new data constructors. It is as if we had added a
 bunch of new typing rules to the type system, such as:
 
-\begin{verbatim}
-   ---------------
-   G |- Nat : Type
-
-   ----------------
-   G |- Void : Type
-   
-  -----------------
-   G |- Zero : Nat
-   
-     G |- n : Nat
-   -----------------
-   G |- Succ n : Nat
-
-   G |- a1 : Bool    G |- a2 : a1 = True
-  ---------------------------------------
-   G |- ImTrue a1 a2 : SillyBool
-   
-\end{verbatim}
+\drules[T]{$[[G|- a : A]]$}{Typing}{Nat,Void,Zero,Succ,ImTrue}
 
 In the general form, a \emph{simple} data type declaration includes a
 name and a list of data constructors.
 
-\begin{verbatim}
+\begin{piforall}
    data T : Type where
       K1        -- no arguments
       K2 of (A)    -- single arg of type A
       K3 of (x:A)  -- also single arg of type A, called x for fun
       K4 of (x:A)(y:B) -- two args, the type of B can mention A.
-\end{verbatim}
+\end{piforall}
 
 In fact, each data constructor takes a special sort of list of arguments
 that we'll call a `telescope'. (The word `telescope' for this structure
@@ -1651,16 +1710,20 @@ form of declaration (some parts have been elided compared to
  type DCName = String
 
  data Decl = ...
-   | Data    TCName [ConstructorDef]
+   | Data TCName [ConstructorDef]
 
  -- | A Data constructor has a name and a telescope of arguments
  data ConstructorDef = ConstructorDef DCName Telescope
-       deriving (Show)
+       deriving (Show,Unbound.Alpha, Unbound.Subst Term)
 
- data Telescope = Empty
-                | Cons TName Term Telescope
-                     deriving (Show)
-                             
+newtype Telescope = Telescope [Assn]
+  deriving (Show, Generic)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+
+data Assn
+  = AssnSig Sig
+  | AssnEq Term Term
+  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
 \end{verbatim}
 
 For example, a declaration for the \texttt{Bool} type would be
@@ -1668,8 +1731,7 @@ For example, a declaration for the \texttt{Bool} type would be
 \begin{verbatim}
   boolDecl :: Decl 
   boolDecl = Data "Bool" [ConstructorDef "False" Empty, 
-                            ConstructorDef "True" Empty]
-                                    
+                          ConstructorDef "True" Empty]                                    
 \end{verbatim}
 
 \subsection{Checking (simple) data constructor
@@ -1686,6 +1748,8 @@ assume that data constructors must be applied to all of their arguments.
 So our typing rule looks a little like this. We have \texttt{as} as
 representing the list of arguments for the data constructor \texttt{Ki}.
 
+\[ \drule{t-dc-simple} \]
+
 \begin{verbatim}
 Ki : Di -> T  in G
 G |- as : Di
@@ -1699,6 +1763,8 @@ Each argument must have the right type. Furthermore, because of
 dependency, we substitute that argument for the variable in the rest of
 the telescope.
 
+\[ \drule{tele-arg} \]
+
 \begin{verbatim}
     G |- a : A       G |- as : D { a / x }
     --------------------------------------- tele-arg
@@ -1708,6 +1774,8 @@ the telescope.
 
 When we get to the end of the list (i.e.~there are no more arguments) we
 should also get to the end of the telescope.
+
+\[ \drule{tele-nil} \]
 
 \begin{verbatim}
     ----------- tele-empty
@@ -1719,15 +1787,14 @@ implements this judgement. (For reasons that we explain below, we have a
 special type \texttt{Arg} for the arguments to the data constructor.)
 
 \begin{verbatim}
- tcArgTele :: [Arg] -> Telescope -> TcMonad [Arg]
-  
+tcArgTele :: [Arg] -> Telescope -> TcMonad [Arg]
 \end{verbatim}
 
 This function relies on the following substitution function for
 telescopes:
 
 \begin{verbatim}
- doSubst :: [(TName,Term)] -> Telescope -> TcMonad Telescope
+doSubst :: [(TName, Term)] -> [Assn] -> TcMonad [Assn]
 \end{verbatim}
 
 \subsection{Eliminating dirt simple datatypes}
@@ -1800,31 +1867,31 @@ type with the following declaration. The type parameter for this
 datatype \texttt{A} can be referred to in any of the telescopes for the
 data constructors.
 
-\begin{verbatim}
+\begin{piforall}
 data Maybe (A : Type) : Type where
     Nothing 
      Just of (A)
      
-\end{verbatim}
+\end{piforall}
 
 Because this is a dependently-typed language, the variables in the
 telescope can be referred to later in the telescope. For example, with
 parameters, we can implement Sigma types as a datatype, instead of
 making them primitive:
 
-\begin{verbatim}
+\begin{piforall}
 data Sigma (A: Type) (B : A -> Type) : Type
     Prod of (x:A) (B)
-\end{verbatim}
+\end{piforall}
 
 The general form of datatype declaration with parameters includes a
 telescope for the type constructor, as well as a telescope for each of
 the data constructors.
 
-\begin{verbatim}
+\begin{piforall}
 data T D : Type where
    Ki of Di 
-\end{verbatim}
+\end{piforall}
 
 That means that when we check an occurrence of a type constructor, we
 need to make sure that its actual arguments match up the parameters in
@@ -1906,14 +1973,14 @@ parameters. These constraints will just be expressed as equalities
 written in square brackets. In otherwords, we'll define
 \texttt{beautiful} this way:
 
-\begin{verbatim}
+\begin{piforall}
 data Beautiful (n : Nat) : Type where
     B0 of [n = 0]
      B3 of [n = 3]
      B5 of [n = 5]
      Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[m = m1+m2]
      
-\end{verbatim}
+\end{piforall}
 
 Constraints can appear anywhere in the telescope of a data constructor.
 However, they are not arbitrary equality constraints---we want to
@@ -2129,7 +2196,7 @@ Uses normalization by evaluation.
 \end{itemize}
 
 
-\bibliographystyle{alphanum}
+\bibliographystyle{alpha}
 \bibliography{weirich}
 
 

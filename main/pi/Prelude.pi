@@ -74,7 +74,7 @@ snot : (b : Bool) -> (T (not b) : Type)
 snot = \b. if b then tt else tt
 
 good : not True = False
-good = refl
+good = Refl
 
 data Nat : Type where
    zero 

@@ -168,7 +168,11 @@ whnf a = v
 ---------------------- :: lam_cong
 whnf a b = v b
 
-
+% ignore type annotations when normalizing
+%
+whnf a = v
+------------------ :: annot
+whnf (a : A) = v
 
 
 defns
@@ -250,6 +254,9 @@ G |- b [a1 / x] = b [a2 / x]
  G |- a1 b1 = a2 b2
 
 
+G |- a1 = a2
+--------------------- :: annot
+G |- (a1 : A) = a2
 
 defns
 JTyping :: '' ::= 

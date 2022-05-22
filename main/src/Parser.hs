@@ -60,7 +60,7 @@ Optional components in this BNF are marked with < >
 
 {- SOLN EQUAL -}
     | a = b                    Equality type
-    | refl                     Equality proof
+    | Refl                     Equality proof
     | subst a by b             Type conversion
     | contra a                 Contra
 {- STUBWITH -}
@@ -92,7 +92,7 @@ Optional components in this BNF are marked with < >
                                Empty
      | (x : A) D               runtime cons
      | (A) D                   runtime cons
-     | [x : A] D               erased cons
+     | [x : A] D               irrelevant cons
      | [A = B] D               equality constraint
 {- STUBWITH -}
 
@@ -181,7 +181,7 @@ piforallStyle = Token.LanguageDef
                 , Token.opLetter       = oneOf ":!#$%&*+.,/<=>?@\\^|-"
                 , Token.caseSensitive  = True
                 , Token.reservedNames =
-                  ["refl"
+                  ["Refl"
                   ,"ind"
                   ,"Type"
                   ,"data"
@@ -193,7 +193,6 @@ piforallStyle = Token.LanguageDef
                   ,"subst", "by"
                   ,"let", "in"
                   ,"axiom"
-                  ,"erased"
                   ,"TRUSTME"
                   ,"PRINTME"
                   ,"ord" 
@@ -342,7 +341,7 @@ telebindings = many teleBinding
         v <- variable
         reservedOp "="
         t <- expr
-        return (AssnProp (Eq (Var v) t) :)
+        return (AssnEq (Var v) t :)
     
     teleBinding :: LParser ([Assn] -> [Assn])
     teleBinding =
@@ -412,7 +411,7 @@ printme = reserved "PRINTME" *> return (PrintMe )
 {- SOLN EQUAL -}
 refl :: LParser Term
 refl =
-  do reserved "refl"
+  do reserved "Refl"
      return $ Refl 
 {- STUBWITH -}
 
@@ -427,20 +426,22 @@ expr = do
   where table = [
 {- SOLN EQUAL -}
                  [ifix  AssocLeft "=" TyEq],{- STUBWITH -}
-                 [ifixM AssocRight "->" mkArrow],
-                 [ifixM AssocRight "*" mkTuple]
+                 [ifixM AssocRight "->" mkArrowType],
+                 [ifixM AssocRight "*" mkTupleType]
                 ]   
 {- SOLN EQUAL -} 
         ifix  assoc op f = Infix (reservedOp op >> return f) assoc {- STUBWITH -}
         ifixM assoc op f = Infix (reservedOp op >> f) assoc
-        mkArrow  = 
+        mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
                Pi (Unbound.bind (n, {- SOLN EP -}Rel, {- STUBWITH -} Unbound.embed tyA) tyB)
-        mkTuple = 
+        mkTupleType = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Sigma (Unbound.bind (n, Unbound.embed tyA) tyB)
+{- SOLN DATA -}
+               TCon sigmaName [Arg Rel tyA, Arg Rel $ Lam (Unbound.bind (n, Rel) tyB)]
+{- STUBWITH               Sigma (Unbound.bind (n, Unbound.embed tyA) tyB) -}
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -490,7 +491,7 @@ factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data con
                 , caseExpr   <?> "a case" {- STUBWITH -}
                   {- SOLN EQUAL -}
                 , substExpr  <?> "a subst"
-                , refl       <?> "refl"
+                , refl       <?> "Refl"
                 , contra     <?> "a contra" {- STUBWITH -}
                 , trustme    <?> "TRUSTME"
                 , printme    <?> "PRINTME"
@@ -536,11 +537,11 @@ lambda = do reservedOp "\\"
 
 bconst  :: LParser Term
 {- SOLN DATA -}
-bconst = choice [reserved "Bool"  >> return (TCon "Bool" []),
-                 reserved "False" >> return (DCon "False" []),
-                 reserved "True"  >> return (DCon "True" []),
-                 reserved "Unit"  >> return (TCon "Unit" []),
-                 reserved "()"    >> return (DCon "()" [])]
+bconst = choice [reserved "Bool"  >> return (TCon boolName []),
+                 reserved "False" >> return (DCon falseName []),
+                 reserved "True"  >> return (DCon trueName []),
+                 reserved "Unit"  >> return (TCon tyUnitName []),
+                 reserved "()"    >> return (DCon litUnitName [])]
 {- STUBWITH 
 bconst = choice [reserved "Bool"  >> return TyBool,
                  reserved "False" >> return (LitBool False),
@@ -558,8 +559,8 @@ ifExpr =
      reserved "else"
      c <- expr
 {- SOLN DATA -}
-     return (Case a [Match $ Unbound.bind (PatCon "True" []) b, 
-                     Match $ Unbound.bind (PatCon "False" []) c])
+     return (Case a [Match $ Unbound.bind (PatCon trueName []) b, 
+                     Match $ Unbound.bind (PatCon falseName []) c])
 {- STUBWITH
      return (If a b c ) -}
     
@@ -587,7 +588,10 @@ pcaseExpr = do
     scrut <- expr
     reserved "in"
     a <- expr
-    return $ LetPair scrut (Unbound.bind (x,y) a) 
+{- SOLN DATA -}
+    let pat = PatCon prodName [(PatVar x, Rel), (PatVar y, Rel)]
+    return $ Case scrut [Match (Unbound.bind pat a)]
+{- STUBWITH    return $ LetPair scrut (Unbound.bind (x,y) a)  -}
 
 
 {- SOLN EP -}
@@ -639,28 +643,48 @@ expProdOrAnnotOrParens =
                   (do b <- afterBinder
                       return $ Pi (Unbound.bind (x,{- SOLN EP -}Rel,{- STUBWITH -}Unbound.embed a) b))
          Colon a b -> return $ Ann a b
-         Comma a b -> return $ Prod a b 
+      
+         Comma a b -> 
+{- SOLN DATA -}   
+           return $ DCon prodName [Arg Rel a, Arg Rel b] 
+{- STUBWITH            return $ Prod a b -}
          Nope a    -> return $ a -- Paren a
 
 {- SOLN DATA -}
-pattern :: LParser Pattern 
+-- patterns are 
+-- p :=  x
+--       _
+--       K ap*
+--       (p)
+--       (p, p)
+-- ap ::= [p] | p
+--        
+
 -- Note that 'dconstructor' and 'variable' overlaps, annoyingly.
+pattern :: LParser Pattern
 pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
        <|> atomic_pattern
   where
     arg_pattern    =  ((,Irr) <$> brackets pattern) 
                   <|> ((,Rel) <$> atomic_pattern)
-    atomic_pattern =    (parens pattern)
-                  <|> reserved "True" *> pure (PatCon "True" [])
-                  <|> reserved "False" *> pure (PatCon "False" [])
-                  <|> reserved "()" *> pure (PatCon "()" [])
-                  <|> (PatVar <$> wildcard)
+    paren_pattern  = do 
+      pattern >>= \p ->
+        ( (reservedOp ")" >> pure p)
+       <|> reservedOp "," *> (atomic_pattern >>= \q -> 
+                              pure (PatCon prodName [(p, Rel), (q, Rel)]))
+        ) 
+    atomic_pattern =  reservedOp "(" *> paren_pattern
+                  <|> reserved "True" *> pure (PatCon trueName [])
+                  <|> reserved "False" *> pure (PatCon falseName [])
+                  <|> reserved "()" *> pure (PatCon litUnitName [])
+                  <|> PatVar <$> wildcard
                   <|> do t <- varOrCon
                          case t of
                            (Var x) -> return $ PatVar x
                            (DCon c []) -> return $ PatCon c []
                            (TCon c []) -> fail "expected a data constructor but a type constructor was found"
                            _ -> error "internal error in atomic_pattern"
+
 
 match :: LParser Match
 match = 
@@ -707,6 +731,8 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return (Sigma (Unbound.bind (x, Unbound.embed a) b))
+{- SOLN DATA -}
+  return $ TCon sigmaName [Arg Rel a, Arg Rel (Lam (Unbound.bind (x, Rel) b))]
+{- STUBWITH  return (Sigma (Unbound.bind (x, Unbound.embed a) b)) -}
   
   

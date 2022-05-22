@@ -44,7 +44,7 @@ import PrettyPrint
 import Syntax
 import Text.ParserCombinators.Parsec.Pos (SourcePos)
 import Text.PrettyPrint.HughesPJ
-import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless as Unbound
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
@@ -85,7 +85,10 @@ data Env = Env
 
 -- | The initial environment.
 emptyEnv :: Env
-emptyEnv = Env {ctx = [], globals = 0, hints = [], sourceLocation = []
+emptyEnv = Env {ctx = preludeDataDecls
+            , globals = length (preludeDataDecls)
+            , hints = []
+            , sourceLocation = []
   {- SOLN EP-}, epsilon = Rel {- STUBWITH -}}
 
 instance Disp Env where
@@ -153,21 +156,21 @@ lookupRecDef v = do
 
 {- SOLN DATA -}
 
-trueConstructorDef :: ConstructorDef
-trueConstructorDef = ConstructorDef internalPos "True" (Telescope [])
-falseConstructorDef :: ConstructorDef
-falseConstructorDef = ConstructorDef internalPos "False" (Telescope [])
-unitConstructorDef :: ConstructorDef
-unitConstructorDef = ConstructorDef internalPos "()" (Telescope []) 
+
+
 -- | Find a type constructor in the context
 lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
   m (Telescope, Maybe [ConstructorDef])
+{-
 lookupTCon "Bool" = do
   return (Telescope [], Just [ trueConstructorDef, falseConstructorDef])
 lookupTCon "Unit" = do
   return (Telescope [], Just [ unitConstructorDef ] )
+lookupTCon "Sigma" = do
+  return (sigmaTele, Just [prodConstructorDef])
+  -}
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
@@ -197,9 +200,11 @@ lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
   m [(TCName, (Telescope, ConstructorDef))]
+{-
 lookupDConAll "True" = return $ [ ("Bool", (Telescope [], trueConstructorDef))] 
 lookupDConAll "False" = return $ [ ("Bool", (Telescope [], falseConstructorDef))] 
 lookupDConAll "()" = return $ [ ("Unit", (Telescope [], unitConstructorDef))] 
+lookupDConAll "Prod" = return $ [("Sigma", (sigmaTele, prodConstructorDef))] -}
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
@@ -267,9 +272,9 @@ extendCtxsGlobal ds =
 -- | Extend the context with a telescope
 extendCtxTele :: (MonadReader Env m, MonadIO m) => [Assn] -> m a -> m a
 extendCtxTele [] m = m
-extendCtxTele (AssnProp (Eq (Var x) t2) : tele) m =
+extendCtxTele (AssnEq (Var x) t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
-extendCtxTele (AssnProp (Eq t1 t2) : tele) m = do
+extendCtxTele (AssnEq t1 t2 : tele) m = do
   warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
   extendCtxTele tele m
 extendCtxTele (AssnSig sig : tele) m =
