@@ -15,7 +15,6 @@ module Environment
     lookupDCon,
     lookupDConAll,
     extendCtxTele {- STUBWITH -},
-    getTys,
     getCtx,
     getLocalCtx,
     extendCtx,
@@ -87,19 +86,10 @@ data Env = Env
 -- | The initial environment.
 emptyEnv :: Env
 emptyEnv = Env {ctx = [], globals = 0, hints = [], sourceLocation = []
-  {- SOLN EP-}, epsilon = Runtime {- STUBWITH -}}
+  {- SOLN EP-}, epsilon = Rel {- STUBWITH -}}
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
-
--- | Return a list of all type bindings, and their names.
-getTys :: (MonadReader Env m) => m [(TName, {- SOLN EP -}Epsilon,{- STUBWITH -} Term)]
-getTys = do
-  ctx <- asks ctx
-  return $ catMaybes (map unwrap ctx)
-  where
-    unwrap (TypeSig (Sig v {- SOLN EP -}ep{- STUBWITH -} ty)) = Just (v,{- SOLN EP -} ep,{- STUBWITH -} ty)
-    unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
 lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
@@ -114,7 +104,17 @@ lookupTyMaybe ::
   m (Maybe Sig)
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [ sig | TypeSig sig <- ctx, v == sigName sig]
+  return $ go ctx where
+    go [] = Nothing
+    go (TypeSig sig : ctx)
+      | v == sigName sig = Just sig
+      | otherwise = go ctx 
+    go (Demote ep : ctx) = demoteSig ep <$> go ctx
+    go (_ : ctx) = go ctx
+
+demoteSig :: Epsilon -> Sig -> Sig
+demoteSig ep s = s { sigEp = min ep (sigEp s) }
+
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
@@ -241,7 +241,7 @@ lookupDCon c tname = do
 
 {- STUBWITH -}
 
--- | Extend the context with a new binding.
+-- | Extend the context with a new binding
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
 extendCtx d =
   local (\m@(Env {ctx = cs}) -> m {ctx = d : cs})
@@ -363,7 +363,9 @@ checkStage ep1 = do
       ]
 
 withStage :: (MonadReader Env m) => Epsilon -> m a -> m a
-withStage ep = local (\e -> e {epsilon = max (epsilon e) ep})
+withStage Irr = extendCtx (Demote Rel)
+withStage ep = id
+--  local (\e -> e {epsilon = max (epsilon e) ep})
 
 getStage :: (MonadReader Env m) => m Epsilon
 getStage = asks epsilon

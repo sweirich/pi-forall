@@ -38,7 +38,7 @@ checkType tm expectedTy = do
   
 -- | Make sure that the term is a type (i.e. has type 'Type')
 tcType :: Term -> TcMonad ()
-tcType tm = void $ {- SOLN EP -} Env.withStage Erased $ {- STUBWITH -}checkType tm Type
+tcType tm = void $ {- SOLN EP -} Env.withStage Irr $ {- STUBWITH -}checkType tm Type
     
 -- | check a term, producing its type
 -- The second argument is 'Nothing' in inference mode and
@@ -208,14 +208,17 @@ tcTerm t@(Case scrut alts) (Just ty) = do
   sty <- inferType scrut
   scrut' <- Equal.whnf scrut
   whnfTCon <- Equal.ensureTCon sty
+  Env.warn "Found tcon"
   let checkAlt (Match bnd) = do
         (pat, body) <- Unbound.unbind bnd
         -- add variables from pattern to context
         -- could fail if branch is in-accessible
         (decls, evars) <- declarePatTCon pat whnfTCon
+        Env.warn "pat declared"
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
         decls' <- equateWithPatTCon scrut' pat whnfTCon
+        Env.warn "equateWithPatTCon"
         _ <- Env.extendCtxs (decls ++ decls') $
             checkType body ty
         {- STUBWITH -}
@@ -375,12 +378,12 @@ tcArgTele _ [] =
 -- | Substitute a list of terms for the variables bound in a telescope
 -- This is used to instantiate the parameters of a data constructor
 -- to find the types of its arguments.
--- The first argument should only contain 'Runtime' type declarations.
+-- The first argument should only contain 'Rel' type declarations.
 substTele :: [Assn] -> [Arg] -> [Assn] -> TcMonad [Assn]
 substTele tele args delta = doSubst (mkSubst tele (map unArg args)) delta
   where
     mkSubst [] [] = []
-    mkSubst (AssnSig (Sig x Runtime _) : tele') (tm : tms) =
+    mkSubst (AssnSig (Sig x Rel _) : tele') (tm : tms) =
       (x, tm) : mkSubst tele' tms
     mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
@@ -418,7 +421,7 @@ constraintToDecls tx ty = do
           then return []
           else Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
   where
-    matchTerms ts1 ts2 = matchArgs (map (Arg Runtime) ts1) (map (Arg Runtime) ts2)
+    matchTerms ts1 ts2 = matchArgs (map (Arg Rel) ts1) (map (Arg Rel) ts2)
     matchArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
       ds <- constraintToDecls t1 t2
       ds' <- matchArgs a1s a2s
@@ -454,10 +457,10 @@ forgetTCon (Equal.WhnfTCon n ps) = TCon n ps
 -- Also returns the erased variables so that they can be checked
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad ([Decl], [TName])
 declarePat (PatVar x) ep y = return ([TypeSig (Sig x ep y)], [])
-declarePat pat Runtime ty = do 
+declarePat pat Rel ty = do 
   whnfTCon <- Equal.ensureTCon ty
   declarePatTCon pat whnfTCon
-declarePat pat Erased _ty =
+declarePat pat Irr _ty =
   Env.err [DS "Cannot pattern match erased arguments in pattern ", DD pat]
 
 declarePatTCon :: Pattern -> Equal.WhnfTCon -> TcMonad ([Decl], [TName])
@@ -515,7 +518,10 @@ equateWithPat :: Term -> Pattern -> Type -> TcMonad [Decl]
 equateWithPat (Var x) pat ty = do
   tm <- pat2Term pat ty
   return [Def x tm]
+equateWithPat tm (PatVar x) ty = do
+  return [Def x tm]
 equateWithPat tm pat ty = do 
+  Env.warn [DS "equating: ", DD tm, DS " and ", DS (show pat), DS ":" , DD ty]
   whnfTCon <- Equal.ensureTCon ty
   equateWithPatTCon tm pat whnfTCon
 
@@ -555,8 +561,8 @@ equateWithPatTCon _ _ _ = return []
 tcTypeTele :: [Assn] -> TcMonad ()
 tcTypeTele [] = return ()
 tcTypeTele (AssnProp (Eq tm1 tm2) : tl) = do
-  ty1 <- Env.withStage Erased $ inferType tm1
-  _ <- Env.withStage Erased $ checkType tm2 ty1
+  ty1 <- Env.withStage Irr $ inferType tm1
+  _ <- Env.withStage Irr $ checkType tm2 ty1
   decls <- constraintToDecls tm1 tm2
   Env.extendCtxs decls $ tcTypeTele tl
 tcTypeTele (AssnSig sig : tl) = do
@@ -629,7 +635,7 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [TypeSig (Sig n {- SOLN EP -}Runtime{- STUBWITH -} ty), Def n term]
+          return $ AddCtx [TypeSig (Sig n {- SOLN EP -}Rel{- STUBWITH -} ty), Def n term]
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -657,6 +663,7 @@ tcEntry (TypeSig sig) = do
   duplicateTypeBindingCheck sig
   tcType (sigType sig)
   return $ AddHint sig
+tcEntry (Demote ep) = return (AddCtx [Demote ep])
 
 {- SOLN DATA -}
 -- rule Decl_data
@@ -724,6 +731,7 @@ exhaustivityCheck :: Term -> Type -> [Pattern] -> TcMonad ()
 exhaustivityCheck scrut ty (PatVar x : _) = return ()
 exhaustivityCheck scrut ty pats = do
   (Equal.WhnfTCon tcon tys) <- Equal.ensureTCon ty
+  Env.warn "exhaustivity Check"
   (Telescope delta, mdefs) <- Env.lookupTCon tcon
   case mdefs of
     Just datacons -> loop pats datacons

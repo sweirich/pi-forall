@@ -40,7 +40,7 @@ genTCName :: Gen TCName
 genTCName = elements ["T", "List", "Vec", "Nat"]
 
 genDCName :: Gen DCName
-genDCName = elements ["Nil", "Cons", "Zero", "Succ"]
+genDCName = elements ["Nil", "Cons", "Zero"]
 {- STUBWITH -}
 
 instance Arbitrary (Unbound.Name a) where
@@ -48,7 +48,7 @@ instance Arbitrary (Unbound.Name a) where
         
 {- SOLN EP -}        
 instance Arbitrary Epsilon where
-    arbitrary = elements [ Runtime, Erased ]
+    arbitrary = elements [ Rel, Irr ]
 {- STUBWITH -}
 
 instance Arbitrary Arg where
@@ -64,8 +64,8 @@ genArgs n = QC.listOf (genArg n)
 base :: Gen Term
 base = elements [Type, 
                 TrustMe, PrintMe, 
-                TyUnit, LitUnit, TyBool, 
-                LitBool True, LitBool False {- SOLN EQUAL -}, Refl {- STUBWITH -} ]
+                {- TyUnit, LitUnit, TyBool, 
+                LitBool True, LitBool False -} {- SOLN EQUAL -} Refl {- STUBWITH -} ]
 
 genTerm :: Int -> Gen Term
 genTerm n 
@@ -78,7 +78,7 @@ genTerm n
               (1, App <$> genTerm n' <*> genArg n'),
               (1, genPi n'),
               (1, Ann <$> genTerm n' <*> genTerm n'),
-              (1, Paren <$> genTerm n'),
+              -- (1, Paren <$> genTerm n'),
               (1, Pos internalPos <$> genTerm n'),
               (1, genLet n'),
               (1, If <$> genTerm n' <*> genTerm n' <*> genTerm n'),
@@ -168,3 +168,6 @@ instance Arbitrary Term where
     shrink _ = []
        
 
+--x = DCon "Succ" [Arg {argEp = Rel, unArg = PrintMe},Arg {argEp = Rel, unArg = Type}]
+
+x = Case TrustMe [Match (Unbound.bind (PatVar y0) Type),Match (Unbound.bind (PatCon "Zero" []) TrustMe)]

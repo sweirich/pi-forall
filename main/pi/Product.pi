@@ -56,7 +56,7 @@ uncurry = \ [A][B][C] f p . case p of
               Prod x y -> f x y 
 
 ---------------------------------------------------
--- Erased first component
+-- Irr first component
 
 data Exists (A:Type)(B: A -> Type) : Type where
   Prod of [x:A](B x)
@@ -74,7 +74,7 @@ eproj2 = \[A][B] x . case x of
 
 
 ---------------------------------------------------
--- Erased second component
+-- Irr second component
 
 data Refine (A:Type) (B : A -> Type) : Type where
   Prod of (x:A)[y:B x]

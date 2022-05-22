@@ -31,7 +31,7 @@ DONE - Summer 2013
 * pat2term needs a type annotation
 * type check pattern matching?
 * Remove extra variable binding in let
-* Erased arguments
+* Irr arguments
    - is conv erased in Coq? Agda?
 * Add preamble/credits to each file
 * Add cabal file
@@ -48,7 +48,7 @@ WON'T DO
 * OTT file for language specification (both elaboration and type checking)
 
 EXERCISE IDEAS
-* add erased arguments to data structures?
+* add irrelevant arguments to data structures?
 * remove positivity check, implement infinite loop?
 * remove levels, implement infinite loop?
 * unsoundness when escape check is removed from pattern matching ?

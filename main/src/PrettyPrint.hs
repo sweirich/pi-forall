@@ -23,7 +23,7 @@ import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 class Disp d where
   disp :: d -> Doc
   default disp :: (Display d) => d -> Doc
-  disp d = display d (DI {showAnnots = False, dispAvoid = S.empty})
+  disp d = display d (DI {showAnnots = False, dispAvoid = S.empty, prec = 0})
 
 -- | The 'Display' class is like the 'Disp' class. It qualifies
 --   types that can be turned into 'Doc'.  The difference is that the
@@ -38,7 +38,9 @@ data DispInfo = DI
   { -- | should we show the annotations?
     showAnnots :: Bool,
     -- | names that have been used
-    dispAvoid :: S.Set Unbound.AnyName
+    dispAvoid :: S.Set Unbound.AnyName,
+    -- | current precedence level
+    prec :: Int
   }
 
 -- | Error message quoting
@@ -103,8 +105,8 @@ instance Disp [Decl] where
 
 {- SOLN EP -}
 instance Disp Epsilon where
-  disp Erased = text "-"
-  disp Runtime = text "+"
+  disp Irr = text "-"
+  disp Rel = text "+"
 
 {- STUBWITH -}
 
@@ -121,9 +123,10 @@ instance Disp Sig where
   disp (Sig n {- SOLN EP -} ep {- STUBWITH -} ty) = disp n <+> text ":" <+> disp ty
 
 instance Disp Decl where
-  disp (Def n term) = disp n <+> text "=" <+> disp term
-  disp (RecDef n r) = disp (Def n r)
-  disp (TypeSig sig)    = disp sig
+  disp (Def n term)  = disp n <+> text "=" <+> disp term
+  disp (RecDef n r)  = disp (Def n r)
+  disp (TypeSig sig) = disp sig
+  disp (Demote ep)   = mempty
 {- SOLN DATA -}
   disp (Data n params constructors) =
     hang
@@ -266,15 +269,17 @@ instance Display Term where
       dx <- display x
       dA <- display tyA
       dB <- display tyB
-      return $
-        text "{" <+> dx <+> text ":" <+> dA
-          <+> text "|"
-          <+> dB
-          <+> text "}"
+      if (x `elem` toListOf Unbound.fv tyB) then
+        return $
+          text "{" <+> dx <+> text ":" <+> dA
+            <+> text "|"
+            <+> dB
+            <+> text "}"
+        else return $ parens (dA PP.<+> text "*" PP.<+> dB)
   display (Prod a b) = do
     da <- display a
     db <- display b
-    return $ parens (da <+> text "," <+> db)
+    return $ parens (da PP.<> text "," PP.<> db)
   display (LetPair a bnd) = do
     da <- display a
     Unbound.lunbind bnd $ \((x, y), body) -> do
@@ -282,16 +287,16 @@ instance Display Term where
       dy <- display y
       dbody <- display body
       return $
-        text "let" 
-          <+> text "("
-          <+> dx
-          <+> text ","
-          <+> dy
-          <+> text ")"
+        (text "let" 
+          <+> (text "("
+          PP.<> dx
+          PP.<> text ","
+          PP.<> dy
+          PP.<> text ")")
           <+> text "="
           <+> da 
-          <+> text "in"
-          <+> dbody
+          <+> text "in")
+        $$ dbody
   display (Let bnd) = do
     Unbound.lunbind bnd $ \((x, a), b) -> do
       da <- display (Unbound.unembed a)
@@ -361,14 +366,21 @@ instance Display Match where
       return $ hang (dpat <+> text "->") 2 dubd
 
 instance Display Pattern where
-  display (PatCon c []) = (display c)
-  display (PatCon c args) =
-    parens <$> ((<+>) <$> (display c) <*> (hsep <$> (mapM display args)))
+  display (PatCon c [])   = display c
+  display (PatCon c args) = do
+    dc <- display c 
+    dargs <- mapM wrap args
+    return $ dc <+> (hsep dargs)
+      where 
+        wrap (a@(PatVar _),ep)    = bindParens ep <$> display a
+        wrap (a@(PatCon _ []),ep) = bindParens ep <$> display a 
+        wrap (a@(PatCon _ _),ep)  = mandatoryBindParens ep <$> display a
+      
   display (PatVar x) = display x
 
 instance Disp Assn where
   disp (AssnProp prop) = disp prop
-  disp (AssnSig sig) = mandatoryBindParens (sigEp sig) (disp sig)
+  disp (AssnSig sig)   = mandatoryBindParens (sigEp sig) (disp sig)
 
 instance Disp Prop where
   disp (Eq t1 t2) = brackets (disp t1 <+> char '=' <+> disp t2)
@@ -400,15 +412,15 @@ gatherBinders body = do
 
 {- SOLN EP -}
 
--- | Add [] for erased arguments
+-- | Add [] for irrelevant arguments
 bindParens :: Epsilon -> Doc -> Doc
-bindParens Runtime d = d
-bindParens Erased d = brackets d
+bindParens Rel d = d
+bindParens Irr d = brackets d
 
 -- | Always add () or [], shape determined by epsilon
 mandatoryBindParens :: Epsilon -> Doc -> Doc
-mandatoryBindParens Runtime d = parens d
-mandatoryBindParens Erased d = brackets d
+mandatoryBindParens Rel d = parens d
+mandatoryBindParens Irr d = brackets d
 
 {- STUBWITH -}
 
@@ -424,7 +436,7 @@ wrapf f = case f of
   PrintMe -> id
   _ -> parens
 
--- | decide whether to add parens to an argument
+-- | decide whether to add parens to an argument in an application
 wraparg :: DispInfo -> Arg -> Doc -> Doc
 wraparg st a = case unArg a of
   Var _ -> std

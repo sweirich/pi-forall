@@ -29,7 +29,7 @@ equate t1 t2 = do
       equate b1 b2
     (App a1 a2, App b1 b2) -> do
       equate a1 b1 
-      equateArgs [a2] [b2]
+      equateArg a2 b2
     (Pi bnd1, Pi bnd2) -> do
       ((_, {- SOLN EP -}ep1,{- STUBWITH -} Unbound.unembed -> tyA1), tyB1, 
        (_, {- SOLN EP -}ep2,{- STUBWITH -} Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
@@ -113,19 +113,12 @@ equate t1 t2 = do
                DS "in context:", DD gamma]
        
 
-
 -- | Match up args
 -- TODO: add compile-time irrelevance here
 equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
 equateArgs (a1:t1s) (a2:t2s) = do
-  equate (unArg a1) (unArg a2)
+  equateArg a1 a2
   equateArgs t1s t2s
-{- SOLN EP -}  
-  unless (argEp a1 == argEp a2) $
-     Env.err [DS "Arg stage mismatch",
-              DS "Expected " , DD a2, 
-              DS "Found ", DD a1]
-{- STUBWITH -}
 equateArgs [] [] = return ()
 equateArgs a1 a2 = do 
           gamma <- Env.getLocalCtx
@@ -133,7 +126,13 @@ equateArgs a1 a2 = do
                    DS "but found", DD (length a1),
                    DS "in context:", DD gamma]
 
-  
+equateArg :: Arg -> Arg -> TcMonad ()
+equateArg (Arg Irr t1) (Arg Irr t2) = return ()
+equateArg (Arg Rel t1) (Arg Rel t2) = equate t1 t2
+equateArg a1 a2 =  
+  Env.err [DS "Arg stage mismatch",
+              DS "Expected " , DD a2, 
+              DS "Found ", DD a1] 
 -------------------------------------------------------
 
 -- | Ensure that the given type 'ty' is a 'Pi' type
@@ -237,7 +236,7 @@ whnf (Case scrut mtchs) = do
     (DCon d args) -> f mtchs where
       f (Match bnd : alts) = (do
           (pat, br) <- Unbound.unbind bnd
-          ss <- patternMatches (Arg Runtime nf) pat 
+          ss <- patternMatches (Arg Rel nf) pat 
           whnf (Unbound.substs ss br)) 
             `catchError` \ _ -> f alts
       f [] = Env.err $ [DS "Internal error: couldn't find a matching",
@@ -254,14 +253,14 @@ whnf tm = return tm
 -- otherwise throws an error
 patternMatches :: Arg -> Pattern -> TcMonad [(TName, Term)]
 patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
-patternMatches (Arg Runtime t) pat = do
+patternMatches (Arg Rel t) pat = do
   nf <- whnf t
   case (nf, pat) of 
     (DCon d [], PatCon d' pats)   | d == d' -> return []
     (DCon d args, PatCon d' pats) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> Env.err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
-patternMatches (Arg Erased _) pat = do
+patternMatches (Arg Irr _) pat = do
   Env.err [DS "Cannot match against irrelevant args"]
 {- STUBWITH -}
 

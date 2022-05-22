@@ -71,9 +71,9 @@ Optional components in this BNF are marked with < >
         C2 x [y]   -> b2
 {- STUBWITH -}
 {- SOLN EP -}
-    | \ [x <:A> ] . a          Erased lambda
-    | a [b]                    Erased application
-    | [x : A] -> B             Erased pi    
+    | \ [x <:A> ] . a          Irr lambda
+    | a [b]                    Irr application
+    | [x : A] -> B             Irr pi    
 {- STUBWITH -}
 
   declarations:
@@ -290,7 +290,7 @@ natenc =
   do n <- natural
      return $ encode n 
    where encode 0 = DCon "Zero" []
-         encode n = DCon "Succ" [Arg Runtime (encode (n-1))]
+         encode n = DCon "Succ" [Arg Rel (encode (n-1))]
 {- STUBWITH -}
 
 moduleImports :: LParser Module
@@ -336,7 +336,7 @@ telebindings = many teleBinding
         v <- varOrWildcard
         colon
         t <- expr
-        return (AssnSig (Sig v Erased t):)
+        return (AssnSig (Sig v Irr t):)
     
     equal = do
         v <- variable
@@ -436,7 +436,7 @@ expr = do
         mkArrow  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (Unbound.bind (n, {- SOLN EP -}Runtime, {- STUBWITH -} Unbound.embed tyA) tyB)
+               Pi (Unbound.bind (n, {- SOLN EP -}Rel, {- STUBWITH -} Unbound.embed tyA) tyB)
         mkTuple = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
@@ -450,7 +450,7 @@ term = {- SOLN DATA -} try dconapp <|>  try tconapp <|> {- STUBWITH -} funapp
 
 {- SOLN DATA -}
 arg :: LParser Arg
-arg = (Arg Erased) <$> brackets expr <|> (Arg Runtime) <$> factor
+arg = (Arg Irr) <$> brackets expr <|> (Arg Rel) <$> factor
 
 dconapp :: LParser Term
 dconapp = do 
@@ -471,8 +471,8 @@ funapp = do
   foldl' app f <$> many bfactor
   where
 {- SOLN EP -}
-        bfactor = ((,Erased)  <$> brackets expr) 
-                             <|> ((,Runtime) <$> factor)
+        bfactor = ((,Irr)  <$> brackets expr) 
+                             <|> ((,Rel) <$> factor)
         app e1 (e2,ep)  =  App e1 (Arg ep e2)
 
 {- STUBWITH      
@@ -507,8 +507,8 @@ factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data con
 
 {- SOLN EP -}
 impOrExpVar :: LParser (TName, Epsilon)
-impOrExpVar = try ((,Erased) <$> (brackets variable)) 
-              <|> (,Runtime) <$> variable
+impOrExpVar = try ((,Irr) <$> (brackets variable)) 
+              <|> (,Rel) <$> variable
 {- STUBWITH -}
 
 typen :: LParser Term
@@ -600,7 +600,7 @@ impProd =
         <|> ((,) <$> Unbound.fresh wildcardName <*> expr))
      reservedOp "->" 
      tyB <- expr
-     return $ Pi (Unbound.bind (x,Erased, Unbound.embed tyA) tyB)
+     return $ Pi (Unbound.bind (x,Irr, Unbound.embed tyA) tyB)
 {- STUBWITH -}
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
@@ -637,10 +637,10 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (Unbound.bind (x,{- SOLN EP -}Runtime,{- STUBWITH -}Unbound.embed a) b))
+                      return $ Pi (Unbound.bind (x,{- SOLN EP -}Rel,{- STUBWITH -}Unbound.embed a) b))
          Colon a b -> return $ Ann a b
          Comma a b -> return $ Prod a b 
-         Nope a    -> return $ Paren a
+         Nope a    -> return $ a -- Paren a
 
 {- SOLN DATA -}
 pattern :: LParser Pattern 
@@ -648,8 +648,8 @@ pattern :: LParser Pattern
 pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
        <|> atomic_pattern
   where
-    arg_pattern    =  ((,Erased) <$> brackets pattern) 
-                  <|> ((,Runtime) <$> atomic_pattern)
+    arg_pattern    =  ((,Irr) <$> brackets pattern) 
+                  <|> ((,Rel) <$> atomic_pattern)
     atomic_pattern =    (parens pattern)
                   <|> reserved "True" *> pure (PatCon "True" [])
                   <|> reserved "False" *> pure (PatCon "False" [])

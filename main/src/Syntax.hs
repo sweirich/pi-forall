@@ -118,8 +118,8 @@ data Arg = Arg {{- SOLN EP -} argEp :: Epsilon, {- STUBWITH -} unArg :: Term}
 
 -- | Epsilon annotates the stage of a variable
 data Epsilon
-  = Runtime
-  | Erased
+  = Rel
+  | Irr
   deriving
     ( Eq,
       Show,
@@ -173,7 +173,7 @@ data Sig = Sig {sigName :: TName {- SOLN EP -}, sigEp :: Epsilon {- STUBWITH -},
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 mkSig :: TName -> Type -> Sig
-mkSig n t = Sig n {- SOLN EP -} Runtime {- STUBWITH -} t
+mkSig n t = Sig n {- SOLN EP -} Rel {- STUBWITH -} t
 
 -- | Declarations are the components of modules
 data Decl
@@ -184,7 +184,8 @@ data Decl
     Def TName Term
   | -- | A potentially (recursive) definition of
     -- a particular name, must be declared
-    RecDef TName Term {- SOLN DATA -}
+    RecDef TName Term {- SOLN EP -}
+  | Demote Epsilon {- STUBWITH -} {- SOLN DATA -}
   | -- | Declaration for a datatype including all of
     -- its data constructors
     Data TCName Telescope [ConstructorDef]
@@ -328,10 +329,10 @@ y0 :: TName
 y0 = Unbound.string2Name "y"
 
 idx :: Term
-idx = Lam (Unbound.bind (x0 {- SOLN EP -}, Runtime {- STUBWITH -}) (Var x0))
+idx = Lam (Unbound.bind (x0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var x0))
 
 idy :: Term
-idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Runtime {- STUBWITH -}) (Var y0))
+idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var y0))
 
 -- >>> Unbound.aeq idx idy
 -- True
@@ -356,11 +357,11 @@ instance Unbound.Subst Term Term where
 
 
 pi1 :: Term 
-pi1 = Pi (Unbound.bind (x0, {- SOLN EP -} Runtime, {- STUBWITH -} Unbound.embed (Var x0)) (Var x0))
+pi1 = Pi (Unbound.bind (x0, {- SOLN EP -} Rel, {- STUBWITH -} Unbound.embed (Var x0)) (Var x0))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi (Unbound.bind (y0, {- SOLN EP -} Runtime, {- STUBWITH -} Unbound.embed TyBool) (Var y0))
+pi2 = Pi (Unbound.bind (y0, {- SOLN EP -} Rel, {- STUBWITH -} Unbound.embed TyBool) (Var y0))
 
 -- >>> Unbound.aeq (Unbound.subst x0 TyBool pi1) pi2
 -- True

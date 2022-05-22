@@ -2,6 +2,8 @@ module Lec4 where
 
 import Nat
 
+-- can mark some arguments as irrelevant
+
 id : [x:Type] -> (y : x) -> x
 id = \[x] y. (y : x)
 
@@ -14,6 +16,24 @@ id' : [x:Type] -> [y:x] -> x
 id' = \[x][y]. y
 -}
 
+-----------------------------------------------------
+--  Irrelevant arguments ignored during type equality
+
+irrelevance : (p : [i : Nat] -> Nat) -> p [1] = p [2]
+irrelevance = \p . refl
+
+-----------------------------------------------------
+-- Propositional equality is relevant
+-- Cannot erase proofs that are used for casts. 
+-- Need a terminating system to even think about this possibility.
+
+proprel : [a : Type] -> (pf : a = Bool) -> (x : a) -> Bool
+proprel = \[a] pf x . 
+  subst x by pf 
+
+-----------------------------------------------------
+-- The trade off for Sigma types. Weak elimination
+-- if the first argument is irrelevant.
 
 -- Existential type
 data Exists (B: Type -> Type) : Type where
@@ -22,18 +42,16 @@ data Exists (B: Type -> Type) : Type where
 counter : (Nat -> Nat) * (Nat -> Nat) * (Nat -> Nat)
 counter = (\x . 0, ( \x. Succ x , \x . x))
 
-
--- Doesn't type check
+-- This also doesn't work
 {-
 ty : [B: Type -> Type] -> Exists B -> Type 
 ty = \ [B]  x . case x of 
   Pack [x] y -> x
--}
 
--- type checks
 open : [B:Type -> Type] -> (x : Exists B) -> B (case x of Pack [x] y -> x)
 open = \ [B]  x . case x of 
   Pack [z] y -> y
+-}
 
 Abs : Type
 Abs = Exists (\t. (Nat -> t) * (t -> t) * (t -> Nat))
@@ -41,8 +59,42 @@ Abs = Exists (\t. (Nat -> t) * (t -> t) * (t -> Nat))
 abs : Abs
 abs = Pack [Nat] counter
 
-example : Nat
-example = 
-  let (constr, rest) = open abs in 
-  let (incr, toNat) = rest in 
-  toNat (incr 0) 
+example : Abs -> Nat
+example = \ a . 
+  case a of 
+    Pack [t] tuple -> 
+      let (constr, rest) = tuple in 
+      let (incr, toNat) = rest in 
+      toNat (incr (constr 0))
+
+-----------------------------------------------
+
+Abs2 : Type
+Abs2 = { t : Type | (Nat -> t) * (t -> t) * (t -> Nat) }
+
+abs2 : Abs2
+abs2 = ( Nat , counter )
+
+ty : (a : Abs2) -> Type
+ty = \a. let (x,y) = a in x
+
+constr : (a : Abs2) -> Nat -> (ty a)
+constr = \a. let (x,y) = a in 
+  let (c, rest) = y in 
+  c
+
+incr : (a : Abs2) -> ty a -> ty a 
+incr = \a. let (x,y) = a in 
+  let (c, r) = y in 
+  let (i, t) = r in 
+  i
+
+toNat : (a : Abs2) -> ty a -> Nat 
+toNat = \a. let (x,y) = a in 
+  let (c, r) = y in 
+  let (i, t) = r in 
+  t
+
+example2 : Abs2 -> Nat
+example2 = \ a .   
+  toNat a (incr a (constr a 0))

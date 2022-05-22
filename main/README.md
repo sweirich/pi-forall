@@ -23,7 +23,7 @@ Features
 --------
   - Pure-type-system (PTS) representation (uniform syntax for all levels)
   - bidirectional type checking
-  - erased arguments (forall)
+  - irrelevant arguments (forall)
   - propositional equality 
   - indexed datatypes 
 
