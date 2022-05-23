@@ -5,22 +5,18 @@ This language implementation is designed to accompany four lectures at
 OPLSS during Summer 2022. Notes for these lectures are included in the 
 distribution:
 
-- [notes.md](doc/notes.md):    Basic language with Type:Type 
-- [notes2.md](doc/notes2.md):  Implementation of basic languages
-- [notes3.md](doc/notes3.md):  Definitional and propositional equality
-- [notes4.md](doc/notes4.md):  Datatypes, with parameters and indices, erased arguments
-
-There is also a LaTeX document that typesets the notes above and includes 
-the specification of the PiForall language.
-
 - [oplss.pdf](doc/oplss.pdf)
+
+See also the documentation [README.md](doc/README.md) for details about 
+how the notes are typeset.
 
 These lecture notes corresponds to an increasingly expressive demo
 implementation of dependently-typed lambda calculus.
 
 - [version1/](version1/):   Basic language implementation
 - [version2/](version2/):   Basic language extended with nontrivial definitional equality
-- [full/](full/):           Full language with datatypes and erased arguments
+- [version3/](version3/):   Above, extended with irrelevant arguments
+- [full/](full/):           Full language with datatypes 
 
 See also the implementation [README.md](main/README.md) for more details.
 

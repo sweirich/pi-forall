@@ -12,5 +12,5 @@ LaTeX source files
 + [oplss.mng](oplss.mng) - Main text of the document
 + [lstpi.sty](lstpi.sty) - [Listings](https://ctan.mirrors.hoobly.com/macros/latex/contrib/listings/listings.pdf) specification for  typesetting `pi-forall` source code
 + [ottalt.sty](ottalt.sty) - [Auxiliary style file](https://users.cs.northwestern.edu/~jesse/code/latex/ottalt/ottalt.pdf) for working with Ott produced LaTeX macros
-+ [weirich.bib](ott weirich.bib) - BibTeX data
++ [weirich.bib](weirich.bib) - BibTeX data
 + Makefile - how to put everything together
