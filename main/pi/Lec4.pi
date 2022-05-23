@@ -110,6 +110,6 @@ example2 = \ a .
 -- This doesn't type check. The type system prevents us from 
 -- confusing two different abstract types
 -- 
-example2 : Abs2 -> Abs2 -> Nat
-example2 = \ a b .   
-  toNat a (incr b (constr a 0))
+--example3 : Abs2 -> Abs2 -> Nat
+--example3 = \ a b .   
+--  toNat a (incr b (constr a 0))

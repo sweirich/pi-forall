@@ -78,3 +78,60 @@ doi = {10.3233/FI-2010-304}
   editor={Bertot, Yves and Huet, Gérard and Lévy, Jean-Jacques and Plotkin, Gordon}, 
   year=2009, 
   pages={139–164}}
+
+@article{10.1145/1291220.1291155,
+author = {Sewell, Peter and Nardelli, Francesco Zappa and Owens, Scott and Peskine, Gilles and Ridge, Thomas and Sarkar, Susmit and Strni\v{s}a, Rok},
+title = {Ott: Effective Tool Support for the Working Semanticist},
+year = {2007},
+issue_date = {September 2007},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {42},
+number = {9},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/1291220.1291155},
+doi = {10.1145/1291220.1291155},
+abstract = {It is rare to give a semantic definition of a full-scale programming language, despite the many potential benefits. Partly this is because the available metalanguages for expressing semantics - usually either L<scp>a</scp>TEX for informal mathematics, or the formal mathematics of a proof assistant - make it much harder than necessary to work with large definitions.We present a metalanguage specifically designed for this problem, and a tool, ott, that sanity-checks such definitions and compiles them into proof assistant code for Coq, HOL, Isabelle, and (in progress) Twelf, together with L<scp>a</scp>TEX code for production-quality typesetting, and OCaml boilerplate. The main innovations are:(1) metalanguage design to make definitions concise, and easy to read and edit;(2) an expressive but intuitive metalanguage for specifying binding structures; and (3) compilation to proof assistant code.This has been tested in substantial case studies, including modular specifications of calculi from the TAPL text, a Lightweight Java with Java JSR 277/294 module system proposals, and a large fragment of OCaml (around 306 rules), with machine proofs of various soundness results. Our aim with this work is to enable a phase change: making it feasible to work routinely, without heroic effort, with rigorous semantic definitions of realistic languages.},
+journal = {SIGPLAN Not.},
+month = {oct},
+pages = {1–12},
+numpages = {12}
+}
+
+@inproceedings{ott,
+author = {Sewell, Peter and Nardelli, Francesco Zappa and Owens, Scott and Peskine, Gilles and Ridge, Thomas and Sarkar, Susmit and Strni\v{s}a, Rok},
+title = {Ott: Effective Tool Support for the Working Semanticist},
+year = {2007},
+isbn = {9781595938152},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1291151.1291155},
+doi = {10.1145/1291151.1291155},
+abstract = {It is rare to give a semantic definition of a full-scale programming language, despite the many potential benefits. Partly this is because the available metalanguages for expressing semantics - usually either L<scp>a</scp>TEX for informal mathematics, or the formal mathematics of a proof assistant - make it much harder than necessary to work with large definitions.We present a metalanguage specifically designed for this problem, and a tool, ott, that sanity-checks such definitions and compiles them into proof assistant code for Coq, HOL, Isabelle, and (in progress) Twelf, together with L<scp>a</scp>TEX code for production-quality typesetting, and OCaml boilerplate. The main innovations are:(1) metalanguage design to make definitions concise, and easy to read and edit;(2) an expressive but intuitive metalanguage for specifying binding structures; and (3) compilation to proof assistant code.This has been tested in substantial case studies, including modular specifications of calculi from the TAPL text, a Lightweight Java with Java JSR 277/294 module system proposals, and a large fragment of OCaml (around 306 rules), with machine proofs of various soundness results. Our aim with this work is to enable a phase change: making it feasible to work routinely, without heroic effort, with rigorous semantic definitions of realistic languages.},
+booktitle = {Proceedings of the 12th ACM SIGPLAN International Conference on Functional Programming},
+pages = {1–12},
+numpages = {12},
+location = {Freiburg, Germany},
+series = {ICFP '07}
+}
+
+@book{tapl,
+author = {Pierce, Benjamin C.},
+title = {Types and Programming Languages},
+year = {2002},
+isbn = {0262162091},
+publisher = {The MIT Press},
+edition = {1st},
+abstract = {A type system is a syntactic method for automatically checking the absence of certain erroneous behaviors by classifying program phrases according to the kinds of values they compute. The study of type systems -- and of programming languages from a type-theoretic perspective -- has important applications in software engineering, language design, high-performance compilers, and security.This text provides a comprehensive introduction both to type systems in computer science and to the basic theory of programming languages. The approach is pragmatic and operational; each new concept is motivated by programming examples and the more theoretical sections are driven by the needs of implementations. Each chapter is accompanied by numerous exercises and solutions, as well as a running implementation, available via the Web. Dependencies between chapters are explicitly identified, allowing readers to choose a variety of paths through the material.The core topics include the untyped lambda-calculus, simple type systems, type reconstruction, universal and existential polymorphism, subtyping, bounded quantification, recursive types, kinds, and type operators. Extended case studies develop a variety of approaches to modeling the features of object-oriented languages.}
+}
+
+@book{pfpl,
+author = {Harper, Robert},
+title = {Practical Foundations for Programming Languages},
+year = {2016},
+isbn = {1107150302},
+publisher = {Cambridge University Press},
+address = {USA},
+edition = {2nd},
+abstract = {This text develops a comprehensive theory of programming languages based on type systems and structural operational semantics. Language concepts are precisely defined by their static and dynamic semantics, presenting the essential tools both intuitively and rigorously while relying on only elementary mathematics. These tools are used to analyze and prove properties of languages and provide the framework for combining and comparing language features. The broad range of concepts includes fundamental data types such as sums and products, polymorphic and abstract types, dynamic typing, dynamic dispatch, subtyping and refinement types, symbols and dynamic classification, parallelism and cost semantics, and concurrency and distribution. The methods are directly applicable to language implementation, to the development of logics for reasoning about programs, and to the formal verification language properties such as type safety. This thoroughly revised second edition includes exercises at the end of nearly every chapter and a new chapter on type refinements.}
+}

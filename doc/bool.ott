@@ -96,6 +96,7 @@ G |- a : A   ::   :: typing :: 't_'
 {{ com Typing }}
 by
 
+
 ---------------- :: bool
 G |- Bool : Type
 
@@ -162,7 +163,7 @@ G |- b2 <= A
 
 
  G |- x => Bool 
- G |- b1 <= A [ true / x ]
- G |- b2 <= A [ false / x ]
+ G |- b1 <= A [ True / x ]
+ G |- b2 <= A [ False / x ]
  ------------------------------ :: if
  G |- if x then b1 else b2 <= A

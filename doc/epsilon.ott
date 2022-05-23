@@ -1,0 +1,107 @@
+% Language additions for irrelevant arguments
+
+grammar
+
+ep {{ tex \epsilon }} :: '' ::= 
+   | Rel  ::   :: Rel {{ tex + }}
+   | Irr  ::   :: Irr {{ tex - }}
+
+tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+
+   | \ [ x ] . a     ::    :: ELam
+
+   | a [ b ]         ::    :: EApp
+
+   | [ x : A ] -> B  ::    :: EPi
+
+
+context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
+
+   | G , x : ep A   ::    :: ECons   
+   {{ tex [[G]], [[x]]\! :^[[ep]]\![[A]] }}
+
+   | x : ep A       ::    :: ESingle 
+   {{ tex [[x]]\! :^[[ep]]\! [[A]] }}
+
+   | G ep           ::    :: Demotion 
+   {{ tex [[G]]^[[ep]] }}
+ 
+formula :: 'formula_' ::=
+
+   | x : ep A elem G   ::   :: inEG
+     {{ tex [[x]]:^[[ep]][[A]] [[elem]] [[G]] }}
+
+   | ep1 <= ep2   ::   :: SubE
+     {{ tex [[ep1]] \leq [[ep2]] }}
+     
+
+defns 
+Jwhnf :: '' ::= 
+
+defn
+whnf a = v ::    :: whnf :: 'whnf_' 
+by
+
+defns
+JOp :: '' ::=
+
+defn
+a ~> b ::   :: step :: 's_'
+{{ com single-step operational semantics, i. e. head reduction }}
+by
+
+defns 
+JEq :: '' ::=
+
+defn
+G |- A = B ::  :: eq :: 'e_'
+{{ com Definitional equality }}
+by
+
+G |- a1 = a2
+--------------------------- ::  eapp
+G |- a1 [b1] = a2 [b2]
+
+defns
+JTyping :: '' ::= 
+
+defn 
+G |- a : A   ::   :: typing :: 't_'
+{{ com Typing }}
+by
+
+x : Rel A elem G
+------------------------- :: evar 
+G |- x : A
+
+G, x:Irr A |- a : B
+G Irr |- A : Type
+------------------------  ::  elambda
+G |- \[x].a : [x:A] -> B
+
+
+G |- a : [x:A] -> B 
+G Irr |- b : A
+--------------------------- ::  eapp
+G |- a [b] : B [ b / x ]
+
+
+G |- A : Type     
+G, x:Rel A |- B : Type
+-------------------------------------- :: epi
+G |- [x:A] -> B : Type
+
+
+defns
+JBidirectional :: '' ::= 
+
+defn 
+G |- a => A ::    :: inferType :: 'i_'
+{{ com type synthesis (algorithmic) }}
+by
+
+defn 
+G |- a <= B ::    :: checkType :: 'c_'
+{{ com type checking (algorithmic) }}
+by
+

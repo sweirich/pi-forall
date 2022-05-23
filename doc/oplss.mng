@@ -50,16 +50,14 @@ from 2014 and 2013.
 familiarity with the basics of the lambda calculus, including its standard
 operations (alpha-equivalence, substitution, evaluation) and the basics of
 type systems (specification of type systems using inference rules). For
-background on this material, I recommend programming language textbooks such
-as ~\cite{tapl, pfpl}.
+background on this material, I recommend textbooks such as ~\cite{tapl, pfpl}.
 
 Furthermore, these lectures and notes also refer to an implementation of a
 demo type checker. This implementation is available at
 \url{https://github.com/sweirich/pi-forall} and is written using the Haskell
 programming language. As you study these notes, you are encouraged to download
 this code and experiment with it. Detailed installation instructions are
-available with the source code. These notes assume basic knowledge of
-Haskell, or any typed functional programming language. 
+available with the source code. These notes assume basic knowledge of Haskell.
 
 \paragraph{What do I want you to get out of these lectures?}
 
@@ -72,7 +70,7 @@ Haskell, or any typed functional programming language.
 \item Exposure to the issues in implmenting dependently-typed
   languages. Overall, my goal is breadth not depth. As a result, I will
   provide you with \emph{simple} solutions to some of the problems you might
-  face and sidestep other problems entirely. Overally, the solutions you see
+  face and sidestep other problems entirely. Overall, the solutions you see
   here will not be the best solution, but I will give you pointers if you want
   to go deeper.
    
@@ -81,18 +79,20 @@ Haskell, or any typed functional programming language.
   exactly addresses our design goal (e.g. monads, generic programming) I will
   show you how that will work.
    
-\item A tool that you can use as a basis for experimentation. How do you know what 
-   programs you can and cannot express in your new type system? Having 
-   an implementation around lets you work out (smallish) examples and will 
-   help to convince you (and your reviewers) that you are developing something
-   useful.
+\item A tool that you can use as a basis for experimentation. How do you know
+  what programs you can and cannot express in your new type system? When you
+  are designing a new type system, having an implementation around lets you
+  work out (smallish) examples and will help to convince you (and your
+  reviewers) that you are developing something useful.
 
- \item Templates and tools for writing about programming languages and type
-   systems. The source files for these lecture notes are also available in the
-   same repository as the demo implementation. Building these notes requires
-   the Ott tool~\cite{ott}, specifically tailored for typesetting mathematical
-   specifications of programming languages and type systems. You may wish to
-   take a look at how this all works.
+\item Templates and tools for writing about type systems. The source files for
+  these lecture notes are also available in the same repository as the demo
+  implementation.\footnote{See the \texttt{doc} subdirectory in
+    \url{https://github.com/sweirich/pi-forall}.} Building these notes
+  requires Ott~\cite{ott}, a tool specifically tailored for typesetting type
+  systems and mathematical specifications of programming languages. I
+  encourage you to look at the source files for these notes, particularly 
+  the \texttt{.ott} files.
 \end{enumerate}
 
 \paragraph{What do these notes cover?}
@@ -103,26 +103,29 @@ programming language.
 
 \begin{itemize}
 \item Section~\ref{sec:simple} presents the mathematical specification of the
-  core type system including its abstract syntax (written in mathematics),
-  concrete syntax (as found in \pif source files) and core typing rules. 
+  core type system including its concrete syntax (as found in \pif source
+  files) abstract syntax and core typing rules (written using standard
+  mathematical notation).
   
 \item Our initial specification of the type system is declarative. It
   \emph{specifies} what terms should type check, but cannot be directly
   implemented. Therefore, Section~\ref{sec:bidirectional} reformulates the
   typing rules so that they are \emph{syntax-directed} and specify a type
-  checking algorithm. Ask yourself ``How much information do we need to
-  include in terms to make type checking algorithmic?''
+  checking algorithm. As you read this section, ask yourself ``How much
+  information do we need to include in terms to make type checking
+  algorithmic?''
 
 \item Section~\ref{sec:implementation} introduces the core \pif implementation
-  and walks through the Haskell implementation of the typing rules discussed
-  in Section~\ref{sec:bidirectional}. Ask yourself ``How can we represent the
+  and walks through the type checker found in \texttt{version1}, the Haskell
+  implementation of the typing rules discussed in
+  Section~\ref{sec:bidirectional}. Ask yourself ``How can we represent the
   abstract syntax of the language, including variable binding?''
 
 \item Section~\ref{sec:equality} discusses the role of definitional equality
   in dependently typed languages. After motivating examples, it presents both
   a specification of when terms are equal and a semi-decidable algorithm that
-  can be incorporated into the type checker. Ask yourself ``How can we know
-  when types (and terms) are equal?''
+  can be incorporated into the type checker. 
+  Ask yourself ``How can we know when types (and terms) are equal?''
 
 \item An important feature of dependently-typed languages is the ability for
   runtime tests to be reflected into the type
@@ -135,41 +138,45 @@ programming language.
   for equality?''
 
 \item Section~\ref{sec:datatypes} generalizes pattern matching to arbitrary
-  datatypes.
+  datatypes. This section combines the features introduced in the previous
+  sections (Sections \ref{sec:equality},\ref{sec:pattern-matching}, and
+  \ref{sec:irrelevance}) into a single unified language feature.
 
-\item The appendix includes the complete specification of the full \pif
-  language.
 \end{itemize}
 
+If you are looking at the repository, you'll see that it includes several incrementally 
+more expressive implementations. As you read each chapter, you can see how the features 
+described in that chapter can be implemented in a simple type checker. 
 
-\begin{tabular}{lll}
-\texttt{version1} & Sections~\ref{sec:simple}\ref{sec:bidirectional}\ref{sec:implementation} \\
-\texttt{version2} & Sections~\ref{sec:equality} and ~\ref{sec:pattern-matching}\\
-\texttt{version3} & Section ~\ref{sec:irrelevance} \\
-\texttt{full}     & Section ~\ref{sec:datatypes}
+\begin{tabular}{llll}
+Core system & \texttt{version1} & Sections~\ref{sec:simple}, \ref{sec:bidirectional}, and \ref{sec:implementation} \\
+Equality    & \texttt{version2} & Sections~\ref{sec:equality} and ~\ref{sec:pattern-matching}\\
+Irrelevance & \texttt{version3} & Section ~\ref{sec:irrelevance} \\
+Datatypes   & \texttt{full}     & Section ~\ref{sec:datatypes} \\
 \end{tabular}
 
 \paragraph{What do these notes \textbf{not} cover?}
 The goal of this notes is to provide an introductory overview. As a result,
 there are many topics related to the implementation of dependent type theories
-that are not included in these notes.
+that are not included here. Furthermore, because these notes come with a references 
+implementation, they only demonstrate a single point in the design space of 
+dependently-typed languages. 
 
 \begin{itemize}
-\item For simplicity, the language is not terminating. To implement something
-  like Agda or Coq, where typechecking implies termination, requires
+\item For simplicity, the \pif language does not enforce termination through
+  type checking. Implementing a proof system like Agda or Coq requires
   additional structure, including universe levels and bounded iteration.
 \item Many implementations of dependent type theories use
-  \emph{normalization-by-evaluation} to decide equivalence at compile
-  time. \pif uses an alternative equivalence algorithm based on
-  weak-head-normalization using substitution. This approach is closer to
-  lambda calculus theory, but can be less efficient in practice.
+  \emph{normalization-by-evaluation} to decide whether types are equivalent
+  during type checking.  \pif uses an alternative approach based on
+  weak-head-normalization, defined using substitution. This approach is closer
+  to lambda calculus theory, but can be less efficient in practice.
 \item For simplicity, \pif does not attempt to synthesize missing type
   arguments, using unification or other means. As a result, example programs
   in \pif are significantly more verbose than in other languages.
 \item This implementation relies on the \unbound library for the
-  implementation of variable binding, alpha-equivalence and substitution,
-  which uses a locally nameless representation. As a result, most issues
-  related to variable binding are avoided here.
+  implementation of variable binding, alpha-equivalence and substitution.
+  As a result, most issues related to variable binding are avoided.
 \item Recent work on cubical type theory, higher-inductive types and
   univalence is not covered here.
 \end{itemize}
@@ -1658,7 +1665,7 @@ is_zero = \ x . case x of
 
 \subsubsection{Dependently-typed data constructor args}
 
-Now, I lied. Even in our ``dirt simple'' system, we'll be able to encode
+Now, even in our ``dirt simple'' system, we'll be able to encode
 some new structures, beyond what is available in functional programming
 languages like Haskell and ML. These structures won't be all that useful
 yet, but as we add parameters and indices to our datatypes, they will
@@ -1669,118 +1676,131 @@ data constructors have dependent types.
 data SillyBool : Type where      
    ImTrue  of (b : Bool) (_ : b = True)
    ImFalse of (b: Bool)  (_ : b = False)
-   
 \end{piforall}
 
-\subsection{Specifying the type system with basic datatypes}
+\subsection{Implementing the type checker for ``dirt simple'' datatypes}
 
 Datatype declarations, such as \texttt{data\ Bool}, \texttt{data\ Void}
 or \texttt{data\ Nat} extend the context with new type constants (aka
 type constructors) and new data constructors. It is as if we had added a
 bunch of new typing rules to the type system, such as:
 
-\drules[T]{$[[G|- a : A]]$}{Typing}{Nat,Void,Zero,Succ,ImTrue}
+\drules[t]{$[[G|- a : A]]$}{Typing}{Nat,Void,Zero,Succ,ImTrue}
 
 In the general form, a \emph{simple} data type declaration includes a
 name and a list of data constructors.
 
 \begin{piforall}
    data T : Type where
-      K1        -- no arguments
-      K2 of (A)    -- single arg of type A
-      K3 of (x:A)  -- also single arg of type A, called x for fun
-      K4 of (x:A)(y:B) -- two args, the type of B can mention A.
+      K1                 -- no arguments
+      K2 of (A)          -- single arg of type A
+      K3 of (x:A)        -- also single arg of type A, called x for fun
+      K4 of (x:A)(y:B)   -- two args, the type of B can mention A
+      K5 of (x:A)[x = a] -- one arg, plus constraint about that arg
 \end{piforall}
 
-In fact, each data constructor takes a special sort of list of arguments
-that we'll call a `telescope'. (The word `telescope' for this structure
-was coined by de Bruijn to describe the scoping behavior of this
-structure. The scope of each variable overlaps all of the subsequent
-ones, nesting like an expandable telescope.)
+In fact, each data constructor takes a special sort of list of arguments that
+we call a \emph{telescope}. (The word telescope for this structure was coined
+by de Bruijn~\cite{debruijn} to describe the scoping behavior of this
+structure. The scope of each variable overlaps all of the subsequent ones,
+nesting like an expandable telescope.)
 
 We can represent this structure in our implementation by adding a new
 form of declaration (some parts have been elided compared to
-\texttt{soln}, we're building up to that version.)
+\texttt{full}, so we're building up to that version.)
 
 \begin{verbatim}
- -- | type constructor names
- type TCName = String
+-- | type constructor names
+type TCName = String
 
- -- | data constructor names
- type DCName = String
+-- | data constructor names
+type DCName = String
 
- data Decl = ...
-   | Data TCName [ConstructorDef]
+data Decl = 
+    -- | Declaration for the type of a term `x : A`
+    TypeSig Sig   
+  | -- | The definition of a particular name `x = a`
+    Def TName Term
+    ...
+   
+  | -- | Datatype definition  `data T = ...`
+    Data TCName [ConstructorDef]
 
- -- | A Data constructor has a name and a telescope of arguments
- data ConstructorDef = ConstructorDef DCName Telescope
-       deriving (Show,Unbound.Alpha, Unbound.Subst Term)
+-- | A Data constructor has a name and a telescope of arguments
+data ConstructorDef = ConstructorDef DCName Telescope
 
-newtype Telescope = Telescope [Assn]
-  deriving (Show, Generic)
-  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+-- | A telescope is a list of type declarations and definitions
+newtype Telescope = Telescope [Decl]
 
-data Assn
-  = AssnSig Sig
-  | AssnEq Term Term
-  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
 \end{verbatim}
 
-For example, a declaration for the \texttt{Bool} type would be
-
+For example, a declaration for the \texttt{Bool} type would be the following.
 \begin{verbatim}
-  boolDecl :: Decl 
-  boolDecl = Data "Bool" [ConstructorDef "False" Empty, 
-                          ConstructorDef "True" Empty]                                    
+boolDecl :: Decl 
+boolDecl = Data "Bool" [ConstructorDef "False" [], 
+                        ConstructorDef "True"  [] ]                                    
 \end{verbatim}
+
 
 \subsection{Checking (simple) data constructor
 applications}
 
-When we have a datatype declaration, that means that new data type
-\texttt{T} of type \texttt{Type} will be added to the context.
-Furthermore, the context should record all of the type constructors for
-that type, \texttt{Ki}, as well as the telescope, written \texttt{Di}
-for that data constructor. This information will be used to check terms
-that are the applications of data constructors. For simplicity, we'll
-assume that data constructors must be applied to all of their arguments.
+\begin{figure}
 
-So our typing rule looks a little like this. We have \texttt{as} as
-representing the list of arguments for the data constructor \texttt{Ki}.
 
-\[ \drule{t-dc-simple} \]
+% \[ 
+%\begin{array}{llcl}
+%\mathit{Telescope} &[[ D ]]& ::= &[[ x : A , D ]]\ |\ [[ x = b , D ]]\ |\ \mathit{empty} \\
+%\mathit{Pattern}   &[[ p ]]& ::= &[[ x ]]\ |\ [[K ps]] \\
+%\end{array}
+% \]
 
-\begin{verbatim}
-Ki : Di -> T  in G
-G |- as : Di
------------------------- simpl-constr
-G |- Ki as : T
-    
-\end{verbatim}
+\begin{tabular}{lll}
+$[[G |- args <= D]]$   & \texttt{tcArgTele} 
+   & Type check a list of arguments against a telescope \\
+$[[G |- p : A => D]]$ & \texttt{declarePat} 
+   & Create telescope containing all of the variables from the pattern \\
+$[[ |- a ~ b => D]]$  & \texttt{unify} 
+   & Compare two terms to create a list of definitions \\
+$[[ D [ a / x ] ]] $  & \texttt{doSubst}   
+   & Substitute through a telescope \\
+$[[ D1 [ args / D2 ] ]]$ & \texttt{substTele}
+   & Substitute a list of args for the variables declared in a telescope \\
+\end{tabular}
+\caption{Functions for checking datatypes and case expressions}
+\label{fig:data}
+\end{figure}
 
-We need to check that list against the telescope for the constructor.
-Each argument must have the right type. Furthermore, because of
-dependency, we substitute that argument for the variable in the rest of
-the telescope.
+When we have a datatype declaration, that means that new data type $[[T]]$ of
+type $[[Type]]$ will be added to the context.  Furthermore, the context should
+record all of the type constructors for that type, $[[Ki]]$, as well as the
+telescope, written $[[Di]]$, for that data constructor. This information will
+be used to check terms that are the applications of data constructors. For
+simplicity, we'll assume that data constructors must be fully applied to all
+of their arguments.
 
-\[ \drule{tele-arg} \]
+So our typing rule looks a little like this. We have $[[args]]$ as
+representing the list of arguments for the data constructor $[[K]]$.
 
-\begin{verbatim}
-    G |- a : A       G |- as : D { a / x }
-    --------------------------------------- tele-arg
-    G |- a as : (x:A) D
-    
-\end{verbatim}
+\[ \drule{i-dcon-simple} \]
 
-When we get to the end of the list (i.e.~there are no more arguments) we
+We need to check that list against the telescope for the constructor, using
+the judgment $[[G |- args <= D]]$.  
+
+In this judgement, each argument must have
+the right type. Furthermore, because of dependency, we substitute that
+argument for the variable in the rest of the telescope.
+
+\[ \drule[width=3in]{tele-sig} \]
+
+Furthermore, we also substitute when the telescope contains definitions. 
+
+\[ \drule[width=3in]{tele-def} \]
+
+When we get to the end of the argument list (i.e.~there are no more arguments) we
 should also get to the end of the telescope.
 
 \[ \drule{tele-nil} \]
-
-\begin{verbatim}
-    ----------- tele-empty
-    G |-  : 
-\end{verbatim}
 
 In \texttt{TypeCheck.hs}, the function \texttt{tcArgTele} essentially
 implements this judgement. (For reasons that we explain below, we have a
@@ -1790,74 +1810,60 @@ special type \texttt{Arg} for the arguments to the data constructor.)
 tcArgTele :: [Arg] -> Telescope -> TcMonad [Arg]
 \end{verbatim}
 
-This function relies on the following substitution function for
-telescopes:
+This function relies on the substitution function for
+telescopes, written $[[D [ a / x] ]]$ in the rules above:
 
 \begin{verbatim}
 doSubst :: [(TName, Term)] -> [Assn] -> TcMonad [Assn]
 \end{verbatim}
 
+
 \subsection{Eliminating dirt simple datatypes}
 
-In your homework assignment, we used if to eliminate boolean types.
-Here, we'd like to be more general, and have a \texttt{case} expression
+In your homework assignment, we used a special \texttt{if} to eliminate boolean types.
+Now, we'd like to replace that with the more general \texttt{case} expression, of the 
+form $[[case a of { </ pi -> ai // i /> }]]$ 
 that works with any form of datatype. What should the typing rule for
-that sort of expression look like? Well, the pattern for each branch
-should match up the telescope for the corresponding data constructor.
+that sort of expression look like? 
 
-\begin{verbatim}
- G |- a : T
-  Ki : Di -> T  in G       
-  G, Di |- ai : A
-  G |- A : Type
-  branches exhaustive
- ------------------------------------- case-simple
- G |- case a of { Ki xsi -> ai } : A
-\end{verbatim}
+\[ \drule[width=4in]{c-case-simple} \]
 
-Note that this version of case doesn't witness the equality between the
-scrutinee \texttt{a} and each of the patterns in the branches. To allow
-that, we can add a substiution to the result type of the case:
+Mathematically, this rule checks that the scrutinee has the type of 
+some datatype $[[T]]$. Then, for each case of the pattern match, this rule
+looks at the pattern and its type to calculate a telescope containing declarations of 
+all of the variables bound in that pattern. That telescope is added to the context
+to type check each branch. Furthermore, when checking the type of each branch, we 
+can refine that type because we know that the scrutinee is equual to the pattern. 
 
-\begin{verbatim}
- G |- a : T
-  Ki : Di -> T  in G       dom(Di) = xsi
-  G, Di |- ai : A { Ki xsi / x }
-  G |- A : T -> Type
-  branches exhaustive
- -------------------------------------------- case
- G |- case a of { Ki xsi -> ai } : A { a / x}
-\end{verbatim}
-
-How do we implement this rule in our language? The general for type
-checking a case expression \texttt{Case\ scrut\ alts} of type
-\texttt{ty} is as follows:
+How do we implement this rule in our language? The general strategy 
+is as follows:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \item
-  Infer type of the scrutinee \texttt{scrut}
+  Infer type of the scrutinee $[[a]]$ (\texttt{inferType})
 \item
-  Make sure that the inferred type is some type constructor
+  Make sure that the inferred type is some type constructor $[[T]]$
   (\texttt{ensureTCon})
 \item
-  Make sure that the patterns in the case alts are exhaustive
-  (\texttt{exhausivityCheck})
-\item
-  For each case alternative:
-\end{enumerate}
-
+  For each case alternative $[[pi]][[->]][[ai]]$:
 \begin{itemize}
 \item
-  Create the declarations for the variables in the pattern
+  Create the declarations $[[Di]]$ for the variables in the pattern
   (\texttt{declarePat})
+
+\item Create a list of definitions $[[Di']]$ that follow from unifying the
+  scrutinee $[[a]]$ with the pattern $[[pi]]$ (\texttt{unify})
+
 \item
-  Create defs that follow from equating the scrutinee \texttt{a} with
-  the pattern (\texttt{equateWithPat})
-\item
-  Check the body of the case in the extended context against the
-  expected type
+  Check the body of the case $[[ai]]$ in the extended context against the
+  expected type $[[A]]$ (\texttt{checkType})
 \end{itemize}
+
+\item
+  Make sure that the patterns in the cases are exhaustive
+  (\texttt{exhausivityCheck})
+\end{enumerate}
 
 \subsection{Datatypes with parameters}
 
@@ -1898,24 +1904,14 @@ need to make sure that its actual arguments match up the parameters in
 the telescope. For this, we can use the argument checking judgement
 above.
 
-\begin{verbatim}
-  T : D -> Type in G
-    G |- as : D
-  --------------------   tcon
-  G |- T as : Type
-\end{verbatim}
+
+\[ \drule[width=3in]{i-tcon} \]
 
 We modify the typing rule for data constructors by marking the telescope
 for type constructor in the typing rule, and then substituting the
 actual arguments from the expected type:
 
-\begin{verbatim}
-  Ki : D . Di -> T  in G
-  G |- as : Di { bs / D }
-    ------------------------ param-constr
-    G |- Ki as : T bs
-    
-\end{verbatim}
+\[ \drule[width=3in]{c-dcon} \]
 
 For example, if we are trying to check the expression
 \texttt{Just\ True}, with expected type \texttt{Maybe\ Bool}, we'll
@@ -1926,12 +1922,9 @@ That produces the telescope \texttt{(\_\ :\ Bool)}, which we'll use to
 check the argument \texttt{True}.
 
 In \texttt{TypeCheck.hs}, the function
-
 \begin{verbatim}
-substTele :: Telescope -> [ Term ] -> Telescope -> TcMonad Telescope
- 
+substTele :: Telescope -> [ Term ] -> Telescope -> TcMonad Telescope 
 \end{verbatim}
-
 implements this operation of substituting the actual data type arguments
 for the parameters.
 
@@ -1968,18 +1961,16 @@ Even though \texttt{beautiful} has type
 an index instead of a parameter because it is determined by each data
 constructor. It is not used uniformly in each case.
 
-In pi-forall, we'll implement indices by explictly \emph{constraining}
-parameters. These constraints will just be expressed as equalities
-written in square brackets. In otherwords, we'll define
-\texttt{beautiful} this way:
+In \pif, we'll implement indices by explictly \emph{constraining}
+parameters. These constraints will just be expressed as equalities written in
+square brackets. In other words, we'll define \texttt{beautiful} this way:
 
 \begin{piforall}
 data Beautiful (n : Nat) : Type where
-    B0 of [n = 0]
-     B3 of [n = 3]
-     B5 of [n = 5]
-     Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[m = m1+m2]
-     
+  B0 of [n = 0]
+  B3 of [n = 3]
+  B5 of [n = 5]
+  Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[m = m1+m2]   
 \end{piforall}
 
 Constraints can appear anywhere in the telescope of a data constructor.
@@ -1995,19 +1986,17 @@ These constraints interact with the type checker in a few places:
   are satisfied, by appealing to definitional equality when we are
   checking arguments against a telescope (in \texttt{tcArgTele}).
 
-\begin{verbatim}
-  G |- x = b      G |- as : D
-  --------------------------------------- tele-constraint
-  G |- as : (x = b) D     
-\end{verbatim}
+\[ \drule{tele-def} \]
+
 \item
   When we substitute through telescopes (in \texttt{doSubst}), we may
   need to rewrite a constraint \texttt{x\ =\ b} if we substitute for
   \texttt{x}.
+
 \item
   When we add the pattern variables to the context in each alternative
   of a case expression, we need to also add the constraints as
-  definitions. (see \texttt{declarePats}).
+  definitions (see \texttt{declarePats}).
 \end{itemize}
 
 For example, if we check an occurrence of \texttt{B3}, i.e.~
@@ -2015,7 +2004,6 @@ For example, if we check an occurrence of \texttt{B3}, i.e.~
 \begin{verbatim}
 threeIsBeautiful : Beautiful 3
 threeIsBeautiful = B3
- 
 \end{verbatim}
 
 this requires substituting \texttt{3} for \texttt{n} in the telescope
@@ -2026,8 +2014,13 @@ logic}
 
 Translate the definitions and proofs in
 \href{http://www.cis.upenn.edu/~bcpierce/sf/current/Logic.html}{Logic
-chapter of Software Foundations} to pi-forall. See
+chapter of Software Foundations} to \pif. See
 \href{soln/test/Logic.pi}{Logic.pi} for a start.
+
+\subsection{Datatypes with irrelevant components}
+
+Finally, we also would like to marks some of the components of 
+datatypes as irrelevant.
 
 \subsubsection{\texorpdfstring{Homework: Indexed datatypes: finite
 numbers in
@@ -2053,7 +2046,7 @@ we might declare these numbers as:
 %   suc  : {n : ℕ} (i : Fin n) → Fin (suc n)
 % \end{verbatim}
 
-In pi-forall, this corresponding definition makes the constraints
+In \pif, this corresponding definition makes the constraints
 explicit:
 
 \begin{verbatim}

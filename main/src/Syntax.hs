@@ -185,6 +185,7 @@ data Decl
   | -- | A potentially (recursive) definition of
     -- a particular name, must be declared
     RecDef TName Term {- SOLN EP -}
+    -- | Adjust the context for relevance checking
   | Demote Epsilon {- STUBWITH -} {- SOLN DATA -}
   | -- | Declaration for a datatype including all of
     -- its data constructors
@@ -195,7 +196,7 @@ data Decl
     DataSig TCName Telescope
   {- STUBWITH -}
   deriving (Show, Generic, Typeable)
-
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 {- SOLN DATA -}
 
 
@@ -215,21 +216,12 @@ data ConstructorDef = ConstructorDef SourcePos DCName Telescope
 
 -- | A telescope is like a first class context. It is a list of 
 -- assumptions, binding each variable in terms that appear
--- later in the list.  q 
+-- later in the list. 
 -- For example
 --     Delta = [ x:Type , y:x, y = w ]
-newtype Telescope = Telescope [Assn]
+newtype Telescope = Telescope [Decl]
   deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
-
-data Assn
-  = AssnSig  Sig
-  | AssnEq Term Term
-  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
-
-isAssnSig :: Assn -> Bool
-isAssnSig (AssnSig _) = True
-isAssnSig _ = False
 
 {- STUBWITH -}
 
@@ -294,8 +286,8 @@ preludeDataDecls =
 
         unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
 
-        sigmaTele = Telescope [AssnSig sigA, AssnSig sigB]
-        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [AssnSig sigX, AssnSig sigY])
+        sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
         sigA = Sig aname Rel Type
         sigB = Sig bname Rel (Pi (Unbound.bind (xname, Rel, Unbound.embed (Var aname)) Type))
         sigX = Sig xname Rel (Var aname)

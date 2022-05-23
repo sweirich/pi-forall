@@ -117,6 +117,7 @@ terminals :: 'terminals_' ::=
 
 formula :: 'formula_' ::=
   | judgement                ::   :: judgement
+  | formula1 .. formulai     ::   :: dots
   | x : A elem G             ::   :: inG
 
 defns 
@@ -227,10 +228,10 @@ G |- (\x.a)b = a [b/x]
  -----------  :: sym
  G |- B = A
  
- G |- A = B    
- G |- B = C
+ G |- A1 = A2    
+ G |- A2 = A3
  ------------------------- :: trans
- G |- A = C
+ G |- A1 = A3
 
 G, x : A |- b : B   
 G |- a1 = a2     

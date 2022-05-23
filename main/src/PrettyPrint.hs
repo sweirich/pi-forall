@@ -378,10 +378,6 @@ instance Display Pattern where
       
   display (PatVar x) = display x
 
-instance Disp Assn where
-  disp (AssnEq t1 t2) = brackets (disp t1 <+> char '=' <+> disp t2)
-  disp (AssnSig sig)  = mandatoryBindParens (sigEp sig) (disp sig)
-
 instance Disp Telescope where
   disp (Telescope t) = sep $ map disp t
 

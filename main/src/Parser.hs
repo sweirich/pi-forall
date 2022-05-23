@@ -323,27 +323,27 @@ telescope = do
   bindings <- telebindings
   return $ Telescope (foldr id [] bindings) where
   
-telebindings :: LParser [[Assn] -> [Assn]]
+telebindings :: LParser [[Decl] -> [Decl]]
 telebindings = many teleBinding
   where
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (Unbound.fresh wildcardName) <*> expr)
-      return (AssnSig (mkSig x ty):)
+      return (TypeSig (mkSig x ty):)
 
     imp = do
         v <- varOrWildcard
         colon
         t <- expr
-        return (AssnSig (Sig v Irr t):)
+        return (TypeSig (Sig v Irr t):)
     
     equal = do
         v <- variable
         reservedOp "="
         t <- expr
-        return (AssnEq (Var v) t :)
+        return (Def v t :)
     
-    teleBinding :: LParser ([Assn] -> [Assn])
+    teleBinding :: LParser ([Decl] -> [Decl])
     teleBinding =
       (    parens annot
        <|> try (brackets imp)

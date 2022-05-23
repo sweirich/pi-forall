@@ -1,0 +1,227 @@
+% Language additions for datatypes
+
+metavar dcname, K ::=
+  {{ com data constructor names }}
+  {{ lex alphanum }}
+metavar tcname, T ::=
+  {{ com data type names }}
+  {{ lex alphanum }}
+
+indexvar i ::=
+  {{ com indexvar }}
+
+
+grammar
+
+tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+   | K args       ::     :: TCon
+   | T args       ::     :: DCon 
+   | case a of { </ pi -> ai // i /> } ::     :: Case 
+   | a [ p / x ]  ::     :: PatSubst
+
+   | Nat          ::     :: TyNat
+   | Zero         ::     :: Zero
+   | Succ a       ::     :: Succ
+   | Void         ::     :: TyVoid
+   | ImTrue a b   ::     :: ImTrue
+   | SillyBool    ::     :: SillyBool   
+
+
+args {{ tex \overline{a} }} , bs {{ tex \overline{b} }} :: '' ::= 
+   |              ::     :: Nil
+   | a args       ::     :: Cons
+   | [a] args     ::     :: ECons
+
+pattern, p ::'' ::= 
+   | x      ::     :: PatVar
+   | K ps   ::     :: PatCon
+
+ms :: 'm_' ::=  {{ com sequence of matches }}
+   | m ; ms  ::    :: Cons
+   |         ::    :: Nil
+
+ps :: 'p_' ::=  {{ com sequence of patterns }}
+   | p ps    ::    :: Cons
+   | p ep ps ::    :: ConsEp
+   |         ::    :: Nil
+
+context, G :: 'ctx_' ::=  
+   | G , D   ::    :: Extend
+
+telescope, D {{ tex \Delta }} :: 'd_' ::=
+   |  x : A , D  ::    :: AssnSig
+   |  x : ep A , D  ::    :: AssnSigEp
+   |  x = b , D  ::    :: AssnEq
+   |  D1 ,  D2   ::    :: Concat
+   |             ::    :: Nil
+   | D [ a / x ] :: M  :: Subst
+   | D [ args / D1 ] :: M :: SubstTele
+
+formula :: 'formula_' ::=
+   | K : D -> T args  elem G  ::   :: DConInG
+   | K : D1 -> D2 -> T args  elem G  ::   :: DConInG2
+   | T : D -> Type elem G     ::   :: TConInG
+   | branches exhaustive ::   :: Exhaustive
+   | |- a ~ p => D       ::   :: UnifyPat
+   | |- a ~ b => D       ::   :: Unify
+
+defns 
+Jwhnf :: '' ::= 
+
+defn
+whnf a = v ::    :: whnf :: 'whnf_' 
+by
+
+-------------------- :: tcon
+whnf T args = T args
+
+defns
+JOp :: '' ::=
+
+defn
+a ~> b ::   :: step :: 's_'
+{{ com single-step operational semantics, i. e. head reduction }}
+by
+
+defns 
+JEq :: '' ::=
+
+defn
+G |- A = B ::  :: eq :: 'e_'
+{{ com Definitional equality }}
+by
+
+defns
+JTyping :: '' ::= 
+
+defn 
+
+G |- a : A   ::   :: typing :: 't_'
+{{ com Typing }}
+by
+
+   ---------------  :: Nat
+   G |- Nat : Type
+
+   ---------------- :: Void
+   G |- Void : Type
+   
+  ----------------- :: Zero
+   G |- Zero : Nat
+   
+   G |- n : Nat
+   ----------------- :: Succ
+   G |- Succ n : Nat
+
+   G |- a1 : Bool    
+   G |- a2 : a1 = True
+  --------------------------------------- :: ImTrue
+   G |- ImTrue a1 a2 : SillyBool
+   
+
+G |- a : T
+</ G |- pi : T => Di // i />
+</ G, Di |- ai : A // i />
+G |- A : Type
+branches exhaustive
+---------------------------------------------------- :: case_simple
+G |- case a of { </ pi -> ai // i /> } : A
+
+
+
+defns
+JBidirectional :: '' ::= 
+
+defn 
+G |- a => A ::    :: inferType :: 'i_'
+{{ com type synthesis (algorithmic) }}
+by
+
+T : D -> Type elem G 
+G |- args <= D 
+------------------------- :: tcon
+G |- T args => Type
+
+
+K : D -> T elem G
+G |- args <= D 
+------------------ :: dcon_simple
+G |- K args => T
+
+
+defn 
+G |- a <= B ::    :: checkType :: 'c_'
+{{ com type checking (algorithmic) }}
+by
+
+G |- a => A
+whnf A = T
+</ G |- pi : T => Di // i />
+</ |- a ~ pi => Di' // i />
+</ G, Di , Di' |- ai : A // i />
+branches exhaustive
+--------------------------------------------------------  :: case_simple
+G |- case a of { </ pi -> ai // i /> } <= A
+
+
+G |- a => A
+whnf A = T bs
+</ G |- pi : T bs => Di // i />
+</ |- a ~ pi => Di' // i />
+</ G, Di , Di' |- ai : A // i />
+branches exhaustive
+--------------------------------------------------------  :: case
+G |- case a of { </ pi -> ai // i /> } <= A
+
+
+
+K : D1 -> D2 -> T elem G
+G |- args <= D2 [ bs / D1 ]
+--------------------------- :: dcon
+G |- K args <= T bs
+
+defn
+G |- args <= D ::  :: tcArgTele :: 'tele_'
+by
+
+----------------- :: nil
+G |-  <=  
+
+G |- a : A       
+G |- args <= D [ a / x ]
+----------------------------------------- :: sig
+G |- a args <= x:A , D
+
+
+G |- args <= D [ a / x ]
+----------------------------------------- :: def
+G |- args <= x = a , D
+
+
+defn
+G |- ps : D1 => D2  ::    :: declarePats :: 'ps_'
+by
+
+
+-------------------------- :: Nil
+G |-  :  =>  
+
+
+G |- p : A => D1
+G |- ps : D => D2
+--------------------------------------------- :: Cons
+G |- p ps : x : A , D => D1 , D2 
+
+
+defn
+G |- p : A => D ::   :: declarePat :: 'p_'
+by
+
+---------------------- :: var
+G |- x : A => x : A , 
+
+
+K : D1 -> T elem G
+G |- ps : D1 => D2
+---------------------- :: tcon
+G |- K ps : T => D2

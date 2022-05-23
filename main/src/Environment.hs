@@ -270,15 +270,17 @@ extendCtxsGlobal ds =
 {- SOLN DATA -}
 
 -- | Extend the context with a telescope
-extendCtxTele :: (MonadReader Env m, MonadIO m) => [Assn] -> m a -> m a
+extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m a -> m a
 extendCtxTele [] m = m
-extendCtxTele (AssnEq (Var x) t2 : tele) m =
+extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
-extendCtxTele (AssnEq t1 t2 : tele) m = do
-  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
-  extendCtxTele tele m
-extendCtxTele (AssnSig sig : tele) m =
+--extendCtxTele (AssnEq t1 t2 : tele) m = do
+--  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
+--  extendCtxTele tele m
+extendCtxTele (TypeSig sig : tele) m =
   extendCtx (TypeSig sig) $ extendCtxTele tele m
+extendCtxTele ( _ : tele) m = 
+  err [DS "Invalid telescope ", DD tele]
 
 {- STUBWITH -}
 
