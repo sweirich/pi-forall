@@ -6,7 +6,7 @@
 
 module Product1 where
 
-import Equal
+import Equality
 
 data Sig (A:Type)(B: A -> Type) : Type where
   Prod of (x:A) (B x)
