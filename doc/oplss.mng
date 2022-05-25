@@ -19,6 +19,11 @@
 
 % requires dvipsnames
 \usepackage{lstpi}
+\usepackage{lsthaskell}
+\newcommand\cd[1]{\lstinline[language=Haskell]{#1}}
+
+
+
  
 \newcommand\pif{\texttt{pi-forall}\xspace}
 \newcommand\unbound{\texttt{Unbound}\xspace}
@@ -44,7 +49,10 @@ These lecture notes describe the implementation of a small dependently-typed
 language called ``\pif'' and walk through the implementation of its type
 checker. They are based on lectures given at the \emph{Oregon Programming
   Languages Summer School} during June 2022, and derived from earlier lectures
-from summer school lectures during 2014 and 2013.
+from summer school lectures during 2014 and 2013.  \footnote{NOTE: if the date
+  on this document is before June 27, 2022, then these notes are still in
+  draft form. If you find any errors or typos, please send me a pull request
+  at \url{https://github.com/sweirich/pi-forall}.}
 
 \paragraph{What do I expect from you, dear reader?} These notes assume a
 familiarity with the basics of the lambda calculus, including its standard
@@ -56,48 +64,9 @@ Furthermore, these lectures and notes also refer to an implementation of a
 demo type checker and assume basic knowledge of the Haskell programming
 language. This implementation is available at
 \url{https://github.com/sweirich/pi-forall} and is written using the Haskell
-programming language. As you study these notes, you are encouraged to download
+programming language. As you study these notes, I encourage you to download
 this code and experiment with it. Detailed installation instructions are
-available with the source code. 
-
-\paragraph{What do I want you to get out of this material?}
-
-\begin{enumerate}
-\item An understanding of how to translate mathematical specifications of type
-  systems and logics into code, i.e. how to represent the syntax of a
-  programming language and how to implement a type checker. More generally,
-  this involves techniques for turning a declarative specification of a system
-  of judgments into an algorithm that determines whether the judgement holds.
-   
-\item Exposure to the design choices of dependently-typed languages. In this
-  respect, my goal is breadth not depth. As a result, I will provide
-  \emph{simple} solutions to some of the problems that we face and sidestep
-  other problems entirely. Because solutions are chosen for simplicity, the
-  end of these notes includes pointers if you want to go deeper.
-   
-\item Experience with the Haskell programming language. I think Haskell is an
-  awesome tool for this sort of work and I want to demonstrate how its
-  features monads, generic programming) are well-suited for this task.
-
-\item A tool that you can use as a basis for experimentation. When you design
-  your language, how do you know what programs you can and cannot express?
-  Having an implementation lets you work out (smallish) examples and will help
-  convince you (and your reviewers) that you are developing something useful.
-  Please use \pif as a starting point for your ideas.
-
-\item Templates and tools for writing about type systems. The source files for
-  these lecture notes are available in the same repository as the demo
-  implementation and I encourage you to check them out.\footnote{See the
-    \texttt{doc} subdirectory in \url{https://github.com/sweirich/pi-forall}.}
-  Building these notes requires Ott~\cite{ott}, a tool specifically tailored
-  for typesetting type systems and mathematical specifications of programming
-  languages.
-\end{enumerate}
-
-\paragraph{What do these notes cover?}
-These notes are broken into several sections that incrementally build up the
-design and implementation of a type checker for a dependently-typed
-programming language.
+available with the source code.
 
 \begin{figure}[h]
 \begin{center}
@@ -113,6 +82,12 @@ Datatypes   & \texttt{full}     & Section ~\ref{sec:datatypes} \\
 \caption{Connection between sections and \pif versions}
 \label{fig:impls}
 \end{figure}
+
+\paragraph{What do these notes cover?}
+These notes are broken into several sections that incrementally build up the
+design and implementation of a type checker for a dependently-typed
+programming language.
+
 
 If you are looking at the repository, you'll see that it includes several
 incrementally more expressive implementations in separate
@@ -196,7 +171,7 @@ point in the design space.
   during type checking.  \pif uses an alternative approach based on
   weak-head-normalization, defined using substitution. This approach is closer
   to $\lambda$-calculus theory, but can be less efficient in practice.
-\item For simplicity, \pif does not attempt to infer missing arguments, using
+\item Also for simplicity, \pif does not attempt to infer arguments, using
   unification or other means. As a result, example programs in \pif are
   significantly more verbose than in other languages.
 \item This implementation relies on the \unbound library for variable binding,
@@ -207,14 +182,49 @@ point in the design space.
 \end{itemize}
 
 Section~\ref{sec:related-work} includes a discussion of related tutorials,
-including how this one differs from others, as well as pointers for where to
+including how this one differs, as well as pointers for where to
 go for more information.
 
-\section{A Simple Core language with Type-in-Type}
+\paragraph{What do I want you to get out of all of this?}
+
+\begin{enumerate}
+\item An understanding of how to translate mathematical specifications of type
+  systems and logics into code, i.e. how to represent the syntax of a
+  programming language and how to implement a type checker. More generally,
+  this involves techniques for turning a declarative specification of a system
+  of judgments into an algorithm that determines whether the judgement holds.
+   
+\item Exposure to the design choices of dependently-typed languages. In this
+  respect, my goal is breadth not depth. As a result, I will provide
+  \emph{simple} solutions to some of the problems that we face and sidestep
+  other problems entirely. Because solutions are chosen for simplicity, the
+  end of these notes includes pointers if you want to go deeper.
+   
+\item Experience with the Haskell programming language. I think Haskell is an
+  awesome tool for this sort of work and I want to demonstrate how its
+  features monads, generic programming) are well-suited for this task.
+
+\item A tool that you can use as a basis for experimentation. When you design
+  your language, how do you know what programs you can and cannot express?
+  Having an implementation lets you work out (smallish) examples and will help
+  convince you (and your reviewers) that you are developing something useful.
+  Please use \pif as a starting point for your ideas.
+
+\item Templates and tools for writing about type systems. The source files for
+  these lecture notes are available in the same repository as the demo
+  implementation and I encourage you to check them out.\footnote{See the
+    \texttt{doc} subdirectory in \url{https://github.com/sweirich/pi-forall}.}
+  Building these notes requires Ott~\cite{ott}, a tool specifically tailored
+  for typesetting type systems and mathematical specifications of programming
+  languages.
+\end{enumerate}
+
+
+\section{A Simple Core Language}
 \label{sec:simple}
 
 Let's consider a simple dependently-typed lambda calculus. What should it
-contain? At the bare minimum we can start with the following five forms:
+contain? At the bare minimum we start with the following five forms:
 
 \[
 \begin{array}{rcll}
@@ -226,27 +236,33 @@ contain? At the bare minimum we can start with the following five forms:
 \end{array}
 \]
 
-Note that we are using the \emph{same} syntax for expressions and types. For
-clarity, I'll used lowercase letters $a$ for expressions and uppercase letters
-for their types $A$.
+As in many dependently-typed languages, we have the \emph{same} syntax for
+both expressions and types. For clarity, I'll used lowercase letters $a$ for
+expressions and uppercase letters for their types $A$.
 
 Note that $\lambda$ and $\Pi$ above are \emph{binding forms}. They bind the
 variable $x$ in $a$ and $B$ respectively.
 
 \subsection{When do expressions in this language type check?}
 
-We define the type system for this language using an inductively defined
-relation defined in Figure~\ref{fig:typing}. This relation is between an
+We define the type system for this language using an inductive
+relation shown in Figure~\ref{fig:typing}. This relation is between an
 expression $[[a]]$, its type $[[A]]$, and a typing context $[[G]]$. 
 
-    \[ \fbox{$[[ G |- a : A ]]$} \]
+\[ \fbox{$[[ G |- a : A ]]$} \]
 
-The typing context is an ordered list of assumptions about the types of
-variables. We assume that the variables in this list are distinct from
-each other, so that there will always be at most one assumption about the 
-type of any variable.
+A typing context $[[G]]$ is an ordered list of assumptions about variables and
+their types.  
 
     \[ [[ G]]  ::= \emptyset\ |\ [[G, x : A]] \]
+
+We will assume that each of the variables in this list are
+distinct from each other, so that there will always be at most one assumption
+about any variable's type.\footnote{On paper, this assumption is reasonable
+  because we always extend the context with variables that come from binders,
+  and we can always rename bound variables so that they differ from other
+  variables in scope. Any implementation of the type system will need to somehow 
+  make sure that this invariant is maintained.}
 
 \paragraph{An initial set of typing rules: Variables and Functions}
 
@@ -256,52 +272,58 @@ type of any variable.
 \label{fig:typing}
 \end{figure}
 
-Consider the first two rules, \rref{t-var} and \rref{t-lambda}, shown in
-Figure~\ref{fig:typing}.  The first rule states that the types of variables 
-are recorded in the typing context. The premise $[[x:A elem G]]$ says that we can find the association between $x$ and the type $A$ in the list $[[G]]$.
+Consider the first two rules shown in Figure~\ref{fig:typing}, \rref{t-var}
+and \rref{t-lambda}.  The first rule states that the types of variables are
+recorded in the typing context. The premise $[[x:A elem G]]$ requires us to
+find an association between $x$ and the type $A$ in the list $[[G]]$.
 
-The second rule, introduces variables into the context when we type check
-abstractions.
+The second rule, for type checking functions, introduces a new variable into
+the context when we type check the body of a $\lambda$-expression. It also
+requires $[[A]]$, the type of the function's argument to be a valid type.
 
 \paragraph{Example: Polymorphic identity functions}
 
-Note that in \rref{t-lambda}, the variable $x$ is allowed to appear in
-$B$. Why is this useful? Well, it gives us \emph{parametric polymorphism}
-right off the bat.  In Haskell, we write the identity function as follows
+Note that in \rref{t-lambda}, the parameter $x$ is allowed to appear in the
+result type of the function, $[[B]]$. Why is this useful? Well, it gives us
+\emph{parametric polymorphism} automatically.  In Haskell, we write the
+identity function as follows, annotating it with a polymorphic type.
 
-\begin{verbatim}
-       id :: forall a. a -> a
-       id y = y
-\end{verbatim}
+\begin{haskell}
+id :: forall a. a -> a
+id = \y -> y
+\end{haskell}
 
 \noindent
-and it's Haskell type is generic: we can apply this function to any type of
-argument.  We can also write a polymorphic identity function in \pif, except
-that we will need to explicitly make this function
-polymorphic. 
+Because the type of \cd{id} is generic we can apply this function to any type of
+argument.  
 
-In \pif, this definition looks like below, where the definition of \texttt{id}
-uses two lambdas: one for the ``type'' argument $x$ and one for the
-''term'' argument $y$. In \pif, there is no syntactic difference between 
-these arguments: both are arguments to the identity function.
-
+We can also write a polymorphic identity function in \pif, as follows.
 \begin{piforall}
-     id : (x:Type) -> (y : x) -> x
-     id = \x. \y. y
+id : (x:Type) -> (y : x) -> x
+id = \x. \y. y
 \end{piforall}
 
-The type of \texttt{id} has the general form $[[(x :A) -> B]]$, like the usual
-form of function type $[[A -> B]]$, except that we name the argument $[[x]]$
-so that it can be referred to in the body of the type $[[B]]$. In this
-example, the type argument $[[x]]$ is used later as the type of $[[y]]$.  We
-call types of this form $\Pi$ types because they are usually written as
-$\Pi x:A. B$ in formalizations of dependent type theory.\footnote{The
+This definition is similar to Haskell, but with a few modifications. First,
+\pif{} uses a single colon for type annotations and a \cd{.} for function
+binding instead of Haskell's quirky \cd{::} and \cd{->}. Second, the \pif
+definition of \texttt{id} uses two lambdas: one for the ``type'' argument $x$
+and one for the ''term'' argument $y$. In \pif, there is no syntactic
+difference between these arguments: both are arguments to the identity
+function. 
+
+Finally, the \pif{} type of \cd{id} uses the dependent function type, with
+general form $[[(x:A) -> B]]$. This form is like Haskell's usual function type
+$[[A -> B]]$, except that we can name the argument $[[x]]$ so that it can be
+referred to in the body of the type $[[B]]$. In \cd{id}, dependency allows the
+the type argument $[[x]]$ to be used later as the type of $[[y]]$.  We call
+types of this form $\Pi$-types. (Often dependent function types are written as
+$\Pi x\!:\!A. B$ in formalizations of dependent type theory.\footnote{The
   terminology for these types is muddled: sometimes they are call dependent
   function types and sometimes they are called dependent product types. We use
-  the non $\Pi$ notation to emphasize the connection to functions.}
+  the non $\Pi$-notation to emphasize the connection to functions.})
 
 The fact that the type of $x$ is $[[Type]]$ means that $x$ plays the role of a
-type variable, such as \texttt{a} in Haskell. Because we don't have a
+type variable, such as \texttt{a} in the Haskell type. Because we don't have a
 syntactic distinction between types and terms, in \pif we say that ``types''
 are anything of type $[[Type]]$ and ``terms'' are things of type $A$ where $A$
 has type $[[Type]]$.
@@ -314,12 +336,8 @@ function as follows.
 {
    \inferrule*
    {
-      \inferrule*{
-      }
-      {
-       [[x:Type, y:x |- y : x]] 
-      } 
-      \qquad \inferrule*{}{[[ x:Type |- x : Type ]]}
+              \inferrule*{ [[y:x elem (x:Type,y:x)]]}{[[x:Type, y:x |- y : x]]} 
+      \qquad \inferrule*{[[ x:Type elem (x:Type) ]] }{[[ x:Type |- x : Type ]]}
    }{
      [[x:Type |- \y. y : (y : x) -> x]]
    }  \qquad \inferrule*{}{[[ |- Type : Type ]]}
@@ -328,10 +346,16 @@ function as follows.
 }
 \]
 
+This derivation uses \rref{t-lambda} to type check the two $\lambda$-expressions, before using the variable 
+rule to ensure that both the body of the function $[[x]]$ and its type $[[y]]$ are 
+well-typed. Finally, this rule also uses \rref{t-type} to show that $[[Type]]$ itself 
+is a valid type, see below.
+
+
 \paragraph{More typing rules:  Types}
 
 Observe in the typing derivation above that the rule for typing
-lambda-expressions has an additional precondition: we need to make sure that
+lambda-expressions has second precondition: we need to make sure that
 when we add assumptions $x:A$ to the context, that $A$ really is a type.
 Without this precondition, the rules would allow us to derive this nonsensical
 type for the polymorphic identity function.
@@ -343,26 +367,25 @@ actually types. For example, the type of a function is itself a type, so we
 will declare it so with \rref{t-pi}. This rule also ensures that the domain
 and range of the function are also types.
 
-Likewise, for polymorphism we need the rather perplexing \rref{t-type}.
-Because the type of the polymorphic identity function starts with
-$(x\!:\![[Type]]) [[->]] \ldots$ the \rref{t-pi} rule means that $[[Type]]$
-must be a type for this $\Pi$-type to make sense. We declare this by fiat using
-the \rref{t-type} rule.
-\footnote{Note that, this rule make our language inconsistent as a
-logic, as it can encode Girard's paradox. More about this in section~\ref{sec:related-work}.}
+Likewise, for polymorphism we need the somewhat perplexing \rref{t-type}, that
+declares, by fiat, that $[[Type]]$ is a valid $[[Type]]$.\footnote{Note that,
+  this rule make our language inconsistent as a logic, as it can encode
+  Girard's paradox. More about this in section~\ref{sec:related-work}.}
 
-\paragraph{More typing rules: Application}
+\paragraph{More typing rules: Applications}
 
-The application rule \rref{t-app} requires that the type of the argument
+The application rule, \rref{t-app}, requires that the type of the argument
 matches the domain type of the function. However, note that because the body
-of the function type $B$ could have $x$ free in it, we need to substitute the
-argument for $x$ in the result.
+of the function type $B$ could have $x$ free in it, we need also need to
+substitute the argument $[[b]]$ for $x$ in the result.
 
 \paragraph{Example: applying the polymorphic identity function}
 
 In \pif we should be able to apply the polymorphic identity function to
-itself. When we do this, we need to first provide the type of `id`, then we can
-apply `id` to `id`.
+itself. When we do this, we need to first provide the type of \cd{id},
+producing an expression of type
+$[[(y: ((x:Type) -> (y:x) -> x)) -> ((x:Type) -> (y:x) -> x)]]$.  This
+function can take \cd{id} as an argument.
 
 \begin{piforall}
     idid : (x:Type) -> (y : x) -> x 
@@ -398,7 +421,7 @@ Thus, a conditional expression just takes a boolean and returns it.
     cond = \b. b 
 \end{piforall}
 
-\paragraph{Example: logical ``and'' }
+\paragraph{Example: Logical ``and'' }
 
 We can also encode a logical ``and'' data structure using a Church encoding.
 
@@ -422,48 +445,56 @@ We can also encode a logical ``and'' data structure using a Church encoding.
 \section{From typing rules to a typing algorithm}
 \label{sec:bidirectional}
 
-So the rules that we have developed so far are great for saying \emph{what} terms
-should type check, but they don't say \emph{how}.  In particular, we've developed
-these rules without thinking about how we would implement them.
+The rules that we have developed so far are great for saying \emph{what} terms
+should type check, but they don't say \emph{how} type checking works. We've
+developed these rules without thinking about how we would implement them.
 
-A type system is called \emph{syntax-directed} if it is readily apparent how
-to turn a collection of typing rules into code. In other words, we would like
-to implement the following Haskell function, that when given a term and a
-typing context, produces the type of the term, if it exists.\footnote{NOTE: If
-  you are looking at the \pif implementation, this is not the final type of
-  this function.}
+A set of typing rules, or \emph{type system}, is called \emph{syntax-directed}
+if it is readily apparent how to interpret that collection of typing rules as
+code. In other words, for some type systems, we can directly translate them to 
+some Haskell function.
 
-\begin{verbatim}
-    inferType :: Term -> Ctx -> Maybe Type
-\end{verbatim}
+For this type system, we would like to implement the following Haskell
+function, that when given a term and a typing context, represented as a list
+of pairs of variables and their types, produces the type of the term, if it
+exists.\footnote{Note: If you are looking at the \pif implementation, note
+  that this is not the final type of \cd{inferType}.}
 
-Let's look at our rules in Figure~\ref{fig:typing}.  Is this straightforward?
-For example, in the variable rule, as long as we can lookup the type of a
-variable in the context, we can produce its type. That means that, assuming that 
-\texttt{lookupTy} has type \texttt{Ctx -> TName -> Maybe Type}, this rule
-corresponds to the following case of the \texttt{inferType} function. So far
-so good!
+\begin{haskell}
+type Ctx = [(Var,Type)]
 
-\begin{verbatim}
-    inferType (Var x) ctx = lookupTy ctx x
-\end{verbatim}
+inferType :: Term -> Ctx -> Maybe Type
+\end{haskell}
+
+Let's look at our rules in Figure~\ref{fig:typing}.  Is the definition of this
+function straightforward?  For example, in the variable rule, as long as we
+can look up the type of a variable in the context, we can produce its
+type. That means that, assuming that there is some function \cd{lookupTy},
+with type \cd{Ctx -> Var -> Maybe Type}, this rule corresponds to the
+following case of the \cd{inferType} function. So far so good!
+
+\begin{haskell}
+inferType (Var x) ctx = lookupTy ctx x
+\end{haskell}
 	
 \noindent		
-Likewise, the case of the typing function for the $[[Type]]$ term is also straightforward. When we see the term $[[Type]]$, we know immediately that 
-it is its own type.
+Likewise, the case of the typing function for the $[[Type]]$ term is also
+straightforward. When we see the term $[[Type]]$, we know immediately that it
+is its own type.
 
-\begin{verbatim}
-    inferType Type ctx = Just Type
-\end{verbatim}
+\begin{haskell}
+inferType Type ctx = Just Type
+\end{haskell}
 
-The only stumbling block for the algorithm is the lambda rule. To type check a
+The only stumbling block for the algorithm is \rref{t-lambda}. To type check a
 function, we need to type check its body when the context has been extended
-with the type of the argument. But, the type of the argument $A$ is not
-annotated on the lambda. So where does it come from?
+with the type of the argument. But, like Haskell, the type of the argument
+$[[A]]$ is not annotated on the function in \pif. So where does it come from?
 
 There is actually an easy fix to turn our current system into an algorithmic
 one. We could just annotate $\lambda$-expressions with the types of the
-abstracted variables.  But perhaps this is not what we want to do.
+abstracted variables.  But, to be ready for future extension, we'll do
+something else.
 
 Look at our example \pif code above: the only types that we wrote were the
 types of definitions. It is good style to do that. Furthermore, there is
@@ -475,26 +506,22 @@ those argument types.
 \subsection{A bidirectional type system}
 
 Let's redefine the system using two judgments. The first one is similar to the
-judgement that we saw above, and we will call it type \emph{inference}. This
-judgement will be paired with (and will depend on) a second judgement, called
-type \emph{checking}, that takes advantage of known type information, such as
-the annotations on top-level definitions.
+judgement that we saw above, and we will call it type
+\emph{inference}.\footnote{The term \emph{type inference} usually refers to
+  much more sophisticated deduction of an expressions type, in the context of
+  much less information encoded in the syntax of the language. We're not doing
+  anything difficult here, just noting that we can read the judgment with
+  $[[A]]$ as an output. } This judgement will be paired with (and will depend
+on) a second judgement, called type \emph{checking}, that takes advantage of
+known type information, such as the annotations on top-level definitions.
 
-We will express these judgements using the notation defined in
+We express these judgements using the notation defined in
 Figure~\ref{fig:bidirectional} and implement them in Haskell using the
 mutually-recursive functions \texttt{inferType} and
 \texttt{checkType}. Furthermore, to keep track of which rule is in which
-judgement, rules that have inference as a conclusion will start with
-\textsc{i-} and rules that have checking as a conclusion will start with
+judgement, rules that have inference as a conclusion start with
+\textsc{i-} and rules that have checking as a conclusion start with
 \textsc{c-}.
-
- %\begin{center}
-%\begin{tabular}{lll}
-%    \fbox{$[[G |- a => A]]$}&    \texttt{inferType}&     in context $[[G]]$, infer that %term $a$ has type $A$ \\
-%\\	  
-%    \fbox{$[[G |- a <= A]]$}&    \texttt{checkType}&     in context $[[G]]$, check that %term $a$ has type $A$ \\
-%\end{tabular}
-%\end{center}
 
 \begin{figure}
 \drules[i]{$[[G |- a => A]]$}{in context $[[G]]$, infer that term $a$ has type $A$}
@@ -511,14 +538,13 @@ the type to infer.
 
 On the other hand, in \rref{c-lambda} we should check $\lambda$-expressions
 against a known type. If that type is provided, we can propagate it to the
-body of the lambda expression. We also know that we want $A$ to be a
-$[[Type]]$.
+body of the lambda expression. We also want to check that $A$ is a $[[Type]]$.
 
-The rule for applications, \rref{i-app-simple}, is in inference mode (in fact,
-checking mode doesn't help).  Here, we must infer the type of the function,
-but once we have that type, we may use it to check the type of the
-argument. This mode change means that $\lambda-$expressions that are higher
-order arguments to functions like \texttt{map} do not need any annotation.
+The rule for applications, \rref{i-app-simple}, is in inference mode. Here, we
+first infer the type of the function, but once we have that type, we may use
+it to check the type of the argument. This mode change means that
+$\lambda-$expressions that are arguments to other functions (like
+\texttt{map}) do not need any annotation.
 
 For types, it is apparent their type is $[[Type]]$, so \rref{i-pi,i-type} just
 continue to infer that.
@@ -538,7 +564,7 @@ Well, they involve applications of explicit lambda terms:
 \[
 \inferrule*[Right=t-app]
 {
-      [[ |- \x.x : Bool -> Bool]]  \qquad  [[|- true : Bool ]]
+      [[ |- \x.x : Bool -> Bool]]  \qquad  [[|- True : Bool ]]
 }{
       [[ |- (\x.x) True : Bool ]]
 }
@@ -555,12 +581,13 @@ In fact, the bidirectional type system has the property that it only checks
 terms in \emph{normal} form, i.e. those that do not contain any
 $\beta$-reductions. 
 
-\subsection{Type annotations}
-To type check nonnormal forms in \pif, we add typing annotations, written
-$[[(a : A)]]$ and add \rref{i-annot}.
+\paragraph{Type annotations}
+To type check nonnormal forms in \pif, we also add typing annotations as a new
+form of expression to \pif, written $[[(a : A)]]$, and add \rref{i-annot} to
+the type system.
 
-Type annotations allow us to supply known type information anywhere within a
-term. For example, we can construct this derivation.
+Type annotations allow us to supply known type information anywhere, not just
+at top level. For example, we can construct this derivation.
 
 \[
 \inferrule*[Right=i-app]
@@ -580,7 +607,7 @@ Furthermore, we want to convince ourselves that the bidirectional system
 checks the same terms as the original type system. This means that we want to
 prove a property like this one:
 
-\begin{lemma}[Correctness of Bidirectional type system]
+\begin{lemma}[Correctness of the bidirectional type system]
 If $[[G |- a => A]]$ then $[[G |- a : A]]$.
 If $[[G |- a <= A]]$ then $[[G |- a : A]]$.
 \end{lemma}
@@ -591,31 +618,39 @@ to infer or check that term using the algorithm. However, all is not lost:
 there will always be some term $[[a']]$ that differs from $[[a]]$ only in the
 addition of typing annotations that can be inferred or checked instead.
 
-A not so desirable property of this bidirectional system is that it is not
-closed under substitution. The types of variables are always inferred.  This
-is particularly annoying in the application rule when we replace a variable
-(inference mode) with a term that is correct in checking mode.
+One issue with this bidirectional system is that it is not closed under
+substitution.  What this means is that given some term $[[b]]$ with a free
+variable, $[[ G, x :A |- b <= B]]$, and another term $[[a]]$ with the same
+type $[[ G |- a <= A]]$ of that variable, we \emph{do not} have a derivation
+$[[ G |- b[a/x] <= A]]$. The reason is that types of variables are always
+inferred, but the term $[[a]]$, may need the type $[[A]]$ to be supplied to
+the type checker.  This issue is particularly annoying in \rref{i-app} when we
+replace a variable (inference mode) with a term that was validated in checking
+mode.
+
+As a result, our type system infers types, but the types that are inferred do
+not have enough annotations to be checked themselves. We can express the property
+that does hold about our system, using this lemma:
 
 \begin{lemma}[Regularity]
 If $[[G |- a => A]]$ then $[[G |- A : Type]]$.
 \end{lemma}
 
-One solution to this problem is to add an annotation before substitution. In
-our implementation of \pif, we do not do so to reduce clutter. Alternatively,
-we can solve the problem through \emph{elaboration}, the output of a type
-checker will be a term that works purely in inference mode.
-
+This issue is not significant, but we could resolve it by adding an annotation
+before substitution. However, in our implementation of \pif, we do not do so
+to reduce clutter.
 
 \section{Putting it all together in a Haskell
 implementation}
 \label{sec:implementation}
 
 In the previous section, we defined a bidirectional type system for a small
-core language. Now we'll start talking about what the implementation of this
-language might look like in Haskell.
+core language. Here, we'll start talking about what the implementation of this
+language looks like in Haskell.
 
-First, an overview of the main files of the implementation. There are a few 
-more source files, but these are the primary ones:
+First, an overview of the main files of the implementation. There are a few
+more source files in the repository (in the subdirectory \cd{src/}), but these
+are the primary ones.
 
 \begin{verbatim}
  Syntax.hs      - specification of the AST
@@ -625,55 +660,62 @@ more source files, but these are the primary ones:
   
  Environment.hs - defines the type checking monad         
  TypeCheck.hs   - implementation of the bidirectional type checker
-      
 \end{verbatim}
 
 \subsection{Variable binding using the \unbound library
   {[}Syntax.hs{]}}
 
 
-One difficulty with implementing the lambda calculus is the treatment of
-variable binding. Functions ($\lambda$-expressions) and their types
+One difficulty with implementing any sort of lambda calculus is the treatment
+of variable binding. Functions ($\lambda$-expressions) and their types
 ($\Pi$-types) \emph{bind} variables. In the implementation of our type
 checker, we'll need to be able to determine whether two terms are
 \emph{alpha-equivalent}, calculate the \emph{free variables} of a term, and
 perform \emph{capture-avoiding substitution.} When we work with a
 $\lambda$-expression, we will want to be sure that the binding variable is
-\emph{fresh}, that is, distinct from all other variables in the program.
+\emph{fresh}, that is, distinct from all other variables in the program or in
+the typing context.
 
-In our implementation, we use the \unbound library to get all of these
-operations for free. This library defines a type for variable names, called
-\texttt{Name}. This type is indexed by the AST that this is a name for. That
+In the \pif implementation, we use the \unbound library to get all of these
+operations for free. This works because we will use types from this library 
+in the definition of the abstract syntax of \pif, and those types will specify 
+the binding structure of \pif expressions. 
+
+First, the \unbound library defines a type for variable names, called
+\texttt{Name} and we use this type to define \cd{TName}, the type of term
+names in our AST.
+%
+\begin{verbatim}
+-- | Type used for variable names in Terms
+type TName = Unbound.Name Term
+\end{verbatim}
+%
+This type is indexed by \cd{Term} the AST type that it is a name for. That
 way \unbound can make sure that we only substitute the right form of syntax
 for the right name, i.e. we can only replace a \texttt{TName} with a
 \texttt{Term}.
-
-\begin{verbatim}
-type TName = Unbound.Name Term
-\end{verbatim}
-
 The \unbound library includes an overloaded function \texttt{subst\ x\ a\ b},
 which means $[[ b[a/x] ]]$\footnote{See Guy Steele's talk about the notation
   for substitution~\cite{steele:ppop17}. This is the most common mathematical
   notation for this operation.}, i.e. substitute $[[a]]$ for $[[x]]$ in
-$[[b]]$. In general, we can apply a substitution to any sort of syntax; all
-substitution functions should match the following pattern.
+$[[b]]$. 
 
+In general, we will want to apply a substitution to many different sorts of
+syntax. For example, we may want to substitute a term $[[a]]$ for a term name
+$[[x]]$ in all of the terms that appear in some typing context. Therefore,
+\unbound's substitution function has a type with the following general
+pattern for \cd{subst a x b}.
 \begin{verbatim}
- class Subst b a where
-    subst  :: Name b -> b -> a -> a       
- 
+ class Subst a b where
+    subst  :: Name a -> a -> b -> b       
 \end{verbatim}
 
-The \texttt{subst} function in this class ensures that when we see
- that \texttt{a} is the right sort of thing to
-stick in for \texttt{x}. The \unbound library can automatically generate
-instances of the \texttt{Subst} class. Furthermore, although it seems
-like we only need to substitute within terms, we'll actually need to
-have substitution available at many types.
+The \texttt{subst} function in this class ensures that when we see that
+\texttt{a} is the right sort of thing to stick in for \texttt{x}. The library
+can automatically generate instances of the \texttt{Subst} class.
 
-With names, we can define the syntax that corresponds to our language
-above, using the following datatype.
+With term names, we can define the abstract syntax that corresponds to our
+language above, using the following datatype.
 
 \begin{verbatim}
 data Term

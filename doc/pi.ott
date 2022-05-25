@@ -80,6 +80,8 @@ context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
 
    | x : A           ::    :: Single {{ tex [[x]]\! :\![[A]] }}
 
+   | ( G )           ::    :: Paren
+
 terminals :: 'terminals_' ::=
   | <->               ::   :: iso           {{ tex \leftrightarrow }}
   | <=>               ::   :: lrarrow       {{ tex \Leftrightarrow }}
@@ -279,7 +281,7 @@ G |- \x.a : (x:A) -> B
 
 
 G, x:A |- a : B
-G |- a : Type
+G |- A : Type
 ------------------------  ::  lambda
 G |- \x.a : (x:A) -> B
 
