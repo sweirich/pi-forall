@@ -61,8 +61,6 @@ data Term
     Pi (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Type) Type)
   | -- | Annotated terms `( a : A )`
     Ann Term Type
-  | -- | parenthesized term, useful for printing
-    Paren Term
   | -- | marked source position, for error messages
     Pos SourcePos Term
   | -- | an axiom 'TRUSTME', inhabits all types
@@ -137,9 +135,9 @@ data Epsilon
 {- SOLN DATA -}
 
 -- | A 'Match' represents a case alternative
-data Match = Match (Unbound.Bind Pattern Term)
-  deriving (Show, Generic, Typeable, Unbound.Alpha)
-  deriving anyclass (Unbound.Subst Term)
+newtype Match = Match (Unbound.Bind Pattern Term)
+  deriving (Show, Generic, Typeable)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 -- | The patterns of case expressions bind all variables
 -- in their respective branches.
@@ -173,7 +171,7 @@ data Sig = Sig {sigName :: TName {- SOLN EP -}, sigEp :: Epsilon {- STUBWITH -},
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 mkSig :: TName -> Type -> Sig
-mkSig n t = Sig n {- SOLN EP -} Rel {- STUBWITH -} t
+mkSig n = Sig n {- SOLN EP -} Rel {- STUBWITH -}
 
 -- | Declarations are the components of modules
 data Decl
@@ -255,7 +253,6 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
 -- | Is this the syntax of a literal (natural) number
 isNumeral :: Term -> Maybe Int
 isNumeral (Pos _ t) = isNumeral t
-isNumeral (Paren t) = isNumeral t
 isNumeral (DCon c []) | c == "Zero" = Just 0
 isNumeral (DCon c [Arg _ t]) | c == "Succ" =
   do n <- isNumeral t; return (n + 1)
@@ -335,7 +332,7 @@ initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 --    fv  :: Alpha a => a -> [Unbound.Name a]
 
 -- For Terms, we'd like Alpha equivalence to ignore 
--- source positions, type annotations and parentheses in terms.
+-- source positions and type annotations in terms.
 -- We can add these special cases to the definition of `aeq'` 
 -- and then defer all other cases to the generic version of 
 -- the function.
@@ -345,8 +342,6 @@ instance Unbound.Alpha Term where
   aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
   aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
   aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
-  aeq' ctx (Paren a) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Paren b) = Unbound.aeq' ctx a b
   aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
 
 -- For example, all occurrences of annotations, source positions, and internal 

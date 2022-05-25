@@ -1,4 +1,4 @@
-PiForall language
+pi-forall language
 ------------------
 
 This language implementation is designed to accompany four lectures at

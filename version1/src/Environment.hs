@@ -10,8 +10,7 @@ module Environment
     lookupTyMaybe,
     lookupDef,
     lookupRecDef,
-    lookupHint ,
-    getTys,
+    lookupHint,
     getCtx,
     getLocalCtx,
     extendCtx,
@@ -25,19 +24,18 @@ module Environment
     warn,
     extendErr,
     D (..),
-    Err (..)
+    Err (..),
   )
 where
 
 import Control.Monad.Except
 import Control.Monad.Reader
-
 import Data.Maybe (catMaybes, listToMaybe)
 import PrettyPrint
 import Syntax
 import Text.ParserCombinators.Parsec.Pos (SourcePos)
 import Text.PrettyPrint.HughesPJ
-import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless as Unbound
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
@@ -70,33 +68,29 @@ data Env = Env
     -- has been checked.
     hints :: [Sig],
     -- | what part of the file we are in (for errors/warnings)
-    sourceLocation :: [SourceLocation] 
+    sourceLocation :: [SourceLocation]
   }
 
 --deriving Show
 
 -- | The initial environment.
 emptyEnv :: Env
-emptyEnv = Env {ctx = [], globals = 0, hints = [], sourceLocation = []
-  }
+emptyEnv =
+  Env
+    { ctx = [],
+      globals = 0,
+      hints = [],
+      sourceLocation = []
+    }
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
-
--- | Return a list of all type bindings, and their names.
-getTys :: (MonadReader Env m) => m [(TName,  Term)]
-getTys = do
-  ctx <- asks ctx
-  return $ catMaybes (map unwrap ctx)
-  where
-    unwrap (Sig (S v  ty)) = Just (v, ty)
-    unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
 lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
 lookupHint v = do
   hints <- asks hints
-  return $ listToMaybe [ sig | sig <- hints, v == sigName sig]
+  return $ listToMaybe [sig | sig <- hints, v == sigName sig]
 
 -- | Find a name's type in the context.
 lookupTyMaybe ::
@@ -105,13 +99,20 @@ lookupTyMaybe ::
   m (Maybe Sig)
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [ sig | Sig sig <- ctx, v == sigName sig]
+  return $ go ctx
+  where
+    go [] = Nothing
+    go (TypeSig sig : ctx)
+      | v == sigName sig = Just sig
+      | otherwise = go ctx
+    go (_ : ctx) = go ctx
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
 lookupTy ::
   (MonadReader Env m, MonadError Err m) =>
-  TName -> m Sig
+  TName ->
+  m Sig
 lookupTy v =
   do
     x <- lookupTyMaybe v
@@ -142,35 +143,31 @@ lookupRecDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
-
-
--- | Extend the context with a new binding.
+-- | Extend the context with a new binding
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
 extendCtx d =
-  local (\m@(Env {ctx = cs}) -> m {ctx = d : cs})
+  local (\m@Env {ctx = cs} -> m {ctx = d : cs})
 
 -- | Extend the context with a list of bindings
 extendCtxs :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxs ds =
-  local (\m@(Env {ctx = cs}) -> m {ctx = ds ++ cs})
+  local (\m@Env {ctx = cs} -> m {ctx = ds ++ cs})
 
 -- | Extend the context with a list of bindings, marking them as "global"
 extendCtxsGlobal :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxsGlobal ds =
   local
-    ( \m@(Env {ctx = cs}) ->
+    ( \m@Env {ctx = cs} ->
         m
           { ctx = ds ++ cs,
             globals = length (ds ++ cs)
           }
     )
 
-
-
 -- | Extend the context with a module
 -- Note we must reverse the order.
 extendCtxMod :: (MonadReader Env m) => Module -> m a -> m a
-extendCtxMod m k = extendCtxs (reverse $ moduleEntries m) k
+extendCtxMod m = extendCtxs (reverse $ moduleEntries m)
 
 -- | Extend the context with a list of modules
 extendCtxMods :: (MonadReader Env m) => [Module] -> m a -> m a
@@ -190,7 +187,7 @@ getLocalCtx = do
 -- | Push a new source position on the location stack.
 extendSourceLocation :: (MonadReader Env m, Disp t) => SourcePos -> t -> m a -> m a
 extendSourceLocation p t =
-  local (\e@(Env {sourceLocation = locs}) -> e {sourceLocation = (SourceLocation p t) : locs})
+  local (\e@Env {sourceLocation = locs} -> e {sourceLocation = SourceLocation p t : locs})
 
 -- | access current source location
 getSourceLocation :: MonadReader Env m => m [SourceLocation]
@@ -198,7 +195,7 @@ getSourceLocation = asks sourceLocation
 
 -- | Add a type hint
 extendHints :: (MonadReader Env m) => Sig -> m a -> m a
-extendHints h = local (\m@(Env {hints = hs}) -> m {hints = h : hs})
+extendHints h = local (\m@Env {hints = hs} -> m {hints = h : hs})
 
 -- | An error that should be reported to the user
 data Err = Err [SourceLocation] Doc
@@ -215,9 +212,6 @@ instance Semigroup Err where
 instance Monoid Err where
   mempty = Err [] mempty
   mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
-
--- instance Error Err where
---  strMsg msg = Err [] (text msg)
 
 instance Disp Err where
   disp (Err [] msg) = msg
@@ -237,4 +231,3 @@ warn :: (Disp a, MonadReader Env m, MonadIO m) => a -> m ()
 warn e = do
   loc <- getSourceLocation
   liftIO $ putStrLn $ "warning: " ++ render (disp (Err loc (disp e)))
-

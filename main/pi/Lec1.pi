@@ -12,6 +12,8 @@ compose : (A : Type) -> (B : Type) -> (C:Type) ->
   (B -> C) -> (A -> B) -> (A -> C)
 compose = \ A B C f g x. (f (g x))
 
+{- SOLN EQUAL -}
+
 -- some Church encodings: booleans
 
 bool : Type 
@@ -25,6 +27,8 @@ false = \A x y. y
 
 cond : bool -> (x:Type) -> x -> x -> x
 cond = \ b . b 
+
+{- STUBWITH -}
 
 -- void type
 

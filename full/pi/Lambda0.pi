@@ -64,17 +64,17 @@ interp = \ rho exp . case exp of
         Clos rho exp -> TRUSTME 
 
 t1 : interp Nil (App (Lam (Var 0)) (Lit 3)) = VNat 3
-t1 = refl
+t1 = Refl
 
 t2 : interp Nil (If0 (Lit 1) (Lit 2) (Lit 3)) = VNat 3
-t2 = refl
+t2 = Refl
 
 -- an "unbound variable" error
 
 e1 : interp Nil (App (Lam (Var 1)) (Lit 2)) = TRUSTME
-e1 = refl
+e1 = Refl
 
 -- a run-time type error
 
 e2 : interp Nil (App (Lit 1) (Lit 2)) = TRUSTME
-e2 = refl
+e2 = Refl

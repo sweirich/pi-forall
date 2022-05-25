@@ -53,8 +53,6 @@ data Term
     Pi (Unbound.Bind (TName , Unbound.Embed Type) Type)
   | -- | Annotated terms `( a : A )`
     Ann Term Type
-  | -- | parenthesized term, useful for printing
-    Paren Term
   | -- | marked source position, for error messages
     Pos SourcePos Term
   | -- | an axiom 'TRUSTME', inhabits all types
@@ -83,7 +81,7 @@ data Term
 
      | -- | Equality type  `a = b`
     TyEq Term Term
-  | -- | Proof of equality `refl`
+  | -- | Proof of equality `Refl`
     Refl 
   | -- | equality elimination  `subst a by pf`
     Subst Term Term 
@@ -120,24 +118,24 @@ data Module = Module
 newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
-data Sig = S {sigName :: TName , sigType :: Type}
+data Sig = Sig {sigName :: TName , sigType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 mkSig :: TName -> Type -> Sig
-mkSig n t = S n  t
+mkSig n = Sig n 
 
 -- | Declarations are the components of modules
 data Decl
   = -- | Declaration for the type of a term
-    Sig Sig
+    TypeSig Sig
   | -- | The definition of a particular name, must
     -- already have a type declaration in scope
     Def TName Term
   | -- | A potentially (recursive) definition of
     -- a particular name, must be declared
-    RecDef TName Term 
+    RecDef TName Term  
   deriving (Show, Generic, Typeable)
-
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 
 -- * Auxiliary functions on syntax
@@ -147,10 +145,6 @@ data Decl
 -- | Default name for '_' occurring in patterns
 wildcardName :: TName
 wildcardName = Unbound.string2Name "_"
-
--- | empty Annotation
---noAnn :: Annot
---noAnn = Annot Nothing
 
 -- | Partial inverse of Pos
 unPos :: Term -> Maybe SourcePos
@@ -186,7 +180,7 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
 --    fv  :: Alpha a => a -> [Unbound.Name a]
 
 -- For Terms, we'd like Alpha equivalence to ignore 
--- source positions, type annotations and parentheses in terms.
+-- source positions and type annotations in terms.
 -- We can add these special cases to the definition of `aeq'` 
 -- and then defer all other cases to the generic version of 
 -- the function.
@@ -196,8 +190,6 @@ instance Unbound.Alpha Term where
   aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
   aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
   aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
-  aeq' ctx (Paren a) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Paren b) = Unbound.aeq' ctx a b
   aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
 
 -- For example, all occurrences of annotations, source positions, and internal 

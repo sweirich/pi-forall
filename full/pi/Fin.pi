@@ -52,7 +52,6 @@ inject = \ [m] n fn.
     Zero [m0]   -> Zero [plus m0 n]
     Succ [m0] i -> Succ [plus m0 n] (inject [m0] n i) 
 
-
 fpred : [n : Nat] -> Fin n -> Fin n
 fpred = \ [n] fn . 
   case fn of 
@@ -70,12 +69,11 @@ fin_heq = \ [n] [m] fn1 fn2 .
             Succ [m2] x    -> False
       Succ [m1] fn1' ->  
          case fn2 of
-            Succ [m2] fn2' -> 
-				   fin_heq [m1][m2] fn1' fn2'
+            Succ [m2] fn2' ->  fin_heq [m1][m2] fn1' fn2'
             Zero [m2] -> False
    
 
--- even works when the arguments have the same type
+-- homogeneous equality
 
 fin_eq : [n: Nat] -> (Fin n) -> (Fin n) -> Bool
 fin_eq =  \ [n] fn1 fn2 .
@@ -86,7 +84,6 @@ fin_eq =  \ [n] fn1 fn2 .
             Succ [m2] x    -> False
       Succ [m1] fn1' ->  
          case fn2 of
-            Succ [m2] fn2' ->  
-  				   fin_eq [m1] fn1' fn2'
+            Succ [m2] fn2' ->  fin_eq [m1] fn1' fn2'
             Zero [m2] -> False
 

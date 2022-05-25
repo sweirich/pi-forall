@@ -15,7 +15,6 @@ module Environment
     lookupDCon,
     lookupDConAll,
     extendCtxTele {- STUBWITH -},
-    getTys,
     getCtx,
     getLocalCtx,
     extendCtx,
@@ -44,7 +43,7 @@ import PrettyPrint
 import Syntax
 import Text.ParserCombinators.Parsec.Pos (SourcePos)
 import Text.PrettyPrint.HughesPJ
-import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless as Unbound
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
@@ -85,20 +84,14 @@ data Env = Env
 
 -- | The initial environment.
 emptyEnv :: Env
-emptyEnv = Env {ctx = [], globals = 0, hints = [], sourceLocation = []
-  {- SOLN EP-}, epsilon = Runtime {- STUBWITH -}}
+emptyEnv = Env {ctx = preludeDataDecls 
+               , globals = length preludeDataDecls 
+               , hints = []
+              , sourceLocation = []
+  {- SOLN EP-}, epsilon = Rel {- STUBWITH -}}
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
-
--- | Return a list of all type bindings, and their names.
-getTys :: (MonadReader Env m) => m [(TName, {- SOLN EP -}Epsilon,{- STUBWITH -} Term)]
-getTys = do
-  ctx <- asks ctx
-  return $ catMaybes (map unwrap ctx)
-  where
-    unwrap (Sig (S v {- SOLN EP -}ep{- STUBWITH -} ty)) = Just (v,ep, ty)
-    unwrap _ = Nothing
 
 -- | Find a name's user supplied type signature.
 lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
@@ -113,7 +106,18 @@ lookupTyMaybe ::
   m (Maybe Sig)
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ listToMaybe [ sig | Sig sig <- ctx, v == sigName sig]
+  return $ go ctx where
+    go [] = Nothing
+    go (TypeSig sig : ctx)
+      | v == sigName sig = Just sig
+      | otherwise = go ctx 
+    go (Demote ep : ctx) = demoteSig ep <$> go ctx
+
+    go (_ : ctx) = go ctx
+
+demoteSig :: Epsilon -> Sig -> Sig
+demoteSig ep s = s { sigEp = min ep (sigEp s) }
+
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
@@ -150,18 +154,19 @@ lookupRecDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
-trueConstructorDef = ConstructorDef internalPos "True" (Telescope [])
-falseConstructorDef = ConstructorDef internalPos "False" (Telescope [])
-unitConstructorDef = ConstructorDef internalPos "()" (Telescope []) 
 -- | Find a type constructor in the context
 lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
   m (Telescope, Maybe [ConstructorDef])
+{-
 lookupTCon "Bool" = do
   return (Telescope [], Just [ trueConstructorDef, falseConstructorDef])
 lookupTCon "Unit" = do
   return (Telescope [], Just [ unitConstructorDef ] )
+lookupTCon "Sigma" = do
+  return (sigmaTele, Just [prodConstructorDef])
+  -}
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
@@ -177,11 +182,11 @@ lookupTCon v = do
         ]
     scanGamma ((Data v' delta cs) : g) =
       if v == v'
-        then return $ (delta, Just cs)
+        then return (delta, Just cs)
         else scanGamma g
     scanGamma ((DataSig v' delta) : g) =
       if v == v'
-        then return $ (delta, Nothing)
+        then return (delta, Nothing)
         else scanGamma g
     scanGamma (_ : g) = scanGamma g
 
@@ -191,9 +196,11 @@ lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
   m [(TCName, (Telescope, ConstructorDef))]
+{-
 lookupDConAll "True" = return $ [ ("Bool", (Telescope [], trueConstructorDef))] 
 lookupDConAll "False" = return $ [ ("Bool", (Telescope [], falseConstructorDef))] 
 lookupDConAll "()" = return $ [ ("Unit", (Telescope [], unitConstructorDef))] 
+lookupDConAll "Prod" = return $ [("Sigma", (sigmaTele, prodConstructorDef))] -}
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
@@ -204,7 +211,7 @@ lookupDConAll v = do
         Nothing -> scanGamma g
         Just c -> do
           more <- scanGamma g
-          return $ [(v', (delta, c))] ++ more
+          return $ (v', (delta, c)) :  more
     scanGamma ((DataSig v' delta) : g) = scanGamma g
     scanGamma (_ : g) = scanGamma g
 
@@ -229,27 +236,27 @@ lookupDCon c tname = do
             DD tname,
             DS "Potential matches were:"
           ]
-            ++ (map (DD . fst) matches)
-            ++ (map (DD . snd . snd) matches)
+            ++ map (DD . fst) matches
+            ++ map (DD . snd . snd) matches
         )
 
 
 
--- | Extend the context with a new binding.
+-- | Extend the context with a new binding
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
 extendCtx d =
-  local (\m@(Env {ctx = cs}) -> m {ctx = d : cs})
+  local (\m@Env{ctx = cs} -> m {ctx = d : cs})
 
 -- | Extend the context with a list of bindings
 extendCtxs :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxs ds =
-  local (\m@(Env {ctx = cs}) -> m {ctx = ds ++ cs})
+  local (\m@Env {ctx = cs} -> m {ctx = ds ++ cs})
 
 -- | Extend the context with a list of bindings, marking them as "global"
 extendCtxsGlobal :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxsGlobal ds =
   local
-    ( \m@(Env {ctx = cs}) ->
+    ( \m@Env {ctx = cs} ->
         m
           { ctx = ds ++ cs,
             globals = length (ds ++ cs)
@@ -257,22 +264,24 @@ extendCtxsGlobal ds =
     )
 
 -- | Extend the context with a telescope
-extendCtxTele :: (MonadReader Env m, MonadIO m) => [Assn] -> m a -> m a
+extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m a -> m a
 extendCtxTele [] m = m
-extendCtxTele (AssnProp (Eq (Var x) t2) : tele) m =
+extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
-extendCtxTele (AssnProp (Eq t1 t2) : tele) m = do
-  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
-  extendCtxTele tele m
-extendCtxTele (AssnSig sig : tele) m =
-  extendCtx (Sig sig) $ extendCtxTele tele m
+--extendCtxTele (AssnEq t1 t2 : tele) m = do
+--  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
+--  extendCtxTele tele m
+extendCtxTele (TypeSig sig : tele) m =
+  extendCtx (TypeSig sig) $ extendCtxTele tele m
+extendCtxTele ( _ : tele) m = 
+  err [DS "Invalid telescope ", DD tele]
 
 
 
 -- | Extend the context with a module
 -- Note we must reverse the order.
 extendCtxMod :: (MonadReader Env m) => Module -> m a -> m a
-extendCtxMod m k = extendCtxs (reverse $ moduleEntries m) k
+extendCtxMod m = extendCtxs (reverse $ moduleEntries m)
 
 -- | Extend the context with a list of modules
 extendCtxMods :: (MonadReader Env m) => [Module] -> m a -> m a
@@ -292,7 +301,7 @@ getLocalCtx = do
 -- | Push a new source position on the location stack.
 extendSourceLocation :: (MonadReader Env m, Disp t) => SourcePos -> t -> m a -> m a
 extendSourceLocation p t =
-  local (\e@(Env {sourceLocation = locs}) -> e {sourceLocation = (SourceLocation p t) : locs})
+  local (\e@Env {sourceLocation = locs} -> e {sourceLocation = SourceLocation p t : locs})
 
 -- | access current source location
 getSourceLocation :: MonadReader Env m => m [SourceLocation]
@@ -300,7 +309,7 @@ getSourceLocation = asks sourceLocation
 
 -- | Add a type hint
 extendHints :: (MonadReader Env m) => Sig -> m a -> m a
-extendHints h = local (\m@(Env {hints = hs}) -> m {hints = h : hs})
+extendHints h = local (\m@Env {hints = hs} -> m {hints = h : hs})
 
 -- | An error that should be reported to the user
 data Err = Err [SourceLocation] Doc
@@ -317,9 +326,6 @@ instance Semigroup Err where
 instance Monoid Err where
   mempty = Err [] mempty
   mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
-
--- instance Error Err where
---  strMsg msg = Err [] (text msg)
 
 instance Disp Err where
   disp (Err [] msg) = msg
@@ -354,7 +360,9 @@ checkStage ep1 = do
       ]
 
 withStage :: (MonadReader Env m) => Epsilon -> m a -> m a
-withStage ep = local (\e -> e {epsilon = max (epsilon e) ep})
+withStage Irr = extendCtx (Demote Rel)
+withStage ep = id
+--  local (\e -> e {epsilon = max (epsilon e) ep})
 
 getStage :: (MonadReader Env m) => m Epsilon
 getStage = asks epsilon

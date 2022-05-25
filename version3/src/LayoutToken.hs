@@ -850,7 +850,7 @@ _eoln whiteSpace =
                   EQ -> setInfo (col2-1,tabs,';':cs)
                   GT -> setInfo (col2,tabs,cs)
                   LT -> let adjust prefix cs column [] = setInfo (column,[],rev prefix cs)
-                            adjust prefix cs column (tabs @ (p:ps))
+                            adjust prefix cs column (tabs@(p:ps))
                               | col2==p = setInfo (column-1,tabs,rev (';':prefix) cs)
                               | col2<p  = adjust ('}':prefix) cs (column - 1) ps
                               | col2>p  = setInfo (column,tabs,rev prefix cs)

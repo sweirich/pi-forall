@@ -1,30 +1,12 @@
 {- PiForall language, OPLSS -}
 
-{-# LANGUAGE CPP #-}
-
 -- | Tools for working with multiple source files
 module Modules(getModules, ModuleInfo(..)) where
 
 import Syntax
 import Parser(parseModuleFile, parseModuleImports)
 
-import Text.ParserCombinators.Parsec.Error
-
-
-#ifdef MIN_VERSION_GLASGOW_HASKELL
-#if MIN_VERSION_GLASGOW_HASKELL(7,10,3,0)
--- ghc >= 7.10.3
-#else
--- older ghc versions
-import Control.Applicative 
-#endif
-#else
--- MIN_VERSION_GLASGOW_HASKELL not even defined yet
-import Control.Applicative
-#endif
-
-
-
+import Text.ParserCombinators.Parsec.Error ( ParseError )
 
 import Control.Monad.Except
 
@@ -59,29 +41,26 @@ gatherModules prefixes ms = gatherModules' ms [] where
   gatherModules' ((ModuleImport m):ms') accum = do
     modFileName <- getModuleFileName prefixes m
     imports <- moduleImports <$> parseModuleImports modFileName
-    let accum' = (ModuleInfo m modFileName imports) :accum
+    let accum' = ModuleInfo m modFileName imports :accum
     let oldMods = map (ModuleImport . modInfoName) accum'
     gatherModules' (nub (ms' ++ imports) \\ oldMods) accum'
 
 -- | Generate a sorted list of modules, with the postcondition that a module
 -- will appear _after_ any of its dependencies.
--- topSort :: [Module] -> [Module]
 topSort :: [ModuleInfo] -> [ModuleInfo]
-topSort ms = reverse sorted -- gr -- reverse $ topSort' ms []
+topSort ms = reverse sorted 
   where (gr,lu) = Gr.graphFromEdges' [(m, modInfoName m, [i | ModuleImport i <- modInfoImports m])
                                       | m <- ms]
         lu' v = let (m,_,_) = lu v in m
         sorted = [lu' v | v <- Gr.topSort gr]
 
--- instance Error ParseError
-
 -- | Find the file associated with a module.
 getModuleFileName :: (MonadIO m)
                   => [FilePath] -> MName -> m FilePath
 getModuleFileName prefixes modul = do
-  let makeFileName prefix = prefix </> mDotTrellys
+  let makeFileName prefix = prefix </> mDotPi
       -- get M.pi from M or M.pi
-      mDotTrellys = if takeExtension s == ".pi"
+      mDotPi = if takeExtension s == ".pi"
                     then s
                     else s <.> "pi"
       s = modul

@@ -98,16 +98,14 @@ tcTerm (Ann tm ty) Nothing = do
 -- remember the current position in the type checking monad
 tcTerm (Pos p tm) mTy =
   Env.extendSourceLocation p tm $ tcTerm tm mTy
--- ignore parentheses
-tcTerm (Paren tm) mTy = tcTerm tm mTy
 -- ignore term, just return type annotation
-tcTerm t@(TrustMe) (Just ty) = return ty
+tcTerm TrustMe (Just ty) = return ty
   
-tcTerm (TyUnit) Nothing = return Type
-tcTerm (LitUnit) Nothing = return TyUnit
+tcTerm TyUnit Nothing = return Type
+tcTerm LitUnit Nothing = return TyUnit
 
 -- i-bool
-tcTerm (TyBool) Nothing = {- SOLN HW -} return Type
+tcTerm TyBool Nothing = {- SOLN HW -} return Type
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
 -- i-true/false
@@ -117,11 +115,11 @@ tcTerm (LitBool b) Nothing = {- SOLN HW -} do
 
 -- c-if
 tcTerm t@(If t1 t2 t3) (Just ty) = {- SOLN HW -} do
-  _ <- checkType t1 TyBool
+  checkType t1 TyBool
   dtrue <- def t1 (LitBool True)
   dfalse <- def t1 (LitBool False)
-  _ <- Env.extendCtxs dtrue $ checkType t2 ty
-  _ <- Env.extendCtxs dfalse $ checkType t3 ty
+  Env.extendCtxs dtrue $ checkType t2 ty
+  Env.extendCtxs dfalse $ checkType t3 ty
   return ty
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
@@ -312,7 +310,7 @@ tcTerm t@(LetPair p bnd) (Just ty) = {- SOLN EQUAL -} do
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
-tcTerm t@(PrintMe) (Just ty) = do
+tcTerm PrintMe (Just ty) = do
   gamma <- Env.getLocalCtx
   Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
         DS "\nGoal: ", DD ty]
@@ -376,7 +374,7 @@ tcArgTele _  tele =
 -- to find the types of its arguments.
 -- The first argument should only contain 'Rel' type declarations.
 substTele :: [Decl] -> [Arg] -> [Decl] -> TcMonad [Decl]
-substTele tele args delta = doSubst (mkSubst tele (map unArg args)) delta
+substTele tele args = doSubst (mkSubst tele (map unArg args))
   where
     mkSubst [] [] = []
     mkSubst (TypeSig (Sig x Rel _) : tele') (tm : tms) =
@@ -393,7 +391,7 @@ doSubst ss (Def x ty : tele') = do
   let tx' = Unbound.substs ss (Var x)
   let ty' = Unbound.substs ss ty
   decls1 <- Equal.unify [] tx' ty'
-  decls2 <- Env.extendCtxs decls1 $ (doSubst ss tele')
+  decls2 <- Env.extendCtxs decls1 (doSubst ss tele')
   return $ decls1 ++ decls2
 doSubst ss (TypeSig sig : tele') = do
   tynf <- Equal.whnf (Unbound.substs ss (sigType sig))
@@ -435,12 +433,12 @@ declarePats dc _    _ = Env.err [DS "Invalid telescope", DD dc]
 
 -- | Convert a pattern to a term 
 pat2Term :: Pattern ->  Term
-pat2Term (PatVar x) = (Var x)
+pat2Term (PatVar x) = Var x
 pat2Term (PatCon dc pats) = DCon dc (pats2Terms pats) 
   where
     pats2Terms :: [(Pattern, Epsilon)] -> [Arg]
     pats2Terms [] = []
-    pats2Terms ((p, ep) : ps) = (Arg ep t : ts) where
+    pats2Terms ((p, ep) : ps) = Arg ep t : ts where
       t = pat2Term p 
       ts = pats2Terms ps
        
@@ -469,7 +467,7 @@ tcTypeTele tele =
 -- appears after its dependencies. Returns the same list of modules
 -- with each definition typechecked
 tcModules :: [Module] -> TcMonad [Module]
-tcModules mods = foldM tcM [] mods
+tcModules = foldM tcM []
   where
     -- Check module m against modules in defs, then add m to the list.
     defs `tcM` m = do
@@ -503,9 +501,9 @@ tcModule defs m' = do
       case x of
         AddHint hint -> Env.extendHints hint m
         -- Add decls to the Decls to be returned
-        AddCtx decls -> (decls ++) <$> (Env.extendCtxsGlobal decls m)
+        AddCtx decls -> (decls ++) <$> Env.extendCtxsGlobal decls m
     -- Get all of the defs from imported modules (this is the env to check current module in)
-    importedModules = filter (\x -> (ModuleImport (moduleName x)) `elem` moduleImports m') defs
+    importedModules = filter (\x -> ModuleImport (moduleName x) `elem` moduleImports m') defs
 
 -- | The Env-delta returned when type-checking a top-level Decl.
 data HintOrCtx
@@ -516,9 +514,7 @@ data HintOrCtx
 tcEntry :: Decl -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
   oldDef <- Env.lookupDef n
-  case oldDef of
-    Nothing -> tc
-    Just term' -> die term'
+  maybe tc die oldDef
   where
     tc = do
       lkup <- Env.lookupHint n
@@ -538,7 +534,7 @@ tcEntry (Def n term) = do
                   ]
            in do
                 Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) `catchError` handler
-                if (n `elem` Unbound.toListOf Unbound.fv term)
+                if n `elem` Unbound.toListOf Unbound.fv term
                   then return $ AddCtx [TypeSig sig, RecDef n term]
                   else return $ AddCtx [TypeSig sig, Def n term]
     die term' =
@@ -553,7 +549,9 @@ tcEntry (TypeSig sig) = do
   duplicateTypeBindingCheck sig
   tcType (sigType sig)
   return $ AddHint sig
+{- SOLN EP -}
 tcEntry (Demote ep) = return (AddCtx [Demote ep])
+{- STUBWITH -}
 
 {- SOLN DATA -}
 -- rule Decl_data
@@ -630,10 +628,10 @@ exhaustivityCheck scrut ty pats = do
           l <- checkImpossible dcons
           if null l
             then return ()
-            else Env.err $ [DS "Missing case for "] ++ map DD l
+            else Env.err $ DS "Missing case for " : map DD l
         loop ((PatVar x) : _) dcons = return ()
         loop ((PatCon dc args) : pats') dcons = do
-          (cd@(ConstructorDef _ _ (Telescope tele), dcons')) <- removeDcon dc dcons
+          cd@(ConstructorDef _ _ (Telescope tele), dcons') <- removeDcon dc dcons
           tele' <- substTele delta tys tele
           let (aargs, pats'') = relatedPats dc pats'
           checkSubPats dc tele' (args : aargs)
@@ -700,11 +698,11 @@ checkSubPats :: DCName -> [Decl] -> [[(Pattern, Epsilon)]] -> TcMonad ()
 checkSubPats dc [] _ = return ()
 checkSubPats dc (Def _ _ : tele) patss = checkSubPats dc tele patss
 checkSubPats dc (TypeSig _ : tele) patss
-  | length patss > 0 && (all ((> 0) . length) patss) = do
+  | (not . null) patss && not (any null patss) = do
     let hds = map (fst . head) patss
     let tls = map tail patss
     case hds of
-      (PatVar _ : []) -> checkSubPats dc tele tls
+      [PatVar _ ] -> checkSubPats dc tele tls
       _ -> Env.err [DS "All subpatterns must be variables in this version."]
 checkSubPats dc t ps =
   Env.err [DS "Internal error in checkSubPats", DD dc, DS (show ps)]

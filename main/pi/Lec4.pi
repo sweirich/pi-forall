@@ -1,35 +1,112 @@
-module Lec4 where
+module Lec3 where
 
-import Nat
+-- simple datatypes 
 
--- can mark some arguments as irrelevant
+data Void : Type where {}   -- no constructors
 
-id : [x:Type] -> (y : x) -> x
-id = \[x] y. (y : x)
+false_elim : [A:Type] -> Void -> A
+false_elim = \ [A] v . case v of {}
 
-t0 = id [Bool] True
+data Nat : Type where
+  Zero
+  Succ of (Nat)
 
-t1 = id [Bool] (id [Bool] True)
+is_zero : Nat -> Bool
+is_zero = \ x . case x of 
+   Zero -> True
+   Succ n -> False
 
-{-  This shouldn't work 
-id' : [x:Type] -> [y:x] -> x
-id' = \[x][y]. y
--}
+plus : Nat -> Nat -> Nat
+plus = \ x y. case x of 
+   Zero -> y
+   Succ x' -> Succ (plus x' y)
 
------------------------------------------------------
---  Irrelevant arguments ignored during type equality
+data SillyBool : Type where      
+  ImTrue  of (b : Bool) (_ : b = True)
+  ImFalse of (b: Bool)  (_ : b = False)
 
-irrelevance : (p : [i : Nat] -> Nat) -> p [1] = p [2]
-irrelevance = \p . Refl
+--
+-- Another example, Days of the week.
 
------------------------------------------------------
--- Propositional equality is relevant
--- Cannot ignore/erase proofs that are used for casts. 
--- Need a terminating system to even think about this possibility.
+data Day : Type where
+   Monday
+   Tuesday
+   Wednesday
+   Thursday 
+   Friday
+   Saturday
+   Sunday
+  
+-- using datatypes
 
-proprel : [a : Type] -> (pf : a = Bool) -> (x : a) -> Bool
-proprel = \[a] pf x . 
-  subst x by pf 
+next_weekday : Day -> Day
+next_weekday = \d . case d of 
+   Monday -> Tuesday 
+   Tuesday -> Wednesday
+   Wednesday -> Thursday
+   Thursday -> Friday
+   Friday -> Monday
+   Saturday -> Monday
+   Sunday -> Monday
+
+neg : Type -> Type
+neg = \ x . (x -> Void)
+
+next_is_not_saturday : (d: Day) -> neg (next_weekday d = Saturday) 
+next_is_not_saturday = \ d. 
+  \pf. case d of
+     Monday -> contra pf
+     Tuesday -> contra pf
+     Wednesday -> contra pf
+     Thursday -> contra pf
+     Friday -> contra pf
+     Saturday -> contra pf
+     Sunday -> contra pf
+
+
+-- parameterized datatypes
+
+data Maybe (A : Type) : Type where
+   Nothing 
+   Just of (A)
+
+data Sigma (A: Type) (B : A -> Type) : Type where
+    Prod of (x:A) (B x)
+
+
+-- indexed datatypes
+
+data Beautiful (n : Nat) : Type where
+   B0 of [n = 0]
+   B3 of [n = 3]
+   B5 of [n = 5]
+   Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[n = plus m1 m2]
+
+threeIsBeautiful : Beautiful 3
+threeIsBeautiful = B3
+
+eightIsBeautiful : Beautiful 8
+eightIsBeautiful = Bsum 3 5 B3 B5
+
+beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful (plus 8 n)
+beautifulPlusEight = \ n bn. Bsum 8 n eightIsBeautiful bn
+
+data Gorgeous (n : Nat) : Type where
+   G0 of [n = 0]
+   Gplus3 of (m : Nat) (Gorgeous m) [n = plus 3 m]
+   Gplus5 of (m : Nat) (Gorgeous m) [n = plus 5 m]
+
+gorgeousPlus13 : (n : Nat) -> Gorgeous n -> Gorgeous (plus 13 n)
+gorgeousPlus13 = \n gn. 
+   Gplus5 (plus 5 (plus 3 n)) (Gplus5 (plus 3 n) (Gplus3 n gn)) 
+
+gorgeousBeautiful : (n : Nat) -> Gorgeous n -> Beautiful n
+gorgeousBeautiful = \n gn . case gn of 
+   G0 -> B0
+   Gplus3 m gm -> Bsum 3 m B3 (gorgeousBeautiful m gm)
+   Gplus5 m gm -> Bsum 5 m B5 (gorgeousBeautiful m gm)
+
+
 
 -----------------------------------------------------
 -- The trade off for Sigma types in the context of irrelevance. 

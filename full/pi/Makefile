@@ -13,7 +13,7 @@
 SHELL=/bin/bash
 
 # PASS are tests that *should* always pass.
-PASS=Logic Equality Product Nat Fin Vec BoolLib Hw1 Hw2 \
+PASS=Logic Equality Product Nat Fin Vec BoolLib Hw1 Hw2 FinHw \
     Lambda Lambda0 Lambda1 Lambda2 \
 	Lec1 Lec2 Lec3 Lec4 \
 	List NatChurch Product1

@@ -36,7 +36,7 @@ checkType tm expectedTy = do
   
 -- | Make sure that the term is a type (i.e. has type 'Type')
 tcType :: Term -> TcMonad ()
-tcType tm = void $ Env.withStage Erased $ checkType tm Type
+tcType tm = void $ Env.withStage Irr $ checkType tm Type
     
 -- | check a term, producing its type
 -- The second argument is 'Nothing' in inference mode and
@@ -53,7 +53,7 @@ tcTerm Type Nothing = return Type
 tcTerm (Pi bnd) Nothing = do
   ((x, {- SOLN EP -}ep,{- STUBWITH -} Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (Sig (S x ep  tyA)) $ tcType tyB
+  Env.extendCtx (TypeSig (Sig x ep  tyA)) $ tcType tyB
   return Type
 -- c-lam: check the type of a function
 tcTerm (Lam bnd) (Just (Pi bnd2)) = do
@@ -67,7 +67,7 @@ tcTerm (Lam bnd) (Just (Pi bnd2)) = do
 -- epsilons should match up
   guard (ep1 == ep2) 
   -- check the type of the body of the lambda expression
-  etyB <- Env.extendCtx (Sig (S x ep1  tyA)) (checkType body tyB)
+  etyB <- Env.extendCtx (TypeSig (Sig x ep1  tyA)) (checkType body tyB)
   return (Pi bnd2)
    
 tcTerm (Lam _) (Just nf) =
@@ -94,16 +94,14 @@ tcTerm (Ann tm ty) Nothing = do
 -- remember the current position in the type checking monad
 tcTerm (Pos p tm) mTy =
   Env.extendSourceLocation p tm $ tcTerm tm mTy
--- ignore parentheses
-tcTerm (Paren tm) mTy = tcTerm tm mTy
 -- ignore term, just return type annotation
-tcTerm t@(TrustMe) (Just ty) = return ty
+tcTerm TrustMe (Just ty) = return ty
   
-tcTerm (TyUnit) Nothing = return Type
-tcTerm (LitUnit) Nothing = return TyUnit
+tcTerm TyUnit Nothing = return Type
+tcTerm LitUnit Nothing = return TyUnit
 
 -- i-bool
-tcTerm (TyBool) Nothing = return Type
+tcTerm TyBool Nothing = return Type
 
 
 -- i-true/false
@@ -113,11 +111,11 @@ tcTerm (LitBool b) Nothing = do
 
 -- c-if
 tcTerm t@(If t1 t2 t3) (Just ty) = do
-  _ <- checkType t1 TyBool
+  checkType t1 TyBool
   dtrue <- def t1 (LitBool True)
   dfalse <- def t1 (LitBool False)
-  _ <- Env.extendCtxs dtrue $ checkType t2 ty
-  _ <- Env.extendCtxs dfalse $ checkType t3 ty
+  Env.extendCtxs dtrue $ checkType t2 ty
+  Env.extendCtxs dfalse $ checkType t3 ty
   return ty
 
 
@@ -125,7 +123,7 @@ tcTerm (Let bnd) ann = do
   ((x, Unbound.unembed -> rhs), body) <- Unbound.unbind bnd
   aty <- inferType rhs 
   let sig = mkSig x aty
-  ty <- Env.extendCtxs [Sig sig, Def x rhs] $
+  ty <- Env.extendCtxs [TypeSig sig, Def x rhs] $
       tcTerm body ann
   when (x `elem` Unbound.toListOf Unbound.fv ty) $
     Env.err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]
@@ -141,7 +139,7 @@ tcTerm Refl (Just ty@(TyEq a b)) = do
   Equal.equate a b
   return ty
 tcTerm Refl (Just ty) = 
-  Env.err [DS "refl annotated with ", DD ty]
+  Env.err [DS "Refl annotated with ", DD ty]
 tcTerm t@(Subst a b) (Just ty) = do
   -- infer the type of the proof 'b'
   tp <- inferType b
@@ -177,7 +175,7 @@ tcTerm t@(Contra p) (Just ty) = do
 tcTerm t@(Sigma bnd) Nothing = do
   ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (Sig (mkSig x tyA)) $ tcType tyB
+  Env.extendCtx (TypeSig (mkSig x tyA)) $ tcType tyB
   return Type
 
 
@@ -186,7 +184,7 @@ tcTerm t@(Prod a b) (Just ty) = do
     (Sigma bnd) -> do
       ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
       checkType a tyA
-      Env.extendCtxs [Sig (mkSig x tyA), Def x a] $ checkType b tyB
+      Env.extendCtxs [TypeSig (mkSig x tyA), Def x a] $ checkType b tyB
       return (Sigma (Unbound.bind (x, Unbound.embed tyA) tyB))
     _ ->
       Env.err
@@ -205,13 +203,13 @@ tcTerm t@(LetPair p bnd) (Just ty) = do
       ((x', y'), body) <- Unbound.unbind bnd
       let tyB' = Unbound.subst x (Var x') tyB
       decl <- def p (Prod (Var x') (Var y'))
-      Env.extendCtxs ([Sig (mkSig x' tyA), Sig (mkSig y' tyB')] ++ decl) $
+      Env.extendCtxs ([TypeSig (mkSig x' tyA), TypeSig (mkSig y' tyB')] ++ decl) $
           checkType body ty
       return ty
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
 
 
-tcTerm t@(PrintMe) (Just ty) = do
+tcTerm PrintMe (Just ty) = do
   gamma <- Env.getLocalCtx
   Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
         DS "\nGoal: ", DD ty]
@@ -250,7 +248,7 @@ def t1 t2 = do
 -- appears after its dependencies. Returns the same list of modules
 -- with each definition typechecked
 tcModules :: [Module] -> TcMonad [Module]
-tcModules mods = foldM tcM [] mods
+tcModules = foldM tcM []
   where
     -- Check module m against modules in defs, then add m to the list.
     defs `tcM` m = do
@@ -284,9 +282,9 @@ tcModule defs m' = do
       case x of
         AddHint hint -> Env.extendHints hint m
         -- Add decls to the Decls to be returned
-        AddCtx decls -> (decls ++) <$> (Env.extendCtxsGlobal decls m)
+        AddCtx decls -> (decls ++) <$> Env.extendCtxsGlobal decls m
     -- Get all of the defs from imported modules (this is the env to check current module in)
-    importedModules = filter (\x -> (ModuleImport (moduleName x)) `elem` moduleImports m') defs
+    importedModules = filter (\x -> ModuleImport (moduleName x) `elem` moduleImports m') defs
 
 -- | The Env-delta returned when type-checking a top-level Decl.
 data HintOrCtx
@@ -297,16 +295,14 @@ data HintOrCtx
 tcEntry :: Decl -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
   oldDef <- Env.lookupDef n
-  case oldDef of
-    Nothing -> tc
-    Just term' -> die term'
+  maybe tc die oldDef
   where
     tc = do
       lkup <- Env.lookupHint n
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [Sig (S n {- SOLN EP -}Runtime{- STUBWITH -} ty), Def n term]
+          return $ AddCtx [TypeSig (Sig n {- SOLN EP -}Rel{- STUBWITH -} ty), Def n term]
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -318,10 +314,10 @@ tcEntry (Def n term) = do
                     DD sig
                   ]
            in do
-                Env.extendCtx (Sig sig) $ checkType term (sigType sig) `catchError` handler
-                if (n `elem` Unbound.toListOf Unbound.fv term)
-                  then return $ AddCtx [Sig sig, RecDef n term]
-                  else return $ AddCtx [Sig sig, Def n term]
+                Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) `catchError` handler
+                if n `elem` Unbound.toListOf Unbound.fv term
+                  then return $ AddCtx [TypeSig sig, RecDef n term]
+                  else return $ AddCtx [TypeSig sig, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -330,10 +326,12 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (Sig sig) = do
+tcEntry (TypeSig sig) = do
   duplicateTypeBindingCheck sig
   tcType (sigType sig)
   return $ AddHint sig
+tcEntry (Demote ep) = return (AddCtx [Demote ep])
+
 
 tcEntry _ = Env.err "unimplemented"
 

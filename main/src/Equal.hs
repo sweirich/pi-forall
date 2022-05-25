@@ -126,14 +126,16 @@ equateArgs a1 a2 = do
                    DS "in context:", DD gamma]
 
 equateArg :: Arg -> Arg -> TcMonad ()
+
+equateArg (Arg {- SOLN EP -}Rel {- STUBWITH -}t1) (Arg {- SOLN EP -}Rel {- STUBWITH -}t2) = equate t1 t2
 {- SOLN EP -}
 equateArg (Arg Irr t1) (Arg Irr t2) = return ()
-{- STUBWITH -}
-equateArg (Arg {- SOLN EP -}Rel{- STUBWITH -} t1) (Arg {- SOLN EP -}Rel{-STUBWITH-} t2) = equate t1 t2
 equateArg a1 a2 =  
   Env.err [DS "Arg stage mismatch",
               DS "Expected " , DD a2, 
               DS "Found ", DD a1] 
+{- STUBWITH -}
+
 -------------------------------------------------------
 
 -- | Ensure that the given type 'ty' is a 'Pi' type
@@ -183,7 +185,7 @@ ensureTCon aty = do
 whnf :: Term -> TcMonad Term  
 whnf (Var x) = do      
   maybeDef <- Env.lookupDef x
-  case (maybeDef) of 
+  case maybeDef of 
     (Just d) -> whnf d 
     _ -> do
           maybeRecDef <- Env.lookupRecDef x 
@@ -216,7 +218,6 @@ whnf (LetPair a bnd) = do
 
 -- ignore/remove type annotations and source positions when normalizing  
 whnf (Ann tm _) = whnf tm
-whnf (Paren tm) = whnf tm
 whnf (Pos _ tm) = whnf tm
  
 {- SOLN HW -}
@@ -240,7 +241,7 @@ whnf (Case scrut mtchs) = do
           whnf (Unbound.substs ss br)) 
             `catchError` \ _ -> f alts
       f [] = Env.err $ [DS "Internal error: couldn't find a matching",
-                    DS "branch for", DD nf, DS "in"] ++ (map DD mtchs)
+                    DS "branch for", DD nf, DS "in"] ++ map DD mtchs
     _ -> return (Case nf mtchs){- STUBWITH -}            
 -- all other terms are already in WHNF
 -- don't do anything special for them
@@ -271,7 +272,7 @@ unify :: [TName] -> Term -> Term -> TcMonad [Decl]
 unify ns tx ty = do
   txnf <- whnf tx
   tynf <- whnf ty
-  if (Unbound.aeq txnf tynf)
+  if Unbound.aeq txnf tynf
     then return []
     else case (txnf, tynf) of
       (Var y, yty) | y `notElem` ns -> return [Def y yty]

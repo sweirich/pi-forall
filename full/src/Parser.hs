@@ -53,11 +53,12 @@ Optional components in this BNF are marked with < >
     | if a then b else c       If 
 
     | { x : A | B }            Dependent pair type
+    | A * B                    Nondependent pair syntactic sugar
     | (a, b)                   Prod introduction
     | let (x,y) = a in b       Prod elimination
 
     | a = b                    Equality type
-    | refl                     Equality proof
+    | Refl                     Equality proof
     | subst a by b             Type conversion
     | contra a                 Contra
 
@@ -66,9 +67,9 @@ Optional components in this BNF are marked with < >
         C1 [x] y z -> b1
         C2 x [y]   -> b2
 
-    | \ [x <:A> ] . a          Erased lambda
-    | a [b]                    Erased application
-    | [x : A] -> B             Erased pi    
+    | \ [x <:A> ] . a          Irr lambda
+    | a [b]                    Irr application
+    | [x : A] -> B             Irr pi    
 
 
   declarations:
@@ -86,7 +87,7 @@ Optional components in this BNF are marked with < >
                                Empty
      | (x : A) D               runtime cons
      | (A) D                   runtime cons
-     | [x : A] D               erased cons
+     | [x : A] D               irrelevant cons
      | [A = B] D               equality constraint
 
 
@@ -110,7 +111,7 @@ parseModuleFile cnames name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
   liftError $ Unbound.runFreshM $ 
-    flip evalStateT cnames $
+    flip evalStateT cnames 
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 
 
@@ -124,7 +125,7 @@ parseModuleImports name = do
      (runParserT (do { whiteSpace; moduleImports }) [] name contents)
 
 -- | Test an 'LParser' on a String.
-testParser :: (LParser t) -> String -> Either ParseError t
+testParser :: LParser t -> String -> Either ParseError t
 testParser parser str = Unbound.runFreshM $ 
    flip evalStateT emptyConstructorNames $
 
@@ -161,7 +162,7 @@ piforallStyle = Token.LanguageDef
                 , Token.opLetter       = oneOf ":!#$%&*+.,/<=>?@\\^|-"
                 , Token.caseSensitive  = True
                 , Token.reservedNames =
-                  ["refl"
+                  ["Refl"
                   ,"ind"
                   ,"Type"
                   ,"data"
@@ -173,7 +174,6 @@ piforallStyle = Token.LanguageDef
                   ,"subst", "by"
                   ,"let", "in"
                   ,"axiom"
-                  ,"erased"
                   ,"TRUSTME"
                   ,"PRINTME"
                   ,"ord" 
@@ -182,7 +182,7 @@ piforallStyle = Token.LanguageDef
                   ,"Unit", "()"                               
                   ]
                , Token.reservedOpNames =
-                 ["!","?","\\",":",".",",","<", "=", "+", "-", "^", "()", "_","|","{", "}"]
+                 ["!","?","\\",":",".",",","<", "=", "+", "-", "*", "^", "()", "_","|","{", "}"]
                 }
 tokenizer :: Token.GenTokenParser String [Column] (StateT ConstructorNames Unbound.FreshM)
 
@@ -265,7 +265,7 @@ natenc =
   do n <- natural
      return $ encode n 
    where encode 0 = DCon "Zero" []
-         encode n = DCon "Succ" [Arg Runtime (encode (n-1))]
+         encode n = DCon "Succ" [Arg Rel (encode (n-1))]
 
 
 moduleImports :: LParser Module
@@ -295,27 +295,27 @@ telescope = do
   bindings <- telebindings
   return $ Telescope (foldr id [] bindings) where
   
-telebindings :: LParser [[Assn] -> [Assn]]
+telebindings :: LParser [[Decl] -> [Decl]]
 telebindings = many teleBinding
   where
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (Unbound.fresh wildcardName) <*> expr)
-      return (AssnSig (mkSig x ty):)
+      return (TypeSig (mkSig x ty):)
 
     imp = do
         v <- varOrWildcard
         colon
         t <- expr
-        return (AssnSig (S v Erased t):)
+        return (TypeSig (Sig v Irr t):)
     
     equal = do
         v <- variable
         reservedOp "="
         t <- expr
-        return (AssnProp (Eq (Var v) t) :)
+        return (Def v t :)
     
-    teleBinding :: LParser ([Assn] -> [Assn])
+    teleBinding :: LParser ([Decl] -> [Decl])
     teleBinding =
       (    parens annot
        <|> try (brackets imp)
@@ -359,7 +359,7 @@ constructorDef = do
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ Sig (mkSig n ty)
+  return $ TypeSig (mkSig n ty)
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -381,7 +381,7 @@ printme = reserved "PRINTME" *> return (PrintMe )
 
 refl :: LParser Term
 refl =
-  do reserved "refl"
+  do reserved "Refl"
      return $ Refl 
 
 
@@ -395,14 +395,20 @@ expr = do
     Pos p <$> buildExpressionParser table term
   where table = [
                  [ifix  AssocLeft "=" TyEq],
-                 [ifixM AssocRight "->" mkArrow]
+                 [ifixM AssocRight "->" mkArrowType],
+                 [ifixM AssocRight "*" mkTupleType]
                 ]   
         ifix  assoc op f = Infix (reservedOp op >> return f) assoc 
         ifixM assoc op f = Infix (reservedOp op >> f) assoc
-        mkArrow  = 
+        mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (Unbound.bind (n, {- SOLN EP -}Runtime, {- STUBWITH -} Unbound.embed tyA) tyB)
+               Pi (Unbound.bind (n, {- SOLN EP -}Rel, {- STUBWITH -} Unbound.embed tyA) tyB)
+        mkTupleType = 
+          do n <- Unbound.fresh wildcardName
+             return $ \tyA tyB -> 
+               TCon sigmaName [Arg Rel tyA, Arg Rel $ Lam (Unbound.bind (n, Rel) tyB)]
+
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -411,7 +417,7 @@ expr = do
 term = try dconapp <|>  try tconapp <|>  funapp
 
 arg :: LParser Arg
-arg = (Arg Erased) <$> brackets expr <|> (Arg Runtime) <$> factor
+arg = (Arg Irr) <$> brackets expr <|> (Arg Rel) <$> factor
 
 dconapp :: LParser Term
 dconapp = do 
@@ -431,8 +437,8 @@ funapp = do
   f <- factor
   foldl' app f <$> many bfactor
   where
-        bfactor = ((,Erased)  <$> brackets expr) 
-                             <|> ((,Runtime) <$> factor)
+        bfactor = ((,Irr)  <$> brackets expr) 
+                             <|> ((,Rel) <$> factor)
         app e1 (e2,ep)  =  App e1 (Arg ep e2)
 
 
@@ -441,12 +447,12 @@ factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                                   
                 , typen      <?> "Type"
                 , lambda     <?> "a lambda"
-                , try pcaseExpr  <?> "a let pair"
+                , try letPairExp  <?> "a let pair"
                 , letExpr <?> "a let"
                                   , natenc     <?> "a literal"                  
                 , caseExpr   <?> "a case" 
                                   , substExpr  <?> "a subst"
-                , refl       <?> "refl"
+                , refl       <?> "Refl"
                 , contra     <?> "a contra" 
                 , trustme    <?> "TRUSTME"
                 , printme    <?> "PRINTME"
@@ -461,8 +467,8 @@ factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                 ]
 
 impOrExpVar :: LParser (TName, Epsilon)
-impOrExpVar = try ((,Erased) <$> (brackets variable)) 
-              <|> (,Runtime) <$> variable
+impOrExpVar = try ((,Irr) <$> (brackets variable)) 
+              <|> (,Rel) <$> variable
 
 
 typen :: LParser Term
@@ -487,11 +493,11 @@ lambda = do reservedOp "\\"
 
 
 bconst  :: LParser Term
-bconst = choice [reserved "Bool"  >> return (TCon "Bool" []),
-                 reserved "False" >> return (DCon "False" []),
-                 reserved "True"  >> return (DCon "True" []),
-                 reserved "Unit"  >> return (TCon "Unit" []),
-                 reserved "()"    >> return (DCon "()" [])]
+bconst = choice [reserved "Bool"  >> return (TCon boolName []),
+                 reserved "False" >> return (DCon falseName []),
+                 reserved "True"  >> return (DCon trueName []),
+                 reserved "Unit"  >> return (TCon tyUnitName []),
+                 reserved "()"    >> return (DCon litUnitName [])]
 
 
 
@@ -503,8 +509,8 @@ ifExpr =
      b <- expr
      reserved "else"
      c <- expr
-     return (Case a [Match $ Unbound.bind (PatCon "True" []) b, 
-                     Match $ Unbound.bind (PatCon "False" []) c])
+     return (Case a [Match $ Unbound.bind (PatCon trueName []) b, 
+                     Match $ Unbound.bind (PatCon falseName []) c])
 
     
 
@@ -519,8 +525,8 @@ letExpr =
      body <- expr
      return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
 
-pcaseExpr :: LParser Term
-pcaseExpr = do
+letPairExp :: LParser Term
+letPairExp = do
     reserved "let"
     reservedOp "("
     x <- variable
@@ -531,7 +537,9 @@ pcaseExpr = do
     scrut <- expr
     reserved "in"
     a <- expr
-    return $ LetPair scrut (Unbound.bind (x,y) a) 
+    let pat = PatCon prodName [(PatVar x, Rel), (PatVar y, Rel)]
+    return $ Case scrut [Match (Unbound.bind pat a)]
+
 
 
 -- impProd - implicit dependent products
@@ -543,7 +551,7 @@ impProd =
         <|> ((,) <$> Unbound.fresh wildcardName <*> expr))
      reservedOp "->" 
      tyB <- expr
-     return $ Pi (Unbound.bind (x,Erased, Unbound.embed tyA) tyB)
+     return $ Pi (Unbound.bind (x,Irr, Unbound.embed tyA) tyB)
 
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
@@ -580,29 +588,47 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (Unbound.bind (x,{- SOLN EP -}Runtime,{- STUBWITH -}Unbound.embed a) b))
+                      return $ Pi (Unbound.bind (x,{- SOLN EP -}Rel,{- STUBWITH -}Unbound.embed a) b))
          Colon a b -> return $ Ann a b
-         Comma a b -> return $ Prod a b 
-         Nope a    -> return $ Paren a
+      
+         Comma a b -> 
+           return $ DCon prodName [Arg Rel a, Arg Rel b] 
 
-pattern :: LParser Pattern 
+         Nope a    -> return a
+
+-- patterns are 
+-- p :=  x
+--       _
+--       K ap*
+--       (p)
+--       (p, p)
+-- ap ::= [p] | p        
+
 -- Note that 'dconstructor' and 'variable' overlaps, annoyingly.
+pattern :: LParser Pattern
 pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
        <|> atomic_pattern
   where
-    arg_pattern    =  ((,Erased) <$> brackets pattern) 
-                  <|> ((,Runtime) <$> atomic_pattern)
-    atomic_pattern =    (parens pattern)
-                  <|> reserved "True" *> pure (PatCon "True" [])
-                  <|> reserved "False" *> pure (PatCon "False" [])
-                  <|> reserved "()" *> pure (PatCon "()" [])
-                  <|> (PatVar <$> wildcard)
+    arg_pattern    =  ((,Irr) <$> brackets pattern) 
+                  <|> ((,Rel) <$> atomic_pattern)
+    paren_pattern  = do 
+      pattern >>= \p ->
+        ( (reservedOp ")" >> pure p)
+       <|> reservedOp "," *> (atomic_pattern >>= \q -> 
+                              pure (PatCon prodName [(p, Rel), (q, Rel)]))
+        ) 
+    atomic_pattern =  reservedOp "(" *> paren_pattern
+                  <|> reserved "True" *> pure (PatCon trueName [])
+                  <|> reserved "False" *> pure (PatCon falseName [])
+                  <|> reserved "()" *> pure (PatCon litUnitName [])
+                  <|> PatVar <$> wildcard
                   <|> do t <- varOrCon
                          case t of
                            (Var x) -> return $ PatVar x
                            (DCon c []) -> return $ PatCon c []
                            (TCon c []) -> fail "expected a data constructor but a type constructor was found"
                            _ -> error "internal error in atomic_pattern"
+
 
 match :: LParser Match
 match = 
@@ -648,6 +674,7 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return (Sigma (Unbound.bind (x, Unbound.embed a) b))
+  return $ TCon sigmaName [Arg Rel a, Arg Rel (Lam (Unbound.bind (x, Rel) b))]
+
   
   

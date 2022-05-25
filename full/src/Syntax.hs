@@ -59,8 +59,6 @@ data Term
     Pi (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Type) Type)
   | -- | Annotated terms `( a : A )`
     Ann Term Type
-  | -- | parenthesized term, useful for printing
-    Paren Term
   | -- | marked source position, for error messages
     Pos SourcePos Term
   | -- | an axiom 'TRUSTME', inhabits all types
@@ -89,7 +87,7 @@ data Term
 
      | -- | Equality type  `a = b`
     TyEq Term Term
-  | -- | Proof of equality `refl`
+  | -- | Proof of equality `Refl`
     Refl 
   | -- | equality elimination  `subst a by pf`
     Subst Term Term 
@@ -112,8 +110,8 @@ data Arg = Arg {argEp :: Epsilon,  unArg :: Term}
 
 -- | Epsilon annotates the stage of a variable
 data Epsilon
-  = Runtime
-  | Erased
+  = Rel
+  | Irr
   deriving
     ( Eq,
       Show,
@@ -129,9 +127,9 @@ data Epsilon
 
 
 -- | A 'Match' represents a case alternative
-data Match = Match (Unbound.Bind Pattern Term)
-  deriving (Show, Generic, Typeable, Unbound.Alpha)
-  deriving anyclass (Unbound.Subst Term)
+newtype Match = Match (Unbound.Bind Pattern Term)
+  deriving (Show, Generic, Typeable)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 -- | The patterns of case expressions bind all variables
 -- in their respective branches.
@@ -161,22 +159,23 @@ data Module = Module
 newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
-data Sig = S {sigName :: TName {- SOLN EP -}, sigEp :: Epsilon {- STUBWITH -}, sigType :: Type}
+data Sig = Sig {sigName :: TName {- SOLN EP -}, sigEp :: Epsilon {- STUBWITH -}, sigType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 mkSig :: TName -> Type -> Sig
-mkSig n t = S n Runtime  t
+mkSig n = Sig n Rel 
 
 -- | Declarations are the components of modules
 data Decl
   = -- | Declaration for the type of a term
-    Sig Sig
+    TypeSig Sig
   | -- | The definition of a particular name, must
     -- already have a type declaration in scope
     Def TName Term
   | -- | A potentially (recursive) definition of
     -- a particular name, must be declared
-    RecDef TName Term   | -- | Declaration for a datatype including all of
+    RecDef TName Term     -- | Adjust the context for relevance checking
+  | Demote Epsilon    | -- | Declaration for a datatype including all of
     -- its data constructors
     Data TCName Telescope [ConstructorDef]
   | -- | An abstract view of a datatype. Does
@@ -185,7 +184,7 @@ data Decl
     DataSig TCName Telescope
   
   deriving (Show, Generic, Typeable)
-
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 -- | The names of type/data constructors used in the module
 data ConstructorNames = ConstructorNames
   { tconNames :: Set String,
@@ -195,28 +194,18 @@ data ConstructorNames = ConstructorNames
 
 -- | A Data constructor has a name and a telescope of arguments
 data ConstructorDef = ConstructorDef SourcePos DCName Telescope
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 -- * Telescopes
 
-data Assn
-  = AssnSig Sig
-  | AssnProp Prop
-  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
-
-isAssnSig :: Assn -> Bool
-isAssnSig (AssnSig _) = True
-isAssnSig _ = False
-
-data Prop = Eq Term Term
-  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
-
--- | A telescope is like a first class context. It binds each name
--- in the rest of the telescope.  For example
---     Delta = x:* , y:x, y = w, empty
-newtype Telescope = Telescope [Assn]
-  deriving (Show, Generic, Typeable)
+-- | A telescope is like a first class context. It is a list of 
+-- assumptions, binding each variable in terms that appear
+-- later in the list. 
+-- For example
+--     Delta = [ x:Type , y:x, y = w ]
+newtype Telescope = Telescope [Decl]
+  deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 
@@ -225,15 +214,11 @@ newtype Telescope = Telescope [Assn]
 
 -- | empty set of constructor names
 emptyConstructorNames :: ConstructorNames
-emptyConstructorNames = ConstructorNames Set.empty Set.empty 
+emptyConstructorNames = ConstructorNames initialTCNames initialDCNames 
 
 -- | Default name for '_' occurring in patterns
 wildcardName :: TName
 wildcardName = Unbound.string2Name "_"
-
--- | empty Annotation
---noAnn :: Annot
---noAnn = Annot Nothing
 
 -- | Partial inverse of Pos
 unPos :: Term -> Maybe SourcePos
@@ -251,7 +236,6 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
 -- | Is this the syntax of a literal (natural) number
 isNumeral :: Term -> Maybe Int
 isNumeral (Pos _ t) = isNumeral t
-isNumeral (Paren t) = isNumeral t
 isNumeral (DCon c []) | c == "Zero" = Just 0
 isNumeral (DCon c [Arg _ t]) | c == "Succ" =
   do n <- isNumeral t; return (n + 1)
@@ -261,6 +245,54 @@ isNumeral _ = Nothing
 isPatVar :: Pattern -> Bool
 isPatVar (PatVar _) = True
 isPatVar _ = False
+
+xname :: Unbound.Name Term
+xname = Unbound.string2Name "x"
+yname :: Unbound.Name Term
+yname = Unbound.string2Name "y"
+aname :: Unbound.Name Term
+aname = Unbound.string2Name "a"
+bname :: Unbound.Name Term
+bname = Unbound.string2Name "b"
+
+preludeDataDecls :: [Decl]
+preludeDataDecls = 
+  [ Data sigmaName  sigmaTele      [prodConstructorDef]
+  , Data tyUnitName (Telescope []) [unitConstructorDef]
+  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef]
+  ]  where
+        trueConstructorDef = ConstructorDef internalPos trueName (Telescope [])
+        falseConstructorDef = ConstructorDef internalPos falseName (Telescope [])
+
+        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
+
+        sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
+        sigA = Sig aname Rel Type
+        sigB = Sig bname Rel (Pi (Unbound.bind (xname, Rel, Unbound.embed (Var aname)) Type))
+        sigX = Sig xname Rel (Var aname)
+        sigY = Sig yname Rel (App (Var bname) (Arg Rel (Var xname)))
+
+-- prelude names
+sigmaName :: TCName
+sigmaName = "Sigma"
+prodName :: DCName
+prodName = "Product"
+boolName :: TCName
+boolName = "Bool"
+trueName :: DCName
+trueName = "True"
+falseName :: DCName
+falseName = "False"
+tyUnitName :: TCName
+tyUnitName = "Unit"
+litUnitName :: DCName
+litUnitName = "()"
+
+initialTCNames :: Set TCName
+initialTCNames = Set.fromList [sigmaName, boolName, tyUnitName]
+initialDCNames :: Set DCName
+initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
 
 
@@ -283,7 +315,7 @@ isPatVar _ = False
 --    fv  :: Alpha a => a -> [Unbound.Name a]
 
 -- For Terms, we'd like Alpha equivalence to ignore 
--- source positions, type annotations and parentheses in terms.
+-- source positions and type annotations in terms.
 -- We can add these special cases to the definition of `aeq'` 
 -- and then defer all other cases to the generic version of 
 -- the function.
@@ -293,8 +325,6 @@ instance Unbound.Alpha Term where
   aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
   aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
   aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
-  aeq' ctx (Paren a) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Paren b) = Unbound.aeq' ctx a b
   aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
 
 -- For example, all occurrences of annotations, source positions, and internal 
@@ -313,10 +343,10 @@ y0 :: TName
 y0 = Unbound.string2Name "y"
 
 idx :: Term
-idx = Lam (Unbound.bind (x0 {- SOLN EP -}, Runtime {- STUBWITH -}) (Var x0))
+idx = Lam (Unbound.bind (x0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var x0))
 
 idy :: Term
-idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Runtime {- STUBWITH -}) (Var y0))
+idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var y0))
 
 -- >>> Unbound.aeq idx idy
 -- True
@@ -341,11 +371,11 @@ instance Unbound.Subst Term Term where
 
 
 pi1 :: Term 
-pi1 = Pi (Unbound.bind (x0, Runtime,  Unbound.embed (Var x0)) (Var x0))
+pi1 = Pi (Unbound.bind (x0, Rel,  Unbound.embed (Var x0)) (Var x0))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi (Unbound.bind (y0, Runtime,  Unbound.embed TyBool) (Var y0))
+pi2 = Pi (Unbound.bind (y0, Rel,  Unbound.embed TyBool) (Var y0))
 
 -- >>> Unbound.aeq (Unbound.subst x0 TyBool pi1) pi2
 -- True

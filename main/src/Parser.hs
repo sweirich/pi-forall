@@ -117,7 +117,7 @@ parseModuleFile cnames name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
   liftError $ Unbound.runFreshM $ 
-    flip evalStateT cnames $
+    flip evalStateT cnames 
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 {- STUBWITH      
 -- | Parse a module declaration from the given filepath.
@@ -125,7 +125,7 @@ parseModuleFile :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleFile name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
-  liftError $ Unbound.runFreshM $ 
+  liftError $ Unbound.runFreshM 
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 -}
 
@@ -140,7 +140,7 @@ parseModuleImports name = do
      (runParserT (do { whiteSpace; moduleImports }) [] name contents)
 
 -- | Test an 'LParser' on a String.
-testParser :: (LParser t) -> String -> Either ParseError t
+testParser :: LParser t -> String -> Either ParseError t
 testParser parser str = Unbound.runFreshM $ 
 {- SOLN DATA -}
    flip evalStateT emptyConstructorNames $
@@ -484,7 +484,7 @@ factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data con
                   {- STUBWITH Var <$> variable <?> "a variable" -}                
                 , typen      <?> "Type"
                 , lambda     <?> "a lambda"
-                , try pcaseExpr  <?> "a let pair"
+                , try letPairExp  <?> "a let pair"
                 , letExpr <?> "a let"
                   {- SOLN DATA -}
                 , natenc     <?> "a literal"                  
@@ -530,7 +530,7 @@ lambda = do reservedOp "\\"
   where
 {- SOLN EP -}
     lam (x, ep) m = Lam (Unbound.bind (x, ep) m)           
-{- STUBWITH lam x m = Lam (Unbound.bind x m) -}  
+{- STUBWITH         lam x m = Lam (Unbound.bind x m) -}  
 
                             
 
@@ -576,8 +576,8 @@ letExpr =
      body <- expr
      return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
 
-pcaseExpr :: LParser Term
-pcaseExpr = do
+letPairExp :: LParser Term
+letPairExp = do
     reserved "let"
     reservedOp "("
     x <- variable
@@ -591,7 +591,7 @@ pcaseExpr = do
 {- SOLN DATA -}
     let pat = PatCon prodName [(PatVar x, Rel), (PatVar y, Rel)]
     return $ Case scrut [Match (Unbound.bind pat a)]
-{- STUBWITH    return $ LetPair scrut (Unbound.bind (x,y) a)  -}
+{- STUBWITH     return $ LetPair scrut (Unbound.bind (x,y) a)  -}
 
 
 {- SOLN EP -}
@@ -648,7 +648,7 @@ expProdOrAnnotOrParens =
 {- SOLN DATA -}   
            return $ DCon prodName [Arg Rel a, Arg Rel b] 
 {- STUBWITH            return $ Prod a b -}
-         Nope a    -> return $ a -- Paren a
+         Nope a    -> return a
 
 {- SOLN DATA -}
 -- patterns are 
@@ -657,8 +657,7 @@ expProdOrAnnotOrParens =
 --       K ap*
 --       (p)
 --       (p, p)
--- ap ::= [p] | p
---        
+-- ap ::= [p] | p        
 
 -- Note that 'dconstructor' and 'variable' overlaps, annoyingly.
 pattern :: LParser Pattern
@@ -733,6 +732,6 @@ sigmaTy = do
   reservedOp "}"
 {- SOLN DATA -}
   return $ TCon sigmaName [Arg Rel a, Arg Rel (Lam (Unbound.bind (x, Rel) b))]
-{- STUBWITH  return (Sigma (Unbound.bind (x, Unbound.embed a) b)) -}
+{- STUBWITH   return (Sigma (Unbound.bind (x, Unbound.embed a) b)) -}
   
   

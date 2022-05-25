@@ -29,7 +29,7 @@ equate t1 t2 = do
       equate b1 b2
     (App a1 a2, App b1 b2) -> do
       equate a1 b1 
-      equateArgs [a2] [b2]
+      equateArg a2 b2
     (Pi bnd1, Pi bnd2) -> do
       ((_,  Unbound.unembed -> tyA1), tyB1, 
        (_,  Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
@@ -92,14 +92,11 @@ equate t1 t2 = do
                DS "in context:", DD gamma]
        
 
-
 -- | Match up args
--- TODO: add compile-time irrelevance here
 equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
 equateArgs (a1:t1s) (a2:t2s) = do
-  equate (unArg a1) (unArg a2)
+  equateArg a1 a2
   equateArgs t1s t2s
-
 equateArgs [] [] = return ()
 equateArgs a1 a2 = do 
           gamma <- Env.getLocalCtx
@@ -107,7 +104,11 @@ equateArgs a1 a2 = do
                    DS "but found", DD (length a1),
                    DS "in context:", DD gamma]
 
-  
+equateArg :: Arg -> Arg -> TcMonad ()
+
+equateArg (Arg t1) (Arg t2) = equate t1 t2
+
+
 -------------------------------------------------------
 
 -- | Ensure that the given type 'ty' is a 'Pi' type
@@ -145,7 +146,7 @@ ensureTyEq ty = do
 whnf :: Term -> TcMonad Term  
 whnf (Var x) = do      
   maybeDef <- Env.lookupDef x
-  case (maybeDef) of 
+  case maybeDef of 
     (Just d) -> whnf d 
     _ -> do
           maybeRecDef <- Env.lookupRecDef x 
@@ -178,7 +179,6 @@ whnf (LetPair a bnd) = do
 
 -- ignore/remove type annotations and source positions when normalizing  
 whnf (Ann tm _) = whnf tm
-whnf (Paren tm) = whnf tm
 whnf (Pos _ tm) = whnf tm
  
 whnf (Let bnd)  = do

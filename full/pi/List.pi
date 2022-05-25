@@ -16,12 +16,12 @@ id = \[a] x . x
   
 
 f_cong2 : [a : Type]->[b : Type] -> (f : a -> b) -> (a1 : a) -> (a2 : a) -> (a1 = a2) -> f a1 = f a2
-f_cong2 = \[a][b] f a1 a2 pf . subst refl by pf
+f_cong2 = \[a][b] f a1 a2 pf . subst Refl by pf
 
 -- A proof about map           
 map_id : [a:Type] -> (xs : List a) -> (map [a][a] (id[a]) xs = id [List a] xs)
 map_id = \[a] xs. case xs of 
-       Nil -> refl
+       Nil -> Refl
        Cons y ys -> 
          let ih = map_id [a] ys in 
          f_cong2 [List a][List a] (\ys. Cons y ys) (map[a][a](id[a])ys) (id [List a]ys) ih

@@ -3,7 +3,7 @@
 -- | A Pretty Printer.
 module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render) where
 
-import Control.Monad.Reader (MonadReader (ask, local))
+import Control.Monad.Reader (MonadReader (ask, local), asks)
 import Data.Set qualified as S
 import Syntax
 import Text.ParserCombinators.Parsec.Error (ParseError)
@@ -126,7 +126,9 @@ instance Disp Decl where
   disp (Def n term)  = disp n <+> text "=" <+> disp term
   disp (RecDef n r)  = disp (Def n r)
   disp (TypeSig sig) = disp sig
+{- SOLN EP -}
   disp (Demote ep)   = mempty
+{- STUBWITH -}
 {- SOLN DATA -}
   disp (Data n params constructors) =
     hang
@@ -219,7 +221,7 @@ instance Display (Unbound.Name Term) where
   display = return . disp
 
 instance Display Term where
-  display (Type) = return $ text "Type"
+  display Type = return $ text "Type"
   display (Var n) = display n
   display a@(Lam b) = do
     (binds, body) <- gatherBinders a
@@ -235,7 +237,7 @@ instance Display Term where
       dn <- display n
       db <- display b
       let lhs =
-            if (n `elem` toListOf Unbound.fv b)
+            if n `elem` toListOf Unbound.fv b
               then {- SOLN EP -} mandatoryBindParens ep {- STUBWITH parens -} (dn <+> colon <+> da)
               else {- SOLN EP -} wraparg st (Arg ep a) {- STUBWITH -} da
       return $ lhs <+> text "->" <+> db
@@ -246,15 +248,14 @@ instance Display Term where
     if showAnnots st then
       return $ parens (da <+> text ":" <+> db)
       else return da 
-  display (Paren e) = parens <$> display e
   display (Pos _ e) = display e
-  display (TrustMe) = do
+  display TrustMe = do
     return $ text "TRUSTME"
-  display (PrintMe) = do
+  display PrintMe = do
     return $ text "PRINTME"
-  display (TyUnit) = return $ text "Unit"
-  display (LitUnit) = return $ text "()"
-  display (TyBool) = return $ text "Bool"
+  display TyUnit = return $ text "Unit"
+  display LitUnit = return $ text "()"
+  display TyBool = return $ text "Bool"
   display (LitBool b) = return $ if b then text "True" else text "False"
   display (If a b c) = do
     da <- display a
@@ -269,7 +270,7 @@ instance Display Term where
       dx <- display x
       dA <- display tyA
       dB <- display tyB
-      if (x `elem` toListOf Unbound.fv tyB) then
+      if x `elem` toListOf Unbound.fv tyB then
         return $
           text "{" <+> dx <+> text ":" <+> dA
             <+> text "|"
@@ -324,7 +325,7 @@ instance Display Term where
     da <- display a
     db <- display b
     return $ da <+> text "=" <+> db
-  display (Refl) = do
+  display Refl = do
     return $ text "Refl"
   display (Contra ty) = do
     dty <- display ty
@@ -348,7 +349,7 @@ instance Display Term where
     dalts <- mapM display alts
     return $
       text "case" <+> dscrut <+> text "of"
-        $$ (nest 2 $ vcat $ dalts)
+        $$ nest 2 (vcat dalts)
 
 {- STUBWITH -}
 
@@ -370,7 +371,7 @@ instance Display Pattern where
   display (PatCon c args) = do
     dc <- display c 
     dargs <- mapM wrap args
-    return $ dc <+> (hsep dargs)
+    return $ dc <+> hsep dargs
       where 
         wrap (a@(PatVar _),ep)    = bindParens ep <$> display a
         wrap (a@(PatCon _ []),ep) = bindParens ep <$> display a 
@@ -396,9 +397,9 @@ gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
 gatherBinders (Lam b) =
   Unbound.lunbind b $ \((n {- SOLN EP -}, ep {- STUBWITH -}), body) -> do
     dn <- display n
-    let db = ({- SOLN EP -} bindParens ep {- STUBWITH -} dn)
+    let db = {- SOLN EP -} bindParens ep {- STUBWITH -} dn
     (rest, body') <- gatherBinders body
-    return $ (db : rest, body')
+    return (db : rest, body')
 gatherBinders body = do
   db <- display body
   return ([], db)
@@ -422,7 +423,6 @@ wrapf :: Term -> Doc -> Doc
 wrapf f = case f of
   Var _ -> id
   App _ _ -> id
-  Paren _ -> id
   Ann a _ -> wrapf a
   Pos _ a -> wrapf a
   TrustMe -> id
@@ -473,14 +473,14 @@ instance Unbound.LFresh ((->) DispInfo) where
     return $
       head
         ( filter
-            (\x -> Unbound.AnyName x `S.notMember` (dispAvoid di))
+            (\x -> Unbound.AnyName x `S.notMember` dispAvoid di)
             (map (Unbound.makeName s) [0 ..])
         )
-  getAvoids = dispAvoid <$> ask
+  getAvoids = asks dispAvoid
   avoid names = local upd
     where
       upd di =
         di
           { dispAvoid =
-              (S.fromList names) `S.union` (dispAvoid di)
+              S.fromList names `S.union` dispAvoid di
           }

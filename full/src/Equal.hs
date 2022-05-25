@@ -3,7 +3,7 @@
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
               ensureTyEq,  
-              ensureTCon, WhnfTCon(..)  ) where
+              ensureTCon, unify ) where
 
 import Syntax
 import Environment ( D(DS, DD), TcMonad )
@@ -29,7 +29,7 @@ equate t1 t2 = do
       equate b1 b2
     (App a1 a2, App b1 b2) -> do
       equate a1 b1 
-      equateArgs [a2] [b2]
+      equateArg a2 b2
     (Pi bnd1, Pi bnd2) -> do
       ((_, {- SOLN EP -}ep1,{- STUBWITH -} Unbound.unembed -> tyA1), tyB1, 
        (_, {- SOLN EP -}ep2,{- STUBWITH -} Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
@@ -110,18 +110,11 @@ equate t1 t2 = do
                DS "in context:", DD gamma]
        
 
-
 -- | Match up args
--- TODO: add compile-time irrelevance here
 equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
 equateArgs (a1:t1s) (a2:t2s) = do
-  equate (unArg a1) (unArg a2)
+  equateArg a1 a2
   equateArgs t1s t2s
-  unless (argEp a1 == argEp a2) $
-     Env.err [DS "Arg stage mismatch",
-              DS "Expected " , DD a2, 
-              DS "Found ", DD a1]
-
 equateArgs [] [] = return ()
 equateArgs a1 a2 = do 
           gamma <- Env.getLocalCtx
@@ -129,7 +122,16 @@ equateArgs a1 a2 = do
                    DS "but found", DD (length a1),
                    DS "in context:", DD gamma]
 
-  
+equateArg :: Arg -> Arg -> TcMonad ()
+
+equateArg (Arg {- SOLN EP -}Rel {- STUBWITH -}t1) (Arg {- SOLN EP -}Rel {- STUBWITH -}t2) = equate t1 t2
+equateArg (Arg Irr t1) (Arg Irr t2) = return ()
+equateArg a1 a2 =  
+  Env.err [DS "Arg stage mismatch",
+              DS "Expected " , DD a2, 
+              DS "Found ", DD a1] 
+
+
 -------------------------------------------------------
 
 -- | Ensure that the given type 'ty' is a 'Pi' type
@@ -159,16 +161,14 @@ ensureTyEq ty = do
     _ -> Env.err [DS "Expected an equality type, instead found", DD nf]
     
     
-data WhnfTCon = WhnfTCon TCName [Arg]
-
 -- | Ensure that the given type 'ty' is some tycon applied to 
 --  params (or could be normalized to be such)
 -- Throws an error if this is not the case 
-ensureTCon :: Term -> TcMonad WhnfTCon
+ensureTCon :: Term -> TcMonad (TCName, [Arg])
 ensureTCon aty = do
   nf <- whnf aty
   case nf of 
-    TCon n params -> return (WhnfTCon n params)    
+    TCon n params -> return (n, params)    
     _ -> Env.err [DS "Expected a data type but found", DD nf]
 
     
@@ -178,7 +178,7 @@ ensureTCon aty = do
 whnf :: Term -> TcMonad Term  
 whnf (Var x) = do      
   maybeDef <- Env.lookupDef x
-  case (maybeDef) of 
+  case maybeDef of 
     (Just d) -> whnf d 
     _ -> do
           maybeRecDef <- Env.lookupRecDef x 
@@ -211,7 +211,6 @@ whnf (LetPair a bnd) = do
 
 -- ignore/remove type annotations and source positions when normalizing  
 whnf (Ann tm _) = whnf tm
-whnf (Paren tm) = whnf tm
 whnf (Pos _ tm) = whnf tm
  
 whnf (Let bnd)  = do
@@ -228,11 +227,11 @@ whnf (Case scrut mtchs) = do
     (DCon d args) -> f mtchs where
       f (Match bnd : alts) = (do
           (pat, br) <- Unbound.unbind bnd
-          ss <- patternMatches (Arg Runtime nf) pat 
+          ss <- patternMatches (Arg Rel nf) pat 
           whnf (Unbound.substs ss br)) 
             `catchError` \ _ -> f alts
       f [] = Env.err $ [DS "Internal error: couldn't find a matching",
-                    DS "branch for", DD nf, DS "in"] ++ (map DD mtchs)
+                    DS "branch for", DD nf, DS "in"] ++ map DD mtchs
     _ -> return (Case nf mtchs)            
 -- all other terms are already in WHNF
 -- don't do anything special for them
@@ -244,14 +243,68 @@ whnf tm = return tm
 -- otherwise throws an error
 patternMatches :: Arg -> Pattern -> TcMonad [(TName, Term)]
 patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
-patternMatches (Arg Runtime t) pat = do
+patternMatches (Arg Rel t) pat = do
   nf <- whnf t
   case (nf, pat) of 
     (DCon d [], PatCon d' pats)   | d == d' -> return []
     (DCon d args, PatCon d' pats) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> Env.err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
-patternMatches (Arg Erased _) pat = do
+patternMatches (Arg Irr _) pat = do
   Env.err [DS "Cannot match against irrelevant args"]
+
+
+-- | 'Unify' the two terms, producing a list of Defs
+-- If there is an obvious mismatch, this function produces an error
+-- If either term is "ambiguous" just fail instead.
+unify :: [TName] -> Term -> Term -> TcMonad [Decl]
+unify ns tx ty = do
+  txnf <- whnf tx
+  tynf <- whnf ty
+  if Unbound.aeq txnf tynf
+    then return []
+    else case (txnf, tynf) of
+      (Var y, yty) | y `notElem` ns -> return [Def y yty]
+      (yty, Var y) | y `notElem` ns -> return [Def y yty]
+      (Prod a1 a2, Prod b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
+      (TyEq a1 a2, TyEq b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
+      (TCon s1 tms1, TCon s2 tms2)
+        | s1 == s2 -> unifyArgs tms1 tms2
+      (DCon s1 a1s, DCon s2 a2s)
+        | s1 == s2 -> unifyArgs a1s a2s
+      (Lam bnd1, Lam bnd2) -> do
+        ((x,ep1), b1, (_, ep2), b2) <- Unbound.unbind2Plus bnd1 bnd2
+        unless (ep1 == ep2) $ do
+          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
+        unify (x:ns) b1 b2
+      (Pi bnd1, Pi bnd2) -> do
+        ((x, ep1, Unbound.unembed -> tyA1), tyB1, 
+         (_, ep2, Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+        unless (ep1 == ep2) $ do
+          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
+        ds1 <- unify ns tyA1 tyA2
+        ds2 <- unify (x:ns) tyB1 tyB2
+        return (ds1 ++ ds2)
+      _ ->
+        if amb txnf || amb tynf
+          then return []
+          else Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] 
+  where
+    unifyArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
+      ds <- unify ns t1 t2
+      ds' <- unifyArgs a1s a2s
+      return $ ds ++ ds'
+    unifyArgs [] [] = return []
+    unifyArgs _ _ = Env.err [DS "internal error (unify)"]
+
+-- | Is a term "ambiguous" when it comes to unification?
+-- In general, elimination forms are ambiguous because there are multiple 
+-- solutions.
+amb :: Term -> Bool
+amb (App t1 t2) = True
+amb (If _ _ _) = True
+amb (LetPair _ _) = True
+amb (Case _ _) = True
+amb _ = False
 
 

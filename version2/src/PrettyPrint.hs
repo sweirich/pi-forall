@@ -3,7 +3,7 @@
 -- | A Pretty Printer.
 module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render) where
 
-import Control.Monad.Reader (MonadReader (ask, local))
+import Control.Monad.Reader (MonadReader (ask, local), asks)
 import Data.Set qualified as S
 import Syntax
 import Text.ParserCombinators.Parsec.Error (ParseError)
@@ -23,7 +23,7 @@ import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 class Disp d where
   disp :: d -> Doc
   default disp :: (Display d) => d -> Doc
-  disp d = display d (DI {showAnnots = False, dispAvoid = S.empty})
+  disp d = display d (DI {showAnnots = False, dispAvoid = S.empty, prec = 0})
 
 -- | The 'Display' class is like the 'Disp' class. It qualifies
 --   types that can be turned into 'Doc'.  The difference is that the
@@ -38,7 +38,9 @@ data DispInfo = DI
   { -- | should we show the annotations?
     showAnnots :: Bool,
     -- | names that have been used
-    dispAvoid :: S.Set Unbound.AnyName
+    dispAvoid :: S.Set Unbound.AnyName,
+    -- | current precedence level
+    prec :: Int
   }
 
 -- | Error message quoting
@@ -107,12 +109,13 @@ instance Disp ModuleImport where
   disp (ModuleImport i) = text "import" <+> disp i
 
 instance Disp Sig where
-  disp (S n  ty) = disp n <+> text ":" <+> disp ty
+  disp (Sig n  ty) = disp n <+> text ":" <+> disp ty
 
 instance Disp Decl where
-  disp (Def n term) = disp n <+> text "=" <+> disp term
-  disp (RecDef n r) = disp (Def n r)
-  disp (Sig sig)    = disp sig
+  disp (Def n term)  = disp n <+> text "=" <+> disp term
+  disp (RecDef n r)  = disp (Def n r)
+  disp (TypeSig sig) = disp sig
+
 
 
 -------------------------------------------------------------------------
@@ -187,7 +190,7 @@ instance Display (Unbound.Name Term) where
   display = return . disp
 
 instance Display Term where
-  display (Type) = return $ text "Type"
+  display Type = return $ text "Type"
   display (Var n) = display n
   display a@(Lam b) = do
     (binds, body) <- gatherBinders a
@@ -203,7 +206,7 @@ instance Display Term where
       dn <- display n
       db <- display b
       let lhs =
-            if (n `elem` toListOf Unbound.fv b)
+            if n `elem` toListOf Unbound.fv b
               then parens (dn <+> colon <+> da)
               else  da
       return $ lhs <+> text "->" <+> db
@@ -214,15 +217,14 @@ instance Display Term where
     if showAnnots st then
       return $ parens (da <+> text ":" <+> db)
       else return da 
-  display (Paren e) = parens <$> display e
   display (Pos _ e) = display e
-  display (TrustMe) = do
+  display TrustMe = do
     return $ text "TRUSTME"
-  display (PrintMe) = do
+  display PrintMe = do
     return $ text "PRINTME"
-  display (TyUnit) = return $ text "Unit"
-  display (LitUnit) = return $ text "()"
-  display (TyBool) = return $ text "Bool"
+  display TyUnit = return $ text "Unit"
+  display LitUnit = return $ text "()"
+  display TyBool = return $ text "Bool"
   display (LitBool b) = return $ if b then text "True" else text "False"
   display (If a b c) = do
     da <- display a
@@ -237,15 +239,17 @@ instance Display Term where
       dx <- display x
       dA <- display tyA
       dB <- display tyB
-      return $
-        text "{" <+> dx <+> text ":" <+> dA
-          <+> text "|"
-          <+> dB
-          <+> text "}"
+      if x `elem` toListOf Unbound.fv tyB then
+        return $
+          text "{" <+> dx <+> text ":" <+> dA
+            <+> text "|"
+            <+> dB
+            <+> text "}"
+        else return $ parens (dA PP.<+> text "*" PP.<+> dB)
   display (Prod a b) = do
     da <- display a
     db <- display b
-    return $ parens (da <+> text "," <+> db)
+    return $ parens (da PP.<> text "," PP.<> db)
   display (LetPair a bnd) = do
     da <- display a
     Unbound.lunbind bnd $ \((x, y), body) -> do
@@ -253,16 +257,16 @@ instance Display Term where
       dy <- display y
       dbody <- display body
       return $
-        text "let" 
-          <+> text "("
-          <+> dx
-          <+> text ","
-          <+> dy
-          <+> text ")"
+        (text "let" 
+          <+> (text "("
+          PP.<> dx
+          PP.<> text ","
+          PP.<> dy
+          PP.<> text ")")
           <+> text "="
           <+> da 
-          <+> text "in"
-          <+> dbody
+          <+> text "in")
+        $$ dbody
   display (Let bnd) = do
     Unbound.lunbind bnd $ \((x, a), b) -> do
       da <- display (Unbound.unembed a)
@@ -289,8 +293,8 @@ instance Display Term where
     da <- display a
     db <- display b
     return $ da <+> text "=" <+> db
-  display (Refl) = do
-    return $ text "refl"
+  display Refl = do
+    return $ text "Refl"
   display (Contra ty) = do
     dty <- display ty
     return $ text "contra" <+> dty
@@ -315,9 +319,9 @@ gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
 gatherBinders (Lam b) =
   Unbound.lunbind b $ \((n ), body) -> do
     dn <- display n
-    let db = ( dn)
+    let db =  dn
     (rest, body') <- gatherBinders body
-    return $ (db : rest, body')
+    return (db : rest, body')
 gatherBinders body = do
   db <- display body
   return ([], db)
@@ -329,14 +333,13 @@ wrapf :: Term -> Doc -> Doc
 wrapf f = case f of
   Var _ -> id
   App _ _ -> id
-  Paren _ -> id
   Ann a _ -> wrapf a
   Pos _ a -> wrapf a
   TrustMe -> id
   PrintMe -> id
   _ -> parens
 
--- | decide whether to add parens to an argument
+-- | decide whether to add parens to an argument in an application
 wraparg :: DispInfo -> Arg -> Doc -> Doc
 wraparg st a = case unArg a of
   Var _ -> std
@@ -373,14 +376,14 @@ instance Unbound.LFresh ((->) DispInfo) where
     return $
       head
         ( filter
-            (\x -> Unbound.AnyName x `S.notMember` (dispAvoid di))
+            (\x -> Unbound.AnyName x `S.notMember` dispAvoid di)
             (map (Unbound.makeName s) [0 ..])
         )
-  getAvoids = dispAvoid <$> ask
+  getAvoids = asks dispAvoid
   avoid names = local upd
     where
       upd di =
         di
           { dispAvoid =
-              (S.fromList names) `S.union` (dispAvoid di)
+              S.fromList names `S.union` dispAvoid di
           }

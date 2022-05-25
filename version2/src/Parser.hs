@@ -52,11 +52,12 @@ Optional components in this BNF are marked with < >
     | if a then b else c       If 
 
     | { x : A | B }            Dependent pair type
+    | A * B                    Nondependent pair syntactic sugar
     | (a, b)                   Prod introduction
     | let (x,y) = a in b       Prod elimination
 
     | a = b                    Equality type
-    | refl                     Equality proof
+    | Refl                     Equality proof
     | subst a by b             Type conversion
     | contra a                 Contra
 
@@ -89,7 +90,7 @@ parseModuleFile :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleFile name = do
   liftIO $ putStrLn $ "Parsing File " ++ show name
   contents <- liftIO $ readFile name
-  liftError $ Unbound.runFreshM $ 
+  liftError $ Unbound.runFreshM 
      (runParserT (do { whiteSpace; v <- moduleDef;eof; return v}) [] name contents)
 
 -- | Parse only the imports part of a module from the given filepath
@@ -101,7 +102,7 @@ parseModuleImports name = do
      (runParserT (do { whiteSpace; moduleImports }) [] name contents)
 
 -- | Test an 'LParser' on a String.
-testParser :: (LParser t) -> String -> Either ParseError t
+testParser :: LParser t -> String -> Either ParseError t
 testParser parser str = Unbound.runFreshM $ 
 
      runParserT (do { whiteSpace; v <- parser; eof; return v}) [] "<interactive>" str
@@ -136,7 +137,7 @@ piforallStyle = Token.LanguageDef
                 , Token.opLetter       = oneOf ":!#$%&*+.,/<=>?@\\^|-"
                 , Token.caseSensitive  = True
                 , Token.reservedNames =
-                  ["refl"
+                  ["Refl"
                   ,"ind"
                   ,"Type"
                   ,"data"
@@ -148,7 +149,6 @@ piforallStyle = Token.LanguageDef
                   ,"subst", "by"
                   ,"let", "in"
                   ,"axiom"
-                  ,"erased"
                   ,"TRUSTME"
                   ,"PRINTME"
                   ,"ord" 
@@ -157,7 +157,7 @@ piforallStyle = Token.LanguageDef
                   ,"Unit", "()"                               
                   ]
                , Token.reservedOpNames =
-                 ["!","?","\\",":",".",",","<", "=", "+", "-", "^", "()", "_","|","{", "}"]
+                 ["!","?","\\",":",".",",","<", "=", "+", "-", "*", "^", "()", "_","|","{", "}"]
                 }
 tokenizer :: Token.GenTokenParser String [Column] (Unbound.FreshM)
 layout :: forall a t. LParser a -> LParser t -> LParser [a]
@@ -230,7 +230,7 @@ decl =  sigDef <|> valDef
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ Sig (mkSig n ty)
+  return $ TypeSig (mkSig n ty)
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -252,7 +252,7 @@ printme = reserved "PRINTME" *> return (PrintMe )
 
 refl :: LParser Term
 refl =
-  do reserved "refl"
+  do reserved "Refl"
      return $ Refl 
 
 
@@ -266,14 +266,19 @@ expr = do
     Pos p <$> buildExpressionParser table term
   where table = [
                  [ifix  AssocLeft "=" TyEq],
-                 [ifixM AssocRight "->" mkArrow]
+                 [ifixM AssocRight "->" mkArrowType],
+                 [ifixM AssocRight "*" mkTupleType]
                 ]   
         ifix  assoc op f = Infix (reservedOp op >> return f) assoc 
         ifixM assoc op f = Infix (reservedOp op >> f) assoc
-        mkArrow  = 
+        mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
                Pi (Unbound.bind (n,  Unbound.embed tyA) tyB)
+        mkTupleType = 
+          do n <- Unbound.fresh wildcardName
+             return $ \tyA tyB -> 
+              Sigma (Unbound.bind (n, Unbound.embed tyA) tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -294,11 +299,11 @@ funapp = do
 factor = choice [ Var <$> variable <?> "a variable"                
                 , typen      <?> "Type"
                 , lambda     <?> "a lambda"
-                , try pcaseExpr  <?> "a let pair"
+                , try letPairExp  <?> "a let pair"
                 , letExpr <?> "a let"
                   
                                   , substExpr  <?> "a subst"
-                , refl       <?> "refl"
+                , refl       <?> "Refl"
                 , contra     <?> "a contra" 
                 , trustme    <?> "TRUSTME"
                 , printme    <?> "PRINTME"
@@ -328,7 +333,7 @@ lambda = do reservedOp "\\"
             body <- expr
             return $ foldr lam body binds 
   where
-lam x m = Lam (Unbound.bind x m)  
+        lam x m = Lam (Unbound.bind x m)  
 
                             
 
@@ -363,8 +368,8 @@ letExpr =
      body <- expr
      return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
 
-pcaseExpr :: LParser Term
-pcaseExpr = do
+letPairExp :: LParser Term
+letPairExp = do
     reserved "let"
     reservedOp "("
     x <- variable
@@ -375,7 +380,7 @@ pcaseExpr = do
     scrut <- expr
     reserved "in"
     a <- expr
-    return $ LetPair scrut (Unbound.bind (x,y) a) 
+    return $ LetPair scrut (Unbound.bind (x,y) a)
 
 
 
@@ -416,8 +421,10 @@ expProdOrAnnotOrParens =
                   (do b <- afterBinder
                       return $ Pi (Unbound.bind (x,Unbound.embed a) b))
          Colon a b -> return $ Ann a b
-         Comma a b -> return $ Prod a b 
-         Nope a    -> return $ Paren a
+      
+         Comma a b -> 
+           return $ Prod a b
+         Nope a    -> return a
 
     
     

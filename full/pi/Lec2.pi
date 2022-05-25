@@ -68,5 +68,5 @@ snd = \A B p. let (x1,y) = p in y
 
 sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
 sym = \ A x y pf .
-  subst refl by pf 
+  subst Refl by pf 
 

@@ -1,3 +1,5 @@
+-- Simple examples demonstrating parametric polymorphism in core language
+
 module Lec1 where
 
 id : (x:Type) -> x -> x
@@ -24,10 +26,20 @@ false = \A x y. y
 cond : bool -> (x:Type) -> x -> x -> x
 cond = \ b . b 
 
+
+
+-- void type
+
 void : Type
 void = (x:Type) -> x
 
-unit : Type
-unit =  (x:Type) -> x -> x
+-- inhabited by diverging term
 
+loop : (x:Type) -> x
+loop = loop
+
+-- unit type 
+
+unit : Type
+unit = (x:Type) -> x -> x
 
