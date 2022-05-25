@@ -294,7 +294,7 @@ preludeDataDecls =
 sigmaName :: TCName
 sigmaName = "Sigma"
 prodName :: DCName
-prodName = "Product"
+prodName = "Prod"
 boolName :: TCName
 boolName = "Bool"
 trueName :: DCName

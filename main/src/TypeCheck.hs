@@ -621,7 +621,8 @@ exhaustivityCheck scrut ty pats = do
   (tcon, tys) <- Equal.ensureTCon ty
   (Telescope delta, mdefs) <- Env.lookupTCon tcon
   case mdefs of
-    Just datacons -> loop pats datacons
+    Just datacons -> do
+      loop pats datacons
       where
         loop [] [] = return ()
         loop [] dcons = do
@@ -629,11 +630,12 @@ exhaustivityCheck scrut ty pats = do
           if null l
             then return ()
             else Env.err $ DS "Missing case for " : map DD l
-        loop ((PatVar x) : _) dcons = return ()
-        loop ((PatCon dc args) : pats') dcons = do
-          cd@(ConstructorDef _ _ (Telescope tele), dcons') <- removeDcon dc dcons
+        loop (PatVar x : _) dcons = return ()
+        loop (PatCon dc args : pats') dcons = do
+          (ConstructorDef _ _ (Telescope tele), dcons') <- removeDCon dc dcons
           tele' <- substTele delta tys tele
           let (aargs, pats'') = relatedPats dc pats'
+          -- check the arguments of the data constructor
           checkSubPats dc tele' (args : aargs)
           loop pats'' dcons'
 
@@ -641,7 +643,7 @@ exhaustivityCheck scrut ty pats = do
         -- in the current environment
         checkImpossible :: [ConstructorDef] -> TcMonad [DCName]
         checkImpossible [] = return []
-        checkImpossible cd@(ConstructorDef _ dc (Telescope tele) : rest) = do
+        checkImpossible (ConstructorDef _ dc (Telescope tele) : rest) = do
           this <-
             ( do
                 tele' <- substTele delta tys tele
@@ -654,23 +656,21 @@ exhaustivityCheck scrut ty pats = do
     Nothing ->
       Env.err [DS "Cannot determine constructors of", DD ty]
 
--- this could be because the scrutinee is not unifiable with the pattern
--- or because the constraints on the pattern are not satisfiable
 
 -- | Given a particular data constructor name and a list of data
 -- constructor definitions, pull the definition out of the list and
 -- return it paired with the remainder of the list.
-removeDcon ::
+removeDCon ::
   DCName ->
   [ConstructorDef] ->
   TcMonad (ConstructorDef, [ConstructorDef])
-removeDcon dc (cd@(ConstructorDef _ dc' _) : rest)
+removeDCon dc (cd@(ConstructorDef _ dc' _) : rest)
   | dc == dc' =
     return (cd, rest)
-removeDcon dc (cd1 : rest) = do
-  (cd2, rr) <- removeDcon dc rest
+removeDCon dc (cd1 : rest) = do
+  (cd2, rr) <- removeDCon dc rest
   return (cd2, cd1 : rr)
-removeDcon dc [] = Env.err [DS $ "Internal error: Can't find" ++ show dc]
+removeDCon dc [] = Env.err [DS $ "Internal error: Can't find " ++ show dc]
 
 -- | Given a particular data constructor name and a list of patterns,
 -- pull out the subpatterns that occur as arguments to that data

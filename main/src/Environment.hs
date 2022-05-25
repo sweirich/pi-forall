@@ -166,14 +166,6 @@ lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
   m (Telescope, Maybe [ConstructorDef])
-{-
-lookupTCon "Bool" = do
-  return (Telescope [], Just [ trueConstructorDef, falseConstructorDef])
-lookupTCon "Unit" = do
-  return (Telescope [], Just [ unitConstructorDef ] )
-lookupTCon "Sigma" = do
-  return (sigmaTele, Just [prodConstructorDef])
-  -}
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
@@ -203,11 +195,6 @@ lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
   m [(TCName, (Telescope, ConstructorDef))]
-{-
-lookupDConAll "True" = return $ [ ("Bool", (Telescope [], trueConstructorDef))] 
-lookupDConAll "False" = return $ [ ("Bool", (Telescope [], falseConstructorDef))] 
-lookupDConAll "()" = return $ [ ("Unit", (Telescope [], unitConstructorDef))] 
-lookupDConAll "Prod" = return $ [("Sigma", (sigmaTele, prodConstructorDef))] -}
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
@@ -277,9 +264,6 @@ extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m
 extendCtxTele [] m = m
 extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
---extendCtxTele (AssnEq t1 t2 : tele) m = do
---  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
---  extendCtxTele tele m
 extendCtxTele (TypeSig sig : tele) m =
   extendCtx (TypeSig sig) $ extendCtxTele tele m
 extendCtxTele ( _ : tele) m = 

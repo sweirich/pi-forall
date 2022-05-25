@@ -385,6 +385,12 @@ instance Disp Telescope where
 instance Display a => Display (a, Epsilon) where
   display (t, ep) = bindParens ep <$> display t
 
+instance Display ConstructorDef where
+  display (ConstructorDef pos dc tele) = do 
+    dn <- display dc 
+    let dt = disp tele 
+    return $ dn PP.<+> PP.text "of" PP.<+> dt
+
 {- STUBWITH -}
 
 -------------------------------------------------------------------------

@@ -28,11 +28,6 @@ app_cong : (A:Type) -> (B : A -> Type) -> (x : A) -> (y : A) -> x = y -> B x = B
 app_cong = \ A B x y p . 
    subst Refl by p
 
-
-sym : [A:Type] -> [x:A] -> [y:A] -> (x = y) -> y = x
-sym = \ [A] [x][y] pf .
-  subst Refl by pf
-
 proj2_cong : (A:Type) -> (B :A -> Type) -> (x : Sig A B) -> (y : Sig A B) 
                  -> (p : x = y) -> 
 					   (subst (proj2 A B x) by p : B (proj1 A B y)) = 
