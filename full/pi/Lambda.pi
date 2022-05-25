@@ -1,0 +1,48 @@
+module Lambda where
+
+import Nat
+import Fin
+import Vec 
+
+lookup : [a:Type] -> [n:Nat] -> Fin n -> Vec a n -> a
+lookup = \[a][n] f v. case f of 
+   Zero [m] -> case v of 
+           Cons [m'] x xs -> x 
+   Succ [m] f' -> case v of 
+              Cons [m'] x xs -> lookup [a][m] f' xs
+
+data Exp (n : Nat) : Type where
+   Var of (Fin n)
+   App of (Exp n) (Exp n)
+   Lam of (Exp (Succ n)) 
+   Lit of (Nat)
+
+data Val : Type where
+  Clos of [n:Nat] (Vec Val n) (Exp (Succ n))
+  VNat of (Nat)
+
+interp : [n:Nat] -> Vec Val n -> Exp n -> Val
+interp = \[n] rho e. 
+  case e of 
+    Var x     -> lookup [Val] [n] x rho
+    App e1 e2 -> 
+       let v1 = interp [n] rho e1 in
+       let v2 = interp [n] rho e2 in
+  	    case v1 of        
+         Clos [m] rho' body -> 
+            interp [Succ m] (Cons [m] v2 rho') body 
+         VNat i -> TRUSTME
+    Lam e     -> Clos [n] rho e
+    Lit i     -> VNat i
+
+one : Fin 2
+one = Succ [1] (Zero [0])
+
+t1 : interp [0] Nil (App (Lam (Var (Zero[0]))) (Lit 3)) = VNat 3
+t1 = Refl
+
+-- t2 : interp [0] Nil (App (Lam (Var one)) (Lit 2)) = TRUSTME
+-- t2 = Refl
+
+t3 : interp [0] Nil (App (Lit 1) (Lit 2)) = TRUSTME
+t3 = Refl

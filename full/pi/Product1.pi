@@ -1,0 +1,113 @@
+-----------------------------------------------------------------------
+-- 
+--
+-- Products  (excerpted and ported from Product.agda)
+------------------------------------------------------------------------
+
+module Product1 where
+
+import Equality
+
+data Sig (A:Type)(B: A -> Type) : Type where
+  Prod of (x:A) (B x)
+
+proj1 : (A:Type) -> (B:A -> Type) -> Sig A B -> A 
+proj1 = \ A B  x . case x of 
+  Prod x y -> x
+
+proj2 : (A:Type) -> (B:A -> Type) -> (x : Sig A B) -> B (proj1 A B  x)
+proj2 = \ A B  x . case x of 
+  Prod z y -> y
+
+proj1_cong : (A:Type) -> (B :A -> Type) -> (x : Sig A B) -> (y : Sig A B) 
+   -> x = y -> proj1 A B x = proj1 A B y
+proj1_cong = \ A B x y p. 
+   subst Refl by p
+
+app_cong : (A:Type) -> (B : A -> Type) -> (x : A) -> (y : A) -> x = y -> B x = B y 
+app_cong = \ A B x y p . 
+   subst Refl by p
+
+
+sym : [A:Type] -> [x:A] -> [y:A] -> (x = y) -> y = x
+sym = \ [A] [x][y] pf .
+  subst Refl by pf
+
+proj2_cong : (A:Type) -> (B :A -> Type) -> (x : Sig A B) -> (y : Sig A B) 
+                 -> (p : x = y) -> 
+					   (subst (proj2 A B x) by p : B (proj1 A B y)) = 
+                     	   proj2 A B y
+proj2_cong = \ A B x y p . 
+   subst Refl by p
+
+
+injectivity1 : (A:Type) -> (B:A -> Type) -> (x1 : A) -> (y1 : B x1)
+				 -> (x2 : A) -> (y2 : B x2) 
+				 -> ((Prod x1 y1 : Sig A B) = Prod x2 y2) -> x1 = x2
+injectivity1 = \ A B  x1 y1 x2 y2 eq .
+	 let f1 = (Refl : proj1  A B  (Prod x1 y1) = x1) in
+	 let f2 = (Refl : proj1  A B  (Prod x2 y2) = x2) in
+	 PRINTME
+	 {-
+	 let p1 = subst Refl by eq at h. proj1  A B  (Prod x1 y1) = proj1  A B  h in
+	 let p2 = subst p1 by f1 at h. h = proj1  A B  (Prod x2 y2) in
+	 subst p2 by f2 at h. x1 = h
+	 -}
+
+-- because of the dependency between the first and second components of 
+-- the pair, we can only decompose the equality when the first components are 
+-- already identical.
+injectivity2 : (A:Type) -> (B:A -> Type) -> (x : A) -> (y1 : B x)
+				 -> (y2 : B x) 
+				 -> ((Prod x y1 : Sig A B) = Prod x y2) -> y1 = y2
+injectivity2 = \ A B  x y1 y2 eq.
+	 let f1 = (Refl : (proj2  A B  (Prod x y1) : B x) = y1) in
+	 let f2 = (Refl : proj2  A B  (Prod x y2) = y2) in
+	 PRINTME {-
+	 let p1 = subst Refl by eq at h. proj2  A B  (Prod x y1) = proj2  A B  h in
+	 let p2 = subst p1 by f1 at h. (h : B x) = proj2  A B  (Prod x y2) in
+	 subst p2 by f2 at h. y1 = h -}
+
+curry : (A:Type) -> (B:A -> Type) -> (C : Sig A B -> Type) -> 
+        ((p : Sig A B) -> C p) ->
+		  ((x: A)  -> (y : B x) -> C (Prod x y))
+curry = \  A B C f x y . f (Prod x y) 
+
+uncurry : (A:Type) -> (B:A -> Type) -> (C : Sig A B -> Type) -> 
+        ((x: A)  -> (y : B x) -> C (Prod x y)) ->
+        ((p : Sig A B) -> C p) 
+uncurry = \  A B C f p . case p of 
+              Prod x y -> f x y 
+
+---------------------------------------------------
+-- Non-dependent version 
+
+Times : Type -> Type -> Type
+Times = \ A B . Sig A (\x . B)
+
+prod : (A:Type) -> (B:Type) -> A -> B -> Times A B
+prod = \  A  B  x y . Prod x y
+
+swap : (A:Type) -> (B:Type) -> Times A B -> Times B A
+swap = \  A B  p . case p of 
+           Prod x y -> Prod y x
+
+injectivity2' : (A:Type) -> (B: Type)
+				 -> (x1 : A) -> (y1 : B)
+				 -> (x2 : A) -> (y2 : B) 
+				 -> ((Prod x1 y1 : Times A B) = Prod x2 y2) -> (y1 = y2)
+injectivity2' = \ A B  x1 y1 x2 y2 eq.
+	 let f1 = (Refl : proj2  A (\x. B) (Prod x1 y1) = y1) in
+	 let f2 = (Refl : proj2  A (\x. B) (Prod x2 y2) = y2) in
+	 PRINTME {-
+	 let p1 = subst Refl by eq 
+             at h. proj2  A (\x. B) (Prod x1 y1) = proj2  A (\x. B) h in
+	 let p2 = subst p1 by f1 at h. (h : B) = proj2  A (\x. B) (Prod x1 y2) in
+	 subst p2 by f2 at h. y1 = h -}
+
+uncurry' :  (A:Type) -> (B:Type) -> (C : Times A B -> Type) -> 
+        ((x: A)  -> (y : B) -> C (Prod x y)) ->
+        ((p : Times A B) -> C p) 
+uncurry' = \ A B . uncurry  A (\x.B) 
+
+

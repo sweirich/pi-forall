@@ -1,0 +1,33 @@
+module Lec3 where
+
+-- can mark some arguments as irrelevant
+
+id : [x:Type] -> (y : x) -> x
+id = \[x] y. (y : x)
+
+t0 = id [Bool] True
+
+t1 = id [Bool] (id [Bool] True)
+
+--  This shouldn't type check because y is relevant
+--
+{-
+id' : [x:Type] -> [y:x] -> x
+id' = \[x][y]. y
+-}
+
+-----------------------------------------------------
+--  Irrelevant arguments are ignored during type equality
+
+irrelevance : (p : [i : Bool] -> Bool) -> p [False] = p [False]
+irrelevance = \p . Refl
+
+-----------------------------------------------------
+-- Propositional equality is relevant
+-- Cannot ignore/erase proofs that are used for 'subst'. 
+-- Need a termination analysis to do this.
+
+proprel : [a : Type] -> (pf : a = Bool) -> (x : a) -> Bool
+proprel = \[a] pf x . 
+  subst x by pf 
+

@@ -1,0 +1,76 @@
+module NatChurch where
+
+-- Church encoding of natural numbers
+
+nat : Type
+nat = (x:Type) -> x -> (x -> x) -> x
+	 
+z : nat
+z = \x zf sf. zf
+	 
+s : nat -> nat
+s = \n. \x zf sf. sf (n x zf sf)
+
+one : nat
+one = s z
+
+two : nat
+two = s (s z)
+
+plus : nat -> nat -> nat
+plus = \x. \y. x nat y s
+
+test0 : plus one one = two
+test0 = Refl
+
+spec0 : (n : nat) -> plus z n = n
+spec0 = \n . Refl
+
+spec1 : (n : nat) -> (m : nat) -> plus (s n) m  = s (plus n m)
+spec1 = \n m . Refl
+
+-- this one is *really* tricky!
+
+pred : nat -> nat
+pred = TRUSTME
+
+test_pred : pred two = one
+test_pred = TRUSTME -- replace with Refl
+
+-- Since pi-forall allows recursive definitions, we also have Scott encodings
+-- of datatypes available. (See http://en.wikipedia.org/wiki/Mogensen%E2%80%93Scott_encoding.
+-- You can't do this in Coq or Agda because it requires an inconsistent logic).
+
+scott_nat : Type
+scott_nat = (x:Type) -> x -> (scott_nat -> x) -> x
+
+scott_z : scott_nat
+scott_z = \x z s . z
+
+scott_s : scott_nat -> scott_nat
+scott_s = \n . \x z s . s n
+
+scott_one : scott_nat
+scott_one = scott_s scott_z
+
+scott_two : scott_nat
+scott_two = scott_s (scott_s scott_z)
+
+scott_three : scott_nat
+scott_three = scott_s (scott_s (scott_s scott_z))
+
+-- Write the predecessor function, it is much easier here
+
+scott_pred : scott_nat -> scott_nat
+scott_pred = TRUSTME
+
+test1 : scott_pred scott_two = scott_one
+test1 = TRUSTME -- replace with Refl
+
+-- Now write plus: with Scott encoded nats, note that you need to use recursion.
+
+scott_plus : scott_nat -> scott_nat -> scott_nat 
+scott_plus = TRUSTME
+
+test2 : scott_plus scott_one scott_two = scott_three
+test2 = TRUSTME -- replace with Refl
