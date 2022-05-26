@@ -12,8 +12,6 @@ compose : (A : Type) -> (B : Type) -> (C:Type) ->
   (B -> C) -> (A -> B) -> (A -> C)
 compose = \ A B C f g x. (f (g x))
 
-
-
 -- void type
 
 void : Type
