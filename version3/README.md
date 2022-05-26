@@ -1,8 +1,9 @@
 pi-forall
 =========
-   A demo implementation of a simple dependently-typed language for OPLSS
-   (Used in 2022, 2014 and 2013)
-	 Stephanie Weirich
+
+A demo implementation of a simple dependently-typed language for OPLSS
+(Used in 2022, 2014 and 2013)
+Stephanie Weirich
 
 The goal of this project is to bring up the design issues that occur in the
 implementation languages like Agda, Coq, Epigram, Idris, etc. Of course, it
@@ -27,23 +28,11 @@ Features
   - propositional equality 
   - indexed datatypes 
 
-Not covered
------------
-  - termination & inductive datatypes
-  - effects
-  - co-induction
-  - type inference & unification
-  - general constraint solving
 
 This code is open source. Feel free to extend or adapt it for your own
 project. 
   https://github.com/sweirich/pi-forall
 
-Caveat 
-------
-There will be bugs. There will be *design* bugs. The language is probably not
-sound. Or may not be so in the presence of 'innocent' axioms like classical
-logic. Even in this little language there are many semantic pitfalls.
 
 Installation
 ----------
@@ -52,12 +41,24 @@ Installation
 
 Contents
 --------
-pi-forall/
-  README (this file)
+
+There are several versions of `pi-forall` in the repository. See the 
+[documentation](https://github.com/sweirich/pi-forall/blob/2022/doc/oplss.pdf) for an extended description of what parts of the language
+are covered by each version. 
+
+Each implementation has the following structure:
+
+```
+<version>/
+  pi/*.pi            example pi-forall files
+  src/*.hs           source code
+  app/Main.hs        entry point
+  README.md (this file)
   LICENSE
   pi-forall.cabal
-  test/*.pi          example files
-  src/*.hs           source code
+  stack.yaml         
+
+```
 
 Acknowledgement
 ---------------
