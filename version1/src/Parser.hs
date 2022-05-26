@@ -219,7 +219,7 @@ decl = sigDef <|> valDef
 sigDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return $ TypeSig (mkSig n ty)
+  return (mkSig n ty)
 valDef = do
   n <- try (do n <- variable; reservedOp "="; return n)
   val <- expr

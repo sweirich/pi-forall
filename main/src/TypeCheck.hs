@@ -39,7 +39,7 @@ checkType tm expectedTy = do
   
 -- | Make sure that the term is a type (i.e. has type 'Type')
 tcType :: Term -> TcMonad ()
-tcType tm = void $ {- SOLN EP -} Env.withStage Irr $ {- STUBWITH -}checkType tm Type
+tcType tm = void $ {- SOLN EP -}Env.withStage Irr $ {- STUBWITH -}checkType tm Type
     
 -- | check a term, producing its type
 -- The second argument is 'Nothing' in inference mode and
@@ -55,24 +55,21 @@ tcTerm t@(Var x) Nothing = do
 tcTerm Type Nothing = return Type
 -- i-pi
 tcTerm (Pi tyA bnd) Nothing = do
-  ((x{- SOLN EP -},ep{- STUBWITH -}), tyB) <- Unbound.unbind bnd
+  ({- SOLN EP -}(x,ep){- STUBWITH x -}, tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (TypeSig (Sig x {- SOLN EP -} ep {- STUBWITH -} tyA)) $ tcType tyB
+  Env.extendCtx {- SOLN EP -} (TypeSig (Sig x ep tyA)){- STUBWITH (mkSig x tyA) -} (tcType tyB)
   return Type
 -- c-lam: check the type of a function
 tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
-  ( (x {- SOLN EP -}, ep1{- STUBWITH -}), body,
-    (_ {- SOLN EP -}, ep2{- STUBWITH -}), tyB ) <- Unbound.unbind2Plus bnd bnd2
+  ({- SOLN EP -}(x,ep1){- STUBWITH x -}, body,{- SOLN EP -}(_,ep2){- STUBWITH _ -}, tyB) <- Unbound.unbind2Plus bnd bnd2
 {- SOLN EP -} -- epsilons should match up
   guard (ep1 == ep2) {- STUBWITH -}
   -- check the type of the body of the lambda expression
-  Env.extendCtx (TypeSig (Sig x {- SOLN EP -} ep1 {- STUBWITH -} tyA)) (checkType body tyB)
+  Env.extendCtx {- SOLN EP -} (TypeSig (Sig x ep1 tyA)){- STUBWITH (mkSig x tyA) -} (checkType body tyB)
   return (Pi tyA bnd2)
-   
 tcTerm (Lam _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not ", DD nf]
-
 -- i-app
 tcTerm (App t1 a2) Nothing = do
   ty1 <- inferType t1
@@ -124,8 +121,7 @@ tcTerm t@(If t1 t2 t3) (Just ty) = {- SOLN HW -} do
 tcTerm (Let rhs bnd) ann = {- SOLN HW -} do
   (x, body) <- Unbound.unbind bnd
   aty <- inferType rhs 
-  let sig = mkSig x aty
-  ty <- Env.extendCtxs [TypeSig sig, Def x rhs] $
+  ty <- Env.extendCtxs [mkSig x aty, Def x rhs] $
       tcTerm body ann
   when (x `elem` Unbound.toListOf Unbound.fv ty) $
     Env.err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]
@@ -274,7 +270,7 @@ tcTerm t@(Contra p) (Just ty) = do
 tcTerm t@(Sigma tyA bnd) Nothing = {- SOLN EQUAL -} do
   (x, tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (TypeSig (mkSig x tyA)) $ tcType tyB
+  Env.extendCtx (mkSig x tyA) $ tcType tyB
   return Type
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
@@ -283,7 +279,7 @@ tcTerm t@(Prod a b) (Just ty) = {- SOLN EQUAL -} do
     (Sigma tyA bnd) -> do
       (x, tyB) <- Unbound.unbind bnd
       checkType a tyA
-      Env.extendCtxs [TypeSig (mkSig x tyA), Def x a] $ checkType b tyB
+      Env.extendCtxs [mkSig x tyA, Def x a] $ checkType b tyB
       return (Sigma tyA (Unbound.bind x tyB))
     _ ->
       Env.err
@@ -302,7 +298,7 @@ tcTerm t@(LetPair p bnd) (Just ty) = {- SOLN EQUAL -} do
       ((x', y'), body) <- Unbound.unbind bnd
       let tyB' = Unbound.subst x (Var x') tyB
       decl <- def p (Prod (Var x') (Var y'))
-      Env.extendCtxs ([TypeSig (mkSig x' tyA), TypeSig (mkSig y' tyB')] ++ decl) $
+      Env.extendCtxs ([mkSig x' tyA, mkSig y' tyB'] ++ decl) $
           checkType body ty
       return ty
     _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
@@ -325,6 +321,7 @@ tcTerm tm (Just ty) = do
 tcTerm tm Nothing = 
   Env.err [DS "Must have a type annotation to check ", DD tm]
 
+{- SOLN HW -}
 ---------------------------------------------------------------------
 -- helper functions for type checking
 
@@ -337,6 +334,7 @@ def t1 t2 = do
       (Var x, _) -> return [Def x nf2]
       (_, Var x) -> return [Def x nf1]
       _ -> return []
+{- STUBWITH -}
 
 {- SOLN DATA -}
 ---------------------------------------------------------------------

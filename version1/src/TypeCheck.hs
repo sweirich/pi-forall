@@ -42,22 +42,17 @@ tcTerm t@(Var x) Nothing = do
 tcTerm Type Nothing = return Type
 -- i-pi
 tcTerm (Pi tyA bnd) Nothing = do
-  ((x), tyB) <- Unbound.unbind bnd
+  (x, tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (TypeSig (Sig x tyA)) $ tcType tyB
+  Env.extendCtx (mkSig x tyA) (tcType tyB)
   return Type
 -- c-lam: check the type of a function
 tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
-  ( (x),
-    body,
-    (_),
-    tyB
-    ) <-
-    Unbound.unbind2Plus bnd bnd2
+  (x, body, _, tyB) <- Unbound.unbind2Plus bnd bnd2
 
   -- check the type of the body of the lambda expression
-  Env.extendCtx (TypeSig (Sig x tyA)) (checkType body tyB)
+  Env.extendCtx (mkSig x tyA) (checkType body tyB)
   return (Pi tyA bnd2)
 tcTerm (Lam _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not ", DD nf]
@@ -113,19 +108,6 @@ tcTerm tm (Just ty) = do
   return ty'
 tcTerm tm Nothing =
   Env.err [DS "Must have a type annotation to check ", DD tm]
-
----------------------------------------------------------------------
--- helper functions for type checking
-
--- | Create a Def if either side normalizes to a single variable
-def :: Term -> Term -> TcMonad [Decl]
-def t1 t2 = do
-  nf1 <- Equal.whnf t1
-  nf2 <- Equal.whnf t2
-  case (nf1, nf2) of
-    (Var x, _) -> return [Def x nf2]
-    (_, Var x) -> return [Def x nf1]
-    _ -> return []
 
 --------------------------------------------------------
 -- Using the typechecker for decls and modules and stuff

@@ -1057,7 +1057,7 @@ type equality is \emph{alpha-equivalence}, then this equality will not
 hold. We need to enrich our definition of equality so that it equates
 more terms.
 
-\subsection{Defining definitional equality}
+\subsection{Defining equality}
 
 The main idea is that we will:
 
@@ -1077,8 +1077,9 @@ The main idea is that we will:
   system so that it supports the above rule.
 \end{itemize}
 
-What is a good definition of equality? We started with a very simple
-one: alpha-equivalence. But we can do better. Check out the rules in Figure~\ref{fig:defeq}.
+What is a good definition of equality? We have implicitly started with a very
+simple one: identify terms up to $\alpha$-equivalence. But we can do
+better. 
 
 \begin{figure}
 \drules[e]{$[[G |- A = B]]$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,app,lift,annot}
@@ -1086,15 +1087,18 @@ one: alpha-equivalence. But we can do better. Check out the rules in Figure~\ref
 \label{fig:defeq}
 \end{figure}
 
-\Rref{e-beta} ensures that our relation \emph{contains
-  beta-equivalence}. \Rref{e-refl,e-sym,e-trans} makes sure that this relation
-is an \emph{equivalence relation}. Furthermore, this relation should be a
+The rules in Figure~\ref{fig:defeq} define what it means for two terms to be
+equivalent, by stating the properties that we want to be true of this
+relation.  \Rref{e-beta} ensures that our relation \emph{contains
+  beta-equivalence}. Terms that evaluate to eachother should be equal.
+\Rref{e-refl,e-sym,e-trans} makes sure that this relation is an
+\emph{equivalence relation}. Furthermore, we want this relation to be a
 \emph{congruence relation} (i.e.~if subterms are equal, then larger terms are
-equal), as verified by rules \rref{e-pi,e-lam,e-app}.  We also want to be sure
-that this relation has ``functionality'' (i.e.~we can lift equalities). We
-declare so using \rref{e-lift}. Finally, we want to ignore type annotations,
-so \rref{e-annot} allows the equality judgment to skip over them on the left
-(and with \rref{e-sym}, on the right as well).
+equal), as specified by rules \rref{e-pi,e-lam,e-app}.  We also want to be
+sure that this relation has ``functionality'' (i.e.~we can lift
+equalities). We declare so with \rref{e-lift}. Finally, we want to ignore type
+annotations, so \rref{e-annot} allows the equality judgment to skip over them
+on the left (and with the help of \rref{e-sym}, on the right as well).
 
 (Note: if we add booleans and $\Sigma-$types, we will also need corresponding 
 $\beta$-equivalence rules and congruence rules for those constructs.)
@@ -1102,42 +1106,46 @@ $\beta$-equivalence rules and congruence rules for those constructs.)
 \subsection{Using definitional equality in the algorithm}
 
 We would like to consider our type system as having the following rule:
-
+%
 \[ \drule[width=4in]{t-conv} \] 
+%
+but this rule is not syntax-directed; it can be used at any place in a
+derivation so how do we know where to check types for equality? And which
+types should we check?
 
-But that rule is not syntax-directed. This rule could apply in any place in a
-derivation. Where does equality matter for our bidirectional system? It turns
-out that there are only a few places.
+It turns out that in our bidirectional system, there are only a few places
+where type equality matters.
 
 \begin{itemize}
-\item
-  Where we switch from checking mode to inference mode in the algorithm.
-  Here we need to ensure that the type that we infer is the same as the
-  type that is passed to the checker.
+\item We meed to check for equality when we switch from checking mode to
+  inference mode in the algorithm in rule \rref{c-infer}.  Here we need to
+  ensure that the type that we infer is the same as the type that is passed to
+  the checker.
 
 \[ \drule[width=4in]{c-infer} \]
 
-In this case, our equality algorithm must, when given two terms, decide
-whether they are equal. We use $[[G |- A <=> B]]$ for an algorithmic version
-of equality. To implement this judgement in \pif, we use a semi-decision
-procedure based on reducing terms to a \emph{weak-head-normal form} (see
-Figure~\ref{fig:whnf}). Note that because reduction may not terminate, our
-equality checking function could diverge.
+In this case, the types $[[A]]$ and $[[B]]$ are available to the type checker,
+and the our equality algorithm must decide whether they are equal. We use
+$[[G |- A <=> B]]$ as the notation for an algorithmic version of our equality
+relation---the relation we defined in Figure~\ref{fig:defeq} does not readily
+lead to an algorithm. (More on this algorithmic version in
+Section~\ref{sec:equate} below.)
 
-\item
-  In the rule for application, when we infer the type of the function we
-  need to make sure that the function actually has a function type. But
-  we don't really know what the domain and co-domain of the function
-  should be. We'd like our algorithm for type equality to be able to
-  figure this out for us. 
+\item In the rule for application, when we infer the type of the function we
+  need to make sure that the function actually has a function type. But we
+  don't really know what the domain and co-domain of the function should
+  be. We'd like our algorithm for type equality to be able to figure this out
+  for us.
  
 \[ \drule[width=4in]{i-app} \]
 
-In this case, we are given a single term and we need to know whether it is
-equivalent to some $\Pi$-type. Because $\Pi$-types are \emph{head} forms, we
-can do this via reduction. Just evaluate the type $A$ to its head form, using
-the rules shown in Figure~\ref{fig:whnf}. If that form is a $\Pi$-type, then
-we can access its subcomponents.
+In this case, we are given a single type $[[A]]$ and we need to know whether
+it is equivalent to some $\Pi$-type. Because $\Pi$-types are \emph{head}
+forms, we can do this via reduction. This rule evaluates the type $A$ to its
+head form, using the rules shown in Figure~\ref{fig:whnf}. If that form is a
+$\Pi$-type, then we can access its subcomponents.
+
+\end{itemize}
 
 \begin{figure}
 \drules[whnf]{$[[whnf a = v]]$}{}{lam-beta,let-beta,type,lam,pi,var,lam-cong}
@@ -1145,144 +1153,157 @@ we can access its subcomponents.
 \label{fig:whnf}
 \end{figure}
 
-For closed terms, these rules correspond to a big-step evaluation relation.
-This relation is semi-decidable, so we can express it as a Haskell function. 
+\paragraph{Weak-head normal form} 
 
+The following judgement (shown in Figure~\ref{fig:whnf})
+%
+\[ \fbox{$[[whnf a = v]]$} \]
+%
+describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak-head normal form (whnf)}. 
+For closed terms, these rules correspond to a big-step evaluation relation and produce 
+a value. For open terms, the rules produce a term that is either headed by a variable 
+or by some head form (i.e. $\lambda$ or $\Pi$). 
 
-\end{itemize}
+For example, the term 
+\begin{piforall}
+ (\x.x) (\x.x)  
+\end{piforall}
+is not in whnf, because there is more reduction to go to get to the head. On
+the other hand, even though there are still internal reductions possible, the terms
+\begin{piforall}
+  \y. (\x.x) (\x.x)   
+\end{piforall}
+and
+\begin{piforall}
+ (y:Type) -> (\x.x) Bool 
+\end{piforall}
+are in weak head normal form. Furthermore, the term \texttt{x\ y} is also in
+weak head normal form, because, even though we don't know what the head form
+is, we cannot reduce the term any more.
 
-\subsection{Algorithmic definitional equality}
+Because evaluation may not terminate, this relation is
+semi-decidable. However, it is syntax-directed so we can readily express it as
+a Haskell function.
 
-The rules for $[[G |- a = b ]]$ \emph{specify} when terms should be equal, but they are
-not an algorithm. How do we implement its algorithmic analogue $[[G |- a <=> b]]$?
+\paragraph{Using algorithmic equality}
 
-In the \pif implementation, the function
+In the \pif implementation, the function that corresponds to $[[G |- a <=> b]]$
+has type 
 %
 \begin{verbatim}
 equate :: Term -> Term -> TcMonad ()
 \end{verbatim}
 %
-ensures that the two provided types are equal, or throws a type error if
-they are not. This function corresponds directly to $[[G |- a <=> b]]$.
+This function ensures that the two provided types are equal, or throws a type error if
+they are not. 
 
-Furthermore, we also need to be able to determine whether a given type is equal to
-some ``head'' form, without knowing exactly what that form is.  For example,
-when \emph{checking} lambda expressions, we need to know that the provided
-type is of the form of a $\Pi$-type ($[[(x:A)-> B]]$). Likewise, when inferring
-the type of an application, we need to know that the type inferred for the
-function is actually a $\Pi$-type.
-
-We can determine this in two ways. Most directly, the function
-
+Additionally, the \pif includes the function 
+% some ``head'' form, without knowing exactly what that form is.  For example,
+% when \emph{checking} lambda expressions, we need to know that the provided
+% type is of the form of a $\Pi$-type ($[[(x:A)-> B]]$). Likewise, when inferring
+% the type of an application, we need to know that the type inferred for the
+% function is actually a $\Pi$-type.
 \begin{verbatim}
 ensurePi :: Type -> TcMonad (TName, Type, Type)
 \end{verbatim}
-
-checks the given type to see if it is equal to some pi type of the form
+that checks the given type to see if the given is equal to some $\Pi$-type of the form
 $[[(x:A1)-> A2]]$, and if so returns \texttt{x},
-\texttt{A1} and \texttt{A2}.\\
-This function is defined in terms of a helper function, that implements the 
-rules shown in Figure~\ref{fig:whnf}.
+\texttt{A1} and \texttt{A2}.
 
+This function is defined in terms of a helper function that implements the
+rules shown in Figure~\ref{fig:whnf}.
 \begin{verbatim}
 whnf :: Term -> TcMonad Term
- 
 \end{verbatim}
 
-This function reduces a type to its \emph{weak-head normal form (whnf)}. Such
-terms have done all of the reductions to the outermost lambda abstraction (or
-$\Pi$) but do not reduce subterms. In other words:
-
-\begin{piforall}
- (\x.x) (\x.x)  
-  
-\end{piforall}
-
-is not in whnf, because there is more reduction to go to get to the
-head. On the other hand, even though there are still internal reductions
-possible:
-
-\begin{piforall}
-  \y. (\x.x) (\x.x)   
-\end{piforall}
-
-and
-
-\begin{piforall}
- (y:Type) -> (\x.x) Bool 
-\end{piforall}
-
-are in weak head normal form. Likewise, the term \texttt{x\ y} is also in weak
-head normal form, because, even though we don't know what the head form is, we
-cannot reduce the term any more.
-
-In \texttt{version2} of the the
-\href{version2/src/TypeCheck.hs}{implementation}, these functions are
-called in a few places: - \texttt{equate} is called at the end of
-\texttt{tcTerm} - \texttt{ensurePi} is called in the \texttt{App} case
-of \texttt{tcTerm} - \texttt{whnf} is called in \texttt{checkType},
-before the call to \texttt{tcTerm} to make sure that we are using the
-head form in checking mode.
+\noindent
+In \texttt{version2} of the \href{version2/src/TypeCheck.hs}{implementation},
+these functions are called in a few places: 
+\begin{itemize}
+\item \texttt{equate} is called at the
+end of \texttt{tcTerm} 
+\item \texttt{ensurePi} is called in the \texttt{App} case
+of \texttt{tcTerm} 
+\item \texttt{whnf} is called in \texttt{checkType}, before the call to
+  \texttt{tcTerm}, to make sure that we are using the head form in checking
+  mode.
+\end{itemize}
 
 \subsection{Implementing definitional equality (see Equal.hs)}
+\label{sec:equate}
 
-There are several ways for implementing definitional equality, as stated
-via the rules above. The easiest one to explain is based on
-reduction---for \texttt{equate} to reduce the two arguments to some
-normal form and then compare those normal forms for equivalence.
+The rules for $[[G |- a = b ]]$ \emph{specify} when terms should be equal, but
+they are not an algorithm. But how do we implement its algorithmic analogue
+$[[G |- a <=> b]]$?
+
+
+There are several ways to do so. 
+
+The easiest one to explain is based on reduction---for \texttt{equate} to
+reduce the two arguments to some normal form and then compare those normal
+forms for equivalence.
 
 One way to do this is with the following algorithm:
 
 \begin{verbatim}
  equate t1 t2 = do 
-    nf1 <- reduce t1  -- full reduction, throughout term
+    nf1 <- reduce t1  -- full reduction, not just weak-head reduction
     nf2 <- reduce t2  
     Unbound.aeq nf1 nf2
 \end{verbatim}
 
-However, we can do better. We'd like to only reduce as much as
-necessary. Sometimes we can equate the terms without completely reducing
-them.
+However, we can do better.  Sometimes we can equate the terms without
+completely reducing them. Because reduction can be expensive (or even
+nonterminating) we'd like to only reduce as much as necessary.
 
+Therefore, the implementation of \cd{equate} has the following form.
 \begin{verbatim}
   equate t1 t2 = do
      if (Unbound.aeq t1 t1) then return () else do
       nf1 <- whnf t1  -- reduce only to 'weak head normal form'
       nf2 <- whnf t2
       case (nf1,nf2) of 
-        (App a1 a2, App b1 b2) -> 
-            -- make sure subterms are equal
-            equate a1 b1 >> equate a2 b2
         (Lam bnd1, Lam bnd2) -> do
-            -- ignore variable names, but use the name 
+            -- ignore variable names, but use the same 
             -- fresh name for both lambda bodies
-            (_, b1, _, b2) <- unbind2Plus bnd1 bnd2
+            (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
              equate b1 b2
-        (_,_) -> err ...
+        (App a1 a2, App b1 b2) -> do
+            equate a1 b1
+            equateArg a2 b2
+
+        ... -- all other matching head forms
+
+        -- | head forms don't match throw an error
+        (_,_) -> Env.err ...
 \end{verbatim}
+Above, we first check whether the terms are already alpha-equivalent. If they
+are, we do not need to do anything else, we can return immediately
+(i.e. without throwing an error, which is what the function does when it
+decides that the terms are not equal). The next step is to reduce both terms
+to their weak-head normal forms.  If two terms have different head forms, then
+we know that they must be different terms so we can throw an error. If they have 
+the same head forms, then we can call the function recursively on analogous
+subcomponents until the function either terminates or finds a mismatch.
 
-Therefore, we reuse our mechanism for reducing terms to weak-head normal
-form.
-
-Why weak-head reduction vs.~full reduction?
+Why do we use weak-head reduction vs.~full reduction?
 
 \begin{itemize}
 \item
   We can implement deferred substitutions for variables. Note that when
-  comparing terms we need to have the definitions available. That way we
+  comparing terms we need to have their definitions available. That way we
   can compute that \texttt{(plus\ 3\ 1)} weak-head normalizes to 4, by
   looking up the definition of \texttt{plus} when needed. However, we
   don't want to substitute all variables through eagerly---not only does
   this make extra work, but error messages can be extremely long.
 \item Furthermore, we allow recursive definitions in \pif, so normalization
-  may just fail completely. However, this definition based on \texttt{whnf}
-  only unfolds recursive definitions when necessary, and then only once, so
-  avoids some infinite loops in the type checker.
+  may just fail completely, if we unfold recursive definitions inside
+  functions before they are applied. In contrast, the definition based on
+  \texttt{whnf} only unfolds recursive definitions when they stand in the way
+  of equivalence, so avoids some infinite loops in the type checker.
 
   Note that we don't have a complete treatment of equality. There will always
-  be terms that can cause \texttt{equate} to loop forever.  On the other hand,
-  there will always be terms that are not equated because of conservatively in
-  unfolding recursive definitions.
+  be terms that can cause \texttt{equate} to loop forever.
 \end{itemize}
 
 
@@ -1292,7 +1313,6 @@ Why weak-head reduction vs.~full reduction?
 \subsection{Refining  rules for if and $\Sigma$-type elimination}
 
 Consider our elimination rules for if:
-
 
 \[ \drule[width=4in]{t-if-weak} \]
 

@@ -125,14 +125,17 @@ data Module = Module
   }
   deriving (Show, Generic, Typeable)
 
+-- | References to other modules (brings declarations and definitions into scope)
 newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
+-- | A type declaration (or type signature)
 data Sig = Sig {sigName :: TName {- SOLN EP -}, sigEp :: Epsilon {- STUBWITH -}, sigType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
-mkSig :: TName -> Type -> Sig
-mkSig n = Sig n Rel 
+-- | Declare the type of a term
+mkSig :: TName -> Type -> Decl
+mkSig n ty = TypeSig (Sig n Rel  ty)
 
 -- | Declarations are the components of modules
 data Decl
