@@ -10,7 +10,7 @@ module Environment
     lookupTyMaybe,
     lookupDef,
     lookupRecDef,
-    lookupHint ,
+    lookupHint,
     getCtx,
     getLocalCtx,
     extendCtx,
@@ -24,20 +24,27 @@ module Environment
     warn,
     extendErr,
     D (..),
-    Err (..)
+    Err (..),
   )
 where
 
 import Control.Monad.Except
-    ( unless, MonadError(..), MonadIO(..), ExceptT, runExceptT )
+  ( ExceptT,
+    MonadError (..),
+    MonadIO (..),
+    runExceptT,
+    unless,
+  )
 import Control.Monad.Reader
-    ( MonadReader(local), asks, ReaderT(runReaderT) )
-
-import Data.Maybe ( listToMaybe )
-import PrettyPrint ( SourcePos, render, D(..), Disp(..), Doc )
+  ( MonadReader (local),
+    ReaderT (runReaderT),
+    asks,
+  )
+import Data.Maybe (listToMaybe)
+import PrettyPrint (D (..), Disp (..), Doc, SourcePos, render)
 import Syntax
-import Text.PrettyPrint.HughesPJ ( ($$), nest, sep, text, vcat )
-import qualified Unbound.Generics.LocallyNameless as Unbound
+import Text.PrettyPrint.HughesPJ (nest, sep, text, vcat, ($$))
+import Unbound.Generics.LocallyNameless qualified as Unbound
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
@@ -70,18 +77,20 @@ data Env = Env
     -- has been checked.
     hints :: [Sig],
     -- | what part of the file we are in (for errors/warnings)
-    sourceLocation :: [SourceLocation] 
+    sourceLocation :: [SourceLocation]
   }
 
 --deriving Show
 
 -- | The initial environment.
 emptyEnv :: Env
-emptyEnv = Env {ctx = []
-               , globals = 0
-               , hints = []
-              , sourceLocation = []
-  }
+emptyEnv =
+  Env
+    { ctx = [],
+      globals = 0,
+      hints = [],
+      sourceLocation = []
+    }
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
@@ -90,7 +99,7 @@ instance Disp Env where
 lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
 lookupHint v = do
   hints <- asks hints
-  return $ listToMaybe [ sig | sig <- hints, v == sigName sig]
+  return $ listToMaybe [sig | sig <- hints, v == sigName sig]
 
 -- | Find a name's type in the context.
 lookupTyMaybe ::
@@ -99,21 +108,20 @@ lookupTyMaybe ::
   m (Maybe Sig)
 lookupTyMaybe v = do
   ctx <- asks ctx
-  return $ go ctx where
+  return $ go ctx
+  where
     go [] = Nothing
     go (TypeSig sig : ctx)
       | v == sigName sig = Just sig
-      | otherwise = go ctx 
-
+      | otherwise = go ctx
     go (_ : ctx) = go ctx
-
-
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
 lookupTy ::
   (MonadReader Env m, MonadError Err m) =>
-  TName -> m Sig
+  TName ->
+  m Sig
 lookupTy v =
   do
     x <- lookupTyMaybe v
@@ -144,12 +152,10 @@ lookupRecDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
-
-
 -- | Extend the context with a new binding
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
 extendCtx d =
-  local (\m@Env{ctx = cs} -> m {ctx = d : cs})
+  local (\m@Env {ctx = cs} -> m {ctx = d : cs})
 
 -- | Extend the context with a list of bindings
 extendCtxs :: (MonadReader Env m) => [Decl] -> m a -> m a
@@ -166,8 +172,6 @@ extendCtxsGlobal ds =
             globals = length (ds ++ cs)
           }
     )
-
-
 
 -- | Extend the context with a module
 -- Note we must reverse the order.
@@ -236,4 +240,3 @@ warn :: (Disp a, MonadReader Env m, MonadIO m) => a -> m ()
 warn e = do
   loc <- getSourceLocation
   liftIO $ putStrLn $ "warning: " ++ render (disp (Err loc (disp e)))
-

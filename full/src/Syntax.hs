@@ -33,8 +33,6 @@ type TCName = String
 -- | data constructor names
 type DCName = String
 
-
-
 -----------------------------------------
 
 -- * Core language
@@ -52,12 +50,12 @@ data Term
   | -- | variables  `x`
     Var TName
   | -- | abstraction  `\x. a`
-    Lam (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}) Term)
+    Lam (Unbound.Bind {- SOLN EP -}(TName, Epsilon){- STUBWITH TName -} Term)
   | -- | application `a b`
     App Term Arg
   | -- | function type   `(x : A) -> B`
-    Pi Type (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}) Type)
-  | -- | Annotated terms `( a : A )`
+    Pi Type (Unbound.Bind {- SOLN EP -}(TName, Epsilon){- STUBWITH TName -} Type)
+  | -- | annotated terms `( a : A )`
     Ann Term Type
   | -- | marked source position, for error messages
     Pos SourcePos Term
@@ -68,33 +66,31 @@ data Term
   | -- | let expression, introduces a new (non-recursive) definition in the ctx
     -- | `let x = a in b`
     Let Term (Unbound.Bind TName Term)
-  | -- | The type with a single inhabitant, called `Unit`
+  | -- | the type with a single inhabitant, called `Unit`
     TyUnit
-  | -- | The inhabitant of `Unit`, written `()`
+  | -- | the inhabitant of `Unit`, written `()`
     LitUnit
-  | -- | The type with two inhabitants (homework) `Bool`
+  | -- | the type with two inhabitants (homework) `Bool`
     TyBool
   | -- | `True` and `False`
     LitBool Bool
   | -- | `if a then b1 else b2` expression for eliminating booleans
     If Term Term Term
-  | -- | sigma type (homework), written `{ x : A | B }`  
+  | -- | Sigma-type (homework), written `{ x : A | B }`  
     Sigma Term (Unbound.Bind TName Term)
-  | -- | introduction for sigmas `( a , b )`
+  | -- | introduction form for Sigma-types `( a , b )`
     Prod Term Term
-  | -- | elimination form  `let (x,y) = a in b`
+  | -- | elimination form for Sigma-types `let (x,y) = a in b`
     LetPair Term (Unbound.Bind (TName, TName) Term) 
-
-     | -- | Equality type  `a = b`
+     | -- | tquality type  `a = b`
     TyEq Term Term
   | -- | Proof of equality `Refl`
     Refl 
-  | -- | equality elimination  `subst a by pf`
+  | -- | equality type elimination  `subst a by pf`
     Subst Term Term 
   | -- | witness to an equality contradiction
     Contra Term
    
-
      | -- | type constructors (fully applied)
     TCon TCName [Arg]
   | -- | term constructors (fully applied)
@@ -107,7 +103,6 @@ data Term
 -- | An argument to a function
 data Arg = Arg {argEp :: Epsilon,  unArg :: Term}
   deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
-
 -- | Epsilon annotates the stage of a variable
 data Epsilon
   = Rel
@@ -124,8 +119,6 @@ data Epsilon
       Unbound.Subst Term
     )
 
-
-
 -- | A 'Match' represents a case alternative
 newtype Match = Match (Unbound.Bind Pattern Term)
   deriving (Show, Generic, Typeable)
@@ -137,7 +130,6 @@ data Pattern
   = PatCon DCName [(Pattern, Epsilon)]
   | PatVar TName
   deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
-
 
 
 -----------------------------------------
@@ -209,7 +201,6 @@ newtype Telescope = Telescope [Decl]
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
 
-
 -- * Auxiliary functions on syntax
 
 -- | empty set of constructor names
@@ -246,32 +237,9 @@ isPatVar :: Pattern -> Bool
 isPatVar (PatVar _) = True
 isPatVar _ = False
 
-xname :: Unbound.Name Term
-xname = Unbound.string2Name "x"
-yname :: Unbound.Name Term
-yname = Unbound.string2Name "y"
-aname :: Unbound.Name Term
-aname = Unbound.string2Name "a"
-bname :: Unbound.Name Term
-bname = Unbound.string2Name "b"
+-------------------------------------------------------------------
+-- Prelude declarations for datatypes
 
-preludeDataDecls :: [Decl]
-preludeDataDecls = 
-  [ Data sigmaName  sigmaTele      [prodConstructorDef]
-  , Data tyUnitName (Telescope []) [unitConstructorDef]
-  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef]
-  ]  where
-        trueConstructorDef = ConstructorDef internalPos trueName (Telescope [])
-        falseConstructorDef = ConstructorDef internalPos falseName (Telescope [])
-
-        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
-
-        sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
-        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
-        sigA = Sig aname Rel Type
-        sigB = Sig bname Rel (Pi (Var aname) (Unbound.bind (xname, Rel) Type))
-        sigX = Sig xname Rel (Var aname)
-        sigY = Sig yname Rel (App (Var bname) (Arg Rel (Var xname)))
 
 -- prelude names
 sigmaName :: TCName
@@ -294,7 +262,28 @@ initialTCNames = Set.fromList [sigmaName, boolName, tyUnitName]
 initialDCNames :: Set DCName
 initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
+preludeDataDecls :: [Decl]
+preludeDataDecls = 
+  [ Data sigmaName  sigmaTele      [prodConstructorDef]
+  , Data tyUnitName (Telescope []) [unitConstructorDef]
+  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef]
+  ]  where
+        -- boolean
+        trueConstructorDef = ConstructorDef internalPos trueName (Telescope [])
+        falseConstructorDef = ConstructorDef internalPos falseName (Telescope [])
 
+        -- unit
+        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
+
+        -- Sigma-type
+        sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
+        sigA = Sig aName Rel Type
+        sigB = Sig bName Rel (Pi (Var aName) (Unbound.bind (xName, Rel) Type))
+        sigX = Sig xName Rel (Var aName)
+        sigY = Sig yName Rel (App (Var bName) (Arg Rel (Var xName)))
+        aName = Unbound.string2Name "a"
+        bName = Unbound.string2Name "b"
 
 -----------------
 
@@ -313,12 +302,14 @@ initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 --    aeq :: Alpha a => a -> a -> Bool
 --    -- Calculate the free variables of a term
 --    fv  :: Alpha a => a -> [Unbound.Name a]
+--    -- Destruct a binding, generating fresh names for the bound variables
+--    unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 
 -- For Terms, we'd like Alpha equivalence to ignore 
--- source positions and type annotations in terms.
+-- source positions and type annotations.
 -- We can add these special cases to the definition of `aeq'` 
 -- and then defer all other cases to the generic version of 
--- the function.
+-- the function (Unbound.gaeq).
 
 instance Unbound.Alpha Term where
   aeq' ctx (Ann a _) b = Unbound.aeq' ctx a b
@@ -327,28 +318,30 @@ instance Unbound.Alpha Term where
   aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
   aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
 
--- For example, all occurrences of annotations, source positions, and internal 
--- parenthesis are ignored by this definition.
+-- For example, all occurrences of annotations and source positions
+-- are ignored by this definition.
 
--- >>> Unbound.aeq (Pos internalPos (Ann TyBool Type)) (Paren (Paren TyBool))
+-- >>> Unbound.aeq (Pos internalPos (Ann TyBool Type)) TyBool
 -- True
 
 -- At the same time, the generic operation equates terms that differ only 
 -- in the names of bound variables.
 
-x0 :: TName
-x0 = Unbound.string2Name "x"
+-- 'x'
+xName :: TName
+xName = Unbound.string2Name "x"
 
-y0 :: TName
-y0 = Unbound.string2Name "y"
+-- 'y'
+yName :: TName
+yName = Unbound.string2Name "y"
 
 -- '\x -> x`
 idx :: Term
-idx = Lam (Unbound.bind (x0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var x0))
+idx = Lam (Unbound.bind {- SOLN EP -}(xName, Rel){- STUBWITH xName -} (Var xName))
 
 -- '\y -> y`
 idy :: Term
-idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var y0))
+idy = Lam (Unbound.bind {- SOLN EP -}(yName, Rel){- STUBWITH yName -} (Var yName))
 
 -- >>> Unbound.aeq idx idy
 -- True
@@ -364,7 +357,6 @@ idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var y0))
 
 -- class Subst b a where
 --    subst  :: Name b -> b -> a -> a       -- single substitution
---    substs :: [(Name b, b)] -> a -> a     -- multiple substitution
 
 instance Unbound.Subst Term Term where
   isvar (Var x) = Just (Unbound.SubstName x)
@@ -373,13 +365,13 @@ instance Unbound.Subst Term Term where
 
 -- '(y : x) -> y'
 pi1 :: Term 
-pi1 = Pi (Var x0) (Unbound.bind (y0{- SOLN EP -}, Rel{- STUBWITH -}) (Var y0))
+pi1 = Pi (Var xName) (Unbound.bind {- SOLN EP -}(yName, Rel){- STUBWITH yName -} (Var yName))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi TyBool (Unbound.bind (y0{- SOLN EP -}, Rel{- STUBWITH -}) (Var y0))
+pi2 = Pi TyBool (Unbound.bind {- SOLN EP -}(yName, Rel){- STUBWITH yName -} (Var yName))
 
--- >>> Unbound.aeq (Unbound.subst x0 TyBool pi1) pi2
+-- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
 -- True
 
 
@@ -390,8 +382,7 @@ pi2 = Pi TyBool (Unbound.bind (y0{- SOLN EP -}, Rel{- STUBWITH -}) (Var y0))
 
 -- SourcePositions do not have an instance of the Generic class available
 -- so we cannot automatically define their Alpha and Subst instances. Instead
--- we do by hand here. This also gives us a chance to ignore source 
--- positions during comparisons.
+-- we do so by hand here. 
 instance Unbound.Alpha SourcePos where
   aeq' _ _ _ = True
   fvAny' _ _ = pure

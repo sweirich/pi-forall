@@ -121,6 +121,7 @@ formula :: 'formula_' ::=
   | judgement                ::   :: judgement
   | formula1 .. formulai     ::   :: dots
   | x : A elem G             ::   :: inG
+  | G |- A <=> B             ::   :: equate
 
 defns 
 Jwhnf :: '' ::= 
@@ -371,7 +372,7 @@ G |- a => A
 G |- a <= A 
 
 G |- a => A    
-G |- A = B
+G |- A <=> B
 -------------------------- :: infer
 G |- a <= B
 

@@ -86,8 +86,6 @@ instance Disp Term
 
 instance Disp Arg
 
-
-
 ------------------------------------------------------------------------
 
 -- * Disp Instances for Modules
@@ -96,8 +94,6 @@ instance Disp Arg
 
 instance Disp [Decl] where
   disp = vcat . map disp
-
-
 
 instance Disp Module where
   disp m =
@@ -109,14 +105,12 @@ instance Disp ModuleImport where
   disp (ModuleImport i) = text "import" <+> disp i
 
 instance Disp Sig where
-  disp (Sig n  ty) = disp n <+> text ":" <+> disp ty
+  disp (Sig n ty) = disp n <+> text ":" <+> disp ty
 
 instance Disp Decl where
-  disp (Def n term)  = disp n <+> text "=" <+> disp term
-  disp (RecDef n r)  = disp (Def n r)
+  disp (Def n term) = disp n <+> text "=" <+> disp term
+  disp (RecDef n r) = disp (Def n r)
   disp (TypeSig sig) = disp sig
-
-
 
 -------------------------------------------------------------------------
 
@@ -200,7 +194,7 @@ instance Display Term where
     dx <- display x
     return $ wrapf f df <+> dx
   display (Pi a bnd) = do
-    Unbound.lunbind bnd $ \((n ), b) -> do
+    Unbound.lunbind bnd $ \((n), b) -> do
       st <- ask
       da <- display a
       dn <- display n
@@ -208,15 +202,15 @@ instance Display Term where
       let lhs =
             if n `elem` toListOf Unbound.fv b
               then parens (dn <+> colon <+> da)
-              else  da
+              else da
       return $ lhs <+> text "->" <+> db
   display (Ann a b) = do
     st <- ask
     da <- display a
     db <- display b
-    if showAnnots st then
-      return $ parens (da <+> text ":" <+> db)
-      else return da 
+    if showAnnots st
+      then return $ parens (da <+> text ":" <+> db)
+      else return da
   display (Pos _ e) = display e
   display TrustMe = do
     return $ text "TRUSTME"
@@ -239,12 +233,13 @@ instance Display Term where
       dx <- display x
       dA <- display tyA
       dB <- display tyB
-      if x `elem` toListOf Unbound.fv tyB then
-        return $
-          text "{" <+> dx <+> text ":" <+> dA
-            <+> text "|"
-            <+> dB
-            <+> text "}"
+      if x `elem` toListOf Unbound.fv tyB
+        then
+          return $
+            text "{" <+> dx <+> text ":" <+> dA
+              <+> text "|"
+              <+> dB
+              <+> text "}"
         else return $ parens (dA PP.<+> text "*" PP.<+> dB)
   display (Prod a b) = do
     da <- display a
@@ -257,16 +252,18 @@ instance Display Term where
       dy <- display y
       dbody <- display body
       return $
-        (text "let" 
-          <+> (text "("
-          PP.<> dx
-          PP.<> text ","
-          PP.<> dy
-          PP.<> text ")")
-          <+> text "="
-          <+> da 
-          <+> text "in")
-        $$ dbody
+        ( text "let"
+            <+> ( text "("
+                    PP.<> dx
+                    PP.<> text ","
+                    PP.<> dy
+                    PP.<> text ")"
+                )
+            <+> text "="
+            <+> da
+            <+> text "in"
+        )
+          $$ dbody
   display (Let a bnd) = do
     Unbound.lunbind bnd $ \(x, b) -> do
       da <- display a
@@ -281,16 +278,10 @@ instance Display Term where
             db
           ]
 
-
-
-
-
 instance Display Arg where
   display arg = do
     st <- ask
     wraparg st arg <$> display (unArg arg)
-
-
 
 -------------------------------------------------------------------------
 
@@ -300,16 +291,14 @@ instance Display Arg where
 
 gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
 gatherBinders (Lam b) =
-  Unbound.lunbind b $ \((n ), body) -> do
+  Unbound.lunbind b $ \((n), body) -> do
     dn <- display n
-    let db =  dn
+    let db = dn
     (rest, body') <- gatherBinders body
     return (db : rest, body')
 gatherBinders body = do
   db <- display body
   return ([], db)
-
-
 
 -- | decide whether to add parens to the function of an application
 wrapf :: Term -> Doc -> Doc
@@ -337,13 +326,10 @@ wraparg st a = case unArg a of
   Pos _ b -> wraparg st a {unArg = b}
   TrustMe -> std
   PrintMe -> std
-
-
   _ -> force
   where
     std = id
     force = parens
-    
 
 -------------------------------------------------------------------------
 

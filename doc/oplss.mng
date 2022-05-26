@@ -887,7 +887,7 @@ Mixed in here, we also have a pattern for lambda expressions in checking
 mode:
 
 \begin{verbatim}
-tcTerm (Lam bnd) (Just (Pi bnd2)) = ... 
+tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = ...    -- pass in the Pi type for the lambda expression
  
 tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
    err [DS "Lambda expression has a function type, not ", DD nf]
@@ -1081,7 +1081,7 @@ What is a good definition of equality? We started with a very simple
 one: alpha-equivalence. But we can do better. Check out the rules in Figure~\ref{fig:defeq}.
 
 \begin{figure}
-\drules[e]{$[[G |- A = B]]$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,app,subst}
+\drules[e]{$[[G |- A = B]]$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,app,lift,annot}
 \caption{Definitional equality for core \pif}
 \label{fig:defeq}
 \end{figure}
@@ -1090,12 +1090,13 @@ one: alpha-equivalence. But we can do better. Check out the rules in Figure~\ref
   beta-equivalence}. \Rref{e-refl,e-sym,e-trans} makes sure that this relation
 is an \emph{equivalence relation}. Furthermore, this relation should be a
 \emph{congruence relation} (i.e.~if subterms are equal, then larger terms are
-equal), as verified by rules \rref{e-pi,e-lam,e-app}.  Finally, we want to be
-sure that this relation has ``functionality'' (i.e.~we can lift
-equalities). We declare so using \rref{e-subst}.
+equal), as verified by rules \rref{e-pi,e-lam,e-app}.  We also want to be sure
+that this relation has ``functionality'' (i.e.~we can lift equalities). We
+declare so using \rref{e-lift}. Finally, we want to ignore type annotations,
+so \rref{e-annot} allows the equality judgment to skip over them on the left
+(and with \rref{e-sym}, on the right as well).
 
-
-(Note: if we add booleans and sigma types, we will also need corresponding 
+(Note: if we add booleans and $\Sigma-$types, we will also need corresponding 
 $\beta$-equivalence rules and congruence rules for those constructs.)
 
 \subsection{Using definitional equality in the algorithm}
@@ -1105,8 +1106,8 @@ We would like to consider our type system as having the following rule:
 \[ \drule[width=4in]{t-conv} \] 
 
 But that rule is not syntax-directed. This rule could apply in any place in a
-derivation. Where do we need to add equality preconditions in our
-bidirectional system? It turns out that there are only a few places.
+derivation. Where does equality matter for our bidirectional system? It turns
+out that there are only a few places.
 
 \begin{itemize}
 \item
@@ -1117,9 +1118,11 @@ bidirectional system? It turns out that there are only a few places.
 \[ \drule[width=4in]{c-infer} \]
 
 In this case, our equality algorithm must, when given two terms, decide
-whether they are equal. In \pif we will use a semi-decision procedure based 
-on reducing terms to normal forms. However, because reduction may not terminate, 
-our equality checking function could diverge.
+whether they are equal. We use $[[G |- A <=> B]]$ for an algorithmic version
+of equality. To implement this judgement in \pif, we use a semi-decision
+procedure based on reducing terms to a \emph{weak-head-normal form} (see
+Figure~\ref{fig:whnf}). Note that because reduction may not terminate, our
+equality checking function could diverge.
 
 \item
   In the rule for application, when we infer the type of the function we
@@ -1134,7 +1137,7 @@ In this case, we are given a single term and we need to know whether it is
 equivalent to some $\Pi$-type. Because $\Pi$-types are \emph{head} forms, we
 can do this via reduction. Just evaluate the type $A$ to its head form, using
 the rules shown in Figure~\ref{fig:whnf}. If that form is a $\Pi$-type, then
-we can access its domain type.
+we can access its subcomponents.
 
 \begin{figure}
 \drules[whnf]{$[[whnf a = v]]$}{}{lam-beta,let-beta,type,lam,pi,var,lam-cong}
@@ -1143,26 +1146,26 @@ we can access its domain type.
 \end{figure}
 
 For closed terms, these rules correspond to a big-step evaluation relation.
-This relation is semi-decidable, so we can express it as a Haskell function
-that may diverge. 
+This relation is semi-decidable, so we can express it as a Haskell function. 
 
 
 \end{itemize}
 
 \subsection{Algorithmic definitional equality}
 
-The rules above \emph{specify} when terms should be equal, but they are
-not an algorithm. We actually need several different functions. First,
+The rules for $[[G |- a = b ]]$ \emph{specify} when terms should be equal, but they are
+not an algorithm. How do we implement its algorithmic analogue $[[G |- a <=> b]]$?
 
+In the \pif implementation, the function
+%
 \begin{verbatim}
 equate :: Term -> Term -> TcMonad ()
 \end{verbatim}
-
+%
 ensures that the two provided types are equal, or throws a type error if
-they are not. This function corresponds directly to our definition of
-type equality.
+they are not. This function corresponds directly to $[[G |- a <=> b]]$.
 
-Second, we also need to be able to determine whether a given type is equal to
+Furthermore, we also need to be able to determine whether a given type is equal to
 some ``head'' form, without knowing exactly what that form is.  For example,
 when \emph{checking} lambda expressions, we need to know that the provided
 type is of the form of a $\Pi$-type ($[[(x:A)-> B]]$). Likewise, when inferring
