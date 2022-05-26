@@ -1,4 +1,4 @@
-{- OPLSS -}
+{- pi-forall language -}
 
 -- | Utilities for managing a typechecking context.
 module Environment
@@ -36,21 +36,22 @@ module Environment
 where
 
 import Control.Monad.Except
+    ( unless, MonadError(..), MonadIO(..), ExceptT, runExceptT )
 import Control.Monad.Reader
+    ( MonadReader(local), asks, ReaderT(runReaderT) )
 {- SOLN DATA -}
 import Data.List {- STUBWITH -}
-import Data.Maybe (catMaybes, listToMaybe)
-import PrettyPrint
+import Data.Maybe ( listToMaybe )
+import PrettyPrint ( SourcePos, render, D(..), Disp(..), Doc )
 import Syntax
-import Text.ParserCombinators.Parsec.Pos (SourcePos)
-import Text.PrettyPrint.HughesPJ
-import Unbound.Generics.LocallyNameless as Unbound
+import Text.PrettyPrint.HughesPJ ( ($$), nest, sep, text, vcat )
+import qualified Unbound.Generics.LocallyNameless as Unbound
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
 -- representations), error (for error reporting), and IO
 -- (for e.g.  warning messages).
-type TcMonad = FreshMT (ReaderT Env (ExceptT Err IO))
+type TcMonad = Unbound.FreshMT (ReaderT Env (ExceptT Err IO))
 
 -- | Entry point for the type checking monad, given an
 -- initial environment, returns either an error message
@@ -58,7 +59,7 @@ type TcMonad = FreshMT (ReaderT Env (ExceptT Err IO))
 runTcMonad :: Env -> TcMonad a -> IO (Either Err a)
 runTcMonad env m =
   runExceptT $
-    runReaderT (runFreshMT m) env
+    runReaderT (Unbound.runFreshMT m) env
 
 -- | Marked locations in the source code
 data SourceLocation where

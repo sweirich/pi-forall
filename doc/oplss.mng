@@ -733,7 +733,7 @@ data Term
     App Term Arg
 
   | -- | function types   `(x : A) -> B`
-    Pi (Unbound.Bind (TName, Unbound.Embed Type) Type)
+    Pi Type (Unbound.Bind TName Type)
 
   | -- | Annotated terms `( a : A )`
     Ann Term Type
@@ -747,18 +747,20 @@ data Arg = Arg {unArg :: Term}
 \end{verbatim}
 
 As you can see, variables are represented by names. \unbound's \texttt{Bind}
-type constructor declares the scope of the bound variables. Both
-\texttt{Lam} and \texttt{Pi} bind a single variable in a \texttt{Term}.
+type constructor declares the scope of the bound variables. Both \texttt{Lam}
+and \texttt{Pi} bind a single variable in a \texttt{Term}.  However, in a
+\cd{Pi} term, we also want to store the type $[[A]]$, the type of the bound
+variable $[[x]]$.
 
 Because the syntax is all shared, a \texttt{Type} is just another
 name for a \texttt{Term}. We'll use this name just for documentation.
-
+%
 \begin{verbatim}
   type Type = Term
 \end{verbatim}
-
+%
 We also isolate function arguments as a special type \texttt{Arg}, which is
-isomorphic to \texttt{Term}. This distinction is not terribly useful for the
+isomorphic to \texttt{Term}. This distinction is not useful for the
 initial version of \pif, but is important for future extensions.
 
 The definitions of the \texttt{Arg} datatype automatically derives instances
@@ -783,7 +785,8 @@ our instance does so for these constructors of the \texttt{Term} data type and
 defers to the generic definition for the rest. 
 
 The \texttt{Subst} instance for \texttt{Term} requires telling \unbound where
-the variables:
+variables occur in the \cd{Term}. This short function pattern matches to find the 
+\cd{Var} constructor, extract its name and return it to \unbound.
 
 \begin{verbatim}
 instance Unbound.Subst Term Term where
@@ -791,9 +794,8 @@ instance Unbound.Subst Term Term where
   isvar _ = Nothing  
 \end{verbatim}
 
-For more information about \unbound, see the
-\href{https://hackage.haskell.org/package/unbound-generics}{unbound-generics
-  hackage page}.
+For more information about \unbound, see the documentation for
+\texttt{unbound-generics}\footnote{\url{https://github.com/lambdageek/unbound-generics}}.
 
 \subsection{A Type Checking monad
 {[}Environment.hs{]}}
@@ -875,7 +877,7 @@ tcTerm (Var x) Nothing = ...
  
 tcTerm Type Nothing = ...
 
-tcTerm (Pi bnd) Nothing = ...
+tcTerm (Pi tyA bnd) Nothing = ...
  
 tcTerm (App t1 t2) Nothing = ...
  

@@ -1,4 +1,4 @@
-{- PiForall language, OPLSS -}
+{- pi-forall language -}
 
 -- | A parsec-based parser for the concrete syntax
 module Parser
@@ -274,11 +274,11 @@ expr = do
         mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (Unbound.bind (n,  Unbound.embed tyA) tyB)
+               Pi tyA (Unbound.bind (n) tyB)
         mkTupleType = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-              Sigma (Unbound.bind (n, Unbound.embed tyA) tyB)
+              Sigma tyA (Unbound.bind n tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -363,10 +363,10 @@ letExpr =
   do reserved "let"
      x <- variable
      reservedOp "="
-     boundExp <- expr
+     rhs <- expr
      reserved "in"
      body <- expr
-     return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
+     return $ Let rhs (Unbound.bind x body)
 
 letPairExp :: LParser Term
 letPairExp = do
@@ -419,7 +419,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (Unbound.bind (x,Unbound.embed a) b))
+                      return $ Pi a (Unbound.bind (x) b))
          Colon a b -> return $ Ann a b
       
          Comma a b -> 
@@ -454,6 +454,6 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return (Sigma (Unbound.bind (x, Unbound.embed a) b))
+  return (Sigma a (Unbound.bind x b))
   
   

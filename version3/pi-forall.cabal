@@ -21,7 +21,7 @@ common shared-properties
   default-language:
     Haskell2010
   ghc-options:
-    -Wall -fno-warn-unused-matches -fno-warn-orphans -fno-warn-unused-top-binds
+    -Wall -fno-warn-unused-matches -fno-warn-orphans -fno-warn-unused-top-binds -fno-warn-unused-imports
   default-extensions: 
     EmptyDataDecls
     DefaultSignatures

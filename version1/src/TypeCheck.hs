@@ -1,19 +1,24 @@
-{- PiForall language -}
+{- pi-forall -}
 
 -- | The main routines for type-checking
 module TypeCheck (tcModules, inferType, checkType) where
 
 import Control.Monad.Except
-import Data.Maybe (catMaybes)
+
+import Data.Maybe ( catMaybes )
+
+
 import Environment (D (..), TcMonad)
 import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
 import Syntax
+
 import Text.PrettyPrint.HughesPJ (($$))
+
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
-import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
+
 
 -- | Infer the type of a term. The returned type is not guaranteed to be checkable(?)
 inferType :: Term -> TcMonad Type
@@ -27,49 +32,47 @@ checkType tm expectedTy = do
   nf <- Equal.whnf expectedTy
   void $ tcTerm tm (Just nf)
 
+  
 -- | Make sure that the term is a type (i.e. has type 'Type')
 tcType :: Term -> TcMonad ()
 tcType tm = void $ checkType tm Type
-
+    
 -- | check a term, producing its type
 -- The second argument is 'Nothing' in inference mode and
 -- an expected type (in weak-head-normal form) in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad Type
 -- i-var
 tcTerm t@(Var x) Nothing = do
-  sig <- Env.lookupTy x
+  sig <- Env.lookupTy x 
   return (sigType sig)
 -- i-type
 tcTerm Type Nothing = return Type
 -- i-pi
-tcTerm (Pi bnd) Nothing = do
-  ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
+tcTerm (Pi tyA bnd) Nothing = do
+  ((x), tyB) <- Unbound.unbind bnd
   tcType tyA
-  Env.extendCtx (TypeSig (Sig x tyA)) $ tcType tyB
+  Env.extendCtx (TypeSig (Sig x  tyA)) $ tcType tyB
   return Type
 -- c-lam: check the type of a function
-tcTerm (Lam bnd) (Just (Pi bnd2)) = do
+tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
-  ( (x),
-    body,
-    (_, Unbound.unembed -> tyA),
-    tyB
-    ) <-
-    Unbound.unbind2Plus bnd bnd2
+  ( (x ), body,
+    (_ ), tyB ) <- Unbound.unbind2Plus bnd bnd2
 
   -- check the type of the body of the lambda expression
-  etyB <- Env.extendCtx (TypeSig (Sig x tyA)) (checkType body tyB)
-  return (Pi bnd2)
+  Env.extendCtx (TypeSig (Sig x  tyA)) (checkType body tyB)
+  return (Pi tyA bnd2)
+   
 tcTerm (Lam _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not ", DD nf]
+
 -- i-app
 tcTerm (App t1 a2) Nothing = do
   ty1 <- inferType t1
   (x, tyA, tyB) <- Equal.ensurePi ty1
-
-  ty2 <- checkType (unArg a2) tyA
-  -- NOTE: we're replacing an inferrable variable with a
-  -- a checkable term. So the result will not necessarily
+  checkType (unArg a2) tyA
+  -- NOTE: we're replacing an inferrable variable with a 
+  -- a checkable term. So the result will not necessarily 
   -- be checkable as a type.
   return (Unbound.subst x (unArg a2) tyB)
 
@@ -78,33 +81,44 @@ tcTerm (Ann tm ty) Nothing = do
   tcType ty
   checkType tm ty
   return ty
-
+  
 -- practicalities
 -- remember the current position in the type checking monad
 tcTerm (Pos p tm) mTy =
   Env.extendSourceLocation p tm $ tcTerm tm mTy
 -- ignore term, just return type annotation
 tcTerm TrustMe (Just ty) = return ty
+  
+-- i-unit
 tcTerm TyUnit Nothing = return Type
 tcTerm LitUnit Nothing = return TyUnit
+
 -- i-bool
 tcTerm TyBool Nothing = Env.err [DS "unimplemented"]
+
 -- i-true/false
 tcTerm (LitBool b) Nothing = Env.err [DS "unimplemented"]
+
 -- c-if
 tcTerm t@(If t1 t2 t3) (Just ty) = Env.err [DS "unimplemented"]
-tcTerm (Let bnd) ann = Env.err [DS "unimplemented"]
-tcTerm t@(Sigma bnd) Nothing = Env.err [DS "unimplemented"]
+
+tcTerm (Let rhs bnd) ann =   Env.err [DS "unimplemented"]
+
+
+
+
+
+
+tcTerm t@(Sigma tyA bnd) Nothing = Env.err [DS "unimplemented"]
+
 tcTerm t@(Prod a b) (Just ty) = Env.err [DS "unimplemented"]
+
 tcTerm t@(LetPair p bnd) (Just ty) = Env.err [DS "unimplemented"]
+
 tcTerm PrintMe (Just ty) = do
   gamma <- Env.getLocalCtx
-  Env.warn
-    [ DS "Unmet obligation.\nContext: ",
-      DD gamma,
-      DS "\nGoal: ",
-      DD ty
-    ]
+  Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
+        DS "\nGoal: ", DD ty]
   return ty
 
 -- c-infer
@@ -112,7 +126,8 @@ tcTerm tm (Just ty) = do
   ty' <- inferType tm
   unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty']
   return ty'
-tcTerm tm Nothing =
+
+tcTerm tm Nothing = 
   Env.err [DS "Must have a type annotation to check ", DD tm]
 
 ---------------------------------------------------------------------
@@ -121,12 +136,14 @@ tcTerm tm Nothing =
 -- | Create a Def if either side normalizes to a single variable
 def :: Term -> Term -> TcMonad [Decl]
 def t1 t2 = do
-  nf1 <- Equal.whnf t1
-  nf2 <- Equal.whnf t2
-  case (nf1, nf2) of
-    (Var x, _) -> return [Def x nf2]
-    (_, Var x) -> return [Def x nf1]
-    _ -> return []
+    nf1 <- Equal.whnf t1
+    nf2 <- Equal.whnf t2
+    case (nf1, nf2) of
+      (Var x, _) -> return [Def x nf2]
+      (_, Var x) -> return [Def x nf1]
+      _ -> return []
+
+
 
 --------------------------------------------------------
 -- Using the typechecker for decls and modules and stuff
@@ -190,12 +207,13 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [TypeSig (Sig n ty), Def n term]
+          return $ AddCtx [TypeSig (Sig n  ty), Def n term]
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
                 disp
-                  [ DS "When checking the term ",
+                  [ 
+                    DS "When checking the term ",
                     DD term,
                     DS "against the signature",
                     DD sig
@@ -217,6 +235,8 @@ tcEntry (TypeSig sig) = do
   duplicateTypeBindingCheck sig
   tcType (sigType sig)
   return $ AddHint sig
+
+
 tcEntry _ = Env.err "unimplemented"
 
 -- | Make sure that we don't have the same name twice in the
@@ -240,3 +260,5 @@ duplicateTypeBindingCheck sig = do
               DD sig'
             ]
        in Env.extendSourceLocation p sig $ Env.err msg
+
+

@@ -1,4 +1,4 @@
-{- OPLSS -}
+{- pi-forall language -}
 
 -- | Utilities for managing a typechecking context.
 module Environment
@@ -36,20 +36,21 @@ module Environment
 where
 
 import Control.Monad.Except
+    ( unless, MonadError(..), MonadIO(..), ExceptT, runExceptT )
 import Control.Monad.Reader
+    ( MonadReader(local), asks, ReaderT(runReaderT) )
 import Data.List 
-import Data.Maybe (catMaybes, listToMaybe)
-import PrettyPrint
+import Data.Maybe ( listToMaybe )
+import PrettyPrint ( SourcePos, render, D(..), Disp(..), Doc )
 import Syntax
-import Text.ParserCombinators.Parsec.Pos (SourcePos)
-import Text.PrettyPrint.HughesPJ
-import Unbound.Generics.LocallyNameless as Unbound
+import Text.PrettyPrint.HughesPJ ( ($$), nest, sep, text, vcat )
+import qualified Unbound.Generics.LocallyNameless as Unbound
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
 -- representations), error (for error reporting), and IO
 -- (for e.g.  warning messages).
-type TcMonad = FreshMT (ReaderT Env (ExceptT Err IO))
+type TcMonad = Unbound.FreshMT (ReaderT Env (ExceptT Err IO))
 
 -- | Entry point for the type checking monad, given an
 -- initial environment, returns either an error message
@@ -57,7 +58,7 @@ type TcMonad = FreshMT (ReaderT Env (ExceptT Err IO))
 runTcMonad :: Env -> TcMonad a -> IO (Either Err a)
 runTcMonad env m =
   runExceptT $
-    runReaderT (runFreshMT m) env
+    runReaderT (Unbound.runFreshMT m) env
 
 -- | Marked locations in the source code
 data SourceLocation where
@@ -159,14 +160,6 @@ lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
   m (Telescope, Maybe [ConstructorDef])
-{-
-lookupTCon "Bool" = do
-  return (Telescope [], Just [ trueConstructorDef, falseConstructorDef])
-lookupTCon "Unit" = do
-  return (Telescope [], Just [ unitConstructorDef ] )
-lookupTCon "Sigma" = do
-  return (sigmaTele, Just [prodConstructorDef])
-  -}
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
@@ -196,11 +189,6 @@ lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
   m [(TCName, (Telescope, ConstructorDef))]
-{-
-lookupDConAll "True" = return $ [ ("Bool", (Telescope [], trueConstructorDef))] 
-lookupDConAll "False" = return $ [ ("Bool", (Telescope [], falseConstructorDef))] 
-lookupDConAll "()" = return $ [ ("Unit", (Telescope [], unitConstructorDef))] 
-lookupDConAll "Prod" = return $ [("Sigma", (sigmaTele, prodConstructorDef))] -}
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
@@ -268,9 +256,6 @@ extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m
 extendCtxTele [] m = m
 extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
---extendCtxTele (AssnEq t1 t2 : tele) m = do
---  warn [DS "extendCtxTele found:", DD t1, DS "=", DD t2]
---  extendCtxTele tele m
 extendCtxTele (TypeSig sig : tele) m =
   extendCtx (TypeSig sig) $ extendCtxTele tele m
 extendCtxTele ( _ : tele) m = 

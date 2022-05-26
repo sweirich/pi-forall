@@ -1,4 +1,4 @@
-{- PiForall language, OPLSS -}
+{- pi-forall language -}
 
 -- | A Pretty Printer.
 module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render) where
@@ -204,8 +204,8 @@ instance Display Term where
     df <- display f
     dx <- display x
     return $ wrapf f df <+> dx
-  display (Pi bnd) = do
-    Unbound.lunbind bnd $ \((n {- SOLN EP -}, ep {- STUBWITH -}, Unbound.unembed -> a), b) -> do
+  display (Pi a bnd) = do
+    Unbound.lunbind bnd $ \((n {- SOLN EP -}, ep {- STUBWITH -}), b) -> do
       st <- ask
       da <- display a
       dn <- display n
@@ -239,8 +239,8 @@ instance Display Term where
       text "if" <+> da <+> text "then" <+> db
         <+> text "else"
         <+> dc
-  display (Sigma bnd) =
-    Unbound.lunbind bnd $ \((x, Unbound.unembed -> tyA), tyB) -> do
+  display (Sigma tyA bnd) =
+    Unbound.lunbind bnd $ \(x, tyB) -> do
       dx <- display x
       dA <- display tyA
       dB <- display tyB
@@ -272,9 +272,9 @@ instance Display Term where
           <+> da 
           <+> text "in")
         $$ dbody
-  display (Let bnd) = do
-    Unbound.lunbind bnd $ \((x, a), b) -> do
-      da <- display (Unbound.unembed a)
+  display (Let a bnd) = do
+    Unbound.lunbind bnd $ \(x, b) -> do
+      da <- display a
       dx <- display x
       db <- display b
       return $
@@ -363,7 +363,7 @@ wraparg st a = case unArg a of
   LitUnit -> std
   TyBool -> std
   LitBool b -> std
-  Sigma _ -> std
+  Sigma _ _ -> std
   Prod _ _ -> force
   Ann b _ -> wraparg st a {unArg = b}
   Pos _ b -> wraparg st a {unArg = b}

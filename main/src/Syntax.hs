@@ -1,4 +1,4 @@
-{- PiForall language, OPLSS -}
+{- pi-forall language -}
 
 -- | The abstract syntax of the simple dependently typed language
 -- See comment at the top of 'Parser' for the concrete syntax of this language
@@ -58,7 +58,7 @@ data Term
   | -- | application `a b`
     App Term Arg
   | -- | function type   `(x : A) -> B`
-    Pi (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}, Unbound.Embed Type) Type)
+    Pi Type (Unbound.Bind (TName {- SOLN EP -}, Epsilon {- STUBWITH -}) Type)
   | -- | Annotated terms `( a : A )`
     Ann Term Type
   | -- | marked source position, for error messages
@@ -67,9 +67,9 @@ data Term
     TrustMe
   | -- | a directive to the type checker to print out the current context
     PrintMe
-  | -- | let expression, introduces a new (recursive) definition in the ctx
+  | -- | let expression, introduces a new (non-recursive) definition in the ctx
     -- | `let x = a in b`
-    Let (Unbound.Bind (TName, Unbound.Embed Term) Term)
+    Let Term (Unbound.Bind TName Term)
   | -- | The type with a single inhabitant, called `Unit`
     TyUnit
   | -- | The inhabitant of `Unit`, written `()`
@@ -81,7 +81,7 @@ data Term
   | -- | `if a then b1 else b2` expression for eliminating booleans
     If Term Term Term
   | -- | sigma type (homework), written `{ x : A | B }`  
-    Sigma (Unbound.Bind (TName, Unbound.Embed Term) Term)
+    Sigma Term (Unbound.Bind TName Term)
   | -- | introduction for sigmas `( a , b )`
     Prod Term Term
   | -- | elimination form  `let (x,y) = a in b`
@@ -286,7 +286,7 @@ preludeDataDecls =
         sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
         prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
         sigA = Sig aname Rel Type
-        sigB = Sig bname Rel (Pi (Unbound.bind (xname, Rel, Unbound.embed (Var aname)) Type))
+        sigB = Sig bname Rel (Pi (Var aname) (Unbound.bind (xname, Rel) Type))
         sigX = Sig xname Rel (Var aname)
         sigY = Sig yname Rel (App (Var bname) (Arg Rel (Var xname)))
 
@@ -359,9 +359,11 @@ x0 = Unbound.string2Name "x"
 y0 :: TName
 y0 = Unbound.string2Name "y"
 
+-- '\x -> x`
 idx :: Term
 idx = Lam (Unbound.bind (x0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var x0))
 
+-- '\y -> y`
 idy :: Term
 idy = Lam (Unbound.bind (y0 {- SOLN EP -}, Rel {- STUBWITH -}) (Var y0))
 
@@ -386,13 +388,13 @@ instance Unbound.Subst Term Term where
   isvar _ = Nothing
 
 
-
+-- '(y : x) -> y'
 pi1 :: Term 
-pi1 = Pi (Unbound.bind (x0, {- SOLN EP -} Rel, {- STUBWITH -} Unbound.embed (Var x0)) (Var x0))
+pi1 = Pi (Var x0) (Unbound.bind (y0{- SOLN EP -}, Rel{- STUBWITH -}) (Var y0))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi (Unbound.bind (y0, {- SOLN EP -} Rel, {- STUBWITH -} Unbound.embed TyBool) (Var y0))
+pi2 = Pi TyBool (Unbound.bind (y0{- SOLN EP -}, Rel{- STUBWITH -}) (Var y0))
 
 -- >>> Unbound.aeq (Unbound.subst x0 TyBool pi1) pi2
 -- True

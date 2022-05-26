@@ -1,4 +1,4 @@
-{- PiForall language, OPLSS -}
+{- pi-forall language -}
 
 -- | The command line interface to the pi type checker. 
 -- Also provides functions for type checking individual terms
@@ -6,16 +6,12 @@
 module Main(goFilename,go,main) where
 
 import Modules (getModules)
-import PrettyPrint
-import Environment
-import TypeCheck
-import Parser
-
-import Text.PrettyPrint.HughesPJ (render)
-import Text.ParserCombinators.Parsec.Error 
-
-import Control.Monad.Except
-
+import PrettyPrint ( render, Disp(..) )
+import Environment ( emptyEnv, runTcMonad )
+import TypeCheck ( tcModules, inferType )
+import Parser ( parseExpr )
+import Text.ParserCombinators.Parsec.Error ( errorPos, ParseError ) 
+import Control.Monad.Except ( runExceptT )
 import System.Environment(getArgs)
 import System.Exit (exitFailure,exitSuccess)
 import System.FilePath (splitFileName)
@@ -45,7 +41,7 @@ go str = do
 putParseError :: ParseError -> IO ()  
 putParseError parseError = do
   putStrLn $ render $ disp $ errorPos parseError
-  putStrLn $ show parseError
+  print parseError
   
 -- | Display a type error to the user  
 putTypeError :: Disp d => d -> IO ()  
@@ -56,7 +52,7 @@ putTypeError typeError = do
 -- | Type check the given file    
 goFilename :: String -> IO ()  
 goFilename pathToMainFile = do
-  let prefixes = currentDir : mainFilePrefix : []
+  let prefixes = [currentDir, mainFilePrefix]
       (mainFilePrefix, name) = splitFileName pathToMainFile
       currentDir = "" 
   putStrLn $ "processing " ++ name ++ "..."

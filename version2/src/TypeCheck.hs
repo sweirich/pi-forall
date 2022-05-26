@@ -1,4 +1,4 @@
-{- PiForall language -}
+{- pi-forall -}
 
 -- | The main routines for type-checking
 module TypeCheck (tcModules, inferType, checkType) where
@@ -18,7 +18,6 @@ import Text.PrettyPrint.HughesPJ (($$))
 
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
-import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
 
 -- | Infer the type of a term. The returned type is not guaranteed to be checkable(?)
@@ -49,24 +48,20 @@ tcTerm t@(Var x) Nothing = do
 -- i-type
 tcTerm Type Nothing = return Type
 -- i-pi
-tcTerm (Pi bnd) Nothing = do
-  ((x,  Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
+tcTerm (Pi tyA bnd) Nothing = do
+  ((x), tyB) <- Unbound.unbind bnd
   tcType tyA
   Env.extendCtx (TypeSig (Sig x  tyA)) $ tcType tyB
   return Type
 -- c-lam: check the type of a function
-tcTerm (Lam bnd) (Just (Pi bnd2)) = do
+tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
-  ( (x ),
-    body,
-    (_,  Unbound.unembed -> tyA),
-    tyB
-    ) <-
-    Unbound.unbind2Plus bnd bnd2
+  ( (x ), body,
+    (_ ), tyB ) <- Unbound.unbind2Plus bnd bnd2
 
   -- check the type of the body of the lambda expression
-  etyB <- Env.extendCtx (TypeSig (Sig x  tyA)) (checkType body tyB)
-  return (Pi bnd2)
+  Env.extendCtx (TypeSig (Sig x  tyA)) (checkType body tyB)
+  return (Pi tyA bnd2)
    
 tcTerm (Lam _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not ", DD nf]
@@ -74,9 +69,8 @@ tcTerm (Lam _) (Just nf) =
 -- i-app
 tcTerm (App t1 a2) Nothing = do
   ty1 <- inferType t1
-  (x,  tyA, tyB) <- Equal.ensurePi ty1
-
-  ty2 <-  checkType (unArg a2) tyA
+  (x, tyA, tyB) <- Equal.ensurePi ty1
+  checkType (unArg a2) tyA
   -- NOTE: we're replacing an inferrable variable with a 
   -- a checkable term. So the result will not necessarily 
   -- be checkable as a type.
@@ -95,6 +89,7 @@ tcTerm (Pos p tm) mTy =
 -- ignore term, just return type annotation
 tcTerm TrustMe (Just ty) = return ty
   
+-- i-unit
 tcTerm TyUnit Nothing = return Type
 tcTerm LitUnit Nothing = return TyUnit
 
@@ -117,8 +112,8 @@ tcTerm t@(If t1 t2 t3) (Just ty) = do
   return ty
 
 
-tcTerm (Let bnd) ann = do
-  ((x, Unbound.unembed -> rhs), body) <- Unbound.unbind bnd
+tcTerm (Let rhs bnd) ann = do
+  (x, body) <- Unbound.unbind bnd
   aty <- inferType rhs 
   let sig = mkSig x aty
   ty <- Env.extendCtxs [TypeSig sig, Def x rhs] $
@@ -170,8 +165,8 @@ tcTerm t@(Contra p) (Just ty) = do
         ]
 
 
-tcTerm t@(Sigma bnd) Nothing = do
-  ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
+tcTerm t@(Sigma tyA bnd) Nothing = do
+  (x, tyB) <- Unbound.unbind bnd
   tcType tyA
   Env.extendCtx (TypeSig (mkSig x tyA)) $ tcType tyB
   return Type
@@ -179,11 +174,11 @@ tcTerm t@(Sigma bnd) Nothing = do
 
 tcTerm t@(Prod a b) (Just ty) = do
   case ty of
-    (Sigma bnd) -> do
-      ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
+    (Sigma tyA bnd) -> do
+      (x, tyB) <- Unbound.unbind bnd
       checkType a tyA
       Env.extendCtxs [TypeSig (mkSig x tyA), Def x a] $ checkType b tyB
-      return (Sigma (Unbound.bind (x, Unbound.embed tyA) tyB))
+      return (Sigma tyA (Unbound.bind x tyB))
     _ ->
       Env.err
         [ DS "Products must have Sigma Type",
@@ -196,8 +191,8 @@ tcTerm t@(LetPair p bnd) (Just ty) = do
   pty <- inferType p
   pty' <- Equal.whnf pty
   case pty' of
-    Sigma bnd' -> do
-      ((x, Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd'
+    Sigma tyA bnd' -> do
+      (x, tyB) <- Unbound.unbind bnd'
       ((x', y'), body) <- Unbound.unbind bnd
       let tyB' = Unbound.subst x (Var x') tyB
       decl <- def p (Prod (Var x') (Var y'))

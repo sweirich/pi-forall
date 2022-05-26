@@ -1,4 +1,4 @@
-{- PiForall language, OPLSS -}
+{- pi-forall language -}
 
 -- | A parsec-based parser for the concrete syntax
 module Parser
@@ -261,9 +261,7 @@ natural :: LParser Int
 natural = fromInteger <$> Token.natural tokenizer
 
 natenc :: LParser Term
-natenc =
-  do n <- natural
-     return $ encode n 
+natenc = encode <$> natural 
    where encode 0 = DCon "Zero" []
          encode n = DCon "Succ" [Arg Rel (encode (n-1))]
 
@@ -403,7 +401,7 @@ expr = do
         mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi (Unbound.bind (n, {- SOLN EP -}Rel, {- STUBWITH -} Unbound.embed tyA) tyB)
+               Pi tyA (Unbound.bind (n{- SOLN EP -},Rel{- STUBWITH -}) tyB)
         mkTupleType = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
@@ -520,10 +518,10 @@ letExpr =
   do reserved "let"
      x <- variable
      reservedOp "="
-     boundExp <- expr
+     rhs <- expr
      reserved "in"
      body <- expr
-     return $ (Let (Unbound.bind (x,Unbound.embed boundExp) body))
+     return $ Let rhs (Unbound.bind x body)
 
 letPairExp :: LParser Term
 letPairExp = do
@@ -551,7 +549,7 @@ impProd =
         <|> ((,) <$> Unbound.fresh wildcardName <*> expr))
      reservedOp "->" 
      tyB <- expr
-     return $ Pi (Unbound.bind (x,Irr, Unbound.embed tyA) tyB)
+     return $ Pi tyA (Unbound.bind (x,Irr) tyB)
 
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
@@ -588,7 +586,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (Unbound.bind (x,{- SOLN EP -}Rel,{- STUBWITH -}Unbound.embed a) b))
+                      return $ Pi a (Unbound.bind (x{- SOLN EP -},Rel{- STUBWITH -}) b))
          Colon a b -> return $ Ann a b
       
          Comma a b -> 

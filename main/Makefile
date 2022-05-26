@@ -97,7 +97,7 @@ cabal-dev:
 	@perl -i -pe $(subst SOLN,SOLN DATA,$(STUBREGEX)) $@
 	@perl -i -pe $(subst SOLN,SOLN EQUAL,$(STUBREGEX)) $@
 	@perl -i -pe $(subst SOLN,SOLN EP,$(STUBREGEX)) $@
-	@if [[ $@ == *.hs ]]; then $(FORMAT) $@; fi
+#	@if [[ $@ == *.hs ]]; then $(FORMAT) $@; fi
 
 ../version2 : Makefile $(EXTRA)
 	@echo ========== Creating ../Version 2 ==========

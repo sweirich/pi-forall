@@ -1,4 +1,4 @@
-{- PiForall language -}
+{- pi-forall language -}
 
 -- | Compare two terms for equality
 module Equal (whnf, equate, ensurePi, 
@@ -30,9 +30,9 @@ equate t1 t2 = do
     (App a1 a2, App b1 b2) -> do
       equate a1 b1 
       equateArg a2 b2
-    (Pi bnd1, Pi bnd2) -> do
-      ((_,  Unbound.unembed -> tyA1), tyB1, 
-       (_,  Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+    (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do
+      ((_), tyB1, 
+       (_), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
 
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
@@ -50,15 +50,13 @@ equate t1 t2 = do
     (If a1 b1 c1, If a2 b2 c2) -> 
       equate a1 a2 >> equate b1 b2 >> equate c1 c2
       
-    (Let bnd1, Let bnd2) -> do
-      Just ((x,Unbound.unembed -> rhs1), body1, 
-            (_,Unbound.unembed -> rhs2), body2) <- Unbound.unbind2 bnd1 bnd2
+    (Let rhs1 bnd1, Let rhs2 bnd2) -> do
+      Just (x, body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
       equate rhs1 rhs2
       equate body1 body2
             
-    (Sigma bnd1, Sigma bnd2) -> do 
-      Just ((x, Unbound.unembed -> tyA1), tyB1, 
-            (_, Unbound.unembed -> tyA2), tyB2) <- Unbound.unbind2 bnd1 bnd2
+    (Sigma tyA1 bnd1, Sigma tyA2 bnd2) -> do 
+      Just (x, tyB1, _, tyB2) <- Unbound.unbind2 bnd1 bnd2
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -120,9 +118,9 @@ ensurePi :: Type ->
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
-    (Pi bnd) -> do 
-      ((x,  Unbound.unembed -> tyA), tyB) <- Unbound.unbind bnd
-      return (x,  tyA, tyB)
+    (Pi tyA bnd) -> do 
+      ((x), tyB) <- Unbound.unbind bnd
+      return (x, tyA, tyB)
     _ -> Env.err [DS "Expected a function type, instead found", DD nf]
     
     
@@ -181,8 +179,8 @@ whnf (LetPair a bnd) = do
 whnf (Ann tm _) = whnf tm
 whnf (Pos _ tm) = whnf tm
  
-whnf (Let bnd)  = do
-  ((x,Unbound.unembed->rhs),body) <- Unbound.unbind bnd
+whnf (Let rhs bnd)  = do
+  (x,body) <- Unbound.unbind bnd
   whnf (Unbound.subst x rhs body)  
 whnf (Subst tm pf) = do
   pf' <- whnf pf
