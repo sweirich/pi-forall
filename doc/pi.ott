@@ -132,6 +132,7 @@ Jwhnf :: '' ::=
 
 defn
 whnf a = v ::    :: whnf :: 'whnf_' 
+{{ tex [[whnf]]\ [[a]] \leadsto [[v]] }}
 {{ com evaluate a to v }}
 by
 

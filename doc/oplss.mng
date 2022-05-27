@@ -1245,6 +1245,10 @@ forms, we can do this via reduction. This rule evaluates the type $A$ to its
 head form, using the rules shown in Figure~\ref{fig:whnf}. If that form is a
 $\Pi$-type, then we can access its subcomponents.
 
+\item Whenever we call \cd{checkType} we should call it with a term that 
+has already been reduced to normal form. This will allow \rref{c-lam} to 
+match against a literal function type.
+
 \end{itemize}
 
 \begin{figure}
