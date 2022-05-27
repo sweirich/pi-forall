@@ -46,7 +46,7 @@ data Term
   | -- | abstraction  `\x. a`
     Lam (Unbound.Bind TName Term)
   | -- | application `a b`
-    App Term Arg
+    App Term Term
   | -- | function type   `(x : A) -> B`
     Pi Type (Unbound.Bind TName Type)
   | -- | annotated terms `( a : A )`
@@ -79,8 +79,24 @@ data Term
   deriving (Show, Generic)
 
 -- | An argument to a function
-data Arg = Arg {unArg :: Term}
-  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
+
+-- | Epsilon annotates the stage of a variable
+data Epsilon
+  = Rel
+  | Irr
+  deriving
+    ( Eq,
+      Show,
+      Read,
+      Bounded,
+      Enum,
+      Ord,
+      Generic,
+      Unbound.Alpha,
+      Unbound.Subst Term
+    )
+
+{- STUBWITH -}
 
 -----------------------------------------
 

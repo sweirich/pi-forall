@@ -47,7 +47,7 @@ data Term
   | -- | abstraction  `\x. a`
     Lam (Unbound.Bind {- SOLN EP -}(TName, Epsilon){- STUBWITH TName -} Term)
   | -- | application `a b`
-    App Term Arg
+    App Term {- SOLN EP -}Arg{- STUBWITH Term -}
   | -- | function type   `(x : A) -> B`
     Pi Type (Unbound.Bind {- SOLN EP -}(TName, Epsilon){- STUBWITH TName -} Type)
   | -- | annotated terms `( a : A )`
@@ -90,8 +90,10 @@ data Term
   deriving (Show, Generic)
 
 -- | An argument to a function
-data Arg = Arg {argEp :: Epsilon,  unArg :: Term}
+data Arg = Arg {argEp :: Epsilon, unArg :: Term}
   deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
+
+
 -- | Epsilon annotates the stage of a variable
 data Epsilon
   = Rel
@@ -107,7 +109,7 @@ data Epsilon
       Unbound.Alpha,
       Unbound.Subst Term
     )
-
+{- STUBWITH -}
 
 
 -----------------------------------------

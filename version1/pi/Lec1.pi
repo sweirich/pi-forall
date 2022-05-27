@@ -8,6 +8,13 @@ id = \x y . y
 idid : ((x:Type) -> (y : x) -> x) 
 idid = id ((x:Type) -> (y : x) -> x) id
 
+idT : Type
+idT = (x:Type) -> x -> x
+
+selfapp : idT -> idT
+selfapp = (\x.x : (idT -> idT) -> (idT -> idT)) (\x.x)
+
+
 compose : (A : Type) -> (B : Type) -> (C:Type) ->
   (B -> C) -> (A -> B) -> (A -> C)
 compose = \ A B C f g x. (f (g x))
@@ -29,3 +36,16 @@ loop = loop
 unit : Type
 unit = (x:Type) -> x -> x
 
+
+
+bool : Type 
+bool = (A:Type) -> A -> A -> A 
+
+true : bool
+true = \A x y. x
+
+false : bool
+false = \A x y. y
+
+cond : bool -> (x:Type) -> x -> x -> x
+cond = \ b . b 

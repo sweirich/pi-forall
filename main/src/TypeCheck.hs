@@ -29,12 +29,14 @@ inferType :: Term -> TcMonad Type
 inferType t = tcTerm t Nothing
 
 -- | Check that the given term has the expected type.
--- The provided type does not necessarily to be in whnf, but it should be
--- already checked to be a good type
+-- The provided type should be already checked to be a good type
 checkType :: Term -> Type -> TcMonad ()
-checkType tm expectedTy = do
-  nf <- Equal.whnf expectedTy
+{- SOLN EQUAL -}{- STUBWITH checkType tm (Pos _ ty) = checkType tm ty
+checkType tm (Ann ty _) = checkType tm ty -}
+checkType tm ty = {- SOLN EQUAL -} do
+  nf <- Equal.whnf ty
   void $ tcTerm tm (Just nf)
+{- STUBWITH void $ tcTerm tm (Just ty) -}
 
   
 -- | Make sure that the term is a type (i.e. has type 'Type')
@@ -42,8 +44,7 @@ tcType :: Term -> TcMonad ()
 tcType tm = void $ {- SOLN EP -}Env.withStage Irr $ {- STUBWITH -}checkType tm Type
     
 -- | check a term, producing its type
--- The second argument is 'Nothing' in inference mode and
--- an expected type (in weak-head-normal form) in checking mode
+-- The second argument is 'Nothing' in inference mode and an expected type in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad Type
 -- i-var
 tcTerm t@(Var x) Nothing = do
@@ -71,16 +72,26 @@ tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
 tcTerm (Lam _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not ", DD nf]
 -- i-app
-tcTerm (App t1 a2) Nothing = do
+tcTerm (App t1 t2) Nothing = do
   ty1 <- inferType t1
-  (x,{- SOLN EP -} ep2, {- STUBWITH -} tyA, tyB) <- Equal.ensurePi ty1
 {- SOLN EP -}
-  guard (argEp a2 == ep2) 
-  Env.withStage (argEp a2) ${- STUBWITH -}  checkType (unArg a2) tyA
-  -- NOTE: we're replacing an inferrable variable with a 
-  -- a checkable term. So the result will not necessarily 
-  -- be checkable as a type.
-  return (Unbound.subst x (unArg a2) tyB)
+  (x, ep1, tyA, tyB) <- Equal.ensurePi ty1
+  guard (ep1 == argEp t2) 
+  Env.withStage ep1 $ checkType (unArg t2) tyA
+  return (Unbound.subst x (unArg t2) tyB)
+  {- STUBWITH 
+  
+  let ensurePi :: Type -> TcMonad (TName, Type, Type) 
+      ensurePi (Ann a _) = ensurePi a 
+      ensurePi (Pos _ a) = ensurePi a
+      ensurePi (Pi tyA bnd) = do
+        (x, tyB) <- Unbound.unbind bnd
+        return (x,tyA,tyB)
+      ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty]
+  (x,tyA,tyB) <- ensurePi ty1
+  checkType t2 tyA
+  return (Unbound.subst x t2 tyB) -}
+  
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do
@@ -223,7 +234,7 @@ tcTerm t@(Case scrut alts) (Just ty) = do
 {- SOLN EQUAL -}
 tcTerm (TyEq a b) Nothing = do
   aTy <- inferType a
-  bTy <- checkType b aTy
+  checkType b aTy
   return Type
 tcTerm Refl (Just ty@(TyEq a b)) = do
   Equal.equate a b

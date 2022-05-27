@@ -76,7 +76,7 @@ Key feature & \pif version      & Section\\
 Core system & \texttt{version1} & Sections~\ref{sec:simple}, \ref{sec:bidirectional}, and \ref{sec:implementation} \\
 Equality    & \texttt{version2} & Sections~\ref{sec:equality} and ~\ref{sec:pattern-matching}\\
 Irrelevance & \texttt{version3} & Section ~\ref{sec:irrelevance} \\
-Datatypes   & \texttt{full}     & Section ~\ref{sec:datatypes} \\
+Datatypes   & \texttt{full}     & Sections~\ref{sec:example} and ~\ref{sec:datatypes} \\
 \end{tabular}
 \end{center}
 \caption{Connection between sections and \pif versions}
@@ -98,6 +98,9 @@ features described in that chapter can be implemented.
 
 
 \begin{itemize}
+\item Section~\ref{sec:examples} starts with some examples of the full \pif
+  language so that you can see how the pieces fit together.
+
 \item Section~\ref{sec:simple} presents the mathematical specification of the
   core type system including its concrete syntax (as found in \pif source
   files), abstract syntax, and core typing rules (written using standard
@@ -218,6 +221,103 @@ go for more information.
   for typesetting type systems and mathematical specifications of programming
   languages.
 \end{enumerate}
+
+\section{A taste of \pif}
+\label{sec:examples}
+
+Before diving into the design of the \pif language, we'll start with a few
+motivating examples for dependent types. This way, you'll get to learn a bit
+about the syntax of \pif and anticipate the definitions that are to come.
+
+One example that dependently-typed languages are really good at is tracking
+the length of lists. 
+
+In \pif, we can define a datatype for length-indexed lists (often called
+vectors) as follows.
+\begin{piforall}
+data Vec (A : Type) (n : Nat) : Type where
+  Nil  of                       [n = Zero] 
+  Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
+\end{piforall}
+The type \cd{Vec A n} has two parameters: \cd{A} the type of elements in the
+list and \cd{n}, a natural number indicating the length of the list. This
+datatype also has two constructors: \cd{Nil} and \cd{Cons}, corresponding to
+empty and non empty lists. The \cd{Nil} constructor constrains the length
+parameter to be \cd{Zero} when it is used and the \cd{Cons} constructor
+constrains it to be one more than the length of the tail of the list.  In the
+definition of \cd{Cons}, the \cd{m} parameter is the length of the tail of the
+list. This parameter is written in square brackets to indicate that it should
+be \emph{irrelevant}: this value is only for type checking and functions
+should not try to use it.
+
+For example, we can use \pif to check that the list below contains exactly
+three three boolean values.
+\begin{piforall}
+v3 : Vec Bool 3 
+v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
+\end{piforall}
+Above, \pif never infers arguments, so we must always supply the length of the 
+tail whenever we use \cd{Cons}. 
+
+We can also map over length indexed lists. 
+\begin{piforall}
+map : [A:Type] -> [B:Type] -> [n:Nat] -> (A -> B) -> Vec A n -> Vec B n
+map = \ [A][B][n] f v.
+  case v of 
+    Nil -> Nil
+    Cons [m] x xs -> Cons [m] (f x) (map[A][B][m] f xs)
+\end{piforall}
+As \pif never infers arguments, it doesn't infer the type arguments \cd{A} and
+\cd{B}. So the map function needs to take them explicitly (i.e. the parameters
+\cd{[A][B][n]} at the beginning of the function definition) and they need to
+be provided in the recursive call too.
+
+Whenever we call map, we need to supply the appropriate parameters for the 
+function and vector that we are giving to \cd{map}. For example, to map the
+boolean \cd{not} function, of type \cd{Bool -> Bool}, we need to provide 
+these two \cd{Bools} along with the length of the vector.
+
+\begin{piforall}
+v4 : Vec Bool 3
+v4 = map [Bool][Bool][3] not v3
+\end{piforall}
+
+Because we are statically tracking the length of vectors, we can write 
+a safe indexing operation. We index into the vector using an index where
+the type bounds its range. Below, the \cd{Fin} type has a parameter 
+that states what length of vector it is appropriate for. 
+\begin{piforall}
+data Fin (n : Nat) : Type where
+  Zero of [m:Nat]       [n = Succ m]
+  Succ of [m:Nat](Fin m)[n = Succ m]
+\end{piforall}
+
+For example, the type \cd{Fin 3} has exactly three values:
+\begin{piforall}
+x1 : Fin 3
+x1 = Succ [2] (Succ [1] (Zero [0]))
+
+x2 : Fin 3
+x2 = Succ [2] (Zero [1])
+
+x3 : Fin 3
+x3 = Zero [2]
+\end{piforall}
+
+With the \cd{Fin} type, we can safely index vectors. The following 
+function is guaranteed to return a result because the index is within 
+range.
+\begin{piforall}
+nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
+nth = \[a][n] v f. case f of 
+   Zero [m] -> case v of 
+           Cons [m'] x xs -> x 
+   Succ [m] f' -> case v of 
+           Cons [m'] x xs -> nth [a][m] xs f'
+\end{piforall}
+Note how, in the case analysis above, neither \cd{case} requires a branch for
+the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
+case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
 
 \section{A Simple Core Language}
@@ -1148,18 +1248,18 @@ $\Pi$-type, then we can access its subcomponents.
 \end{itemize}
 
 \begin{figure}
-\drules[whnf]{$[[whnf a = v]]$}{}{lam-beta,let-beta,type,lam,pi,var,lam-cong}
-\caption{Weak-head normal form reduction}
+\drules[whnf]{$[[whnf a = v]]$}{Weak head normal form reduction}{lam-beta,let-beta,type,lam,pi,var,lam-cong}
+\caption{Relation computing the weak head normal form of a term}
 \label{fig:whnf}
 \end{figure}
 
-\paragraph{Weak-head normal form} 
+\paragraph{Weak head normal form} 
 
 The following judgement (shown in Figure~\ref{fig:whnf})
 %
 \[ \fbox{$[[whnf a = v]]$} \]
 %
-describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak-head normal form (whnf)}. 
+describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak head normal form (whnf)}. 
 For closed terms, these rules correspond to a big-step evaluation relation and produce 
 a value. For open terms, the rules produce a term that is either headed by a variable 
 or by some head form (i.e. $\lambda$ or $\Pi$). 
@@ -1247,7 +1347,7 @@ One way to do this is with the following algorithm:
 
 \begin{verbatim}
  equate t1 t2 = do 
-    nf1 <- reduce t1  -- full reduction, not just weak-head reduction
+    nf1 <- reduce t1  -- full reduction, not just weak head reduction
     nf2 <- reduce t2  
     Unbound.aeq nf1 nf2
 \end{verbatim}
@@ -1281,18 +1381,18 @@ Above, we first check whether the terms are already alpha-equivalent. If they
 are, we do not need to do anything else, we can return immediately
 (i.e. without throwing an error, which is what the function does when it
 decides that the terms are not equal). The next step is to reduce both terms
-to their weak-head normal forms.  If two terms have different head forms, then
+to their weak head normal forms.  If two terms have different head forms, then
 we know that they must be different terms so we can throw an error. If they have 
 the same head forms, then we can call the function recursively on analogous
 subcomponents until the function either terminates or finds a mismatch.
 
-Why do we use weak-head reduction vs.~full reduction?
+Why do we use weak head reduction vs.~full reduction?
 
 \begin{itemize}
 \item
   We can implement deferred substitutions for variables. Note that when
   comparing terms we need to have their definitions available. That way we
-  can compute that \texttt{(plus\ 3\ 1)} weak-head normalizes to 4, by
+  can compute that \texttt{(plus\ 3\ 1)} weak head normalizes to 4, by
   looking up the definition of \texttt{plus} when needed. However, we
   don't want to substitute all variables through eagerly---not only does
   this make extra work, but error messages can be extremely long.
@@ -2159,9 +2259,25 @@ the components of the \texttt{Fin} datatype as erasable.
 
 \paragraph{Section~\ref{sec:simple}:  Core Dependent Types}
 
-\begin{itemize}
-\item Barendregt, Lambda Calculi with Types
+Because they lack a rule for conversion, the typing rules for the core
+dependent type system presented in Section~\ref{sec:simple} do not correspond
+to any existing type system. However, jumping ahead, the core language with
+the inclusion with conversion and the \rref{t-type} rule has been
+well-studied.
 
+As a foundation of logic, the inclusion of rule \rref{t-type} makes the system
+inconsistent. Indeed, Martin-L\"of's original formulation of type
+theory~\cite{martin-lof:1971} included this rule until the resulting paradox
+was demonstrated by Girard. This inconsistency was resolved in later versions
+of the systems~\cite{martin-lof:1972} and in the Calculus of
+Constructions~\cite{Coc} by stratifying $[[Type]]$: first into two levels and
+then into an infinite hierarchy~\cite{luo:ecc}.
+
+The inconsistency of this system as a logic does not prevent its use as a
+programming language. Cardelli~\ref{cardelli:type-in-type} showed that this
+language was type sound, explored applications as a programming language.
+
+\begin{itemize}
 \item Cardelli, A polymorphic lambda calculus with Type:Type
 \url{http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-10.pdf}
 
@@ -2171,20 +2287,43 @@ the components of the \texttt{Fin} datatype as erasable.
 
 \paragraph{Section~\ref{sec:bidirectional}:  Bidirectional type checking}
 
-\begin{itemize}
-\item Pierce and Turner
+The expressiveness of dependently-typed programming languages put them out of
+reach of the Hindley Milner type inference algorithm found in Haskell and
+ML. As a result, type checkers and elaborators for these languages must
+abandon complete type inference and require users to annotate their code.
 
-\item Peyton Jones, Vytiniotis, Weirich, Shields. Practical type inference for arbitrary-rank types
-\url{https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/putting.pdf}
+Bidirectional type systems provide a platform for propagating type annotations
+through judgements, and notably, support a syntax-directed specification of
+where to apply the conversion rule during type checking. As a result, such
+type systems are frequently used as the basis for type checking, with
+elaboration for implicit arguments layered on top.
+
+\begin{itemize}
+\item Pierce and Turner. Local type inference.
+  \url{https://www.cis.upenn.edu/~bcpierce/papers/lti-toplas.pdf} A classic
+  paper that popularized bidirectional type systems, in the context of
+  polymorphic languages with subtyping.
+
+\item Peyton Jones, Vytiniotis, Weirich, Shields. Practical type inference for
+  arbitrary-rank types.
+  \url{https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/putting.pdf}
+  Describes how the Haskell language incorporates a bidirectional type system
+  on top of the Hindley-Milner type system, in order to support functions that
+  take polymorphic functions as arguments (i.e. higher-rank polymorphism). This paper includes 
+  as reference Haskell implementation of the type system in the appendix.
 
 \item Christiansen, Tutorial on Bidirectional Typing.
 \url{https://www.davidchristiansen.dk/tutorials/bidirectional.pdf}
 
-\item Dunfield and Krishnaswami, Bidirectional Typing
+\item Dunfield and Krishnaswami, Bidirectional Typing.
 \url{https://www.cl.cam.ac.uk/~nk480/bidir-survey.pdf}
+A recent survey paper that catalogs recent results in this area.
 \end{itemize}
 
-\paragraph{Section~\ref{sec:equality}: Normalization by evaluation}
+\paragraph{Section~\ref{sec:equality}: Definitional equality and Normalization by evaluation}
+
+Equality has been called the hardest problem in type theory, and that is not
+an exaggeration.
 
 \begin{itemize}
 \item Andreas Abel's habilitation thesis.
@@ -2232,7 +2371,7 @@ adds natural numbers and vectors.
 
 \item Andrej Bauer, \emph{How to implement dependent type theory} \cite{bauer:tutorial}
 
-Series of blog posts. Implementation in OCaml. Infinite hierarchy of type universes. Uses named representation and generates fresh names during substitution and alpha-equality. Uses full normalization to implement definitional equality. Then in second version revises to use NBE. The third version revises to use de Bruijn indices, explicit substitutions and then switches back to weak-head normalization.
+Series of blog posts. Implementation in OCaml. Infinite hierarchy of type universes. Uses named representation and generates fresh names during substitution and alpha-equality. Uses full normalization to implement definitional equality. Then in second version revises to use NBE. The third version revises to use de Bruijn indices, explicit substitutions and then switches back to weak head normalization.
 
 \item Tiark Rompf, \emph{Implementing Dependent Types}. \cite{rompf:tutorial}.
 
@@ -2240,7 +2379,7 @@ Uses Javascript. Implements a core dependent type theory using HOAS (tagless fin
 
 \item Lennart Augustsson. \emph{Simple, Easier!} \cite{augustsson:tutorial}
 
-Implemented in Haskell. Goal is simplest implementation. Uses string representation of variables and weak-head normalization for implementation of equality. Implementation of Barendregt's lambda cube.
+Implemented in Haskell. Goal is simplest implementation. Uses string representation of variables and weak head normalization for implementation of equality. Implementation of Barendregt's lambda cube.
 
 \item Coquand, Kinoshita, Nordstrom, Takeyama. \emph{A simple type-theoretic
     language: Mini-TT} ~\cite{coquand:tutorial}

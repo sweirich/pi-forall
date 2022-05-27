@@ -84,7 +84,7 @@ instance Disp (Unbound.Name Term) where
 
 instance Disp Term
 
-instance Disp Arg
+
 
 
 
@@ -302,10 +302,7 @@ instance Display Term where
 
 
 
-instance Display Arg where
-  display arg = do
-    st <- ask
-    wraparg st arg <$> display (unArg arg)
+
 
 
 
@@ -340,8 +337,8 @@ wrapf f = case f of
   _ -> parens
 
 -- | decide whether to add parens to an argument in an application
-wraparg :: DispInfo -> Arg -> Doc -> Doc
-wraparg st a = case unArg a of
+wraparg :: DispInfo -> Term -> Doc -> Doc
+wraparg st a = case a of
   Var _ -> std
   Type -> std
   TyUnit -> std
@@ -350,8 +347,8 @@ wraparg st a = case unArg a of
   LitBool b -> std
   Sigma _ _ -> std
   Prod _ _ -> force
-  Ann b _ -> wraparg st a {unArg = b}
-  Pos _ b -> wraparg st a {unArg = b}
+  Ann b _ -> wraparg st b
+  Pos _ b -> wraparg st b
   TrustMe -> std
   PrintMe -> std
 

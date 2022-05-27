@@ -294,7 +294,7 @@ funapp = do
   foldl' app f <$> many bfactor
   where
         bfactor = factor 
-        app e1 e2 = App e1 (Arg e2)
+        app e1 e2 = App e1 e2
 
 factor = choice [ Var <$> variable <?> "a variable"                
                 , typen      <?> "Type"

@@ -7,7 +7,7 @@ SRCS=$(addprefix src/,$(SOURCES)) app/Main.hs
 
 EXTRA=LICENSE README.md pi-forall.cabal stack.yaml
 
-VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/pi/,$(TEST_VERSION1)) $(EXTRA)
+VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/pi/,$(TEST_VERSION1)) ../version1/pi/Hw1.pi $(EXTRA)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/pi/,$(TEST_VERSION2)) $(EXTRA)
 VERSION3=$(addprefix ../version3/,$(SRCS)) $(addprefix ../version3/pi/,$(TEST_VERSION3)) $(EXTRA)
 SOLNS=$(addprefix ../full/,$(SRCS)) $(addprefix ../full/pi/, $(TEST_FULL)) 

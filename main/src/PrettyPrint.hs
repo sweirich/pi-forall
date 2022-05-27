@@ -84,7 +84,9 @@ instance Disp (Unbound.Name Term) where
 
 instance Disp Term
 
+{- SOLN EP -}
 instance Disp Arg
+{- STUBWITH -}
 
 {- SOLN DATA -}
 
@@ -353,10 +355,12 @@ instance Display Term where
 
 {- STUBWITH -}
 
+{- SOLN EP -}
 instance Display Arg where
   display arg = do
     st <- ask
     wraparg st arg <$> display (unArg arg)
+{- STUBWITH -}
 
 {- SOLN DATA -}
 instance Display Match where
@@ -436,8 +440,8 @@ wrapf f = case f of
   _ -> parens
 
 -- | decide whether to add parens to an argument in an application
-wraparg :: DispInfo -> Arg -> Doc -> Doc
-wraparg st a = case unArg a of
+wraparg :: DispInfo -> {- SOLN EP -} Arg {- STUBWITH Term -} -> Doc -> Doc
+wraparg st a = {- SOLN EP -} case unArg a of {- STUBWITH case a of -}
   Var _ -> std
   Type -> std
   TyUnit -> std
@@ -446,8 +450,8 @@ wraparg st a = case unArg a of
   LitBool b -> std
   Sigma _ _ -> std
   Prod _ _ -> force
-  Ann b _ -> wraparg st a {unArg = b}
-  Pos _ b -> wraparg st a {unArg = b}
+  Ann b _ -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
+  Pos _ b -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
   TrustMe -> std
   PrintMe -> std
 {- SOLN DATA -}

@@ -20,17 +20,24 @@ data Vec (A : Type) (n : Nat) : Type where
   Nil  of                       [n = Zero] 
   Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
 
+-- example vector of length 3
+v3 : Vec Bool 3 
+v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
 
-nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
-nth = \[a][n] v f. case v of 
-   Cons [m'] x xs -> case f of 
-      Zero [m] -> x 
-      Succ [m] f' -> nth [a][m] xs f'
-   Nil -> case f of {}   -- all cases are impossible
+map : [A:Type] -> [B:Type] -> [n:Nat] -> (A -> B) -> Vec A n -> Vec B n
+map = \ [A][B][n] f v.
+  case v of 
+    Nil -> Nil
+    Cons [m] x xs -> Cons [m] (f x) (map[A][B][m] f xs)
 
+not : Bool -> Bool
+not = \x. if x then False else True
 
-{-
--- alternative definition of nth
+v4 :  Vec Bool 3
+v4 = map [Bool][Bool][3] not v3
+
+ex5 : v4 = Cons [2] False (Cons [1] True (Cons [0] True Nil))
+ex5 = Refl
 
 nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
 nth = \[a][n] v f. case f of 
@@ -38,7 +45,7 @@ nth = \[a][n] v f. case f of
            Cons [m'] x xs -> x 
    Succ [m] f' -> case v of 
            Cons [m'] x xs -> nth [a][m] xs f'
--}
+
 
 
 data Exp (n : Nat) : Type where
@@ -51,7 +58,8 @@ data Exp (n : Nat) : Type where
 data Val : Type where
   Clos of [n:Nat] (Vec Val n) (Exp (Succ n))
   VNat of (Nat)
-
+  Wrong
+  
 
 interp : [n:Nat] -> Vec Val n -> Exp n -> Val
 interp = \[n] rho e. 
@@ -63,7 +71,7 @@ interp = \[n] rho e.
        case v1 of        
          Clos [m] rho' body -> 
             interp [Succ m] (Cons [m] v2 rho') body 
-         VNat i -> TRUSTME
+         _ -> Wrong
     Lam e     -> Clos [n] rho e
     Lit i     -> VNat i
     If0 e1 e2 e3 -> 
@@ -71,7 +79,7 @@ interp = \[n] rho e.
         VNat x -> case x of 
           Zero     -> interp [n] rho e2
           (Succ y) -> interp [n] rho e3
-        Clos [m]  rho exp -> TRUSTME
+        _ -> Wrong
 
 
 one : Fin 2
@@ -80,8 +88,10 @@ one = Succ [1] (Zero [0])
 t1 : interp [0] Nil (App (Lam (Var (Zero[0]))) (Lit 3)) = VNat 3
 t1 = Refl
 
--- t2 : interp [0] Nil (App (Lam (Var one)) (Lit 2)) = TRUSTME
+-- Scope error, doesn't type check
+-- t2 : interp [0] Nil (App (Lam (Var one)) (Lit 2)) = Wrong
 -- t2 = Refl
 
-t3 : interp [0] Nil (App (Lit 1) (Lit 2)) = TRUSTME
+-- object language type error, runtime error
+t3 : interp [0] Nil (App (Lit 1) (Lit 2)) = Wrong
 t3 = Refl

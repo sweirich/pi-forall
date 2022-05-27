@@ -27,13 +27,10 @@ equate t1 t2 = do
     (Lam bnd1, Lam bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       equate b1 b2
-    (App a1 a2, App b1 b2) -> do
-      equate a1 b1 
-      equateArg a2 b2
-    (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do
-      ((_), tyB1, 
-       (_), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
-
+    (App a1 a2, App b1 b2) ->
+      equate a1 b1 >> equate a2 b2
+    (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do 
+      (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -90,21 +87,6 @@ equate t1 t2 = do
                DS "in context:", DD gamma]
        
 
--- | Match up args
-equateArgs :: [Arg] -> [Arg] -> TcMonad ()    
-equateArgs (a1:t1s) (a2:t2s) = do
-  equateArg a1 a2
-  equateArgs t1s t2s
-equateArgs [] [] = return ()
-equateArgs a1 a2 = do 
-          gamma <- Env.getLocalCtx
-          Env.err [DS "Expected", DD (length a2),
-                   DS "but found", DD (length a1),
-                   DS "in context:", DD gamma]
-
-equateArg :: Arg -> Arg -> TcMonad ()
-
-equateArg (Arg t1) (Arg t2) = equate t1 t2
 
 
 -------------------------------------------------------
@@ -152,14 +134,14 @@ whnf (Var x) = do
             (Just d) -> whnf d
             _ -> return (Var x)
         
-whnf (App t1 a2) = do
+whnf (App t1 t2) = do
   nf <- whnf t1 
   case nf of 
     (Lam bnd) -> do
-      ((x ), body) <- Unbound.unbind bnd 
-      whnf (Unbound.subst x (unArg a2) body)
+      (x, body) <- Unbound.unbind bnd 
+      whnf (Unbound.subst x t2 body)
     _ -> do
-      return (App nf a2)
+      return (App nf t2)
       
 whnf (If t1 t2 t3) = do
   nf <- whnf t1

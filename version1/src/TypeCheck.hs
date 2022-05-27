@@ -19,20 +19,18 @@ inferType :: Term -> TcMonad Type
 inferType t = tcTerm t Nothing
 
 -- | Check that the given term has the expected type.
--- The provided type does not necessarily to be in whnf, but it should be
--- already checked to be a good type
+-- The provided type should be already checked to be a good type
 checkType :: Term -> Type -> TcMonad ()
-checkType tm expectedTy = do
-  nf <- Equal.whnf expectedTy
-  void $ tcTerm tm (Just nf)
+checkType tm (Pos _ ty) = checkType tm ty
+checkType tm (Ann ty _) = checkType tm ty
+checkType tm ty = void $ tcTerm tm (Just ty)
 
 -- | Make sure that the term is a type (i.e. has type 'Type')
 tcType :: Term -> TcMonad ()
 tcType tm = void $ checkType tm Type
 
 -- | check a term, producing its type
--- The second argument is 'Nothing' in inference mode and
--- an expected type (in weak-head-normal form) in checking mode
+-- The second argument is 'Nothing' in inference mode and an expected type in checking mode
 tcTerm :: Term -> Maybe Type -> TcMonad Type
 -- i-var
 tcTerm t@(Var x) Nothing = do
@@ -57,14 +55,18 @@ tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
 tcTerm (Lam _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not ", DD nf]
 -- i-app
-tcTerm (App t1 a2) Nothing = do
+tcTerm (App t1 t2) Nothing = do
   ty1 <- inferType t1
-  (x, tyA, tyB) <- Equal.ensurePi ty1
-  checkType (unArg a2) tyA
-  -- NOTE: we're replacing an inferrable variable with a
-  -- a checkable term. So the result will not necessarily
-  -- be checkable as a type.
-  return (Unbound.subst x (unArg a2) tyB)
+  let ensurePi :: Type -> TcMonad (TName, Type, Type)
+      ensurePi (Ann a _) = ensurePi a
+      ensurePi (Pos _ a) = ensurePi a
+      ensurePi (Pi tyA bnd) = do
+        (x, tyB) <- Unbound.unbind bnd
+        return (x, tyA, tyB)
+      ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty]
+  (x, tyA, tyB) <- ensurePi ty1
+  checkType t2 tyA
+  return (Unbound.subst x t2 tyB)
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do

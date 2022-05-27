@@ -27,12 +27,11 @@ equate t1 t2 = do
     (Lam bnd1, Lam bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       equate b1 b2
-    (App a1 a2, App b1 b2) -> do
-      equate a1 b1 
-      equateArg a2 b2
-    (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do
-      ((_{- SOLN EP -},ep1{- STUBWITH -}), tyB1, 
-       (_{- SOLN EP -},ep2{- STUBWITH -}), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+    (App a1 a2, App b1 b2) ->
+      equate a1 b1 >> equateArg a2 b2
+    (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do 
+      ((_,ep1), tyB1, 
+       (_,ep2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
       unless (ep1 == ep2) $
           tyErr n1 n2 
       equate tyA1 tyA2                                             
@@ -121,8 +120,7 @@ equateArgs a1 a2 = do
                    DS "in context:", DD gamma]
 
 equateArg :: Arg -> Arg -> TcMonad ()
-
-equateArg (Arg {- SOLN EP -}Rel {- STUBWITH -}t1) (Arg {- SOLN EP -}Rel {- STUBWITH -}t2) = equate t1 t2
+equateArg (Arg Rel t1) (Arg Rel t2) = equate t1 t2
 equateArg (Arg Irr t1) (Arg Irr t2) = return ()
 equateArg a1 a2 =  
   Env.err [DS "Arg stage mismatch",
@@ -184,14 +182,15 @@ whnf (Var x) = do
             (Just d) -> whnf d
             _ -> return (Var x)
         
-whnf (App t1 a2) = do
+whnf (App t1 t2) = do
   nf <- whnf t1 
   case nf of 
     (Lam bnd) -> do
-      ((x {- SOLN EP -},_{- STUBWITH -}), body) <- Unbound.unbind bnd 
-      whnf (Unbound.subst x (unArg a2) body)
+      ((x, _), body) <- Unbound.unbind bnd
+      whnf (Unbound.subst x (unArg t2) body)
+      
     _ -> do
-      return (App nf a2)
+      return (App nf t2)
       
 whnf (If t1 t2 t3) = do
   nf <- whnf t1

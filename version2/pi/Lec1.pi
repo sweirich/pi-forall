@@ -12,6 +12,12 @@ compose : (A : Type) -> (B : Type) -> (C:Type) ->
   (B -> C) -> (A -> B) -> (A -> C)
 compose = \ A B C f g x. (f (g x))
 
+idT : Type
+idT = (x:Type) -> x -> x
+
+selfapp : idT -> idT
+selfapp = (\x.x : (idT -> idT) -> (idT -> idT)) (\x.x)
+
 -- some Church encodings: booleans
 
 bool : Type 

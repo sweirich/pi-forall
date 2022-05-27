@@ -88,6 +88,7 @@ instance Disp Arg
 
 
 
+
 ------------------------------------------------------------------------
 
 -- * Disp Instances for Modules
@@ -314,6 +315,7 @@ instance Display Arg where
 
 
 
+
 -------------------------------------------------------------------------
 
 -- * Helper functions for displaying terms
@@ -355,8 +357,8 @@ wrapf f = case f of
   _ -> parens
 
 -- | decide whether to add parens to an argument in an application
-wraparg :: DispInfo -> Arg -> Doc -> Doc
-wraparg st a = case unArg a of
+wraparg :: DispInfo -> Arg  -> Doc -> Doc
+wraparg st a = case unArg a of 
   Var _ -> std
   Type -> std
   TyUnit -> std
@@ -365,8 +367,8 @@ wraparg st a = case unArg a of
   LitBool b -> std
   Sigma _ _ -> std
   Prod _ _ -> force
-  Ann b _ -> wraparg st a {unArg = b}
-  Pos _ b -> wraparg st a {unArg = b}
+  Ann b _ -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
+  Pos _ b -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
   TrustMe -> std
   PrintMe -> std
 

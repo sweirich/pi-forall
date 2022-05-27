@@ -476,7 +476,7 @@ funapp = do
 
 {- STUBWITH      
         bfactor = factor 
-        app e1 e2 = App e1 (Arg e2) -}
+        app e1 e2 = App e1 e2 -}
 
 factor = choice [ {- SOLN DATA -} varOrCon   <?> "a variable or nullary data constructor"
                   {- STUBWITH Var <$> variable <?> "a variable" -}                
