@@ -23,7 +23,7 @@ import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 class Disp d where
   disp :: d -> Doc
   default disp :: (Display d) => d -> Doc
-  disp d = display d (DI {showAnnots = False, dispAvoid = S.empty, prec = 0})
+  disp d = display d (DI {showAnnots = True, dispAvoid = S.empty, prec = 0})
 
 -- | The 'Display' class is like the 'Disp' class. It qualifies
 --   types that can be turned into 'Doc'.  The difference is that the

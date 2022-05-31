@@ -36,16 +36,30 @@ loop = loop
 unit : Type
 unit = (x:Type) -> x -> x
 
-
+-- Church encoding of bool
 
 bool : Type 
 bool = (A:Type) -> A -> A -> A 
 
-true : bool
+true : (A:Type) -> A -> A -> A 
 true = \A x y. x
 
-false : bool
+false : (A:Type) -> A -> A -> A 
 false = \A x y. y
 
-cond : bool -> (x:Type) -> x -> x -> x
+cond : ((A:Type) -> A -> A -> A) -> (x:Type) -> x -> x -> x
 cond = \ b . b 
+
+-- Church encoding of pairs
+
+and : Type -> Type -> Type
+and = \p. \q. (c: Type) -> (p -> q -> c) -> c
+
+conj : (p:Type) -> (q:Type) -> p -> q -> ( (c: Type) -> (p -> q -> c) -> c)
+conj = \p.\q. \x.\y. \c. \f. f x y
+
+proj1 : (p:Type) -> (q:Type) -> and p q -> p
+proj1  = \p. \q. \a. a p (\x.\y.x)
+
+proj2 : (p:Type) -> (q:Type) -> and p q -> q
+proj2  = \p. \q. \a. a q (\x.\y.y)

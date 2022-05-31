@@ -29,8 +29,7 @@ inferType t = tcTerm t Nothing
 -- | Check that the given term has the expected type.
 -- The provided type should be already checked to be a good type
 checkType :: Term -> Type -> TcMonad ()
-{- SOLN EQUAL -}{- STUBWITH checkType tm (Pos _ ty) = checkType tm ty
-checkType tm (Ann ty _) = checkType tm ty -}
+
 checkType tm ty = do
   nf <- Equal.whnf ty
   void $ tcTerm tm (Just nf)
@@ -70,8 +69,10 @@ tcTerm (Lam _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not ", DD nf]
 -- i-app
 tcTerm (App t1 t2) Nothing = do
-  ty1 <- inferType t1
-  (x, ep1, tyA, tyB) <- Equal.ensurePi ty1
+  ty1 <- inferType t1 
+  let ensurePi = Equal.ensurePi 
+
+  (x, ep1, tyA, tyB) <- ensurePi ty1
   guard (ep1 == argEp t2) 
   Env.withStage ep1 $ checkType (unArg t2) tyA
   return (Unbound.subst x (unArg t2) tyB)

@@ -138,8 +138,11 @@ features described in that chapter can be implemented.
 \item An important feature of dependently-typed languages is the ability for
   run time tests to be reflected into the type
   system. Section~\ref{sec:pattern-matching} shows how to extend \pif with a
-  simple form of dependent pattern matching.
-
+  simple form of dependent pattern matching. We look at this feature in two
+  different ways: First how to reflect the gain in information about boolean
+  values in each branch of an $[[if]]$ expression. Second, how to reflect the
+  equality represented via propositional equality.
+  
 \item Section~\ref{sec:irrelevance} introduces the idea of tracking the
   \emph{relevance} of arguments. Relevance tracking enables parts of the
   program to be identified as ``compile-time only'' and thus erased before
@@ -319,6 +322,12 @@ Note how, in the case analysis above, neither \cd{case} requires a branch for
 the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
 case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
+\subsection{Homework: Check out \pif}
+
+The files in the directory \texttt{full/pi/} demonstrate the full power of the
+\pif language. Take a little time to familiarize yourself with some of these
+libraries (such as \cd{Fin.pi} and \cd{Vec.pi} and compare them to similar
+ones that you might have seen in Agda, Haskell or elsewhere.
 
 \section{A Simple Core Language}
 \label{sec:simple}

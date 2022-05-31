@@ -29,7 +29,7 @@ s = Lam (Lam (Lam (App (App (Var 2) (Var 0)) (App (Var 1) (Var 0)))))
 -- The result of our interpreter
 
 data Val : Type where
-  Clos of (List Val)(Exp)  -- a closure: pair of an environment and an expression w/ a free variable
+  Clos of (List Val) (Exp)  -- a closure: pair of an environment and an expression w/ a free variable
   VNat of (Nat)            -- natural number value
 
 
@@ -61,7 +61,7 @@ interp = \ rho exp . case exp of
         VNat x -> case x of 
           Zero     -> interp rho e2
           (Succ y) -> interp rho e3
-        Clos rho exp -> TRUSTME 
+        Clos rho exp -> TRUSTME -- can compare function values with 0
 
 t1 : interp Nil (App (Lam (Var 0)) (Lit 3)) = VNat 3
 t1 = Refl

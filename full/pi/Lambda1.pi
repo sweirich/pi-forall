@@ -2,9 +2,18 @@ module Lambda where
 
 import Nat
 
+{- 
+data Fin : N -> Set where
+   Zero : 0@{m : Nat} -> Fin (Succ m)
+
+-}
+
 data Fin (n : Nat) : Type where
   Zero of [m:Nat]       [n = Succ m]
   Succ of [m:Nat](Fin m)[n = Succ m]
+
+--x0 : Fin 0
+--x0 = Zero [0]
 
 x1 : Fin 3
 x1 = Succ [2] (Succ [1] (Zero [0]))
@@ -24,7 +33,8 @@ data Vec (A : Type) (n : Nat) : Type where
 v3 : Vec Bool 3 
 v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
 
-map : [A:Type] -> [B:Type] -> [n:Nat] -> (A -> B) -> Vec A n -> Vec B n
+map : [A:Type] -> [B:Type] -> [n:Nat] -> 
+    (A -> B) -> Vec A n -> Vec B n
 map = \ [A][B][n] f v.
   case v of 
     Nil -> Nil
@@ -39,12 +49,12 @@ v4 = map [Bool][Bool][3] not v3
 ex5 : v4 = Cons [2] False (Cons [1] True (Cons [0] True Nil))
 ex5 = Refl
 
-nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
-nth = \[a][n] v f. case f of 
+nth : [a:Type] -> [n:Nat] -> [m: Nat] -> Vec a n -> Fin m -> a
+nth = \[a][n][p] v f. case f of 
    Zero [m] -> case v of 
            Cons [m'] x xs -> x 
    Succ [m] f' -> case v of 
-           Cons [m'] x xs -> nth [a][m] xs f'
+           Cons [m'] x xs -> nth [a][m][p] xs f'
 
 
 
