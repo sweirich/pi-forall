@@ -15,17 +15,17 @@ each other.
 
 Installation
 ----------
-  pi-forall requires GHC and cabal or stack
-  
-  Recommended tools:
-  
-  1. gchup: See instructions here [https://www.haskell.org/ghcup/]
-  
-  The gchup tool is an installer for general purpose Haskell tools, including GHC, cabal, stack and the Haskell language server (HLS). You'll want to have the recommended versions of all of these tools installed. 
 
-  2. VSCode and Haskell language extension   
+  Compiling pi-forall requires GHC and cabal or stack
+  
+  Recommended tools (see links for instructions):
+  
+  1. [gchup](https://www.haskell.org/ghcup/)
+  
+  The gchup tool is an installer for general purpose Haskell tools, including GHC, Cabal, Stack and the Haskell language server (HLS). You'll want to install the recommended versions of all of these tools. 
 
-  Installation instructions for VS Code are [here](https://code.visualstudio.com/). This should be used with the [Haskell VSCode extension](https://marketplace.visualstudio.com/items?itemName=haskell.haskell).
+  2. [VSCode](https://code.visualstudio.com/) and [Haskell language extension](https://marketplace.visualstudio.com/items?itemName=haskell.haskell)   
+
 
 Contents
 --------
