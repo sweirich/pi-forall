@@ -20,7 +20,7 @@ from the same source, located in the [main/](main/) directory).
 - [version3/](version3/):   Above, extended with irrelevant arguments
 - [full/](full/):           Full language with datatypes 
 
-The implementation [README.md](main/README.md) includes suggestions about 
+The implementation [README.md](main/README.md) includes instructions about 
 how to compile and work with these implementations.
 
 History
