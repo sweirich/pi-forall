@@ -80,11 +80,3 @@ executable pi-forall
   build-depends: pi-forall
   hs-source-dirs: app
   main-is: Main.hs
-  
-test-suite test-pi-forall
-  import: shared-properties
-  build-depends: pi-forall
-    , QuickCheck >= 2.13.2
-  type: exitcode-stdio-1.0
-  hs-source-dirs: test
-  main-is: Main.hs
