@@ -1,4 +1,5 @@
-* Source files for Lecture Notes, PDF [oplss.pdf](oplss.pdf)
+Source files for Lecture Notes, PDF [oplss.pdf](oplss.pdf)
+-----------------------------------------------------------
 
 [Ott](https://www.cl.cam.ac.uk/~pes20/ott/top2.html) specifications:
 + [pi.ott](pi.ott) - Core system
