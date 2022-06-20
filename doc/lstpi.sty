@@ -1,4 +1,5 @@
 % lstlisting pi-forall style 
+% Based on Coq lstlisting style
 %
 \lstdefinelanguage{PiForall}{ 
 %
@@ -8,22 +9,11 @@ mathescape=true,
 % Comments may or not include Latex commands
 texcl=false, 
 %
-% module system
-morekeywords=[1]{Module,import},
-%
-morekeywords=[2]{let, in, if, then, else, case, of, data},
-%
-% Sorts
+morekeywords=[1]{module,import},
+morekeywords=[2]{let, in, if, then, else, case, of, data, where, Type},
 morekeywords=[3]{},
-%
-% Data Constructors
-morekeywords=[4]{True, False, Refl, Cons, Nil},
-%
-% Types/Sorts
-morekeywords=[5]{Type, Bool, Unit, Eq},
-%
-% Control
-morekeywords=[6]{},
+morekeywords=[4]{True, False, Refl, Cons, Nil, Zero, Succ},
+morekeywords=[5]{Bool, Vec, Nat, Unit, Fin},
 %
 % Comments delimiter
 morecomment=[s]{{-}{-}},
@@ -48,8 +38,8 @@ sensitive=true,
 % Automatic breaking of long lines
 breaklines=false,
 %
-% Default style fors listings
-basicstyle=\small,
+% Default style for listings
+basicstyle=\small\ttfamily,
 %
 % Position of captions is bottom
 captionpos=b,
@@ -59,42 +49,32 @@ columns=[l]flexible,
 %
 % Style for (listings') identifiers
 identifierstyle={\ttfamily\color{black}},
-% Style for declaration keywords
 keywordstyle=[1]{\ttfamily\color{Plum}},
-% Style for gallina keywords
 keywordstyle=[2]{\ttfamily\color{PineGreen}},
-% Style for sorts keywords
 keywordstyle=[3]{\ttfamily\color{BlueGreen}},
-% Style for tactics keywords
 keywordstyle=[4]{\ttfamily\color{BlueViolet}},
-% Style for terminators keywords
 keywordstyle=[5]{\ttfamily\color{Maroon}},
 % Style for strings
 stringstyle=\ttfamily,
 % Style for comments
 commentstyle={\ttfamily\color{PineGreen}},
 %
-%moredelim=**[is][\ttfamily\color{red}]{/&}{&/},
 literate=
-    {\\}{{$\lambda$}}1
+    {\\}{{\color{PineGreen}{$\lambda$}}}1
     {\\forall}{{\color{green}{$\forall\;$}}}1
     {\\exists}{{$\exists\;$}}1
     {<-}{{$\leftarrow\;$}}1
     {=>}{{$\Rightarrow\;$}}1
     {==}{{\code{==}\;}}1
     {==>}{{\code{==>}\;}}1
-%    {:>}{{\code{:>}\;}}1
     {->}{{$\rightarrow\;$}}1
     {<->}{{$\leftrightarrow\;$}}1
     {<==}{{$\leq\;$}}1
     {\#}{{$^\star$}}1 
     {\\o}{{$\circ\;$}}1 
-    {\@}{{$\cdot$}}1 
     {\/\\}{{$\wedge\;$}}1
     {\\\/}{{$\vee\;$}}1
     {++}{{\code{++}}}1
-    {~}{{\ }}1
-    {\@\@}{{$@$}}1
     {\\mapsto}{{$\mapsto\;$}}1
     {\\hline}{{\rule{\linewidth}{0.5pt}}}1
 %
