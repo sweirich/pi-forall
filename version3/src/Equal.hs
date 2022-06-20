@@ -102,6 +102,7 @@ equateArgs a1 a2 = do
                    DS "but found", DD (length a1),
                    DS "in context:", DD gamma]
 
+-- | Ignore irrelevant arguments when comparing for equality
 equateArg :: Arg -> Arg -> TcMonad ()
 equateArg (Arg Rel t1) (Arg Rel t2) = equate t1 t2
 equateArg (Arg Irr t1) (Arg Irr t2) = return ()

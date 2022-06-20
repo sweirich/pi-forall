@@ -22,9 +22,6 @@
 \usepackage{lstpi}
 \usepackage{lsthaskell}
 \newcommand\cd[1]{\lstinline[language=Haskell]{#1}}
-
-
-
  
 \newcommand\pif{\texttt{pi-forall}\xspace}
 \newcommand\unbound{\texttt{Unbound}\xspace}
@@ -44,30 +41,29 @@
 % load Ott generated latex macros, and modify them with ottalt.sty
 \inputott{pi-rules}
 
-\section{Goals}
+\section{Overview and Goals}
 
-These lecture notes describe the implementation of a small dependently-typed
+These lecture notes describe the design of a minimal dependently-typed
 language called ``\pif'' and walk through the implementation of its type
 checker. They are based on lectures given at the \emph{Oregon Programming
-  Languages Summer School} during June 2022, and derived from earlier lectures
-from summer school lectures during 2014 and 2013.  \footnote{NOTE: if the date
+  Languages Summer School} during June 2022 and derived from earlier lectures
+from summer school lectures during 2014 and 2013.\footnote{NOTE: if the date
   on this document is before June 27, 2022, then these notes are still in
-  draft form. If you find any errors or typos, please send me a pull request
-  at \url{https://github.com/sweirich/pi-forall}.}
+  draft form. If you find any errors or typos, please send pull requests
+  to \url{https://github.com/sweirich/pi-forall}.}
 
-\paragraph{What do I expect from you, dear reader?} These notes assume a
+\paragraph{What do I expect from you, dear reader?} This discussion assumes a
 familiarity with the basics of the lambda calculus, including its standard
 operations (alpha-equivalence, substitution, evaluation) and the basics of
-type systems (specification of type systems using inference rules). For
-background on this material, I recommend~\cite{tapl, pfpl}.
+type systems (especially their specification using inference rules). For
+background on this material, I recommend the textbooks~\cite{tapl, pfpl}.
 
-Furthermore, these lectures and notes also refer to an implementation of a
-demo type checker and assume basic knowledge of the Haskell programming
-language. This implementation is available at
-\url{https://github.com/sweirich/pi-forall} and is written using the Haskell
-programming language. As you study these notes, I encourage you to download
-this code and experiment with it. Detailed installation instructions are
-available with the source code.
+Furthermore, these notes also refer to an implementation of a demo type
+checker and assume basic knowledge of the Haskell programming language. This
+implementation is available at \url{https://github.com/sweirich/pi-forall}. As
+you study these notes, I encourage you to download this code, read through its
+source modules, and experiment with it. Detailed installation instructions are
+available with the repository.
 
 \begin{figure}[h]
 \begin{center}
@@ -89,28 +85,28 @@ These notes are broken into several sections that incrementally build up the
 design and implementation of a type checker for a dependently-typed
 programming language.
 
-
 If you are looking at the repository, you'll see that it includes several
-incrementally more expressive implementations in separate
+incrementally more expressive implementations of \pif in separate
 subdirectories. These implementations build on each other (each is an
-extension of the previous) and are summarized in Figure~\ref{fig:impls}.  As
-you read each chapter, refer to its corresponding implementation to see how the
-features described in that chapter can be implemented.
+extension of the previous version) and are summarized in
+Figure~\ref{fig:impls}.  As you read each chapter, refer to its corresponding
+implementation to see how the features described in that chapter can be
+implemented.
 
 
 \begin{itemize}
-\item Section~\ref{sec:examples} starts with some examples of the full \pif
-  language so that you can see how the pieces fit together.
+\item Section~\ref{sec:examples} starts with some examples of the
+  \texttt{full} \pif language so that you can see how the pieces fit together.
 
 \item Section~\ref{sec:simple} presents the mathematical specification of the
-  core type system including its concrete syntax (as found in \pif source
-  files), abstract syntax, and core typing rules (written using standard
-  mathematical notation). This initial specification of the type system is
-  simple and declarative. It \emph{specifies} what terms should type check,
-  but cannot be directly implemented.
+  core \pif type system including its concrete syntax (as found in \pif source
+  files), abstract syntax (represented with a Haskell datatype), and core
+  typing rules (written using standard mathematical notation). This initial
+  type system is simple and declarative. In other words, its \emph{specifies}
+  what terms should type check, but cannot be directly implemented.
   
-\item Section~\ref{sec:bidirectional}, then reformulates the typing rules so
-  that they are \emph{syntax-directed} and specify a type checking
+\item Section~\ref{sec:bidirectional}, reformulates the typing rules so
+  that they are \emph{syntax-directed} and correspond to a type checking
   algorithm. The key idea of this section is to recast the typing rules as a
   \emph{bidirectional type system} that specifies where type annotations are
   required.
@@ -121,9 +117,9 @@ features described in that chapter can be implemented.
 \item Section~\ref{sec:implementation} introduces the core \pif implementation
   and walks through the type checker found in \texttt{version1}, the Haskell
   implementation of the typing rules discussed in
-  Section~\ref{sec:bidirectional}. This section shows how the \unbound library
-  can assist with variable binding and automatically derive operations for
-  capture-avoiding substitution and alpha-equivalence. This section also
+  Section~\ref{sec:bidirectional}. This section also shows how the \unbound library
+  can assist with the implementation of variable binding and automatically derive operations for
+  capture-avoiding substitution and alpha-equivalence. Finally, the section
   describes a monadic structure for the type checker, and how it can help with
   the production of error messages, the primary purpose of a type checker.
 
@@ -137,7 +133,7 @@ features described in that chapter can be implemented.
 %  Ask yourself ``How can we know when types (and terms) are equal?''
 
 \item An important feature of dependently-typed languages is the ability for
-  run time tests to be reflected into the type
+  run-time tests to be reflected into the type
   system. Section~\ref{sec:pattern-matching} shows how to extend \pif with a
   simple form of dependent pattern matching. We look at this feature in two
   different ways: First how to reflect the gain in information about boolean
@@ -163,34 +159,34 @@ features described in that chapter can be implemented.
 
 
 \paragraph{What do these notes \textbf{not} cover?}
-The goal of this notes is to provide an introductory overview. As a result,
-there are many topics related to the implementation of dependent type theories
-and programming languages that are not included here. Furthermore, because
+The goal of this notes is to provide an introductory overview to the
+implementation of (dependent) type theories and type checkers. As a result,
+there are many related topics that are not included here. Furthermore, because
 these notes come with a reference implementation, they emphasize only a single
-point in the design space.
+point in a rich design space.
+
+For a broader view, section~\ref{sec:related-work} includes a discussion of
+alternative tutorials, and describes how this one differs from other
+approaches.  The key differences are summarized below:
 
 \begin{itemize}
 \item For simplicity, the \pif language does not enforce termination through
   type checking. Implementing a proof system like Agda or Coq requires
-  additional structure, including universe levels and bounded iteration.
+  additional structure, including universe levels and bounded recursion.
 \item Many implementations of dependent type theories use
   \emph{normalization-by-evaluation} to decide whether types are equivalent
   during type checking.  \pif uses an alternative approach based on
   weak-head-normalization, defined using substitution. This approach is closer
   to $\lambda$-calculus theory, but can be less efficient in practice.
-\item Also for simplicity, \pif does not attempt to infer arguments, using
+\item Also for simplicity, \pif does not attempt to infer missing arguments using
   unification or other means. As a result, example programs in \pif are
   significantly more verbose than in other languages.
 \item This implementation relies on the \unbound library for variable binding,
-  alpha-equivalence and substitution.  As a result, most issues related to
-  this topic are avoided.
+  alpha-equivalence and substitution. As a result, these operations can be 
+  automatically derived. A more common approach is to use de Bruijn indices.
 \item Recent work on cubical type theory, higher-inductive types and
   univalence is not covered here.
 \end{itemize}
-
-Section~\ref{sec:related-work} includes a discussion of related tutorials,
-including how this one differs, as well as pointers for where to
-go for more information.
 
 \paragraph{What do I want you to get out of all of this?}
 
@@ -202,14 +198,15 @@ go for more information.
   of judgments into an algorithm that determines whether the judgement holds.
    
 \item Exposure to the design choices of dependently-typed languages. In this
-  respect, my goal is breadth not depth. As a result, I will provide
+  respect, the goal is breadth not depth. As a result, I will provide
   \emph{simple} solutions to some of the problems that we face and sidestep
-  other problems entirely. Because solutions are chosen for simplicity, the
-  end of these notes includes pointers if you want to go deeper.
+  other problems entirely. Because solutions are chosen for simplicity,
+  \ref{sec:related-work} includes pointers to related work if you want to go
+  deeper.
    
 \item Experience with the Haskell programming language. I think Haskell is an
   awesome tool for this sort of work and I want to demonstrate how its
-  features monads, generic programming) are well-suited for this task.
+  features (monads, generic programming) are well-suited for this task.
 
 \item A tool that you can use as a basis for experimentation. When you design
   your language, how do you know what programs you can and cannot express?
@@ -389,7 +386,8 @@ about any variable's type.\footnote{On paper, this assumption is reasonable
   because we always extend the context with variables that come from binders,
   and we can always rename bound variables so that they differ from other
   variables in scope. Any implementation of the type system will need to somehow 
-  make sure that this invariant is maintained.}
+  make sure that this invariant is maintained. We'll do this in Section~\ref{sec:implementation} using 
+  a freshness monad from the \unbound library.}
 
 \paragraph{An initial set of typing rules: Variables and Functions}
 
@@ -817,7 +815,7 @@ names in our AST.
 type TName = Unbound.Name Term
 \end{verbatim}
 %
-This type is indexed by \cd{Term} the AST type that it is a name for. That
+This type is indexed by \cd{Term}, the AST type that it is a name for. That
 way \unbound can make sure that we only substitute the right form of syntax
 for the right name, i.e. we can only replace a \texttt{TName} with a
 \texttt{Term}.
@@ -857,7 +855,7 @@ data Term
     Lam (Unbound.Bind TName Term)
 
   | -- | applications `a b`
-    App Term Arg
+    App Term Term
 
   | -- | function types   `(x : A) -> B`
     Pi Type (Unbound.Bind TName Type)
@@ -867,10 +865,6 @@ data Term
 
   ...
   deriving (Show, Generic)
-
--- | An argument to a function
-data Arg = Arg {unArg :: Term}
-  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
 \end{verbatim}
 
 As you can see, variables are represented by names. \unbound's \texttt{Bind}
@@ -879,25 +873,18 @@ and \texttt{Pi} bind a single variable in a \texttt{Term}.  However, in a
 \cd{Pi} term, we also want to store the type $[[A]]$, the type of the bound
 variable $[[x]]$.
 
-Because the syntax is all shared, a \texttt{Type} is just another
-name for a \texttt{Term}. We'll use this name just for documentation.
+Because the syntax is all shared, a \texttt{Type} is just another name for a
+\texttt{Term}. We'll use this name in the source code just for documentation.
 %
 \begin{verbatim}
   type Type = Term
 \end{verbatim}
 %
-We also isolate function arguments as a special type \texttt{Arg}, which is
-isomorphic to \texttt{Term}. This distinction is not useful for the
-initial version of \pif, but is important for future extensions.
-
-The definitions of the \texttt{Arg} datatype automatically derives instances
-for two type classes from the \texttt{unbound-generics} library:
-\texttt{Unbound.Alpha} and \texttt{Unbound.Subst}.
 
 Among other things, the \texttt{Alpha} class enables functions for alpha
 equivalence and free variable calculation, with the types shown below.
-Because \unbound creates these instances for us, we don't have to worry
-about defining them.
+Usually \unbound can derive instance of this class for us, so that we don't
+have to worry about defining these functions manually.
 
 \begin{verbatim}
 aeq :: Alpha a => a -> a -> Bool
@@ -906,14 +893,31 @@ aeq :: Alpha a => a -> a -> Bool
 For \texttt{Term}, we do not use the default definitions of the \texttt{Alpha}
 and \texttt{Subst} classes. Instead, we need to provide a bit more
 information.  First, we would like the definition of alpha-equivalence of
-terms to ignore type annotations (as well as other practicalities, such as
-source code positions for error messages and explicit parentheses). Therefore 
-our instance does so for these constructors of the \texttt{Term} data type and 
-defers to the generic definition for the rest. 
+terms to ignore type annotations and source code positions for error
+messages. Therefore our instance does so for these constructors of the
+\texttt{Term} data type and defers to the generic definition for the rest.
+
+For example, if \cd{xName} and \cd{yName} are two different names, then 
+\unbound's implementation of $\alpha$-equivalence can equate terms that 
+differ only in using these names for binding.
+\begin{piforall}
+-- '\x -> x`
+idx :: Term
+idx = Lam (Unbound.bind xName (Var xName))
+
+-- '\y -> y`
+idy :: Term
+idy = Lam (Unbound.bind yName (Var yName))
+
+-- >>> Unbound.aeq idx idy
+-- True
+\end{piforall}
 
 The \texttt{Subst} instance for \texttt{Term} requires telling \unbound where
-variables occur in the \cd{Term}. This short function pattern matches to find the 
-\cd{Var} constructor, extract its name and return it to \unbound.
+variables occur in the \cd{Term}. This short function pattern matches to find
+the \cd{Var} constructor, extracts its name and returns it to \unbound. We
+don't need to provide any more code to \unbound in the implementation of
+substitution; the generic implementation suffices.
 
 \begin{verbatim}
 instance Unbound.Subst Term Term where
@@ -924,8 +928,7 @@ instance Unbound.Subst Term Term where
 For more information about \unbound, see the documentation for
 \texttt{unbound-generics}\footnote{\url{https://github.com/lambdageek/unbound-generics}}.
 
-\subsection{A Type Checking monad
-{[}Environment.hs{]}}
+\subsection{A Type Checking monad{[}Environment.hs{]}}
 
 Recall that our plan is to write two mutually recursive functions for
 type checking of the following types:
@@ -955,7 +958,7 @@ checkType :: Term -> Type -> TcMonad Term
 \end{verbatim}
 
 Those of you who have worked with Haskell before may be familiar with the
-monads
+classes
 \href{https://hackage.haskell.org/package/mtl-2.1.2/docs/Control-Monad-Reader.html}{MonadReader},
 and the
 \href{https://hackage.haskell.org/package/mtl-2.1.2/docs/Control-Monad-Error.html}{MonadError},
@@ -971,7 +974,7 @@ warn :: (Disp a) => a -> TcMonad b
 \end{verbatim}
 
 We'll also need this monad to be a freshness monad, to support working
-with binding structure, and throw in MonadIO for good measure.
+with binding structure, and throw in \cd{MonadIO} for good measure.
 
 \subsection{Implementing the Type Checking Algorithm
 {[}Typecheck.hs{]}}
@@ -1638,24 +1641,26 @@ find the equality type and then to show that the two sides of it have
 different head forms. This rule must be in checking mode because we can use
 \textsf{contra} to inhabit any type.
 
-\subsubsection{Homework (\pif: more church encodings)}
-
-Now that we have defined propositional equality, we can use it 
-to define compile-time test cases. 
-The file \texttt{version2/test/NatChurch.pi} is a start at a Church
-encoding of natural numbers. Replace the \cd{TRUSTME}s in this file so that
-it compiles. For example, one task in this file is to define 
-a predecessor function. By replacing the \cd{TRUSTME} with \cd{Refl} below, you'll be able to force the type checker to normalize both sides of the equality. The code will only type check if you have defined \cd{pred} correctly (on this example).
-
-\begin{lstlisting}
-test_pred : pred two = one
-test_pred = TRUSTME -- replace with Refl
-\end{lstlisting}
-
 \subsubsection{Homework (\pif: equality)}
 
-Complete the file \href{version2/test/Hw2.pi}{\texttt{Hw2.pi}}. This file gives
-you practice with working with equality propositions in \pif.
+Complete the file \href{version2/test/Hw2.pi}{\texttt{Hw2.pi}}. This file
+gives you practice with working with equality propositions in \pif.
+
+\subsubsection{Homework (\pif: more church encodings)}
+
+Now that we have defined propositional equality, we can use it to define
+compile-time test cases.  The file \texttt{version2/test/NatChurch.pi} is a
+start at a Church encoding of natural numbers. Replace the \cd{TRUSTME}s in
+this file so that it compiles. For example, one task in this file is to define
+a predecessor function. By replacing the \cd{TRUSTME} with \cd{Refl} below,
+you'll be able to force the type checker to normalize both sides of the
+equality. The code will only type check if you have defined \cd{pred}
+correctly (on this example).
+
+\begin{piforall}
+test_pred : pred two = one
+test_pred = TRUSTME -- replace with Refl
+\end{piforall}
 
 \section{Irrelevance: the $\forall$ of \pif}
 \label{sec:irrelevance}
@@ -1665,23 +1670,21 @@ arguments are ``ghost'' or ``specificational'' and only there for proofs. For
 efficient executables, we don't want to have to ``run'' these arguments, nor
 do we want them taking up space in data structures.
 
-Functional languages do this all the time: they erase \emph{type
-annotations} and \emph{type} arguments before running the code. This
-erasure makes sense because of parametric polymorphic functions are not
-allowed to depend on types. The behavior of map must be the same no
-matter whether it is operating on a list of integers or a list of
-booleans.
+Functional languages do this all the time: they erase \emph{type annotations}
+and \emph{type} arguments as part of the compilation pipeline. This erasure
+makes sense because of parametric polymorphic functions are not allowed to
+depend on types. The behavior of map must be the same no matter whether it is
+operating on a list of integers or a list of booleans.
 
-In a dependently-typed language we'd like to erase types too. And proofs
+In a dependently-typed language we'd like to erase types too. And erase proofs
 that are only there to make things type check. Coq does this by making a
-distinction between \texttt{Prop} and \texttt{Set}. Everything in
-\texttt{Set} stays around until run time, and is guaranteed not to depend
-on \texttt{Prop}. \scw{TODO: talk about squash, etc.}
+distinction between \texttt{Prop} and \texttt{Set}. Everything in \texttt{Set}
+stays around until run time, and is guaranteed not to depend on \texttt{Prop}.
 
 We'll take another approach.
 
-In \pif we have new kind of quantification, called ``forall'', that
-marks erasable arguments. We mark forall quantified arguments with
+In \pif we have new kind of quantification, called ``forall'', that marks
+erasable arguments. We mark forall quantified arguments with square
 brackets. For example, we can mark the type argument of the polymorphic
 identity function as erasable.
 
@@ -1704,101 +1707,27 @@ irrelevant. We wouldn't want to allow this definition:
 id' : [x:Type] -> [y:x] -> x
 id' = \ [x][y]. y
 \end{piforall}
+\indent
+Here \texttt{id'} claims that its second parameter \cd{y} is
+erasable, but it is not. And, when we check this this code with 
+\texttt{version3} of \pif, it is rejected with the following error 
+message.
 
-Here \texttt{id'} claims that its second argument is
-erasable, but it is not.
+\begin{verbatim}
+Type Error:
+Lec3.pi:16:16:
+  Cannot access irrelevant variables in this context
+  When checking the term 
+    \[x] [y]. y
+  against the signature
+    id' : [x : Type] -> [x] -> x
+  In the expression
+    y
+\end{verbatim}
 
-\subsection{How do we rule this out in the type system?}
-
-We need to make sure that an irrelevant variable, like $x$ above, is not
-``used'' in the body of a $\lambda$-abstraction. How can we do so?
-
-The approach we will take will seem a bit round about at first. But this 
-approach is the most future-proof, for reasons that we discuss below. 
-
-The key idea is that we will mark variables in the context with an
-$[[epsilon]]$ annotation, which is either $[[Rel]]$ or $[[Irr]]$.  ``Normal''
-variables, introduced by $\lambda$-expressions will always be marked as
-relevant ($[[Rel]]$). Only relevant variables can be used in terms and 
-we revise the variable typing rule to require this annotation:
-
-\[ 
-\drule{t-evar}
-\]
-
-An irrelevant abstraction introduces its variable into the context tagged with
-$[[Irr]]$. Because of this tag, this variable will be inaccessible in the body
-of the function.
-
-\[
-\drule{t-elambda}
-\]
-
-However, this variable should be available for use in \emph{types} and other
-\emph{irrelevant} parts of the term. To enable this use, we use a special
-context operation $[[G Irr]]$, as in the second premise in \rref{t-elambda}, and
-in the \rref{t-eapp} rule below.
-
-\[
-\drule{t-eapp}
-\]
-
-This operation on the context, called \emph{demotion}, converts all $[[Irr]]$
-tags on variables to be $[[Rel]]$. It represents a shift in our perspective:
-the variables that were not visible before are now available after this
-context modification. 
-
-Finally, when checking irrelevant $\Pi$ types, we mark the variable with $[[Rel]]$ when 
-we add it to the context so that it may be used in the range of the $\Pi$ type. Otherwise, we would not be able to verify the type of the polymorphic identity function above.
-\[
-\drule{t-epi}
-\]
-
-\subsection{Compile-time irrelevance}
-
-What does checking irrelevance buy us? Because we know that irrelevant
-arguments are not actually used by the function, we know that they can be
-\emph{erased} prior to execution. We don't need this information to compute
-the answer, so why provide it?
-
-An additional benefit is during equivalence checking. When deciding whether 
-two terms are equal, we don't need to look at their irrelevant components. 
-
-\[ 
-\drule{e-eapp}
-\]
-
-We've been alluding to this the whole time, but now we'll come down to
-it. We're actually \emph{defining} equality over just the computationally
-relevant parts of the term instead of the entire term. In \texttt{version3} of the 
-implementation, note how the definition
-of \texttt{equate} ignores arguments that are tagged as `irrelevant'. 
-(And from the beginning, our system already ignores types that appear only in 
-type annotations. Our justification for doing this is the same.)
-
-Why is compile-time irrelevance important? 
-\begin{itemize}
-\item faster comparison: don't have to look at the
-whole term when comparing for equality. Coq / Adga look at type
-annotations 
-\item more expressive: don't have to \emph{prove} that those
-parts are equal
-\end{itemize}
-
-For example, consider the example below. The function $p$ has an irrelevant
-argument, so it must be a constant function. Another name for $p$ might be a
-\emph{phantom} type.  Therefore it is sound to equate any two applications of
-$p$ because we know that we will always get the same result.
-
-\begin{piforall}
-irrelevance : (p : [i : Nat] -> Type) -> p [1] = p [2]
-irrelevance = \p . Refl
-\end{piforall}
-
-
-However, note that casting is a relevant use of propositional equality. In the 
-example below, \pif will prevent us from marking the argument \texttt{pf} as 
-irrelevant. 
+However, note that casting is a relevant use of propositional equality. In the
+example below, \pif will prevent us from marking the argument \texttt{pf} as
+irrelevant.
 
 \begin{piforall}
 proprel : [a : Type] -> (pf : a = Bool) -> (x : a) -> Bool
@@ -1811,6 +1740,95 @@ non-termination. We don't know whether this proof is \texttt{Refl} or some
 infinite loop. So this argument must be evaluated to be sure that the two
 types are actually equal. If (somehow) we knew that the argument would always
 evaluate to \texttt{Refl} we could erase it.
+
+
+\subsection{How do we rule this out in the type system?}
+
+We need to make sure that an irrelevant variable is not ``used'' in the relevant parts of 
+the body of a $\lambda$-abstraction. How can we do so?
+
+The key idea is that we mark variables in the context with an $[[ep]]$
+annotation, which is either $[[Rel]]$ (relevant) or $[[Irr]]$ (irrelevant).
+``Normal'' variables, introduced by $\lambda$-expressions, will always be
+marked as relevant, and only relevant variables can be used in terms.
+As a result, we revise the variable typing rule to require the relevant annotation.
+
+\[ 
+\drule{t-evar}
+\]
+
+An irrelevant abstraction introduces its variable into the context tagged with
+the irrelevant annotation. Because of the $[[Irr]]$ tag, such variables are
+inaccessible in the body of the function.
+
+\[
+\drule[width=3in]{t-elambda}
+\]
+
+However, this variable should be available for use in \emph{types} and other
+\emph{irrelevant} parts of the term. To enable this use, we use a special
+context operation $[[G Irr]]$, as in the second premise in \rref{t-elambda}, and
+in the \rref{t-eapp} rule below.
+
+\[
+\drule[width=3in]{t-eapp}
+\]
+
+This operation on the context, called \emph{resurrection}, converts all
+$[[Irr]]$ tags on variables to be $[[Rel]]$. It represents a shift in our
+perspective: because we have entered an irrelevant part of the term, the
+variables that were not visible before are now available after this context
+modification.
+
+Finally, when checking irrelevant $\Pi$ types, we mark the variable with $[[Rel]]$ when 
+we add it to the context so that it may be used in the range of the $\Pi$ type. Otherwise, we would not be able to verify the type of the polymorphic identity function above.
+\[
+\drule[width=3in]{t-epi}
+\]
+
+\subsection{Compile-time irrelevance}
+
+What does checking irrelevance buy us? Because we know that irrelevant
+arguments are not actually used by the function, we know that they can be
+\emph{erased} prior to execution. 
+
+However, there is another benefit to marking some arguments as irrelevant: we
+can ignore them during equivalence checking. When deciding whether two terms
+are equal, we don't need to look at their irrelevant components. In other
+words, we can add the following equality rule to our definitional equality in
+the case of applications with irrelevant arguments.
+
+\[ 
+\drule{e-eapp}
+\]
+
+If you look at \texttt{version3} of the implementation, you can see where we
+use this idea in the definition of equality. Note in this version that
+arguments are now tagged with their relevance, and when we compare arguments
+that are tagged as irrelevant, we do nothing. In fact, what we are doing is
+actually \emph{defining} equality over just the computationally relevant parts
+of the term instead of the entire term. And we've been doing this in a limited
+form from the beginning---recall that \texttt{version1} of \pif \pif already
+ignores type annotations. Just as type annotations do not affect computation
+and can be ignored, the same reasoning holds for irrelevant arguments.
+
+Why is compile-time irrelevance important? 
+\begin{itemize}
+\item faster comparison: don't have to look at the
+whole term when comparing for equality
+\item more expressive: these parts of the term don't actually have 
+to be equal 
+\end{itemize}
+
+For example, consider the example below. The parameter $p$ takes an irrelevant
+argument, so we know that it must be a constant function. Therefore it is
+sound to equate any two applications of $p$ because we know that we will
+always get the same result. 
+
+\begin{piforall}
+irrelevance : (p : [i : Nat] -> Type) -> p [1] = p [2]
+irrelevance = \p . Refl
+\end{piforall}
 
 \section{Datatypes and Indexed Datatypes}
 \label{sec:datatypes}
@@ -2327,8 +2345,70 @@ Now take your code in \texttt{FinHw.pi} and see if you can mark some of
 the components of the \texttt{Fin} datatype as erasable.
 
 
-\section{Where to go for more}
+\section{Where to go next?}
 \label{sec:related-work}
+
+\subsection{Other tutorials on the implementation of dependent type systems}
+
+\begin{itemize}
+
+\item A. Löh, C. McBride, W. Swierstra, %2007-2010
+  \emph{A tutorial implementation of a dependently typed lambda calculus}    \cite{loeh:tutorial}.
+
+  This tutorial implements the ``LambdaPi'' language, and is accompanied by a
+  Haskell implementation available
+  online~\footnote{\url{https://www.andres-loeh.de/LambdaPi/}}. The tutorial
+  starts with an implementation of the simply-typed lambda calculus, using a
+  locally nameless representation and bidirectional type checking, and then
+  extends to core type system with type-in-type and uses
+  normalization-by-evaluation for equivalence checking. It also adds natural
+  numbers and vectors along with their eliminators, but does not include a
+  general form of (inductive) datatypes.
+
+\item Lennart Augustsson. \emph{Simple, Easier!} \cite{augustsson:tutorial}
+
+  The goal of Augustsson's tutorial, inspired by an earlier version of
+  LambdaPi, is to be the simplest implementation possible. Therefore, he uses
+  a string representation of variables and binding and weak-head normalization
+  for implementation of equality. His version is a Haskell implementation of
+  Barendregt's lambda cube~\cite{barendregt:lambda-calculi-with-types}.
+
+\item Coquand, Kinoshita, Nordstrom, Takeyama. \emph{A simple type-theoretic
+    language: Mini-TT} \cite{coquand:tutorial}
+
+  Coquand et al. describe another Haskell implementation of dependent types,
+  called ``Mini-TT'', that shows how to implement (in about 400 lines of code)
+  a small dependently-typed language that includes $\Sigma$-types, void, unit
+  and sums.  The language does not include propositional equality or indexed
+  datatypes, nor does it enforce termination.  The implementation uses strings
+  to represent variable binding, which are converted to de Bruijn indices
+  during normalization-by-evaluation.
+
+\item Andrej Bauer, \emph{How to implement dependent type theory} \cite{bauer:tutorial}
+
+  Bauer explores several different implementations of dependent type theory in
+  a series of blog posts using the OCaml language. The first version uses a
+  named representation (i.e. strings) and generates fresh names during
+  substitution and alpha-equality. This version uses full normalization to
+  implement definitional equality. Then, in the second version, Bauer revises
+  the implementation to use normalization by evaluation. In the third version,
+  he revises again to use de Bruijn indices, explicit substitutions and
+  switches back to weak-head normalization.
+
+\item Tiark Rompf, \emph{Implementing Dependent Types} \cite{rompf:tutorial}.
+
+  A recent blog post tutorial, Rompf uses Javascript to implement a core
+  dependent type theory using higher-order abstract syntax.
+
+\item Andras Kovacs, \emph{Elaboration Zoo} \cite{kovacs:tutorial}
+
+  Kovacs' github repository includes several different implementations of
+  evaluation and type checking for a minimal dependently typed
+  languages. These implementations are accompanied by video recordings of a
+  seminar that goes over this code. Notably, this tutorial includes implicit
+  argument synthesis via (higher-order) unification.
+
+\end{itemize}
 
 \subsection{Related work for \pif}
 
@@ -2337,28 +2417,19 @@ the components of the \texttt{Fin} datatype as erasable.
 Because they lack a rule for conversion, the typing rules for the core
 dependent type system presented in Section~\ref{sec:simple} do not correspond
 to any existing type system. However, jumping ahead, the core language with
-the inclusion with conversion and the \rref{t-type} rule has been
-well-studied.
+the inclusion of conversion (\rref{t-conv}) has been well-studied.
 
 As a foundation of logic, the inclusion of rule \rref{t-type} makes the system
 inconsistent. Indeed, Martin-L\"of's original formulation of type
-theory~\cite{martin-lof:1971} included this rule until the resulting paradox
+theory~\cite{martin-lof71} included this rule until the resulting paradox
 was demonstrated by Girard. This inconsistency was resolved in later versions
-of the systems~\cite{martin-lof:1972} and in the Calculus of
+of the systems~\cite{martin-lof73} and in the Calculus of
 Constructions~\cite{Coc} by stratifying $[[Type]]$: first into two levels and
-then into an infinite hierarchy~\cite{luo:ecc}.
+then into an infinite hierarchy of universes~\cite{luo-ecc}.
 
 The inconsistency of this system as a logic does not prevent its use as a
-programming language. Cardelli~\ref{cardelli:type-in-type} showed that this
-language was type sound, explored applications as a programming language.
-
-\begin{itemize}
-\item Cardelli, A polymorphic lambda calculus with Type:Type
-\url{http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-10.pdf}
-
-\item Augustsson, Cayenne -- a Language With Dependent Types
-\url{http://dl.acm.org/citation.cfm?id=289451}
-\end{itemize}
+programming language. Cardelli~\cite{cardelli:1986} showed that this
+language was type sound and explored applications for programming.
 
 \paragraph{Section~\ref{sec:bidirectional}:  Bidirectional type checking}
 
@@ -2373,101 +2444,111 @@ where to apply the conversion rule during type checking. As a result, such
 type systems are frequently used as the basis for type checking, with
 elaboration for implicit arguments layered on top.
 
-\begin{itemize}
-\item Pierce and Turner. Local type inference.
-  \url{https://www.cis.upenn.edu/~bcpierce/papers/lti-toplas.pdf} A classic
-  paper that popularized bidirectional type systems, in the context of
-  polymorphic languages with subtyping.
+Pierce and Turner~\cite{pierce:lti} popularized the used of bidirectional type
+systems, in the context of polymorphic languages with subtyping.  The Haskell
+language uses bidirectional type checking layered on top of Hindley-Milner
+unification in order to support type inference for higher-rank
+polymorphism~\cite{practical-type-inference}. This type system extension
+allows functions to take polymorphic functions as arguments. Notablly, the
+paper includes a well-documented reference implementation of the type system
+in the appendix.
 
-\item Peyton Jones, Vytiniotis, Weirich, Shields. Practical type inference for
-  arbitrary-rank types.
-  \url{https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/putting.pdf}
-  Describes how the Haskell language incorporates a bidirectional type system
-  on top of the Hindley-Milner type system, in order to support functions that
-  take polymorphic functions as arguments (i.e. higher-rank polymorphism). This paper includes 
-  as reference Haskell implementation of the type system in the appendix.
+David Christiansen's tutorial~\cite{christiansen:tutorial-bidirectional}
+introduces the idea of bidirectional type checking as an independent
+topic. For another description of the role of bidirectional type systems in
+the context of dependent types, see L\"oh, McBride and Swierstra's
+tutorial~\cite{loeh:tutorial}. Unlike \pif, this tutorial separates the syntax
+of terms based whether they are inferrable or checkable.
 
-\item Christiansen, Tutorial on Bidirectional Typing.
-\url{https://www.davidchristiansen.dk/tutorials/bidirectional.pdf}
+Finally, Dunfield and Krishnaswami's extensive survey
+paper~\cite{dunfield:bidirectional-survey} catalogs and organizes recent
+results in this area.
 
-\item Dunfield and Krishnaswami, Bidirectional Typing.
-\url{https://www.cl.cam.ac.uk/~nk480/bidir-survey.pdf}
-A recent survey paper that catalogs recent results in this area.
-\end{itemize}
-
-\paragraph{Section~\ref{sec:equality}: Definitional equality and Normalization by evaluation}
+\paragraph{Section~\ref{sec:equality}: Definitional equality}
 
 Equality has been called the hardest problem in type theory, and that is not
 an exaggeration.
 
+Many implementations, such as Coq and Agda use a procedure called \emph{normalization-by-evaluation} to decide whether two terms are equivalent. 
+
 \begin{itemize}
-\item Andreas Abel's habilitation thesis.
+\item Coq~\cite{gregoire:strong-reduction}
+
+\item Andreas Abel's habilitation thesis~\cite{abel_2013}.
 
 \item Daniel Gratzer, NBE for MLTT
 \url{https://github.com/jozefg/nbe-for-mltt}
 \end{itemize}
 
+\paragraph{Section~\ref{sec:irrelevance}: Compile-time and run-time irrelevance}
+
+The implementation of irrelevance in \pif is inspired by the Dependent
+Dependency Calculus (DDC)~\cite{choudhury:ddc}, a pure type system
+parameterized by a dependency lattice. The selection of the lattice determines
+the precise form of irrelevance described by the type system: does the system
+include run-time irrelevance only, compile-time irrelevance only, both sorts
+of irrelevance combined together (as in \pif), or both sorts and allow them to
+be distinguished.
+
+\paragraph{Compile-time irrelevance only}
+
+Pfenning~\cite{pfenning:2001} used a modal type system to identify arguments
+that can be ignored when checking equivalence. This system, extended by Abel
+and Scherer~\cite{abel-scherer}, became the basis for Agda's implementation of
+compile-time irrelevance.
+
+\paragraph{Run-time irrelevance only}
+
+The Coq proof assistance distinguishes the \cd{Prop} universe from the
+\cd{Type} universe for several reasons. However, one feature of this
+distinction is that all terms in the \cd{Prop} universe can be erased prior to
+execution, leading to faster evaluation of extracted code.
+
+More recently, \emph{quantitative type theory}~\cite{atkey} unifies run-time
+irrelevance and linear type systems by restricting the number of times that
+variables may be used in a given context. This resulting system has been
+adopted for the implementations of irrelevance in the Agda and
+Idris~\cite{idris2} languages.
+
+\paragraph{Both run-time and compile-time irrelevance, but no distinction}
+
+The Implicit Calculus of Constructions~\cite{miquel} ensures that some
+arguments are treated irrelevantly (at both runtime and compiletime) by simply
+not including them in the syntax of terms. This work was extended to decidable
+type checking through the use of an erasure operation---terms may include
+irrelevant arguments, but these arguments must be erased prior to runtime and
+equality checking\cite{icc-star}. This approach lead to Erasure Pure Type
+Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
+Dependent Haskell~\cite{weirich:systemd}.
+
+
+
 \paragraph{Section~\ref{sec:pattern-matching}: Dependently-typed pattern matching}
+
+The implementation of indexed datatypes in \pif is inspired by the compilation
+of \emph{Generalized Algebraic Datatypes} in
+Haskell~\cite{vytiniotis2011outsidein,vytiniotis2006simple}. The
+distinguishing feature of this formalization is that internally, datatype
+indices are representated by constrained parameters and so are an extension of
+the parameterized recursive sums of products found in functional programming
+languages.
+
+In contrast, the theory of inductive datatypes found in Coq and Agda must ensure that they cannot be used to implement nonterminating functions. This means that there are several restrictions: they must be strictly positive, their eliminators must be defined separately, and they must satisfy constraints based on universe-levels. 
+
 
 \begin{itemize}
 \item
   Coq pattern matching:
-  \href{http://coq.inria.fr/refman/Reference-Manual006.html\#Cic-inductive-definitions}{Coq
+  \href{https://coq.inria.fr/refman/language/core/inductive.html#theory-of-inductive-definitions}{Coq
   User manual}
 \item
   Agda pattern matching:
   \href{http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf}{Ulf Norell's
   dissertation}
-\item
-  Haskell GADTs:
-  \href{http://research.microsoft.com/apps/pubs/default.aspx?id=162516}{Dimitrios
-  Vytiniotis, Simon Peyton Jones, Tom Schrijvers, and Martin Sulzmann,
-  OutsideIn(X): Modular type inference with local assumptions}
 \end{itemize}
 
 
-\paragraph{Section~\ref{sec:irrelevance}: Compile-time and runtime irrelevance}
-
-* Pfenning, Abel and Scherer
-* ICC, Mishra-Linger and Sheard
-* McBride, Atkey
-* DDC
-
-\subsection{Other tutorials on the implementation of dependent type systems}
-
-\begin{itemize}
-\item A. Löh, C. McBride, W. Swierstra, 
-\emph{A tutorial implementation of a dependently typed lambda calculus} \cite{loeh:tutorial}.
-
-``LambdaPi''. Implementation in Haskell.
-Starts with simply-typed lambda calculus, uses locally nameless representation
-and bidirectional typing, extends to core type system with type-in-type, implements NBE, then
-adds natural numbers and vectors. 
-
-\item Andrej Bauer, \emph{How to implement dependent type theory} \cite{bauer:tutorial}
-
-Series of blog posts. Implementation in OCaml. Infinite hierarchy of type universes. Uses named representation and generates fresh names during substitution and alpha-equality. Uses full normalization to implement definitional equality. Then in second version revises to use NBE. The third version revises to use de Bruijn indices, explicit substitutions and then switches back to weak head normalization.
-
-\item Tiark Rompf, \emph{Implementing Dependent Types}. \cite{rompf:tutorial}.
-
-Uses Javascript. Implements a core dependent type theory using HOAS (tagless final) and Normalization by evaluation.
-
-\item Lennart Augustsson. \emph{Simple, Easier!} \cite{augustsson:tutorial}
-
-Implemented in Haskell. Goal is simplest implementation. Uses string representation of variables and weak head normalization for implementation of equality. Implementation of Barendregt's lambda cube.
-
-\item Coquand, Kinoshita, Nordstrom, Takeyama. \emph{A simple type-theoretic
-    language: Mini-TT} ~\cite{coquand:tutorial}
-
-``Mini-TT''. Implemented in Haskell. Includes sigma types, void, unit and sums, but not indexed datatypes (or propositional equality). Uses NbE for conversion checking. Does not enforce termination.
-
-\item Andras Kovacs, Elaboration Zoo
-\url{https://github.com/AndrasKovacs/elaboration-zoo/}
-
-\item Brigitte Pientka
-\url{https://www.cs.mcgill.ca/~bpientka/papers/recon-jfp.pdf}
-
-\end{itemize}
+\section{Conclusion}
 
 %\section{References}
 

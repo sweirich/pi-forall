@@ -9,11 +9,12 @@ ep {{ tex \epsilon }} :: '' ::=
 tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
 
    | \ [ x ] . a     ::    :: ELam
+   {{ tex \lambda [ [[x]] ] . [[a]] }}
 
    | a [ b ]         ::    :: EApp
 
    | [ x : A ] -> B  ::    :: EPi
-
+   {{ tex [ [[x]]\!:\![[A]] ] \rightarrow [[B]] }}
 
 context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
 
@@ -61,6 +62,7 @@ by
 G |- a1 = a2
 --------------------------- ::  eapp
 G |- a1 [b1] = a2 [b2]
+
 
 defns
 JTyping :: '' ::= 

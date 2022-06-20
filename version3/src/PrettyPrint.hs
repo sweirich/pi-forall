@@ -102,8 +102,8 @@ instance Disp [Decl] where
   disp = PP.vcat . map disp
 
 instance Disp Epsilon where
-  disp Irr = PP.text "-"
-  disp Rel = PP.text "+"
+  disp Irr = PP.text "irrelevant"
+  disp Rel = PP.text "relevant"
 
 
 

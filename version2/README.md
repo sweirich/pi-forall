@@ -3,41 +3,29 @@ pi-forall
 
 A demo implementation of a simple dependently-typed language for OPLSS
 (Used in 2022, 2014 and 2013)
-Stephanie Weirich
 
 The goal of this project is to bring up the design issues that occur in the
-implementation languages like Agda, Coq, Epigram, Idris, etc. Of course, it
-can't cover everything, but this code is a good starting point for discussion.
+implementation of the type checkers of languages like Agda, Coq, Epigram, Idris, etc. Of course, it
+can't cover everything, but this code is a starting point for discussion.
 
 As its main purpose is didactic, the code itself has been written for
 clarity, not for speed. The point of this implementation is an introduction to
 practical issues of language design and how specific features interact with
 each other. 
 
-Furthermore, this code based includes a number of features (unit, booleans,
-sigma types) which are all subsumed by the general mechanism for
-datatypes. These are included to give examples before diving into the more
-general, and much more complicated, code. 
-
-
-Features
---------
-  - Pure-type-system (PTS) representation (uniform syntax for all levels)
-  - bidirectional type checking
-  - irrelevant arguments (forall)
-  - propositional equality 
-  - indexed datatypes 
-
-
-This code is open source. Feel free to extend or adapt it for your own
-project. 
-  https://github.com/sweirich/pi-forall
-
-
 Installation
 ----------
-  pi-forall requires GHC and cabal or stack
+
+  Compiling pi-forall requires GHC and cabal or stack
   
+  Recommended tools (see links for instructions):
+  
+  1. [gchup](https://www.haskell.org/ghcup/)
+  
+  The gchup tool is an installer for general purpose Haskell tools, including GHC, Cabal, Stack and the Haskell language server (HLS). You'll want to install the recommended versions of all of these tools. 
+
+  2. [VSCode](https://code.visualstudio.com/) and [Haskell language extension](https://marketplace.visualstudio.com/items?itemName=haskell.haskell)   
+
 
 Contents
 --------

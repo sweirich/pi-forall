@@ -29,7 +29,6 @@ module Environment
     extendErr,
     D (..),
     Err (..){- SOLN EP -},
-    getStage,
     withStage,
     checkStage {- STUBWITH -}
   )
@@ -78,8 +77,7 @@ data Env = Env
     -- has been checked.
     hints :: [Sig],
     -- | what part of the file we are in (for errors/warnings)
-    sourceLocation :: [SourceLocation] {- SOLN EP -},
-    epsilon :: Epsilon {- STUBWITH -}
+    sourceLocation :: [SourceLocation] 
   }
 
 --deriving Show
@@ -89,8 +87,8 @@ emptyEnv :: Env
 emptyEnv = Env {ctx = {- SOLN DATA -} preludeDataDecls {- STUBWITH [] -}
                , globals = {- SOLN DATA -} length preludeDataDecls {- STUBWITH 0 -}
                , hints = []
-              , sourceLocation = []
-  {- SOLN EP-}, epsilon = Rel {- STUBWITH -}}
+               , sourceLocation = []
+              }
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
@@ -346,19 +344,15 @@ checkStage ::
   Epsilon ->
   m ()
 checkStage ep1 = do
-  ep2 <- asks epsilon
-  unless (ep1 <= ep2) $ do
+  unless (ep1 <= Rel) $ do
     err
-      [ DS "Cannot access ",
+      [ DS "Cannot access",
         DD ep1,
-        DS " variables in this context"
+        DS "variables in this context"
       ]
 
 withStage :: (MonadReader Env m) => Epsilon -> m a -> m a
 withStage Irr = extendCtx (Demote Rel)
 withStage ep = id
---  local (\e -> e {epsilon = max (epsilon e) ep})
 
-getStage :: (MonadReader Env m) => m Epsilon
-getStage = asks epsilon
 {- STUBWITH -}

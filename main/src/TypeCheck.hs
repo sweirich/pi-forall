@@ -24,27 +24,28 @@ import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 {- STUBWITH -}
 
--- | Infer the type of a term. The returned type is not guaranteed to be checkable(?)
+-- | Infer/synthesize the type of a term
 inferType :: Term -> TcMonad Type
 inferType t = tcTerm t Nothing
 
--- | Check that the given term has the expected type.
--- The provided type should be already checked to be a good type
+-- | Check that the given term has the expected type
 checkType :: Term -> Type -> TcMonad ()
-{- SOLN EQUAL -} {- STUBWITH checkType tm (Pos _ ty) = checkType tm ty
-checkType tm (Ann ty _) = checkType tm ty -}
+checkType tm (Pos _ ty) = checkType tm ty  -- ignore source positions/annotations
+checkType tm (Ann ty _) = checkType tm ty
 checkType tm ty = {- SOLN EQUAL -} do
   nf <- Equal.whnf ty
   void $ tcTerm tm (Just nf)
 {- STUBWITH void $ tcTerm tm (Just ty) -}
 
-  
--- | Make sure that the term is a type (i.e. has type 'Type')
+-- | Make sure that the term is a "type" (i.e. that it has type 'Type')
 tcType :: Term -> TcMonad ()
 tcType tm = void $ {- SOLN EP -}Env.withStage Irr $ {- STUBWITH -}checkType tm Type
-    
--- | check a term, producing its type
--- The second argument is 'Nothing' in inference mode and an expected type in checking mode
+
+---------------------------------------------------------------------
+
+-- | Combined type checking/inference function
+-- The second argument is 'Just expectedType' in checking mode and 'Nothing' in inference mode
+-- In either case, this function returns the type of the term
 tcTerm :: Term -> Maybe Type -> TcMonad Type
 -- i-var
 tcTerm t@(Var x) Nothing = do
@@ -76,7 +77,7 @@ tcTerm (App t1 t2) Nothing = do
   ty1 <- inferType t1 
 {- SOLN EQUAL -}
   let ensurePi = Equal.ensurePi 
-{- STUBWITH
+  {- STUBWITH
 
   let ensurePi :: Type -> TcMonad (TName, Type, Type) 
       ensurePi (Ann a _) = ensurePi a 
@@ -91,11 +92,10 @@ tcTerm (App t1 t2) Nothing = do
   Env.withStage ep1 $ checkType (unArg t2) tyA
   return (Unbound.subst x (unArg t2) tyB)
   {- STUBWITH 
-  
+
   (x,tyA,tyB) <- ensurePi ty1
   checkType t2 tyA
   return (Unbound.subst x t2 tyB) -}
-  
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do

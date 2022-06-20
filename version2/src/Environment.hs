@@ -80,8 +80,8 @@ emptyEnv :: Env
 emptyEnv = Env {ctx = []
                , globals = 0
                , hints = []
-              , sourceLocation = []
-  }
+               , sourceLocation = []
+              }
 
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]

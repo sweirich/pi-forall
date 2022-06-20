@@ -82,7 +82,7 @@ data Term
     Prod Term Term
   | -- | elimination form for Sigma-types `let (x,y) = a in b`
     LetPair Term (Unbound.Bind (TName, TName) Term) 
-     | -- | tquality type  `a = b`
+  | -- | Equality type  `a = b`
     TyEq Term Term
   | -- | Proof of equality `Refl`
     Refl 
@@ -90,8 +90,8 @@ data Term
     Subst Term Term 
   | -- | witness to an equality contradiction
     Contra Term
-   
-     | -- | type constructors (fully applied)
+    
+  | -- | type constructors (fully applied)
     TCon TCName [Arg]
   | -- | term constructors (fully applied)
     DCon DCName [Arg] 
@@ -170,8 +170,10 @@ data Decl
     Def TName Term
   | -- | A potentially (recursive) definition of
     -- a particular name, must be declared
-    RecDef TName Term     -- | Adjust the context for relevance checking
-  | Demote Epsilon    | -- | Declaration for a datatype including all of
+    RecDef TName Term 
+    -- | Adjust the context for relevance checking
+  | Demote Epsilon  
+  | -- | Declaration for a datatype including all of
     -- its data constructors
     Data TCName Telescope [ConstructorDef]
   | -- | An abstract view of a datatype. Does
@@ -220,13 +222,9 @@ unPos :: Term -> Maybe SourcePos
 unPos (Pos p _) = Just p
 unPos _ = Nothing
 
--- | Tries to find a Pos anywhere inside a term
-unPosDeep :: Term -> Maybe SourcePos
-unPosDeep = unPos -- something (mkQ Nothing unPos) -- TODO: Generic version of this
-
 -- | Tries to find a Pos inside a term, otherwise just gives up.
 unPosFlaky :: Term -> SourcePos
-unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
+unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
 
 -- | Is this the syntax of a literal (natural) number
 isNumeral :: Term -> Maybe Int

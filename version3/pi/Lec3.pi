@@ -11,7 +11,7 @@ t1 = id [Bool] (id [Bool] True)
 
 --  This shouldn't type check because y is relevant
 --
-{-
+{- 
 id' : [x:Type] -> [y:x] -> x
 id' = \[x][y]. y
 -}

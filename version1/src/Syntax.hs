@@ -129,13 +129,9 @@ unPos :: Term -> Maybe SourcePos
 unPos (Pos p _) = Just p
 unPos _ = Nothing
 
--- | Tries to find a Pos anywhere inside a term
-unPosDeep :: Term -> Maybe SourcePos
-unPosDeep = unPos -- something (mkQ Nothing unPos) -- TODO: Generic version of this
-
 -- | Tries to find a Pos inside a term, otherwise just gives up.
 unPosFlaky :: Term -> SourcePos
-unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPosDeep t)
+unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
 
 -----------------
 

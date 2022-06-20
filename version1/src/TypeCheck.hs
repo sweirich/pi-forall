@@ -14,23 +14,25 @@ import Text.PrettyPrint.HughesPJ (($$))
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 
--- | Infer the type of a term. The returned type is not guaranteed to be checkable(?)
+-- | Infer/synthesize the type of a term
 inferType :: Term -> TcMonad Type
 inferType t = tcTerm t Nothing
 
--- | Check that the given term has the expected type.
--- The provided type should be already checked to be a good type
+-- | Check that the given term has the expected type
 checkType :: Term -> Type -> TcMonad ()
-checkType tm (Pos _ ty) = checkType tm ty
+checkType tm (Pos _ ty) = checkType tm ty -- ignore source positions/annotations
 checkType tm (Ann ty _) = checkType tm ty
 checkType tm ty = void $ tcTerm tm (Just ty)
 
--- | Make sure that the term is a type (i.e. has type 'Type')
+-- | Make sure that the term is a "type" (i.e. that it has type 'Type')
 tcType :: Term -> TcMonad ()
 tcType tm = void $ checkType tm Type
 
--- | check a term, producing its type
--- The second argument is 'Nothing' in inference mode and an expected type in checking mode
+---------------------------------------------------------------------
+
+-- | Combined type checking/inference function
+-- The second argument is 'Just expectedType' in checking mode and 'Nothing' in inference mode
+-- In either case, this function returns the type of the term
 tcTerm :: Term -> Maybe Type -> TcMonad Type
 -- i-var
 tcTerm t@(Var x) Nothing = do
