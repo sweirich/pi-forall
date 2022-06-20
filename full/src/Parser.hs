@@ -5,7 +5,10 @@ module Parser
   (
    parseModuleFile, 
    parseModuleImports,
-   parseExpr
+   parseExpr,
+   expr,
+   decl,
+   testParser
   )
   where
 
@@ -16,7 +19,6 @@ import qualified Unbound.Generics.LocallyNameless as Unbound
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
--- import qualified Text.Parsec.Token as Token
 import qualified LayoutToken as Token 
 
 import Control.Monad.State.Lazy hiding (join)
@@ -125,15 +127,15 @@ parseModuleImports name = do
      (runParserT (do { whiteSpace; moduleImports }) [] name contents)
 
 -- | Test an 'LParser' on a String.
-testParser :: LParser t -> String -> Either ParseError t
-testParser parser str = Unbound.runFreshM $ 
-   flip evalStateT emptyConstructorNames $
+testParser :: ConstructorNames ->  LParser t -> String -> Either ParseError t
+testParser cn parser str = Unbound.runFreshM $ 
+   flip evalStateT cn $
 
      runParserT (do { whiteSpace; v <- parser; eof; return v}) [] "<interactive>" str
 
 -- | Parse an expression.
 parseExpr :: String -> Either ParseError Term
-parseExpr = testParser expr
+parseExpr = testParser {- SOLN DATA -}emptyConstructorNames{- STUBWITH -} expr
 
 -- * Lexer definitions
 type LParser a = ParsecT
@@ -412,10 +414,11 @@ expr = do
 -- application.  Breaking it out as a seperate category both
 -- eliminates left-recursion in (<expr> := <expr> <expr>) and
 -- allows us to keep constructors fully applied in the abstract syntax.
-term = try dconapp <|>  try tconapp <|>  funapp
+term = try dconapp <|> try tconapp <|>  funapp
 
 arg :: LParser Arg
-arg = (Arg Irr) <$> brackets expr <|> (Arg Rel) <$> factor
+arg = try (Arg Irr <$> brackets expr)
+   <|> Arg Rel <$> factor
 
 dconapp :: LParser Term
 dconapp = do 
@@ -633,14 +636,14 @@ match =
   do pat <- pattern 
      reservedOp "->"
      pos <- getPosition
-     body <- term
+     body <- expr
      return $ Match (Unbound.bind pat (Pos pos body))
 
 caseExpr :: LParser Term
 caseExpr = do
     reserved "case"
     pos <- getPosition
-    scrut <- factor
+    scrut <- expr
     reserved "of"
     alts <- layout match (return ())
     return $ Case (Pos pos scrut) alts 

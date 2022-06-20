@@ -139,11 +139,7 @@ whnf (App t1 t2) = do
   case nf of 
     (Lam bnd) -> do
       (x, body) <- Unbound.unbind bnd 
-      -- DON'T DO THIS!!! what if x is free in the whnf
-      --Env.extendCtx (Def x t2) $ whnf body
-      -- EITHER of these work
-      -- whnf (Unbound.subst x t2 body)
-      Unbound.subst x t2 <$> (Env.extendCtx (Def x t2) (whnf body)) 
+      whnf (Unbound.subst x t2 body)
     _ -> do
       return (App nf t2)
       

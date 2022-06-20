@@ -103,11 +103,10 @@ data Term
   {- STUBWITH -}
   deriving (Show, Generic)
 
--- | An argument to a function
 {- SOLN EP -}
+-- | An argument to a function
 data Arg = Arg {argEp :: Epsilon, unArg :: Term}
   deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
-{- STUBWITH -}
 
 -- | Epsilon annotates the stage of a variable
 data Epsilon

@@ -8,16 +8,15 @@ id = \x y . y
 idid : ((x:Type) -> (y : x) -> x) 
 idid = id ((x:Type) -> (y : x) -> x) id
 
+compose : (A : Type) -> (B : Type) -> (C:Type) ->
+  (B -> C) -> (A -> B) -> (A -> C)
+compose = \ A B C f g x. (f (g x))
+
 idT : Type
 idT = (x:Type) -> x -> x
 
 selfapp : idT -> idT
 selfapp = (\x.x : (idT -> idT) -> (idT -> idT)) (\x.x)
-
-
-compose : (A : Type) -> (B : Type) -> (C:Type) ->
-  (B -> C) -> (A -> B) -> (A -> C)
-compose = \ A B C f g x. (f (g x))
 
 
 
@@ -36,30 +35,3 @@ loop = loop
 unit : Type
 unit = (x:Type) -> x -> x
 
--- Church encoding of bool
-
-bool : Type 
-bool = (A:Type) -> A -> A -> A 
-
-true : (A:Type) -> A -> A -> A 
-true = \A x y. x
-
-false : (A:Type) -> A -> A -> A 
-false = \A x y. y
-
-cond : ((A:Type) -> A -> A -> A) -> (x:Type) -> x -> x -> x
-cond = \ b . b 
-
--- Church encoding of pairs
-
-and : Type -> Type -> Type
-and = \p. \q. (c: Type) -> (p -> q -> c) -> c
-
-conj : (p:Type) -> (q:Type) -> p -> q -> ( (c: Type) -> (p -> q -> c) -> c)
-conj = \p.\q. \x.\y. \c. \f. f x y
-
-proj1 : (p:Type) -> (q:Type) -> and p q -> p
-proj1  = \p. \q. \a. a p (\x.\y.x)
-
-proj2 : (p:Type) -> (q:Type) -> and p q -> q
-proj2  = \p. \q. \a. a q (\x.\y.y)

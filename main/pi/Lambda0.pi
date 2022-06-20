@@ -9,6 +9,8 @@ module Lambda0 where
 import Nat     
 import List
 
+-- A small language of lambda-calculus expressions
+
 data Exp : Type where
   Var of (Nat)           -- variables, represented with de Bruijn indices
   App of (Exp)(Exp)      -- application
@@ -16,6 +18,8 @@ data Exp : Type where
   Lit of (Nat)           -- natural number constants
   If0 of (Exp)(Exp)(Exp) -- test for zero
 
+-- example expressions
+--
 idfun : Exp   -- \ x -> x 
 idfun = Lam (Var 0)
 
@@ -69,7 +73,7 @@ t1 = Refl
 t2 : interp Nil (If0 (Lit 1) (Lit 2) (Lit 3)) = VNat 3
 t2 = Refl
 
--- an "unbound variable" error
+-- an "unbound variable" error (i.e. scope error) 
 
 e1 : interp Nil (App (Lam (Var 1)) (Lit 2)) = TRUSTME
 e1 = Refl

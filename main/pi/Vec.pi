@@ -17,6 +17,10 @@ data Vec (A : Type) (n : Nat) : Type where
   Nil  of                       [n = Zero] 
   Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
 
+-- A vector with exactly three boolean values
+
+v3 : Vec Bool 3 
+v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
 
 head : [A :Type] -> [n:Nat] -> Vec A (Succ n) -> A
 head = \ [A][n] x.  case x of 
@@ -153,6 +157,9 @@ fst = \[A][B] x . let (y,z) = x in y
 snd : [A:Type] -> [B:A -> Type] -> (p : { x:A | B x}) -> B (fst[A][B] p)
 snd = \[A][B] x . let (y,z) = x in z
   
+
+-- note that in pi-forall, we only have one notion of irrelevance: 
+-- arguments are either erasable and ignorable, or they are relevant.
 
 
 filter : [A:Type] -> [n:Nat] -> (A -> Bool) -> 

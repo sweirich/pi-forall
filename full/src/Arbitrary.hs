@@ -25,7 +25,7 @@ prop_roundtrip tm =
         Right tm' -> QC.counterexample ("*** Round trip failure! Parsing:\n" ++ str ++ "\n*** results in\n" ++ show tm') (Unbound.aeq tm tm')
            
 test_parseExpr :: String -> Either Text.Parsec.Error.ParseError Term
-test_parseExpr = testParser  expr
+test_parseExpr = testParser arbConstructorNames expr
 
 -- View random terms
 sampleTerms :: IO ()
@@ -49,6 +49,19 @@ genName = Unbound.string2Name <$> elements ["x", "y", "z", "x0" , "y0"]
 instance Arbitrary (Unbound.Name a) where
     arbitrary = genName
 
+tcNames :: [TCName]
+tcNames = ["T", "List", "Vec" ]
+dcNames :: [DCName]
+dcNames = ["K", "Nil", "Cons"]
+
+arbConstructorNames :: ConstructorNames
+arbConstructorNames = ConstructorNames (Set.fromList tcNames) (Set.fromList dcNames)
+
+genTCName :: Gen TCName
+genTCName = elements tcNames
+
+genDCName :: Gen DCName
+genDCName = elements dcNames
 
 
 -- * Core language
@@ -58,11 +71,11 @@ base :: Gen Term
 base = elements [Type, TrustMe, PrintMe,
                 tyUnit, litUnit, tyBool, 
                 litTrue, litFalse{- SOLN EQUAL -}, Refl {- STUBWITH -} ]
-    where tyUnit = TyUnit
-          litUnit = LitUnit
-          tyBool = TyBool
-          litTrue = LitBool True
-          litFalse = LitBool False
+    where tyUnit = {- SOLN DATA -}TCon "Unit" [] {- STUBWITH TyUnit -}
+          litUnit = {- SOLN DATA -}DCon "()" [] {- STUBWITH LitUnit -}
+          tyBool = TCon "Bool" [] 
+          litTrue = DCon "True" [] 
+          litFalse = DCon "False" [] 
 
 -- Generate a random term
 -- In the inner recursion, the bool prevents the generation of TCon/DCon applications 
@@ -83,10 +96,10 @@ genTerm n
               (1, Subst <$> go True n' <*> go True n'),
               (1, Contra <$> go True n'),
               
-              (1, If <$> genTerm n' <*> genTerm n' <*> genTerm n'),
-              (1, genSigma n'),
-              (1, Prod <$> genTerm n' <*> genTerm n'),
-              (1, genLetPair n'),
+                            (if b then 1 else 0, TCon <$> genTCName <*> genArgs n'),
+              (if b then 1 else 0, DCon <$> genDCName <*> genArgs n'),
+              (1, Case <$> go True n' <*> genBoundedList 2 (genMatch n')),
+              
               (1, base)
             ]
 
@@ -143,6 +156,26 @@ instance Arbitrary Epsilon where
 
 
 
+genPattern :: Int -> Gen Pattern
+genPattern n | n == 0 = PatVar <$> genName
+  | otherwise = frequency 
+    [(1, PatVar <$> genName),
+     (1, PatCon <$> genDCName <*> genPatArgs)]
+     where 
+        n' = n `div` 2
+        genPatArgs = genBoundedList 2 ( (,) <$> genPattern n' <*> arbitrary )
+
+genMatch :: Int -> Gen Match
+genMatch n = Match <$> (Unbound.bind <$> genPattern n <*> genTerm n)
+
+instance Arbitrary Pattern where
+    arbitrary = sized genPattern 
+    shrink (PatCon n pats) = map fst pats ++ [PatCon n pats' | pats' <- QC.shrink pats]
+    shrink _ = []
+
+instance Arbitrary Match where
+    arbitrary = sized genMatch
+    shrink (Match bnd) = []
 
 
 instance Arbitrary Term where
@@ -161,7 +194,10 @@ instance Arbitrary Term where
     shrink (Subst a b) = [a,b] ++ [Subst a' b | a' <- QC.shrink a] ++ [Subst a b' | b' <- QC.shrink b]
     shrink (Contra a) = [a] ++ [Contra a' | a' <- QC.shrink a]
     
-
+    shrink (TCon n as) = map unArg as ++ [TCon n as' | as' <- QC.shrink as]
+    shrink (DCon n as) = map unArg as ++ [DCon n as' | as' <- QC.shrink as]
+    shrink (Case a ms) = [a] ++ [Case a' ms | a' <- QC.shrink a] ++ [Case a ms' | ms' <- QC.shrink ms]
+    
     shrink _ = []
        
 -------------------------------------------------------

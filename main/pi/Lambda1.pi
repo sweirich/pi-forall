@@ -1,51 +1,11 @@
+{- This version of the interpreter indexes datatype by the 
+scoping depth of the expression. -}
+
 module Lambda where
 
 import Nat
-
-data Fin (n : Nat) : Type where
-  Zero of [m:Nat]       [n = Succ m]
-  Succ of [m:Nat](Fin m)[n = Succ m]
-
-x1 : Fin 3
-x1 = Succ [2] (Succ [1] (Zero [0]))
-
-x2 : Fin 3
-x2 = Succ [2] (Zero [1])
-
-x3 : Fin 3
-x3 = Zero [2]
-
-
-data Vec (A : Type) (n : Nat) : Type where
-  Nil  of                       [n = Zero] 
-  Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
-
--- example vector of length 3
-v3 : Vec Bool 3 
-v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
-
-map : [A:Type] -> [B:Type] -> [n:Nat] -> (A -> B) -> Vec A n -> Vec B n
-map = \ [A][B][n] f v.
-  case v of 
-    Nil -> Nil
-    Cons [m] x xs -> Cons [m] (f x) (map[A][B][m] f xs)
-
-not : Bool -> Bool
-not = \x. if x then False else True
-
-v4 :  Vec Bool 3
-v4 = map [Bool][Bool][3] not v3
-
-ex5 : v4 = Cons [2] False (Cons [1] True (Cons [0] True Nil))
-ex5 = Refl
-
-nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
-nth = \[a][n] v f. case f of 
-   Zero [m] -> case v of 
-           Cons [m'] x xs -> x 
-   Succ [m] f' -> case v of 
-           Cons [m'] x xs -> nth [a][m] xs f'
-
+import Fin
+import Vec
 
 
 data Exp (n : Nat) : Type where
@@ -60,6 +20,16 @@ data Val : Type where
   VNat of (Nat)
   Wrong
   
+
+-- Safely access a vector using an index that is known 
+-- to be in bounds.
+nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
+nth = \[a][n] v f. case f of 
+   Zero [m] -> case v of 
+           Cons [m'] x xs -> x 
+   Succ [m] f' -> case v of 
+           Cons [m'] x xs -> nth [a][m] xs f'
+
 
 interp : [n:Nat] -> Vec Val n -> Exp n -> Val
 interp = \[n] rho e. 

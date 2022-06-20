@@ -76,7 +76,7 @@ genTerm n
             frequency [
               (1, Var <$> genName),
               (1, genLam n'),
-              (1, App <$> go False n' <*> {- SOLN EP -}genArg {- STUBWITH go True -} n'),
+              (1, App <$> go False n' <*> go True n'),
               (1, genPi n'),
               (1, genLet n'),
                             (1, TyEq <$> go True n' <*> go True n'),
@@ -92,16 +92,14 @@ genTerm n
 
 genLam :: Int -> Gen Term
 genLam n = do 
-    p <- (,) <$> genName <*> arbitrary  
-    
+    p <- genName
     b <- genTerm n
     return $ Lam (Unbound.bind p b)
 
 
 genPi :: Int -> Gen Term
 genPi n = do 
-    p <- (,) <$> genName <*> arbitrary 
-    
+    p <- genName
     tyA <- genTerm n
     tyB <- genTerm n
     return $ Pi tyA (Unbound.bind p tyB)
@@ -127,19 +125,6 @@ genLetPair n = do
     b <- genTerm n
     return $ LetPair a (Unbound.bind p b)
 
-instance Arbitrary Arg where
-    arbitrary = sized genArg
-    shrink (Arg ep tm) = 
-        [ Arg ep tm' | tm' <- QC.shrink tm]
-
-genArg :: Int -> Gen Arg
-genArg n = Arg <$> arbitrary <*> genTerm (n `div` 2)
-
-genArgs :: Int -> Gen [Arg]
-genArgs n = genBoundedList 2 (genArg n)
-        
-instance Arbitrary Epsilon where
-    arbitrary = elements [ Rel, Irr ]
 
 
 
@@ -150,7 +135,7 @@ instance Arbitrary Term where
 
     -- when QC finds a counterexample, it tries to shrink it to find a smaller one
     shrink (App tm arg) = 
-        [tm, {- SOLN EP -}unArg{- STUBWITH -} arg] ++ [App tm' arg | tm' <- QC.shrink tm] 
+        [tm,  arg] ++ [App tm' arg | tm' <- QC.shrink tm] 
                         ++ [App tm arg' | arg' <- QC.shrink arg]
 
     shrink (Lam bnd) = []

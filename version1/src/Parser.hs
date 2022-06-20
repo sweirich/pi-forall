@@ -5,10 +5,11 @@ module Parser
   ( parseModuleFile,
     parseModuleImports,
     parseExpr,
+    expr,
+    decl,
+    testParser,
   )
 where
-
--- import qualified Text.Parsec.Token as Token
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State.Lazy hiding (join)

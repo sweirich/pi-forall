@@ -74,13 +74,14 @@ library
     PrettyPrint
     Syntax
     TypeCheck
+    Arbitrary
   
 executable pi-forall
   import: shared-properties
   build-depends: pi-forall
   hs-source-dirs: app
   main-is: Main.hs
-  
+
 test-suite test-pi-forall
   import: shared-properties
   build-depends: pi-forall

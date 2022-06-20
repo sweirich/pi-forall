@@ -78,26 +78,6 @@ data Term
     LetPair Term (Unbound.Bind (TName, TName) Term)
   deriving (Show, Generic)
 
--- | An argument to a function
-
--- | Epsilon annotates the stage of a variable
-data Epsilon
-  = Rel
-  | Irr
-  deriving
-    ( Eq,
-      Show,
-      Read,
-      Bounded,
-      Enum,
-      Ord,
-      Generic,
-      Unbound.Alpha,
-      Unbound.Subst Term
-    )
-
-{- STUBWITH -}
-
 -----------------------------------------
 
 -- * Modules and declarations

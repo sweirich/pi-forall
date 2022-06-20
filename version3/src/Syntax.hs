@@ -93,7 +93,6 @@ data Term
 data Arg = Arg {argEp :: Epsilon, unArg :: Term}
   deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
 
-
 -- | Epsilon annotates the stage of a variable
 data Epsilon
   = Rel
@@ -109,7 +108,7 @@ data Epsilon
       Unbound.Alpha,
       Unbound.Subst Term
     )
-{- STUBWITH -}
+
 
 
 -----------------------------------------

@@ -76,7 +76,7 @@ Key feature & \pif version      & Section\\
 Core system & \texttt{version1} & Sections~\ref{sec:simple}, \ref{sec:bidirectional}, and \ref{sec:implementation} \\
 Equality    & \texttt{version2} & Sections~\ref{sec:equality} and ~\ref{sec:pattern-matching}\\
 Irrelevance & \texttt{version3} & Section ~\ref{sec:irrelevance} \\
-Datatypes   & \texttt{full}     & Sections~\ref{sec:example} and ~\ref{sec:datatypes} \\
+Datatypes   & \texttt{full}     & Sections~\ref{sec:examples} and ~\ref{sec:datatypes} \\
 \end{tabular}
 \end{center}
 \caption{Connection between sections and \pif versions}
@@ -140,7 +140,7 @@ features described in that chapter can be implemented.
   system. Section~\ref{sec:pattern-matching} shows how to extend \pif with a
   simple form of dependent pattern matching. We look at this feature in two
   different ways: First how to reflect the gain in information about boolean
-  values in each branch of an $[[if]]$ expression. Second, how to reflect the
+  values in each branch of an $\mathsf{if}$ expression. Second, how to reflect the
   equality represented via propositional equality.
   
 \item Section~\ref{sec:irrelevance} introduces the idea of tracking the
@@ -236,7 +236,8 @@ One example that dependently-typed languages are really good at is tracking
 the length of lists. 
 
 In \pif, we can define a datatype for length-indexed lists (often called
-vectors) as follows.
+vectors) as follows.\footnote{In the full implementation, you can find these 
+definitions in the file \texttt{Vec.pi}.}
 \begin{piforall}
 data Vec (A : Type) (n : Nat) : Type where
   Nil  of                       [n = Zero] 
@@ -322,17 +323,33 @@ Note how, in the case analysis above, neither \cd{case} requires a branch for
 the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
 case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
+You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality. 
+
 \subsection{Homework: Check out \pif}
 
 The files in the directory \texttt{full/pi/} demonstrate the full power of the
 \pif language. Take a little time to familiarize yourself with some of these
-libraries (such as \cd{Fin.pi} and \cd{Vec.pi} and compare them to similar
+libraries (such as \cd{Fin.pi} and \cd{Vec.pi}) and compare them to similar
 ones that you might have seen in Agda, Haskell or elsewhere.
+
+To run the type checker, make sure that you are in the \texttt{full/pi} subdirectory, and then \cd{stack build} to make sure that you have compiled the implementation. 
+Then to run \pif on a source file, such as \cd{Fin.pi}, you can issue the command
+\cd{stack exec -- pi-forall Fin.pi} at the terminal. If the file type checks, you'll 
+see the contents of the file displayed to the terminal window. Otherwise, you'll see 
+an error message from the type checker.
+
+
+For a more extensive series of examples, start with \cd{pi/Lambda0.pi} for an 
+interpreter for a small lambda calculus and then compare it with the implementations
+in \cd{pi/Lambda1.pi} and \cd{pi/Lambda2.pi}. These two versions index the expression
+type with the scope depth (a natural number) and the expression type, to eliminate runtime scope and type errors from the execution of the interpreter.
 
 \section{A Simple Core Language}
 \label{sec:simple}
 
-Let's consider a simple dependently-typed lambda calculus. What should it
+Now let's turn to the design and implementation of the \pif language. We'l start with a small core, and then incrementally add features. 
+
+Consider this simple dependently-typed lambda calculus, shown below. What should it
 contain? At the bare minimum we start with the following five forms:
 
 \[
@@ -1037,7 +1054,7 @@ Likewise, we can also extend the language with $\Sigma$-types.
 
 \drules{$[[G|-a:A]]$}{Sigma-types}{t-sigma,t-pair,t-letpair-weak}
 
-A Sigma-type is a product where the type of the second component of the
+A $\Sigma$-type is a product where the type of the second component of the
 product can depend on the first component.  We destruct Sigmas using pattern
 matching. A simple rule for pattern matching introduces variables into the
 context when pattern matching the sigma type. These variables are not allowed
@@ -1179,7 +1196,7 @@ The main idea is that we will:
   add the following rule to our type system so that it works ``up-to''
   our defined notion of type equivalence
 
-\[ \drule[width=3in]{t-conv} \]
+\[ \drule[width=3in]{t-conv}\]
 
 \item
   Figure out how to revise the \emph{algorithmic} version of our type
@@ -1423,18 +1440,30 @@ Why do we use weak head reduction vs.~full reduction?
 \section{Dependent pattern matching and propositional equality}
 \label{sec:pattern-matching}
 
-\subsection{Refining  rules for if and $\Sigma$-type elimination}
+One of the powerful features of dependently-typed languages is the 
+idea of ``learning by testing''. In other words, the information gained 
+in pattern matching can be reflected into the type system, allowing it 
+to reason in a flow-sensitive manner. We'll demonstrate how this works in 
+this section. 
+
+
+\subsection{More expressive rules for if and $\Sigma$-type elimination}
 
 Consider our elimination rules for if:
 
 \[ \drule[width=4in]{t-if-weak} \]
 
-We can do better by making the result type \texttt{A} depend on whether the
-condition is true or false.
+We can strengthen this rule by making the result type \texttt{A} depend on
+whether the condition is true or false when type checking each branch. In this
+way, our type system is flow-sensitive: we do different things while type
+checking based on how control flows in a \pif program.
 
 \[ \drule[width=4in]{t-if-full} \]
 
-For example, here is a simple definition that requires this rule:
+For example, here is a simple program that requires this stronger rule to type
+check. The function \cd{T} is an example of a \emph{large elimination}: a function 
+that destructs a boolean value to produce a type. Then in the type of \cd{bar} below, 
+each branch can return a different type of result, according to \cd{T}.
 
 \begin{piforall}
 -- function from booleans to types
@@ -1446,20 +1475,21 @@ bar : (b : Bool) -> T b
 bar = \b . if b then () else True     
 \end{piforall}
 
-It turns out that this rule is difficult to implement. It is not
-syntax-directed because $A$ and $x$ are not fixed by the syntax. Given
-$[[A[True/x] ]]$ and $[[A [False/x] ]]$ and $[[ A [a/x] ]]$ (or anything that
-they are definitionally equal to!)  how can we figure out whether they
-correspond to each other?
+It turns out that this strong typechecking rule is difficult to implement. In
+fact, it is not syntax-directed because $A$ and $x$ are not fixed by the
+syntax. Given $[[A[True/x] ]]$ and $[[A [False/x] ]]$ and $[[ A [a/x] ]]$ (or
+anything that they are definitionally equal to!)  how can we figure out
+whether they correspond to each other? Neither inference nor checking mode works, because we don't ever see the type $[[A]]$ with just the variable $[[x]]$.
 
 So, we'll not be so ambitious in \pif. We'll only allow this refinement when
 the scrutinee is a variable, deferring to the weaker, non-refining typing rule
-for if in all other cases.
+for all other cases.
 
 \[ \drule[width=4in]{t-if} \]
 
 And, in the our bidirectional system, we'll only allow refinement
-when we are in checking mode.
+when we are in checking mode. That way, because $[[a]]$ is just $[[x]]$, we can 
+easily identify how the type should vary in each branch.
 
 \[ \drule[width=4in]{c-if} \]
 
@@ -1467,28 +1497,31 @@ To implement this rule, we need only remember that $x$ is $[[True]]$ or
 $[[False]]$ when checking the individual branches of the if expression.
 \footnote{
 Here is an alternative version, for inference mode only, suggested
-during lecture:
+during a prior summer school:
 
 \[ \drule[width=4in]{i-if-alt} \]
 
-It has a nice symmetry---if expressions are typed by if types. Note however,
-to make this rule work, we'll need a stronger definitional equivalence
-than we have. In particular, we'll want our definition of equivalence to
-support the following equality:
+It has a nice symmetry---\textsf{if} expressions are typed by \textsf{if}
+types. Note however, to make this rule work, we'll need a stronger
+definitional equivalence than we have. In particular, we'll want our
+definition of equivalence to support the following equality:
 
 \[ \drule[width=4in]{e-if-eta} \]
 
-That way, if the type of the two branches of the if does not actually
-depend on the boolean value, we can convert the \texttt{if} expression
+That way, if the type of the two branches of the \textsf{if} does not actually
+depend on the boolean value, we can convert the \textsf{if} expression
 into a more useful type.
 }
 
-We can modify the elimination rule for $\Sigma$-types similarly.
+We can modify the elimination rule for $\Sigma$-types similarly. Here, we are
+not learning which branch was taken, but we are still learning something. If
+we get to the body of the \textsf{let} expression, we know that the scrutinee
+terminated and produced some product value.
 
 \[ \drule[width=4in]{c-letpair} \]
 
 This modification changes our definition of $\Sigma$-types from weak $\Sigma$s
-to strong $\Sigma$s. With either typing rule, we can define the first
+to strong $\Sigma$-types. With either typing rule, we can define the first
 projection.
 
 \begin{piforall}
@@ -1496,23 +1529,31 @@ fst : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> A
 fst = \A B p. let (x,y) = p in x
 \end{piforall}
 
-But, weak Sigmas cannot define the second projection. The
-following code only type checks using the above rule.
+But, weak $\Sigma$-types cannot define the second projection. The
+following code only type checks when the above rule is available.
 
 \begin{piforall}
 snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
 snd = \A B p. let (x,y) = p in y
 \end{piforall}
 
-(Try this out using version2 of the implementation and the Lec2.pi 
+(Try this out using \texttt{version2} of the implementation and the \texttt{Lec2.pi}
 input file.)
 
 \subsection{Propositional equality}
 
 \begin{figure}
 \drules[t]{$[[G |- a : A]]$}{Typing}{refl,eq,subst,contra}
-\caption{Propositional equality}
+\caption{Propositional equality (Specificational rules)}
 \label{fig:propeq}
+\end{figure}
+
+\begin{figure}
+\drules[c]{$[[G |- a <= A]]$}{Checking}{refl,subst-left,subst-right,contra}
+\drules[i]{$[[G |- a => A]]$}{Inference}{eq}
+
+\caption{Propositional equality (Bidirectional rules)}
+\label{fig:propeq-alg}
 \end{figure}
 
 You started proving things right away in Coq or Agda with an equality
@@ -1524,24 +1565,33 @@ Theorem plus_O_n : forall n : nat, 0 + n  = n.
 you are using a built in type, \texttt{a\ =\ b} that represents the
 proposition that two terms are equal.
 
-As a step towards more general indexed datatypes, we'll start by adding
-just a propositional equality type to \pif.
+As a step towards more general indexed datatypes, we'll start by adding a propositional equality type to \pif.
 
 The main idea of the equality type is that it converts a \emph{judgement} that
 two types are equal into a \emph{type} that evaluates to a value only when two
 types are equal.\footnote{Recall that all types are inhabited by an infinite
   loop in \pif.}  In other words, the new value form $[[refl]]$ has 
-type $[[a = b]]$, as shown in \rref{t-refl}.  
+type $[[a = b]]$, as shown in \rref{t-refl} in Figure~\ref{fig:propeq}.  
 
-Sometimes, you might see the rule written as follows:
+Sometimes, you might see \rref{t-refl} written as follows:
 %
 \[ \drule[width=3in]{t-refl-alt} \]
 %
-However, this rule will turn out to be equivalent to the above version.
+However, this rule is equivalent to the above version because types are equal up to congruence. If we know that $[[|- a = b]]$, then we know that the type $[[a = a]]$ is equal to the type $[[a = b]]$. In a type system with conversion, it doesn't matter which of these equal types we choose for the conclusion of the rule.
+
+However, in the bidirectional version of the rules, shown in
+Figure~\ref{fig:propeq-alg}, it does make a difference. The algorithmic typing
+rule for $[[refl]]$ requires checking mode, so that we know which types we
+need to show equivalent.  (See \rref{c-refl}.)  Furthermore, this rule allows
+$[[a]]$ and $[[b]]$ to differ so that there are no restrictions on its
+use. Instead, to implement this rule, we need only compare $[[a]]$ and $[[b]]$
+for definitional equality, as we did in Section~\ref{sec:equality}.
 
 An equality type is well-formed when the terms on both sides of the equality
 have the same type. In other words, when it implements \emph{homogeneous}
-equality, as shown in rule \rref{t-eq}.
+equality, as shown in rule \rref{t-eq}. In the algorithm, \rref{i-eq}, we
+infer the types of each side of the equality type and then check to make sure
+that those types are equal.
 
 The elimination rule for propositional equality is written $[[subst a by b]]$
 in \pif.  This term allows us to convert the type of one expression to
@@ -1555,8 +1605,8 @@ How can we implement this rule? For simplicity, we'll play the same trick that
 we did with booleans, requiring that one of the sides of the equality be a
 variable.
 
-\[ \drule[width=4in]{c-subst-left} \]
-\[ \drule[width=4in]{c-subst-right} \]
+\[ \drule[width=4in]{c-subst-left-simple} \]
+\[ \drule[width=4in]{c-subst-right-simple} \]
 
 Note that this elimination form for equality is powerful. We can use it to
 show that propositional equality is symmetric and transitive.
@@ -1574,21 +1624,32 @@ only way to construct a proof of equality is with the term $[[refl]]$. (This
 version of subst is very close to an eliminator for propositional equality
 called \texttt{J}).
 
-As above, this rule (and the corresponding left rule) only
-applies when $b$ is also a variable.
-
-\[ \drule[width=4in]{c-subst-right-refl} \]
+As above, the \rref{c-subst-right}, shown in Figure~\ref{fig:propeq-alg}, (and
+the corresponding left rule) only applies when $b$ is also a variable.
 
 One last addition: \texttt{contra}. If we can somehow prove a false statement,
-then we should be able to prove anything. A contradiction is a
-proposition between two terms that have different head forms. For now,
-we'll use \rref{t-contra}, shown in Figure~\ref{fig:propeq}.
+then we should be able to prove anything. A contradiction is a proposition
+between two terms that have different head forms. For now, we'll use
+\rref{t-contra}, shown in Figure~\ref{fig:propeq}, that requires a proof that
+$[[True]]$ equals $[[False]]$. The algorithmic version of this rule,
+\rref{c-contra}, must use weak-head normalization multiple times: first to
+find the equality type and then to show that the two sides of it have
+different head forms. This rule must be in checking mode because we can use
+\textsf{contra} to inhabit any type.
 
 \subsubsection{Homework (\pif: more church encodings)}
 
+Now that we have defined propositional equality, we can use it 
+to define compile-time test cases. 
 The file \texttt{version2/test/NatChurch.pi} is a start at a Church
-encoding of natural numbers. Replace the TRUSTMEs in this file so that
-it compiles.
+encoding of natural numbers. Replace the \cd{TRUSTME}s in this file so that
+it compiles. For example, one task in this file is to define 
+a predecessor function. By replacing the \cd{TRUSTME} with \cd{Refl} below, you'll be able to force the type checker to normalize both sides of the equality. The code will only type check if you have defined \cd{pred} correctly (on this example).
+
+\begin{lstlisting}
+test_pred : pred two = one
+test_pred = TRUSTME -- replace with Refl
+\end{lstlisting}
 
 \subsubsection{Homework (\pif: equality)}
 
@@ -1598,10 +1659,10 @@ you practice with working with equality propositions in \pif.
 \section{Irrelevance: the $\forall$ of \pif}
 \label{sec:irrelevance}
 
-Now, let's talk about erasure. In dependently typed languages, some arguments
-are ``ghost'' or ``specificational'' and only there for proofs. For efficient
-executables, we don't want to have to ``run'' these arguments, nor do we want
-them taking up space in data structures.
+Now, let's talk about irrelevance. In dependently typed languages, some
+arguments are ``ghost'' or ``specificational'' and only there for proofs. For
+efficient executables, we don't want to have to ``run'' these arguments, nor
+do we want them taking up space in data structures.
 
 Functional languages do this all the time: they erase \emph{type
 annotations} and \emph{type} arguments before running the code. This
