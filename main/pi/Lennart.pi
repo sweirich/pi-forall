@@ -1,0 +1,62 @@
+module Lennart where
+
+bool : Type
+bool = [C : Type] -> C -> C -> C
+
+false : bool
+false = \[C]. \f.\t.f
+true : bool
+true = \[C]. \f.\t.t
+
+nat : Type
+nat = [C : Type] -> C -> (nat -> C) -> C
+zero : nat
+zero = \[C].\z.\s.z
+succ : nat -> nat
+succ = \n.\[C].\z.\s. s n
+one : nat
+one = succ zero
+two : nat
+two = succ one
+three : nat
+three = succ two
+isZero : nat -> bool
+isZero = \n.n [bool] true (\m.false)
+const : [A:Type] -> A -> A -> A
+const = \[A].\x.\y.x
+prod : Type -> Type -> Type
+prod = \A B. [C:Type] -> (A -> B -> C) -> C
+pair : [A :Type] -> [B: Type] -> A -> B -> prod A B
+pair = \[A][B] a b. \[C] p. p a b
+fst : [A:Type] -> [B:Type] -> prod A B -> A
+fst = \[A][B] ab. ab [A] (\a.\b.a)
+snd : [A:Type] -> [B:Type] -> prod A B -> B
+snd = \[A][B] ab.ab [B] (\a.\b.b)
+add : nat -> nat -> nat
+add = \x.\y. x [nat] y (\ n. succ (add n y))
+mul : nat -> nat -> nat
+mul = \x.\y. x [nat] zero (\ n. add y (mul n y))
+fac : nat -> nat
+fac = \x. x [nat] one (\ n. mul x (fac n))
+eqnat : nat -> nat -> bool
+eqnat = \x. \y. 
+    x [bool] 
+        (y [bool] true (\b.false)) 
+    (\x1.y [bool] false (\y1. eqnat x1 y1))
+sumto : nat -> nat 
+sumto = \x. x [nat] zero (\n. add x (sumto n))
+n5 : nat
+n5 = add two three
+n6 : nat
+n6 = add three three
+n17 : nat
+n17 = add n6 (add n6 n5)
+n37 : nat
+n37 = succ (mul n6 n6)
+n703 : nat
+n703 = sumto n37
+n720 : nat
+n720 = fac n6
+
+t : (eqnat n720 (add n703 n17)) = true
+t = Refl
