@@ -1,13 +1,13 @@
-% lstlisting pi-forall style 
+% lstlisting pi-forall style
 % Based on Coq lstlisting style
 %
-\lstdefinelanguage{PiForall}{ 
+\lstdefinelanguage{PiForall}{
 %
 % Anything betweeen $ becomes LaTeX math mode
 mathescape=true,
 %
 % Comments may or not include Latex commands
-texcl=false, 
+texcl=false,
 %
 morekeywords=[1]{module,import},
 morekeywords=[2]{let, in, if, then, else, case, of, data, where, Type},
@@ -24,7 +24,7 @@ showstringspaces=false,
 %
 % String delimiters
 morestring=[b]",
-morestring=[d],
+morestring=[d]',
 %
 % Size of tabulations
 tabsize=3,
@@ -70,8 +70,8 @@ literate=
     {->}{{$\rightarrow\;$}}1
     {<->}{{$\leftrightarrow\;$}}1
     {<==}{{$\leq\;$}}1
-    {\#}{{$^\star$}}1 
-    {\\o}{{$\circ\;$}}1 
+    {\#}{{$^\star$}}1
+    {\\o}{{$\circ\;$}}1
     {\/\\}{{$\wedge\;$}}1
     {\\\/}{{$\vee\;$}}1
     {++}{{\code{++}}}1
@@ -84,4 +84,3 @@ literate=
 
 \def\piforalle{\lstinline[language=PiForall, basicstyle=\small]}
 \def\piforalls{\lstinline[language=PiForall, basicstyle=\scriptsize]}
-
