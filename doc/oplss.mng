@@ -47,7 +47,7 @@ These lecture notes describe the design of a minimal dependently-typed
 language called ``\pif'' and walk through the implementation of its type
 checker. They are based on lectures given at the \emph{Oregon Programming
   Languages Summer School} during June 2022 and derived from earlier lectures
-from summer school lectures during 2014 and 2013.\footnote{NOTE: if the date
+from summer schools during 2014 and 2013.\footnote{NOTE: if the date
   on this document is before June 27, 2022, then these notes are still in
   draft form. If you find any errors or typos, please send pull requests
   to \url{https://github.com/sweirich/pi-forall}.}
@@ -60,10 +60,15 @@ background on this material, I recommend the textbooks~\cite{tapl, pfpl}.
 
 Furthermore, these notes also refer to an implementation of a demo type
 checker and assume basic knowledge of the Haskell programming language. This
-implementation is available at \url{https://github.com/sweirich/pi-forall}. As
-you study these notes, I encourage you to download this code, read through its
-source modules, and experiment with it. Detailed installation instructions are
-available with the repository.
+implementation is available at \url{https://github.com/sweirich/pi-forall} on
+branch \texttt{2022}. As you study these notes, I encourage you to download
+this repository, read through its source code, and experiment with
+it. Detailed installation instructions are available with the repository.
+
+\paragraph{What do these notes cover?}
+These notes are broken into several sections that incrementally build up the
+design and implementation of a type checker for a dependently-typed
+programming language.
 
 \begin{figure}[h]
 \begin{center}
@@ -79,11 +84,6 @@ Datatypes   & \texttt{full}     & Sections~\ref{sec:examples} and ~\ref{sec:data
 \caption{Connection between sections and \pif versions}
 \label{fig:impls}
 \end{figure}
-
-\paragraph{What do these notes cover?}
-These notes are broken into several sections that incrementally build up the
-design and implementation of a type checker for a dependently-typed
-programming language.
 
 If you are looking at the repository, you'll see that it includes several
 incrementally more expressive implementations of \pif in separate
@@ -105,11 +105,10 @@ implemented.
   type system is simple and declarative. In other words, its \emph{specifies}
   what terms should type check, but cannot be directly implemented.
   
-\item Section~\ref{sec:bidirectional}, reformulates the typing rules so
-  that they are \emph{syntax-directed} and correspond to a type checking
+\item Section~\ref{sec:bidirectional}, reformulates the typing rules so that
+  they are \emph{syntax-directed} and correspond to a type checking
   algorithm. The key idea of this section is to recast the typing rules as a
-  \emph{bidirectional type system} that specifies where type annotations are
-  required.
+  \emph{bidirectional type system}.
 
 %  As you read this section, ask yourself ``How much information do
 %  we need to include in terms to make type checking algorithmic?''
@@ -185,7 +184,8 @@ approaches.  The key differences are summarized below:
   alpha-equivalence and substitution. As a result, these operations can be 
   automatically derived. A more common approach is to use de Bruijn indices.
 \item Recent work on cubical type theory, higher-inductive types and
-  univalence is not covered here.
+  univalence is not covered here. Indeed, the rules for dependent pattern matching 
+  that we present will be incompatible with such extension.
 \end{itemize}
 
 \paragraph{What do I want you to get out of all of this?}
@@ -234,11 +234,11 @@ One example that dependently-typed languages are really good at is tracking
 the length of lists. 
 
 In \pif, we can define a datatype for length-indexed lists (often called
-vectors) as follows.\footnote{In the full implementation, you can find these 
+vectors) as follows.\footnote{In the \texttt{full} implementation, you can find these 
 definitions in the file \texttt{Vec.pi}.}
 \begin{piforall}
 data Vec (A : Type) (n : Nat) : Type where
-  Nil  of                       [n = Zero] 
+  Nil of  [n = Zero] 
   Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
 \end{piforall}
 The type \cd{Vec A n} has two parameters: \cd{A} the type of elements in the
@@ -249,8 +249,8 @@ parameter to be \cd{Zero} when it is used and the \cd{Cons} constructor
 constrains it to be one more than the length of the tail of the list.  In the
 definition of \cd{Cons}, the \cd{m} parameter is the length of the tail of the
 list. This parameter is written in square brackets to indicate that it should
-be \emph{irrelevant}: this value is only for type checking and functions
-should not try to use it.
+be \emph{irrelevant}: this value is for type checking only and functions
+should not use it.
 
 For example, we can use \pif to check that the list below contains exactly
 three three boolean values.
@@ -269,15 +269,14 @@ map = \ [A][B][n] f v.
     Nil -> Nil
     Cons [m] x xs -> Cons [m] (f x) (map[A][B][m] f xs)
 \end{piforall}
-As \pif never infers arguments, it doesn't infer the type arguments \cd{A} and
-\cd{B}. So the map function needs to take them explicitly (i.e. the parameters
-\cd{[A][B][n]} at the beginning of the function definition) and they need to
-be provided in the recursive call too.
+As \pif doesn't infer arguments, the map function needs to take \cd{A}, \cd{B}
+and \cd{n} explicitly at the beginning of the function definition and they
+need to be provided as arguments to the recursive call.
 
-Whenever we call map, we need to supply the appropriate parameters for the 
-function and vector that we are giving to \cd{map}. For example, to map the
-boolean \cd{not} function, of type \cd{Bool -> Bool}, we need to provide 
-these two \cd{Bools} along with the length of the vector.
+Whenever we call map, we also need to supply the appropriate parameters for
+the function and vector that we are giving to \cd{map}. For example, to map
+the boolean \cd{not} function, of type \cd{Bool -> Bool}, we need to provide
+these two \cd{Bool}s along with the length of the vector.
 
 \begin{piforall}
 v4 : Vec Bool 3
@@ -290,7 +289,7 @@ the type bounds its range. Below, the \cd{Fin} type has a parameter
 that states what length of vector it is appropriate for. 
 \begin{piforall}
 data Fin (n : Nat) : Type where
-  Zero of [m:Nat]       [n = Succ m]
+  Zero of [m:Nat][n = Succ m]
   Succ of [m:Nat](Fin m)[n = Succ m]
 \end{piforall}
 
@@ -327,25 +326,29 @@ You may have noticed that some of the arguments to functions and constructors in
 
 The files in the directory \texttt{full/pi/} demonstrate the full power of the
 \pif language. Take a little time to familiarize yourself with some of these
-libraries (such as \cd{Fin.pi} and \cd{Vec.pi}) and compare them to similar
+modules (such as \cd{Fin.pi} and \cd{Vec.pi}) and compare them to similar
 ones that you might have seen in Agda, Haskell or elsewhere.
 
-To run the type checker, make sure that you are in the \texttt{full/pi} subdirectory, and then \cd{stack build} to make sure that you have compiled the implementation. 
-Then to run \pif on a source file, such as \cd{Fin.pi}, you can issue the command
-\cd{stack exec -- pi-forall Fin.pi} at the terminal. If the file type checks, you'll 
-see the contents of the file displayed to the terminal window. Otherwise, you'll see 
-an error message from the type checker.
+To run the type checker on these modules, make sure that you have first
+compiled the implementation using \texttt{stack build} at the terminal.  Then,
+to run \pif on a source file, such as \cd{Fin.pi}, you can issue the command
+\texttt{stack exec -- pi-forall Fin.pi} in the \cd{full/pi} subdirectory. If
+the file type checks, you'll see the contents of the file displayed to the
+terminal window. Otherwise, you'll see an error message from the type checker.
 
-
-For a more extensive series of examples, start with \cd{pi/Lambda0.pi} for an 
-interpreter for a small lambda calculus and then compare it with the implementations
-in \cd{pi/Lambda1.pi} and \cd{pi/Lambda2.pi}. These two versions index the expression
-type with the scope depth (a natural number) and the expression type, to eliminate runtime scope and type errors from the execution of the interpreter.
+For a more extensive series of examples, start with \cd{pi/Lambda0.pi} for an
+interpreter for a small lambda calculus and then compare it with the
+implementations in \cd{pi/Lambda1.pi} and \cd{pi/Lambda2.pi}. These two
+versions index the expression type with the scope depth (a natural number) and
+the expression type to eliminate runtime scope and type errors from the
+execution of the interpreter.
 
 \section{A Simple Core Language}
 \label{sec:simple}
 
-Now let's turn to the design and implementation of the \pif language. We'l start with a small core, and then incrementally add features. 
+Now let's turn to the design and implementation of the \pif language
+itself. We'l start with a small core, and then incrementally add features
+throughout the rest of this tutorial.
 
 Consider this simple dependently-typed lambda calculus, shown below. What should it
 contain? At the bare minimum we start with the following five forms:
@@ -476,7 +479,6 @@ rule to ensure that both the body of the function $[[x]]$ and its type $[[y]]$ a
 well-typed. Finally, this rule also uses \rref{t-type} to show that $[[Type]]$ itself 
 is a valid type, see below.
 
-
 \paragraph{More typing rules:  Types}
 
 Observe in the typing derivation above that the rule for typing
@@ -493,9 +495,9 @@ will declare it so with \rref{t-pi}. This rule also ensures that the domain
 and range of the function are also types.
 
 Likewise, for polymorphism we need the somewhat perplexing \rref{t-type}, that
-declares, by fiat, that $[[Type]]$ is a valid $[[Type]]$.\footnote{Note that,
-  this rule make our language inconsistent as a logic, as it can encode
-  Girard's paradox. More about this in section~\ref{sec:related-work}.}
+declares, by fiat, that $[[Type]]$ is a valid $[[Type]]$.\footnote{Note that
+  this rule makes our language inconsistent as a logic, as it can encode
+  Girard's paradox.}
 
 \paragraph{More typing rules: Applications}
 
@@ -528,22 +530,22 @@ you should pick the second one.  With parametric polymorphism, we can give the
 two terms the same type, which we'll call bool.
 
 \begin{piforall}
-    bool : Type
-    bool = (x : Type) -> x -> x -> x
+bool : Type
+bool = (x : Type) -> x -> x -> x
 
-    true : bool
-    true = \x. \y. \z. y
-	 
-    false : bool
-    false = \x. \y. \z. z
+true : bool
+true = \x. \y. \z. y
+     
+false : bool
+false = \x. \y. \z. z
 \end{piforall}
 
 \noindent
 Thus, a conditional expression just takes a boolean and returns it.
 
 \begin{piforall}
-    cond : bool -> (x:Type) -> x -> x -> x
-    cond = \b. b 
+cond : bool -> (x:Type) -> x -> x -> x
+cond = \b. b 
 \end{piforall}
 
 \paragraph{Example: Logical ``and'' }
@@ -551,20 +553,20 @@ Thus, a conditional expression just takes a boolean and returns it.
 We can also encode a logical ``and'' data structure using a Church encoding.
 
 \begin{piforall}
-    and : Type -> Type -> Type
-    and = \p. \q. (c: Type) -> (p -> q -> c) -> c
+and : Type -> Type -> Type
+and = \p. \q. (c: Type) -> (p -> q -> c) -> c
 
-    conj : (p:Type) -> (q:Type) -> p -> q -> and p q
-    conj = \p.\q. \x.\y. \c. \f. f x y
+conj : (p:Type) -> (q:Type) -> p -> q -> and p q
+conj = \p.\q. \x.\y. \c. \f. f x y
 
-    proj1 : (p:Type) -> (q:Type) -> and p q -> p
-    proj1  = \p. \q. \a. a p (\x.\y.x)
+proj1 : (p:Type) -> (q:Type) -> and p q -> p
+proj1  = \p. \q. \a. a p (\x.\y.x)
 
-    proj2 : (p:Type) -> (q:Type) -> and p q -> q
-    proj2  = \p. \q. \a. a q (\x.\y.y)
+proj2 : (p:Type) -> (q:Type) -> and p q -> q
+proj2  = \p. \q. \a. a q (\x.\y.y)
 
-    and_commutes : (p:Type) -> (q:Type) -> and p q -> and q p
-    and_commutes = \p. \q. \a. conj q p (proj2 p q a) (proj1 p q a)
+and_commutes : (p:Type) -> (q:Type) -> and p q -> and q p
+and_commutes = \p. \q. \a. conj q p (proj2 p q a) (proj1 p q a)
 \end{piforall}
 
 \section{From typing rules to a typing algorithm}
@@ -781,7 +783,7 @@ are the primary ones.
  Syntax.hs      - specification of the AST
  Parser.hs      - turn strings into AST
  PrettyPrint.hs - displays AST in a (somewhat) readable form
- Main.hs        - top-level routines (repl)
+ Main.hs        - runs the parser and type checker
   
  Environment.hs - defines the type checking monad         
  TypeCheck.hs   - implementation of the bidirectional type checker
@@ -802,12 +804,12 @@ $\lambda$-expression, we will want to be sure that the binding variable is
 the typing context.
 
 In the \pif implementation, we use the \unbound library to get all of these
-operations for free. This works because we will use types from this library 
-in the definition of the abstract syntax of \pif, and those types will specify 
-the binding structure of \pif expressions. 
+operations (mostly) for free. This works because we use type constructors from
+this library in the definition of the abstract syntax of \pif, and those types
+specify the binding structure of \pif expressions.
 
 First, the \unbound library defines a type for variable names, called
-\texttt{Name} and we use this type to define \cd{TName}, the type of term
+\cd{TName} and we use this type to define \cd{TName}, the type of term
 names in our AST.
 %
 \begin{verbatim}
@@ -815,34 +817,37 @@ names in our AST.
 type TName = Unbound.Name Term
 \end{verbatim}
 %
-This type is indexed by \cd{Term}, the AST type that it is a name for. That
-way \unbound can make sure that we only substitute the right form of syntax
-for the right name, i.e. we can only replace a \texttt{TName} with a
-\texttt{Term}.
-The \unbound library includes an overloaded function \texttt{subst\ x\ a\ b},
-which means $[[ b[a/x] ]]$\footnote{See Guy Steele's talk about the notation
-  for substitution~\cite{steele:ppop17}. This is the most common mathematical
+The \cd{Unbound.Name} type is indexed by \cd{Term}, the AST type that it is a
+name for, whose definition we will see shortly. That way \unbound can make
+sure that we only substitute the right form of syntax for the right name,
+i.e. we can only replace a \cd{TName} with a \cd{Term}.  The library
+includes an overloaded function \cd{subst\ x\ a\ b}, which corresponds to
+the substitution we have been writing as $[[ b[a/x] ]]$ in our inference
+rules\footnote{See Guy Steele's talk about the notation for
+  substitution~\cite{steele:ppop17}. This is the most common mathematical
   notation for this operation.}, i.e. substitute $[[a]]$ for $[[x]]$ in
-$[[b]]$. 
+$[[b]]$.
 
-In general, we will want to apply a substitution to many different sorts of
+In general, we want to apply a substitution to many different sorts of
 syntax. For example, we may want to substitute a term $[[a]]$ for a term name
-$[[x]]$ in all of the terms that appear in some typing context. Therefore,
-\unbound's substitution function has a type with the following general
-pattern for \cd{subst a x b}.
-\begin{verbatim}
+$[[x]]$ in all of the terms that appear in the typing context. Or there may be
+other sorts of syntax that terms can be part of, and we want to be able to
+substitute for term variables through that syntax too. Therefore, \unbound's
+substitution function has a type with the following general pattern for
+\cd{subst a x b}.
+\begin{lstlisting}[language=Haskell]
  class Subst a b where
     subst  :: Name a -> a -> b -> b       
-\end{verbatim}
+\end{lstlisting}
 
-The \texttt{subst} function in this class ensures that when we see that
-\texttt{a} is the right sort of thing to stick in for \texttt{x}. The library
-can automatically generate instances of the \texttt{Subst} class.
+The \cd{subst} function in this class ensures that when we see that
+\cd{a} is the right sort of thing to stick in for \cd{x}. The library
+can automatically generate instances of the \cd{Subst} class.
 
 With term names, we can define the abstract syntax that corresponds to our
 language above, using the following datatype.
 
-\begin{verbatim}
+\begin{lstlisting}[language=Haskell]
 data Term
 
   = -- | type of types  `Type`
@@ -865,47 +870,47 @@ data Term
 
   ...
   deriving (Show, Generic)
-\end{verbatim}
+\end{lstlisting}
 
-As you can see, variables are represented by names. \unbound's \texttt{Bind}
-type constructor declares the scope of the bound variables. Both \texttt{Lam}
-and \texttt{Pi} bind a single variable in a \texttt{Term}.  However, in a
+As you can see, variables are represented by names. \unbound's \cd{Bind}
+type constructor declares the scope of the bound variables. Both \cd{Lam}
+and \cd{Pi} bind a single variable in a \cd{Term}.  However, in a
 \cd{Pi} term, we also want to store the type $[[A]]$, the type of the bound
 variable $[[x]]$.
 
-Because the syntax is all shared, a \texttt{Type} is just another name for a
-\texttt{Term}. We'll use this name in the source code just for documentation.
+Because the syntax is all shared, a \cd{Type} is just another name for a
+\cd{Term}. We'll use this name in the source code just for documentation.
 %
-\begin{verbatim}
+\begin{lstlisting}[language=Haskell]
   type Type = Term
-\end{verbatim}
+\end{lstlisting}
 %
 
-Among other things, the \texttt{Alpha} class enables functions for alpha
+Among other things, the \cd{Alpha} class enables functions for alpha
 equivalence and free variable calculation, with the types shown below.
 Usually \unbound can derive instance of this class for us, so that we don't
 have to worry about defining these functions manually.
 
-\begin{verbatim}
+\begin{lstlisting}[language=Haskell]
 aeq :: Alpha a => a -> a -> Bool
-\end{verbatim}
+\end{lstlisting}
 
-For \texttt{Term}, we do not use the default definitions of the \texttt{Alpha}
-and \texttt{Subst} classes. Instead, we need to provide a bit more
+For \cd{Term}, we do not use the default definitions of the \cd{Alpha}
+and \cd{Subst} classes. Instead, we need to provide a bit more
 information.  First, we would like the definition of alpha-equivalence of
 terms to ignore type annotations and source code positions for error
 messages. Therefore our instance does so for these constructors of the
-\texttt{Term} data type and defers to the generic definition for the rest.
+\cd{Term} data type and defers to the generic definition for the rest.
 
 For example, if \cd{xName} and \cd{yName} are two different names, then 
 \unbound's implementation of $\alpha$-equivalence can equate terms that 
 differ only in using these names for binding.
 \begin{piforall}
--- '\x -> x`
+-- '\x -> x'
 idx :: Term
 idx = Lam (Unbound.bind xName (Var xName))
 
--- '\y -> y`
+-- '\y -> y'
 idy :: Term
 idy = Lam (Unbound.bind yName (Var yName))
 
@@ -913,7 +918,7 @@ idy = Lam (Unbound.bind yName (Var yName))
 -- True
 \end{piforall}
 
-The \texttt{Subst} instance for \texttt{Term} requires telling \unbound where
+Second, the \cd{Subst} instance for \cd{Term} requires telling \unbound where
 variables occur in the \cd{Term}. This short function pattern matches to find
 the \cd{Var} constructor, extracts its name and returns it to \unbound. We
 don't need to provide any more code to \unbound in the implementation of
@@ -925,10 +930,11 @@ instance Unbound.Subst Term Term where
   isvar _ = Nothing  
 \end{verbatim}
 
+\noindent
 For more information about \unbound, see the documentation for
 \texttt{unbound-generics}\footnote{\url{https://github.com/lambdageek/unbound-generics}}.
 
-\subsection{A Type Checking monad{[}Environment.hs{]}}
+\subsection{A Type Checking monad {[}Environment.hs{]}}
 
 Recall that our plan is to write two mutually recursive functions for
 type checking of the following types:
@@ -939,22 +945,23 @@ inferType :: Term -> Ctx -> Maybe Type
 checkType :: Term -> Type -> Ctx -> Bool
 \end{verbatim}
 
-The inference function should take a term and a context and if it type
-checks, produce its type and its elaboration (where all annotations have
-been filled in). The checking function should take a term and a context
-and a type, and if that term has that type produce an elaborated version
-(where all of the annotations have been filled in.)
+The inference function should take a term and a context and if it type checks,
+produce its type. The checking function should take a term, a context, and a
+type, and determine whether the term has that type. However, note that the
+types above are not very informative in the case of failure: if a term does
+not type check, then the result is \cd{Nothing} or \cd{False}.
 
-Well actually, we'll do something a bit different. We'll define a
-\emph{type checking monad}, called \texttt{TcMonad} that will handle the
-plumbing for the typing context, and allow us to return more information
-than \texttt{Nothing} when a program doesn't type check. Therefore 
-our two functions will have this type: hiding the context and part
+For that reason, we'll do something a bit different. We'll define a \emph{type
+  checking monad}, called \texttt{TcMonad}, that will handle the plumbing for
+the typing context, and more importantly, allow us to return more information
+when a program doesn't type check. Therefore our two functions will have these
+types that hide the context and rely on throwing errors to indicate type
+checking failure.
 
 \begin{verbatim}
-inferType :: Term -> TcMonad (Term,Type)
+inferType :: Term -> TcMonad Type
  
-checkType :: Term -> Type -> TcMonad Term
+checkType :: Term -> Type -> TcMonad ()
 \end{verbatim}
 
 Those of you who have worked with Haskell before may be familiar with the
@@ -962,26 +969,40 @@ classes
 \href{https://hackage.haskell.org/package/mtl-2.1.2/docs/Control-Monad-Reader.html}{MonadReader},
 and the
 \href{https://hackage.haskell.org/package/mtl-2.1.2/docs/Control-Monad-Error.html}{MonadError},
-which our type checking monad will be instances of.
+which our type checking monad will be instances of. These two classes mean
+that that the \cd{TcMonad} type can provide access to the type checking
+context and can throw errors. We'll wrap this functionality up a bit with the
+following functions. The first two encapsulate the sort of context
+manipulation we need to do: look up the types of variables and add a new
+assumption about the type of a variable to the context (both \cd{Sig} and
+\cd{Decl} are defined in \cd{Syntax.hs}).
 
 \begin{verbatim}
-lookupTy :: TName -> TcMonad Term
+-- | Find the type of a name specified in the context
+-- throwing an error if the name doesn't exist
+lookupTy :: TName -> TcMonad Sig
+
+-- | Extend the context with a new binding
 extendCtx :: Decl -> TcMonad Term -> TcMonad Term
  
-  
-err  :: (Disp a) => a -> TcMonad b
-warn :: (Disp a) => a -> TcMonad b
+-- | Throw an error at the corrent location, assembling the error message
+-- from a list of displayable objects. Terminates type checking
+err  :: (Disp a) => [a] -> TcMonad b
+
+-- | Print a warning, but continue the current computation.
+warn :: (Disp a) => a -> TcMonad ()
 \end{verbatim}
 
-We'll also need this monad to be a freshness monad, to support working
-with binding structure, and throw in \cd{MonadIO} for good measure.
+We'll also need this monad to be a freshness monad, to support working with
+binding structure (i.e. a source of fresh names), and throw in \cd{MonadIO} so
+that we can print warning messages.
 
 \subsection{Implementing the Type Checking Algorithm
 {[}Typecheck.hs{]}}
 
 Now that we have the type checking monad available, we can start our
-implementation. For flexibility \texttt{inferType} and
-\texttt{checkType} will \emph{both} be implemented by the same function:
+implementation. For flexibility \texttt{inferType} and \texttt{checkType} will
+\emph{both} be implemented by the same function, called \cd{tcTerm}.
 
 \begin{verbatim}
 inferType :: Term -> TcMonad Type
@@ -999,8 +1020,13 @@ type in checking mode.
 tcTerm :: Term -> Maybe Type -> TcMonad Type
 \end{verbatim}
 
-The general structure of this function starts with a pattern match for
-the various syntactic forms in inference mode:
+We combine these two functions into a single definition so that we can share
+code between checking and inference mode. While none of the expression forms
+of the core language can take advantage of this functionality, it is useful
+for some extensions to the language.
+
+The general structure of the \cd{tcTerm} function starts with a pattern match
+for the various syntactic forms in inference mode:
 
 \begin{verbatim}
 tcTerm (Var x) Nothing = ... 
@@ -1041,43 +1067,44 @@ tcTerm tm (Just ty) = do
 The function \texttt{aeq} ensures that the two types are alpha-equivalent. If
 they are not, it stops the computation and throws an error.
 
-\subsection{Example}
+% \subsection{Example}
 
-The \pif source file \href{version1/pi/Lec1.pi}{\tt Lec1.pi} contains the examples
-that we worked out in Section~\ref{sec:simple}. Let's try to type check it,
-after filling in the missing code in \texttt{TypeCheck.hs}.
+% The \pif source file \href{version1/pi/Lec1.pi}{\tt Lec1.pi} contains the examples
+% that we worked out in Section~\ref{sec:simple}. Let's try to type check it,
+% after filling in the missing code in \texttt{TypeCheck.hs}.
 
-\subsection{Exercise (Type Theory \& Haskell) - Add Booleans and
-Sigma types}
+\subsection{Exercise:  Add Booleans and
+$\Sigma$-types}
 
 Some fairly standard typing rules for booleans are shown below.
 
-\drules{$[[G|-a:A]]$}{Booleans}{t-bool,t-true,t-false,t-if-weak}
+\drules{$[[G|-a:A]]$}{Booleans}{t-bool,t-true,t-false}
+\[ \drule[width=4in]{t-if-simple} \]
 
-Likewise, we can also extend the language with $\Sigma$-types.
+Likewise, we can also extend the language with $\Sigma$-types, or 
+products, where the type of the second component of the product can depend on the value of the first component.
 
-\drules{$[[G|-a:A]]$}{Sigma-types}{t-sigma,t-pair,t-letpair-weak}
+\drules{$[[G|-a:A]]$}{$\Sigma$-types}{t-sigma,t-pair}
+\[ \drule[width=4in]{t-letpair-weak} \]
 
-A $\Sigma$-type is a product where the type of the second component of the
-product can depend on the first component.  We destruct Sigmas using pattern
-matching. A simple rule for pattern matching introduces variables into the
-context when pattern matching the sigma type. These variables are not allowed
-to appear free in the result type of the pattern match.
+We destruct $\Sigma$-types using pattern matching. The simple rule for pattern
+matching introduces variables into the context when type checking the body of
+the \textsf{let} expression.  These variables are not allowed to appear free
+in the result type of the pattern match.
 
 This part of the homework has two parts:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
-\item
-  First: rewrite the rules above in bidirectional style. Which rules
-  should be inference rules? Which ones should be checking rules? If you
+\item First, on paper: rewrite the rules above in bidirectional style. Which
+  rules should be inference rules? Which ones should be checking rules? If you
   are familiar with other systems, how do these rules compare?
-\item
-  In Haskell, later: The code in \texttt{version1/} includes abstract
-  and concrete syntax for booleans and sigma types. The \pif file
+\item Second, in Haskell: The code in \texttt{version1/} includes abstract and
+  concrete syntax for booleans and $\Sigma$-types. The \pif file
   \texttt{version1/test/Hw1.pi} contains examples of using these new
-  forms. However, to get this file to compile, you'll need to fill in
-  the missing cases in \texttt{version1/src/TypeCheck.hs}.
+  forms. Your job is to get this file to compile by filling in the missing
+  cases in \texttt{version1/src/TypeCheck.hs} base on the bidirectional rules
+  that you worked out in the first part of the exercise.
 \end{enumerate}
 
 

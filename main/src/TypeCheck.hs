@@ -15,8 +15,9 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
 import Syntax
+import Debug.Trace
 
-import Text.PrettyPrint.HughesPJ (($$))
+import Text.PrettyPrint.HughesPJ (($$), render)
 
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
@@ -66,12 +67,13 @@ tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
   ({- SOLN EP -}(x,ep1){- STUBWITH x -}, body,{- SOLN EP -}(_,ep2){- STUBWITH _ -}, tyB) <- Unbound.unbind2Plus bnd bnd2
 {- SOLN EP -} -- epsilons should match up
-  guard (ep1 == ep2) {- STUBWITH -}
+  unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
+                                 DS "but found", DD ep1, DS "instead."] {- STUBWITH -}
   -- check the type of the body of the lambda expression
   Env.extendCtx {- SOLN EP -} (TypeSig (Sig x ep1 tyA)){- STUBWITH (mkSig x tyA) -} (checkType body tyB)
   return (Pi tyA bnd2)
 tcTerm (Lam _) (Just nf) =
-  Env.err [DS "Lambda expression should have a function type, not ", DD nf]
+  Env.err [DS "Lambda expression should have a function type, not", DD nf]
 -- i-app
 tcTerm (App t1 t2) Nothing = do
   ty1 <- inferType t1 
@@ -88,8 +90,12 @@ tcTerm (App t1 t2) Nothing = do
       ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty] -}
 {- SOLN EP -}
   (x, ep1, tyA, tyB) <- ensurePi ty1
-  guard (ep1 == argEp t2) 
-  Env.withStage ep1 $ checkType (unArg t2) tyA
+  unless (ep1 == argEp t2) $ Env.err 
+    [DS "In application, expected", DD ep1, DS "argument but found", 
+                                    DD t2, DS "instead." ]
+  -- if the argument is Irrelevant, resurrect the context
+  (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ 
+    checkType (unArg t2) tyA
   return (Unbound.subst x (unArg t2) tyB)
   {- STUBWITH 
 
@@ -124,20 +130,20 @@ tcTerm (LitBool b) Nothing = {- SOLN HW -} do
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
 -- c-if
-tcTerm t@(If t1 t2 t3) (Just ty) = {- SOLN HW -} do
+tcTerm t@(If t1 t2 t3) mty = {- SOLN HW -} do
   checkType t1 TyBool
   dtrue <- def t1 (LitBool True)
   dfalse <- def t1 (LitBool False)
-  Env.extendCtxs dtrue $ checkType t2 ty
+  ty <- Env.extendCtxs dtrue $ tcTerm t2 mty
   Env.extendCtxs dfalse $ checkType t3 ty
   return ty
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
-tcTerm (Let rhs bnd) ann = {- SOLN HW -} do
+tcTerm (Let rhs bnd) mty = {- SOLN HW -} do
   (x, body) <- Unbound.unbind bnd
   aty <- inferType rhs 
   ty <- Env.extendCtxs [mkSig x aty, Def x rhs] $
-      tcTerm body ann
+      tcTerm body mty
   when (x `elem` Unbound.toListOf Unbound.fv ty) $
     Env.err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]
   return ty
@@ -244,7 +250,7 @@ tcTerm Refl (Just ty@(TyEq a b)) = do
   Equal.equate a b
   return ty
 tcTerm Refl (Just ty) = 
-  Env.err [DS "Refl annotated with ", DD ty]
+  Env.err [DS "Refl annotated with", DD ty]
 tcTerm t@(Subst a b) (Just ty) = do
   -- infer the type of the proof 'b'
   tp <- inferType b
@@ -321,8 +327,8 @@ tcTerm t@(LetPair p bnd) (Just ty) = {- SOLN EQUAL -} do
 
 tcTerm PrintMe (Just ty) = do
   gamma <- Env.getLocalCtx
-  Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
-        DS "\nGoal: ", DD ty]
+  Env.warn [DS "Unmet obligation.\nContext:", DD gamma,
+        DS "\nGoal:", DD ty]
   return ty
 
 -- c-infer
@@ -334,7 +340,7 @@ tcTerm tm (Just ty) = do
   return ty'
 
 tcTerm tm Nothing = 
-  Env.err [DS "Must have a type annotation to check ", DD tm]
+  Env.err [DS "Must have a type annotation to check", DD tm]
 
 {- SOLN HW -}
 ---------------------------------------------------------------------
@@ -346,6 +352,7 @@ def t1 t2 = do
     nf1 <- Equal.whnf t1
     nf2 <- Equal.whnf t2
     case (nf1, nf2) of
+      (Var x, Var y) | x == y -> return []
       (Var x, _) -> return [Def x nf2]
       (_, Var x) -> return [Def x nf1]
       _ -> return []
@@ -410,7 +417,7 @@ doSubst ss (TypeSig sig : tele') = do
   tele'' <- doSubst ss tele'
   return $ TypeSig sig' : tele''
 doSubst _ tele = 
-  Env.err [DS "Invalid telescope ", DD tele]
+  Env.err [DS "Invalid telescope", DD tele]
 
 -----------------------------------------------------------
 
@@ -423,7 +430,7 @@ declarePat (PatCon dc pats) Rel ty = do
   tele <- substTele delta params deltai
   declarePats dc pats tele
 declarePat pat Irr _ty =
-  Env.err [DS "Cannot pattern match irrelevant arguments in pattern ", DD pat]
+  Env.err [DS "Cannot pattern match irrelevant arguments in pattern", DD pat]
 
 -- | Given a list of pattern arguments and a telescope, create a binding for 
 -- each of the variables in the pattern, 
@@ -538,7 +545,7 @@ tcEntry (Def n term) = do
               msg' =
                 disp
                   [ 
-                    DS "When checking the term ",
+                    DS "When checking the term",
                     DD term,
                     DS "against the signature",
                     DD sig
@@ -605,7 +612,7 @@ duplicateTypeBindingCheck sig = do
     sig' : _ ->
       let (Pos p _) = sigType sig
           msg =
-            [ DS "Duplicate type signature ",
+            [ DS "Duplicate type signature",
               DD sig,
               DS "Previous was",
               DD sig'
@@ -640,7 +647,7 @@ exhaustivityCheck scrut ty pats = do
           l <- checkImpossible dcons
           if null l
             then return ()
-            else Env.err $ DS "Missing case for " : map DD l
+            else Env.err $ DS "Missing case for" : map DD l
         loop (PatVar x : _) dcons = return ()
         loop (PatCon dc args : pats') dcons = do
           (ConstructorDef _ _ (Telescope tele), dcons') <- removeDCon dc dcons

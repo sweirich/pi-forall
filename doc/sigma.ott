@@ -141,7 +141,7 @@ G |- (a,b) <= { x : A | B }
 G |- a => { x : A1 | A2 }
 G, x:A1, y:A2 |- b <= B
 G |- B <= Type
------------------------------- :: letpair_weak
+------------------------------ :: letpair_simple
 G |- let (x,y) = a in b <= B
 
 G |- z => { x : A1 | A2 }

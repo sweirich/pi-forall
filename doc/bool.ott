@@ -117,7 +117,7 @@ G |- False : Bool
 G |- a : Bool 
 G |- b1 : A
 G |- b2 : A
----------------------------- :: if_weak
+---------------------------- :: if_simple
  |- if a then b1 else b2 : A
 
 G |- a : Bool 

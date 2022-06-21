@@ -329,7 +329,7 @@ telebindings = many teleBinding
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (Unbound.fresh wildcardName) <*> expr)
-      return (mkSig x ty:)
+      return (TypeSig (Sig x Rel ty):)
 
     imp = do
         v <- varOrWildcard

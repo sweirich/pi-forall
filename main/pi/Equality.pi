@@ -2,6 +2,9 @@ module Equality where
 
 import Logic
 
+-- Some of this file is inspired by:
+-- https://cs.stackexchange.com/questions/53081/elimination-rule-for-the-equality-type-aka-j-axiom
+
 -- equality is symmetric 
 
 sym : [A:Type] -> [x:A] -> [y:A] -> (x = y) -> y = x
@@ -10,9 +13,45 @@ sym = \ [A] [x] [y] pf .
 
 -- and transitive
 
-trans : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (x = z) -> (z = y) -> (x = y)
+trans : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (x = y) -> (y = z) -> (x = z)
 trans = \ [A] [x] [y] [z]  pf1 pf2 . 
   subst pf1 by pf2 
+
+-- and a groupoid
+
+g1 : [A:Type] -> [x:A] -> [y:A] -> (p : x = y) -> sym [A][y][x] (sym [A][x][y] p) = p
+g1 = \[A][x][y] pf. subst Refl by pf
+  
+g2 : [A:Type] -> [x:A] -> [y:A] -> (p : x = y) -> trans [A][x][y][x] p (sym [A][x][y] p) = Refl
+g2 = \[A][x][y] pf. subst Refl by pf
+
+g3 : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (p : x = y) -> (q : y = z) ->  
+     sym[A][x][z] (trans[A][x][y][z] p q) = trans[A][z][y][x] (sym[A][y][z] q) (sym[A][x][y] p)
+g3 = \[A][x][y][z] p q . subst (subst Refl by q) by p
+
+g4 : [A:Type] -> [x:A] -> [y:A] -> (p : x = y) -> trans[A][x][x][y] Refl p = p
+g4 = \[A][x][y] p. subst Refl by p
+
+g4' : [A:Type] -> [x:A] -> [y:A] -> (p : x = y) -> p = trans[A][x][x][y] Refl p
+g4' = \[A][x][y] p. subst Refl by p
+
+g5 : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> [w:A] -> (p: x = y) -> (q : y = z) -> (r : z = w) ->
+       ((trans[A][x][y][w] p (trans[A][y][z][w] q r))
+         = (trans[A][x][z][w] (trans [A][x][y][z] p q) r))
+g5 = \ [A][x][y][z][w] p q r . subst (subst (subst Refl by p) by q) by r
+
+-- subst is functorial
+
+subst_refl : [A:Type] -> [a:A] -> ((subst a by (Refl : A = A) : A) = a) 
+subst_refl = \[A][x]. Refl
+
+subst_trans : [x:Type] -> [y:Type] -> [z:Type] -> (p: x = y) -> (q : y = z) -> (a : x) ->
+  (subst a by (trans [Type][x][y][z] p q) : z) = subst (subst a by p) by q
+subst_trans = \[x][y][z]p q a. subst (subst Refl by p) by q
+  
+subst_app : [x:Type] -> [y:Type] -> [z:Type] -> (p: x = y) -> (q : y = z) -> 
+   (subst p by q : x = z) = trans[Type][x][y][z] p q
+subst_app = \[x][y][z] p q . Refl
 
 -- and congruent
 
@@ -24,6 +63,18 @@ f_equal2 :  [A:Type] -> [B : Type] -> [C:Type] -> [f : A -> B -> C] -> [x1:A] ->
    x1 = y1 -> x2 = y2 -> f x1 x2 = f y1 y2
 f_equal2 = \[A][B][C][f][x1][y1][x2][y2] pf1 pf2. 
   subst (subst Refl by pf1) by pf2
+
+-- dependent form of congruence with respect to function applications
+resp : [A:Type]->[B: A -> Type] -> (u : (x:A) -> B x) 
+     -> (a1 : A) -> (a2 : A) -> (s : a1 = a2) 
+     -> (subst (u a1) by s : B a2) = u a2
+resp = \[A][B] u a1 a2 s . subst Refl by s
+
+-- even for sigma types 
+sig_equal : [A : Type] -> [B : A -> Type] 
+          -> (x : A) -> (y : A) -> (p : x = y) -> (b : B x)
+          -> ( ( x , b ) : { x : A | B x } ) = (y , subst b by p )
+sig_equal = \[A][B] x y p b . subst Refl by p
 
 -- not equal is symmetric
 
@@ -44,6 +95,6 @@ k = \ [A][x] p .
   subst Refl by p
 
 -- another version of the above
+-- From: https://ncatlab.org/nlab/show/axiom+K+%28type+theory%29
 k2 : [A:Type] -> [x:A] -> [P : (x = x) -> Type] -> P Refl -> (h:x = x) -> P h
-k2 = \ [A][x][P] pf h . 
-  subst pf by h
+k2 = \ [A][x][P] d h . subst d by h

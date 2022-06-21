@@ -89,13 +89,13 @@ x : Rel A elem G
 G |- x : A
 
 G, x:Irr A |- a : B
-G Irr |- A : Type
+G Rel |- A : Type
 ------------------------  ::  elambda
 G |- \[x].a : [x:A] -> B
 
 
 G |- a : [x:A] -> B 
-G Irr |- b : A
+G Rel |- b : A
 --------------------------- ::  eapp
 G |- a [b] : B [ b / x ]
 
