@@ -1,6 +1,10 @@
 Source files for Lecture Notes, PDF [oplss.pdf](oplss.pdf)
 -----------------------------------------------------------
 
+To typeset these notes, you will need to have installed LaTeX and the Ott tool. The easiest way to install Ott is through [opam](https://opam.ocaml.org/).
+
+The Ott tool assists with typesetting mathematical specifications of type systems. All typing rules that appear in the lecture notes are specified within the following source files. 
+
 [Ott](https://www.cl.cam.ac.uk/~pes20/ott/top2.html) specifications:
 + [pi.ott](pi.ott) - Core system
 + [bool.ott](bool.ott) - Booleans
