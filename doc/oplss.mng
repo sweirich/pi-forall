@@ -343,6 +343,22 @@ versions index the expression type with the scope depth (a natural number) and
 the expression type to eliminate runtime scope and type errors from the
 execution of the interpreter.
 
+\subsubsection{Homework (Church encodings)}
+
+The file \texttt{full/test/NatChurch.pi} is a start at a Church encoding of
+natural numbers. Replace the \cd{TRUSTME}s in this file so that it
+compiles. For example, one task in this file is to define a predecessor
+function. By replacing the \cd{TRUSTME} with \cd{Refl} below, you'll be able
+to force the type checker to normalize both sides of the equality. The code
+will only type check if you have defined \cd{pred} correctly (on this
+example).
+
+\begin{piforall}
+test_pred : pred two = one
+test_pred = TRUSTME -- replace with Refl
+\end{piforall}
+
+
 \section{A Simple Core Language}
 \label{sec:simple}
 
@@ -1176,24 +1192,23 @@ equality}
 
 As another example, in the full language, we might have a type of length
 indexed vectors, where vectors containing values of type \texttt{A} with
-length \texttt{n} can be given the type \texttt{Vec\ A\ n}. In this
-language we may have a safe head operation, that allows us to access the
-first element of the vector, as long as it is nonzero.
+length \texttt{n} can be given the type \cd{Vec n A}. In this language we may
+have a safe head operation, that allows us to access the first element of the
+vector, as long as it is nonzero.
 
 \begin{piforall}
-head : (A : Nat) -> (n : Nat) -> Vec A (succ n) -> Vec A n
+head : (A : Nat) -> (n : Nat) -> Vec (Succ n) A -> Vec n A
 head = ...
  
 \end{piforall}
 
-However, to call this function, we need to be able to show that the
-length of the argument vector is equal to \texttt{succ\ n} for some
-n.~This is ok if we know the length of the vector outright
+However, to call this function, we need to be able to show that the length of
+the argument vector is equal to \texttt{Succ\ n} for some \cd{n}. This is ok if we
+know the length of the vector outright.
 
 \begin{piforall}
-v1 : Vec Bool (succ 0)
-v1 = VCons True VNil
- 
+v1 : Vec 1 Bool
+v1 = Cons [0] True Nil
 \end{piforall}
 
 So the application \texttt{head\ Bool\ 0\ v1} will type check. (Note
@@ -1203,16 +1218,15 @@ However, if we construct the vector, its length may not be a literal
 natural number:
 
 \begin{piforall}
-append : (n : Nat) -> (m : Nat) -> Vec A m -> Vec A n -> Vec A (plus m n)
+append : (n : Nat) -> (m : Nat) -> Vec m A -> Vec n A -> Vec (plus m n) A
 append = ...
 \end{piforall}
 
-In that case, to get \texttt{head\ Bool\ 1\ (append\ v1\ v1)} to type
-check, we need to show that the type \texttt{Vec\ Bool\ (succ\ 1)} is
-equal to the type \texttt{Vec\ Bool\ (plus\ 1\ 1)}. If our definition of
-type equality is \emph{alpha-equivalence}, then this equality will not
-hold. We need to enrich our definition of equality so that it equates
-more terms.
+In that case, to get \texttt{head\ Bool\ 1\ (append\ v1\ v1)} to type check,
+we need to show that the type \texttt{Vec\ (Succ\ 1)\ Bool} is equal to the
+type \texttt{Vec\ (plus\ 1\ 1)\ Bool}. If our definition of type equality is
+\emph{alpha-equivalence}, then this equality will not hold. We need to enrich
+our definition of equality so that it equates more terms.
 
 \subsection{Defining equality}
 
@@ -1482,7 +1496,7 @@ this section.
 
 Consider our elimination rules for if:
 
-\[ \drule[width=4in]{t-if-weak} \]
+\[ \drule[width=4in]{t-if-simple} \]
 
 We can strengthen this rule by making the result type \texttt{A} depend on
 whether the condition is true or false when type checking each branch. In this
@@ -1580,8 +1594,11 @@ input file.)
 \end{figure}
 
 \begin{figure}
-\drules[c]{$[[G |- a <= A]]$}{Checking}{refl,subst-left,subst-right,contra}
-\drules[i]{$[[G |- a => A]]$}{Inference}{eq}
+\drules[c]{$[[G |- a <= A]]$}{Checking}{refl,subst-left,subst-right}
+\[ \drule[width=4in]{c-contra} \]
+\drules[i]{$[[G |- a => A]]$}{Inference}{}
+\vspace{-5ex}
+\[ \drule[width=4in]{i-eq} \]
 
 \caption{Propositional equality (Bidirectional rules)}
 \label{fig:propeq-alg}
@@ -1650,10 +1667,14 @@ trans : (A:Type) -> (x:A) -> (y:A) -> (z:A)
 
 Furthermore, we can also extend the elimination form for propositional
 equality with dependent pattern matching as we did for booleans. This
-corresponds to the elimination rule \rref{t-subst}, that observes that the
-only way to construct a proof of equality is with the term $[[refl]]$. (This
-version of subst is very close to an eliminator for propositional equality
-called \texttt{J}).
+corresponds to the elimination rule \rref{t-subst} in Figure~\ref{fig:propeq},
+that observes that the only way to construct a proof of equality is with the
+term $[[refl]]$.\footnote{This version of subst is similar to an eliminator
+  for propositional equality called \texttt{J}. In our setting, this
+  eliminator is very strong and can be used to derive ``axiom'' K or the
+  uniqueness of identity proofs. The eliminator for propositional equality in
+  Coq and Agda is not this expressive, leaving the type system open to
+  extension with other proofs of propositional equality. }
 
 As above, the \rref{c-subst-right}, shown in Figure~\ref{fig:propeq-alg}, (and
 the corresponding left rule) only applies when $b$ is also a variable.
@@ -1672,22 +1693,6 @@ different head forms. This rule must be in checking mode because we can use
 
 Complete the file \href{version2/test/Hw2.pi}{\texttt{Hw2.pi}}. This file
 gives you practice with working with equality propositions in \pif.
-
-\subsubsection{Homework (\pif: more church encodings)}
-
-Now that we have defined propositional equality, we can use it to define
-compile-time test cases.  The file \texttt{version2/test/NatChurch.pi} is a
-start at a Church encoding of natural numbers. Replace the \cd{TRUSTME}s in
-this file so that it compiles. For example, one task in this file is to define
-a predecessor function. By replacing the \cd{TRUSTME} with \cd{Refl} below,
-you'll be able to force the type checker to normalize both sides of the
-equality. The code will only type check if you have defined \cd{pred}
-correctly (on this example).
-
-\begin{piforall}
-test_pred : pred two = one
-test_pred = TRUSTME -- replace with Refl
-\end{piforall}
 
 \section{Irrelevance: the $\forall$ of \pif}
 \label{sec:irrelevance}
