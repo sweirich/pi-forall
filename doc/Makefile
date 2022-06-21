@@ -1,9 +1,9 @@
 ## Makefile for paper
 
 OTT_SOURCE = pi sigma bool tyeq epsilon data
-BIBFILES = weirich.bib 
+BIBFILES = weirich.bib
 
-OTTFILES  = $(foreach i, $(OTT_SOURCE), $(i).ott) 
+OTTFILES  = $(foreach i, $(OTT_SOURCE), $(i).ott)
 OTTIFLAGS = $(foreach i, $(OTT_SOURCE), -i $(i).ott) -merge true
 RULESFILE = pi-rules.tex
 
@@ -16,7 +16,7 @@ PDFS=oplss.pdf
 
 all: $(TOP).pdf
 
-$(TOP).tex: $(RULESFILE) $(TOP).mng Makefile 
+$(TOP).tex: $(RULESFILE) $(TOP).mng Makefile
 	ott $(OTTIFLAGS) \
             -tex_wrap false \
             -tex_show_meta false \
@@ -37,7 +37,7 @@ $(RULESFILE): $(OTTFILES)
 
 $(TOP).pdf : $(TOP).tex  $(BIBFILES) $(PAPER_SOURCE) Makefile lstparams.sty abstract.tex lstpi.sty
 	echo $(PAPER_SOURCE)
-	latexmk -bibtex -pdf $(TOP).tex; latexmk -c
+	latexmk -pdflatex="texfot pdflatex" -bibtex -pdf $(TOP).tex && latexmk -c
 
 deps:
 	echo $(PAPER_SOURCE)
