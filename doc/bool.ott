@@ -2,44 +2,51 @@
 
 grammar
 
-tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+tm, a , b , A , B  :: '' ::= {{ com terms and types }}
 
   | Bool                  ::   :: TyBool {{ com boolean type }}
   | True                  ::   :: LitTrue {{ com boolean value true }}
   | False                 ::   :: LitFalse {{ com boolean value false }}
   | if a then b1 else b2  ::   :: If {{ com conditional }}
 
+v :: 'v_' ::= 
+  | Bool                  ::   :: TyBool 
+  | True                  ::   :: LitTrue
+  | False                 ::   :: LitFalse
+  | if path then a else b ::   :: If
+
+path :: 'p_' ::=
+  | if path then a else b ::   :: If
 
 defns 
 Jwhnf :: '' ::= 
 
 defn
-whnf a = v ::    :: whnf :: 'whnf_' 
+whnf a ~> v ::    :: whnf :: 'whnf_' 
 by
 
-whnf a = True
-whnf b1 = v
+whnf a ~> True
+whnf b1 ~> v
 --------------------------- :: if_true
-whnf if a then b1 else b2 = v
+whnf if a then b1 else b2 ~> v
 
-whnf a = False
-whnf b2 = v
+whnf a ~> False
+whnf b2 ~> v
 ------------------------------- :: if_false
-whnf if a then b1 else b2 = v
-
+whnf if a then b1 else b2 ~> v
 
 ----------------- :: bool
-whnf Bool = Bool
+whnf Bool ~> Bool
 
 ---------------- :: true
-whnf True = True
+whnf True ~> True
 
 ------------------- :: false
-whnf False = False
+whnf False ~> False
 
-whnf a = v
+whnf a ~> path
 ---------------------------------------------------- :: if_cong
-whnf if a then b1 else b2 = if v then b1 else b2
+whnf if a then b1 else b2 ~> if path then b1 else b2
 
 
 defns

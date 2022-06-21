@@ -2,7 +2,7 @@
 
 grammar
 
-tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+tm, a , b , A , B :: '' ::= {{ com terms and types }}
 
 
   %% Sigma types
@@ -16,22 +16,29 @@ tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
   | A * B      :: M  :: Times
     {{ com syntactic sugar for product types }}
 
+v :: 'v_' ::= 
+  | { x : A | B }    ::   :: Sigma
+  | ( a , b )        ::   :: Prod 
+  | let ( x , y ) = p in a ::  :: LetPair
+
+path, p :: 'p_' ::= 
+  | let ( x , y ) = p in a ::  :: LetPair
 
 defns 
 Jwhnf :: '' ::= 
 
 defn
-whnf a = v ::    :: whnf :: 'whnf_' 
+whnf a ~> v ::    :: whnf :: 'whnf_' 
 by
 
-whnf a = (a1, a2) 
-whnf (b [a1/x] [a2/y]) = v
+whnf a ~> (a1, a2) 
+whnf (b [a1/x] [a2/y]) ~> v
 ------------------------------- :: letpair
-whnf let (x,y) = a in b = v
+whnf let (x,y) = a in b ~> v
 
-whnf a = v
------------------------------------------- :: prodcong
-whnf let (x,y) = a in b = let (x,y) = v in b
+whnf a ~> p
+--------------------------------------------- :: prodcong
+whnf let (x,y) = a in b ~> let (x,y) = p in b
 
 
 defns

@@ -1,62 +1,96 @@
+% This file includes the specification of the core grammar, operational semantics 
+% and typing rules for the pi-forall language. 
+%
+% It also includes typesetting directives that control how the language is presented 
+% in the lecture notes. 
+
 metavar tname, x, y, z, f, g, n ::=
   {{ com variables }}
   {{ lex alphanum }}
 
-metavar mname, M ::=
-  {{ com module names }}
-  {{ lex alphanum }}
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% pi-forall language
+%% pi-forall core language
 
 grammar
 
+tm, a , b , A , B :: '' ::= {{ com terms and types }}
 
-tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+  | Type            ::   :: Type 
+    {{ com sort }}
 
-  %% Core syntax
-  | Type        ::    :: Type {{ com sort }}
+  | x               ::   :: Var 
+    {{ com variable }}
 
-  | x           ::    :: Var {{ com variable }}
-
-  | \ x . a            ::  :: Lam 
+  | \ x . a         ::   :: Lam 
     {{ tex \lambda [[x]]. [[a]] }}
-    {{ com function }}    
+    {{ com function definition }}    
 
-  | a b                ::   :: App 
+  | a b             ::   :: App 
     {{ tex [[a]] \; [[b]] }}
     {{ com function application }}
 
-  | ( x : A ) -> B    ::    :: Pi   
+  | ( x : A ) -> B  ::   :: Pi   
     {{ tex ([[x]]\!:\![[A]]) [[->]] [[B]] }}
     {{ com dependent function type }}
 
-  %% Practicalities
-  | a [ b / x ] :: S  :: SubstOp 
+  | a [ b / x ]     :: S :: SubstOp 
     {{ com substitution }}
 
-  | A -> B      :: M  :: Arrow
+  | A -> B          :: M :: Arrow
     {{ com syntactic sugar for function types }}
 
-  | ( a : A )   ::    :: Ann 
+  | ( a : A )       ::   :: Ann 
     {{ com type annotation }}
 
-  | ( a )       :: S  :: Paren 
+  | ( a )           :: S :: Paren 
     {{ com parenthesis }}
 
   | TRUSTME         ::   :: TrustMe   
-    {{ com A term that has any type }}
+    {{ com term that has any type }}
+
   | PRINTME         ::   :: PrintMe   
-    {{ com Print the current context }}
+    {{ com print the current context }}
 
   | let x = a in b  ::   :: Let 
-    {{ com Name an expression }}
+    {{ com name an expression }}
 
-  %% Unit
-  | Unit          ::   :: TyUnit  {{ com unit type }}
-  | ()            ::   :: LitUnit  {{ com unit term }}
+  | Unit            ::   :: TyUnit  
+    {{ com unit type }}
+
+  | ()              ::   :: LitUnit  
+    {{ com unit term }}
+
+v :: 'v_' ::= {{ com values and weak head normal forms }}
+
+  | Type            ::   :: Type 
+
+  | \ x . a         ::   :: Lam 
+
+  | ( x : A ) -> B  ::   :: Pi   
+
+  | Unit            ::   :: TyUnit  
+
+  | ()              ::   :: LitUnit  
+
+  | x               ::   :: Var
+
+  | p b             ::   :: App
+
+  | ( v )           :: S :: Paren
+
+
+path, p :: 'p_' ::= {{ com paths (neutral terms) }}
+
+  | x               ::   :: Var 
+
+  | p b             ::   :: App 
+
+  | ( p )           :: S :: Paren
+
+subrules 
+  p <:: v
+  v <:: a
 
 substitutions
   single a x     :: subst_tm
@@ -96,26 +130,26 @@ terminals :: 'terminals_' ::=
   | =>*               ::   :: minfer        {{ tex \Rightarrow^{\ast} }}
   | ->                ::   :: arrow         {{ tex \to }}
   | /\                ::   :: ilam          {{ tex \mathrm{\Lambda} }}   
-  | []                ::   :: box        {{ tex \Box }}
-  | |-                ::   :: entails    {{ tex \vdash }}
-  | |=                ::   :: hs_entails {{ tex \vDash }}
-  | /=                ::   :: neq        {{ tex \neq }}
-  | |>                ::   :: cast       {{ tex \triangleright }}
-  | ok                ::   :: ok         {{ tex \ \mathsf{ok} }}
-  | _                 ::   :: blank      {{ tex \_ }}
-  | ~>                ::   :: produce    {{ tex \leadsto }}
-  | ~>*               ::   :: multistep  {{ tex \leadsto^{\ast} }}
-  | empty             ::   :: empty      {{ tex \varnothing }}
-  | hole              ::   :: hole       {{ tex \circ }}
-  | fv                ::   :: fv         {{ tex \mathsf{fv}\! }}
-  | dom               ::   :: dom        {{ tex \mathsf{dom} }}
-  | ~                 ::   :: twiddle    {{ tex \sim }}
-  | ~~                ::   :: compatible {{ tex \asymp }}
-  | '|'               ::   :: bar        {{ tex | }}
-  | o                 ::   :: bullet     {{ tex \bullet }}
+  | []                ::   :: box           {{ tex \Box }}
+  | |-                ::   :: entails       {{ tex \vdash }}
+  | |=                ::   :: hs_entails    {{ tex \vDash }}
+  | /=                ::   :: neq           {{ tex \neq }}
+  | |>                ::   :: cast          {{ tex \triangleright }}
+  | ok                ::   :: ok            {{ tex \ \mathsf{ok} }}
+  | _                 ::   :: blank         {{ tex \_ }}
+  | ~>                ::   :: produce       {{ tex \leadsto }}
+  | ~>*               ::   :: multistep     {{ tex \leadsto^{\ast} }}
+  | empty             ::   :: empty         {{ tex \varnothing }}
+  | hole              ::   :: hole          {{ tex \circ }}
+  | fv                ::   :: fv            {{ tex \mathsf{fv}\! }}
+  | dom               ::   :: dom           {{ tex \mathsf{dom} }}
+  | ~                 ::   :: twiddle       {{ tex \sim }}
+  | ~~                ::   :: compatible    {{ tex \asymp }}
+  | '|'               ::   :: bar           {{ tex | }}
+  | o                 ::   :: bullet        {{ tex \bullet }}
   | fst               ::   :: fst
   | snd               ::   :: snd
-  | ==>               ::   :: impl       {{ tex \implies }}
+  | ==>               ::   :: impl          {{ tex \implies }}
 
 formula :: 'formula_' ::=
   | judgement                ::   :: judgement
@@ -123,61 +157,60 @@ formula :: 'formula_' ::=
   | x : A elem G             ::   :: inG
   | G |- A <=> B             ::   :: equate
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 defns 
 Jwhnf :: '' ::= 
 
 % For closed terms, these rules correspond to a big-step evaluation relation.
 % This relation is semi-decidable, so we can express it as a Haskell function
-% that may diverge. 
+% in our implementation.
 
 defn
-whnf a = v ::    :: whnf :: 'whnf_' 
+whnf a ~> v ::    :: whnf :: 'whnf_' 
 {{ tex [[whnf]]\ [[a]] \leadsto [[v]] }}
-{{ com evaluate a to v }}
+{{ com weak head normalize a to v (if possible) }}
 by
 
 % reduction rules
 
-whnf a = (\x.a')
-whnf (a'[b/x]) = v
+whnf a ~> (\x.a')
+whnf (a'[b/x]) ~> v
 ---------------------- :: lam_beta
-whnf a b = v
+whnf a b ~> v
 
-whnf (b[a/x]) = v
+whnf (b[a/x]) ~> v
 ------------------------------- :: let_beta
-whnf (let x = a in b) = v
+whnf (let x = a in b) ~> v
 
 ------------------ :: type
-whnf Type = Type
+whnf Type ~> Type
 
 ------------------ :: lam
-whnf \x.a = \x.a
+whnf \x.a ~> \x.a
 
 ----------------------------- :: pi
-whnf (x:A) -> B = (x:A) -> B
+whnf (x:A) -> B ~> (x:A) -> B
 
 %% congruence rule
+%%
 %% for open terms (i.e terms with free variables), the result is not a value
-%% but a term in "head normal form" i.e.
-%%    v ::= value (i.e.  Type, \x.a, (x:A) -> B
-%%          x 
-%%          v b
-
-% value rules 
+%% but a path (or neutral term)
 
 ---------- :: var
-whnf x = x
+whnf x ~> x
 
 
-whnf a = v
+whnf a ~> path
 ---------------------- :: lam_cong
-whnf a b = v b
+whnf a b ~> path b
 
-% ignore type annotations when normalizing
+% remove type annotations when normalizing
 %
-whnf a = v
+whnf a ~> v
 ------------------ :: annot
-whnf (a : A) = v
+whnf (a : A) ~> v
 
 
 defns
@@ -225,38 +258,38 @@ by
 -------------------------- :: beta
 G |- (\x.a)b = a [b/x]
 
- ----------  :: refl
- G |- A = A
+----------  :: refl
+G |- A = A
  
- G |- A = B
- -----------  :: sym
- G |- B = A
+G |- A = B
+-----------  :: sym
+G |- B = A
  
- G |- A1 = A2    
- G |- A2 = A3
- ------------------------- :: trans
- G |- A1 = A3
+G |- A1 = A2    
+G |- A2 = A3
+------------------------- :: trans
+G |- A1 = A3
 
 G, x : A |- b : B   
 G |- a1 = a2     
 ---------------------------------- :: lift
 G |- b [a1 / x] = b [a2 / x]
 
- G |- A1 = A2       
- G,x:A1 |- B1 = B2
- ------------------------------------ :: pi
- G |- (x:A1) -> B1 = (x:A2) -> B2
+G |- A1 = A2       
+G,x:A1 |- B1 = B2
+------------------------------------ :: pi
+G |- (x:A1) -> B1 = (x:A2) -> B2
 
 
- G,x:A1 |- b1 = b2
- ------------------- :: lam
- G |- \x.b1 = \x.b2
+G,x:A1 |- b1 = b2
+------------------- :: lam
+G |- \x.b1 = \x.b2
 
 
- G |- a1 = a2    
- G |- b1 = b2 
- -------------------------- :: app
- G |- a1 b1 = a2 b2
+G |- a1 = a2    
+G |- b1 = b2 
+-------------------------- :: app
+G |- a1 b1 = a2 b2
 
 
 G |- a1 = a2
@@ -309,15 +342,6 @@ G |- a : B
 
 
 defns
-Jalgeq :: '' ::= 
-
-defn 
-G |- A <=> A' ::    :: equate :: 'q_'
-{{ com algorithmic equality }}
-by
-
-
-defns
 JBidirectional :: '' ::= 
 
 defn 
@@ -340,7 +364,7 @@ G |- b <= A
 G |- a b => B [ b / x ]	  
 
 G |- a => A 
-whnf A = (x:A1) -> B 
+whnf A ~> (x:A1) -> B 
 G |- b <= A1
 ---------------------------  :: app
 G |- a b => B [ b / x ]	  

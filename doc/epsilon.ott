@@ -16,6 +16,9 @@ tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
    | [ x : A ] -> B  ::    :: EPi
    {{ tex [ [[x]]\!:\![[A]] ] \rightarrow [[B]] }}
 
+% this is a bit of a hack --- we're overloading contexts to 
+% include those annotated with epsilons
+
 context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
 
    | G , x : ep A   ::    :: ECons   
@@ -40,7 +43,7 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf a = v ::    :: whnf :: 'whnf_' 
+whnf a ~> v ::    :: whnf :: 'whnf_' 
 by
 
 defns
@@ -62,6 +65,15 @@ by
 G |- a1 = a2
 --------------------------- ::  eapp
 G |- a1 [b1] = a2 [b2]
+
+G , x:Irr A |- a1 = a2
+-------------------------   :: elam
+G |- \[x].a1 = \[x].a2
+
+G |- A1 = A2
+G , x:Rel A1 |- B1 = B2
+----------------------------------   :: epi
+G |- [x:A1] -> B1 = [x:A2] -> B2
 
 
 defns

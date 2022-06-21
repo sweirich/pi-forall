@@ -2,39 +2,45 @@
 
 grammar
 
-tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+tm, a , b , A , B :: '' ::= {{ com terms and types }}
 
   | a = b         ::   :: TyEq   {{ com equality type }}
   | refl          ::   :: Refl   {{ com reflexivity proof }}
   | subst a by b  ::   :: Subst  {{ com equality type elimination }}
   | contra a      ::   :: Contra {{ com false elimination }}
 
+v :: 'v_' ::= 
+  | a = b         ::   :: TyEq 
+  | refl          ::   :: Refl 
+  | subst a by p  ::   :: Subst 
+
+path, p :: 'p_' ::=
+  | subst a by p  ::   :: Subst 
+
 defns 
 Jwhnf :: '' ::= 
 
 defn
-whnf a = v ::    :: whnf :: 'whnf_' 
+whnf a ~> v ::    :: whnf :: 'whnf_' 
 {{ tex whnf [[a]] \leadsto [[v]] }}
 by
 
 ----------------------- :: tyeq
-whnf (a = b) = (a = b)
+whnf (a = b) ~> (a = b)
 
 
 ---------------- :: refl
-whnf refl = refl
+whnf refl ~> refl
 
 
-whnf b = refl
-whnf a = v
+whnf b ~> refl
+whnf a ~> v
 ------------------------ :: subst
-whnf (subst a by b) = v
+whnf (subst a by b) ~> v
 
-whnf b = b'
-whnf a = a'
+whnf b ~> p
 ---------------------------------------- :: subst_cong
-whnf (subst a by b) = (subst a' by b')
-
+whnf (subst a by p) ~> (subst a by p)
 
 defns
 JOp :: '' ::=
@@ -128,7 +134,7 @@ G |- (a = b) => Type
 
 % a trivial rule that does little
 G |- b => B 
-whnf B = (a1 = a2)
+whnf B ~> (a1 = a2)
 G |- a => A 
 ----------------------------------- :: subst
 G |- subst a by b => A
@@ -144,34 +150,34 @@ G |- refl <= a = b
 
 
 G |- b => B 
-whnf B = (x = a2)
+whnf B ~> (x = a2)
 G |- a <= A [a2/x]
 ----------------------------------- :: subst_left_simple
 G |- subst a by b <= A
 
 G |- b => B 
-whnf B = (a1 = x)
+whnf B ~> (a1 = x)
 G |- a <= A [a1/x]
 ----------------------------------- :: subst_right_simple
 G |- subst a by b <= A
 
 
 G |- y => B 
-whnf B = (x = a2)
+whnf B ~> (x = a2)
 G |- a <= A [a2/x][refl/y]
 ----------------------------------- :: subst_left
 G |- subst a by y <= A
 
 G |- y => B 
-whnf B = (a1 = x)
+whnf B ~> (a1 = x)
 G |- a <= A [a1/x][refl/y]
 ----------------------------------- :: subst_right
 G |- subst a by y <= A
 
 
 G |- a : A
-whnf A = (a1 = a2)
-whnf a1 = True
-whnf a2 = False
+whnf A ~> (a1 = a2)
+whnf a1 ~> True
+whnf a2 ~> False
 ------------------------ :: contra 
 G |- contra a <= B

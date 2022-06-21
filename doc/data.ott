@@ -13,11 +13,11 @@ indexvar i ::=
 
 grammar
 
-tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+tm, a , b , A , B :: '' ::= {{ com terms and types }}
    | K args       ::     :: TCon
    | T args       ::     :: DCon 
-   | case a of { </ pi -> ai // i /> } ::     :: Case 
-   | a [ p / x ]  ::     :: PatSubst
+   | case a of { </ pati -> ai // i /> } ::     :: Case 
+   | a [ pat / x ] ::     :: PatSubst
 
    | Nat          ::     :: TyNat
    | Zero         ::     :: Zero
@@ -26,13 +26,21 @@ tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
    | ImTrue a b   ::     :: ImTrue
    | SillyBool    ::     :: SillyBool   
 
+v :: 'v_' ::= 
+   | K args       ::     :: TCon
+   | T args       ::     :: DCon 
+   | case p of { </ pati -> ai // i /> } ::     :: Case 
+
+path, p :: 'p_' ::=
+   | case p of { </ pati -> ai // i /> } ::     :: Case 
+
 
 args {{ tex \overline{a} }} , bs {{ tex \overline{b} }} :: '' ::= 
    |              ::     :: Nil
    | a args       ::     :: Cons
    | [a] args     ::     :: ECons
 
-pattern, p ::'' ::= 
+pat ::'' ::= 
    | x      ::     :: PatVar
    | K ps   ::     :: PatCon
 
@@ -41,8 +49,8 @@ ms :: 'm_' ::=  {{ com sequence of matches }}
    |         ::    :: Nil
 
 ps :: 'p_' ::=  {{ com sequence of patterns }}
-   | p ps    ::    :: Cons
-   | p ep ps ::    :: ConsEp
+   | pat ps    ::    :: Cons
+   | pat ep ps ::    :: ConsEp
    |         ::    :: Nil
 
 context, G :: 'ctx_' ::=  
@@ -62,18 +70,32 @@ formula :: 'formula_' ::=
    | K : D1 -> D2 -> T args  elem G  ::   :: DConInG2
    | T : D -> Type elem G     ::   :: TConInG
    | branches exhaustive ::   :: Exhaustive
-   | |- a ~ p => D       ::   :: UnifyPat
-   | |- a ~ b => D       ::   :: Unify
+   | |- a ~ pat => D       ::   :: UnifyPat
+   | |- a ~ b   => D       ::   :: Unify
+   | match a (pati -> ai) ~> b ::  :: patternMatches
 
 defns 
 Jwhnf :: '' ::= 
 
 defn
-whnf a = v ::    :: whnf :: 'whnf_' 
+whnf a ~> v ::    :: whnf :: 'whnf_' 
 by
 
 -------------------- :: tcon
-whnf T args = T args
+whnf T args ~> T args
+
+-------------------- :: dcon
+whnf K args ~> K args
+
+match (K args) (pati -> ai) ~> b
+whnf b ~> v
+---------------------------------------------------------------------- :: case
+whnf case (K args) of { </ pati -> ai // i /> } ~> v
+
+a ~> p
+------------------------------------------------------------------------------- :: case_cong
+whnf case a of { </ pati -> ai // i /> } ~> case p of { </ pati -> ai // i /> }
+
 
 defns
 JOp :: '' ::=
@@ -100,32 +122,31 @@ G |- a : A   ::   :: typing :: 't_'
 {{ com Typing }}
 by
 
-   ---------------  :: Nat
-   G |- Nat : Type
+---------------  :: Nat
+G |- Nat : Type
 
-   ---------------- :: Void
-   G |- Void : Type
+---------------- :: Void
+G |- Void : Type
    
-  ----------------- :: Zero
-   G |- Zero : Nat
+---------------- :: Zero
+G |- Zero : Nat
    
-   G |- n : Nat
-   ----------------- :: Succ
-   G |- Succ n : Nat
+G |- n : Nat
+----------------- :: Succ
+G |- Succ n : Nat
 
-   G |- a1 : Bool    
-   G |- a2 : a1 = True
-  --------------------------------------- :: ImTrue
-   G |- ImTrue a1 a2 : SillyBool
+G |- a1 : Bool    
+G |- a2 : a1 = True
+--------------------------------------- :: ImTrue
+G |- ImTrue a1 a2 : SillyBool
    
-
 G |- a : T
-</ G |- pi : T => Di // i />
+</ G |- pati : T => Di // i />
 </ G, Di |- ai : A // i />
 G |- A : Type
 branches exhaustive
 ---------------------------------------------------- :: case_simple
-G |- case a of { </ pi -> ai // i /> } : A
+G |- case a of { </ pati -> ai // i /> } : A
 
 
 
@@ -155,25 +176,23 @@ G |- a <= B ::    :: checkType :: 'c_'
 by
 
 G |- a => A
-whnf A = T
-</ G |- pi : T => Di // i />
-</ |- a ~ pi => Di' // i />
+whnf A ~> T
+</ G |- pati : T => Di // i />
+</ |- a ~ pati => Di' // i />
 </ G, Di , Di' |- ai : A // i />
 branches exhaustive
 --------------------------------------------------------  :: case_simple
-G |- case a of { </ pi -> ai // i /> } <= A
+G |- case a of { </ pati -> ai // i /> } <= A
 
 
 G |- a => A
-whnf A = T bs
-</ G |- pi : T bs => Di // i />
-</ |- a ~ pi => Di' // i />
+whnf A ~> T bs
+</ G |- pati : T bs => Di // i />
+</ |- a ~ pati => Di' // i />
 </ G, Di , Di' |- ai : A // i />
 branches exhaustive
 --------------------------------------------------------  :: case
-G |- case a of { </ pi -> ai // i /> } <= A
-
-
+G |- case a of { </ pati -> ai // i /> } <= A
 
 K : D1 -> D2 -> T elem G
 G |- args <= D2 [ bs / D1 ]
@@ -207,14 +226,14 @@ by
 G |-  :  =>  
 
 
-G |- p : A => D1
+G |- pat : A => D1
 G |- ps : D => D2
 --------------------------------------------- :: Cons
-G |- p ps : x : A , D => D1 , D2 
+G |- pat ps : x : A , D => D1 , D2 
 
 
 defn
-G |- p : A => D ::   :: declarePat :: 'p_'
+G |- pat : A => D ::   :: declarePat :: 'p_'
 by
 
 ---------------------- :: var

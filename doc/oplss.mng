@@ -1282,7 +1282,7 @@ match against a literal function type.
 \end{itemize}
 
 \begin{figure}
-\drules[whnf]{$[[whnf a = v]]$}{Weak head normal form reduction}{lam-beta,let-beta,type,lam,pi,var,lam-cong}
+\drules[whnf]{$[[whnf a ~> v]]$}{Weak head normal form reduction}{lam-beta,let-beta,type,lam,pi,var,lam-cong}
 \caption{Relation computing the weak head normal form of a term}
 \label{fig:whnf}
 \end{figure}
@@ -1291,7 +1291,7 @@ match against a literal function type.
 
 The following judgement (shown in Figure~\ref{fig:whnf})
 %
-\[ \fbox{$[[whnf a = v]]$} \]
+\[ \fbox{$[[whnf a ~> v]]$} \]
 %
 describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak head normal form (whnf)}. 
 For closed terms, these rules correspond to a big-step evaluation relation and produce 
@@ -1750,8 +1750,10 @@ the body of a $\lambda$-abstraction. How can we do so?
 The key idea is that we mark variables in the context with an $[[ep]]$
 annotation, which is either $[[Rel]]$ (relevant) or $[[Irr]]$ (irrelevant).
 ``Normal'' variables, introduced by $\lambda$-expressions, will always be
-marked as relevant, and only relevant variables can be used in terms.
-As a result, we revise the variable typing rule to require the relevant annotation.
+marked as relevant, and only relevant variables can be used in terms.  As a
+result, we revise the variable typing rule to require the relevant annotation.
+In the \texttt{version3} implementation, type declarations in the environment now 
+include an \cd{Epsilon} tag, and the function \cd{checkStage} compares this tag
 
 \[ 
 \drule{t-evar}
@@ -2043,7 +2045,7 @@ applications}
 \begin{tabular}{lll}
 $[[G |- args <= D]]$   & \texttt{tcArgTele} 
    & Type check a list of arguments against a telescope \\
-$[[G |- p : A => D]]$ & \texttt{declarePat} 
+$[[G |- pat : A => D]]$ & \texttt{declarePat} 
    & Create telescope containing all of the variables from the pattern \\
 $[[ |- a ~ b => D]]$  & \texttt{unify} 
    & Compare two terms to create a list of definitions \\
@@ -2107,7 +2109,7 @@ doSubst :: [(TName, Term)] -> [Assn] -> TcMonad [Assn]
 
 In your homework assignment, we used a special \texttt{if} to eliminate boolean types.
 Now, we'd like to replace that with the more general \texttt{case} expression, of the 
-form $[[case a of { </ pi -> ai // i /> }]]$ 
+form $[[case a of { </ pati -> ai // i /> }]]$ 
 that works with any form of datatype. What should the typing rule for
 that sort of expression look like? 
 
