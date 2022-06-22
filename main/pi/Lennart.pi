@@ -1,5 +1,10 @@
 module Lennart where
 
+-- stack exec -- pi-forall Lennart.pi  
+-- time: 7.39s user 0.35s system 99% cpu 7.755 total
+
+import Fix
+
 bool : Type
 bool = [C : Type] -> C -> C -> C
 
@@ -33,18 +38,23 @@ fst = \[A][B] ab. ab [A] (\a.\b.a)
 snd : [A:Type] -> [B:Type] -> prod A B -> B
 snd = \[A][B] ab.ab [B] (\a.\b.b)
 add : nat -> nat -> nat
-add = \x.\y. x [nat] y (\ n. succ (add n y))
+add = fix [nat -> nat -> nat] 
+        \radd . \x.\y. x [nat] y (\ n. succ (radd n y))
 mul : nat -> nat -> nat
-mul = \x.\y. x [nat] zero (\ n. add y (mul n y))
+mul = fix [nat -> nat -> nat]
+        \rmul. \x.\y. x [nat] zero (\ n. add y (rmul n y))
 fac : nat -> nat
-fac = \x. x [nat] one (\ n. mul x (fac n))
+fac = fix [nat -> nat]
+        \rfac. \x. x [nat] one (\ n. mul x (rfac n))
 eqnat : nat -> nat -> bool
-eqnat = \x. \y. 
-    x [bool] 
-        (y [bool] true (\b.false)) 
-    (\x1.y [bool] false (\y1. eqnat x1 y1))
+eqnat = fix [nat -> nat -> bool] 
+        \reqnat. \x. \y. 
+           x [bool] 
+             (y [bool] true (\b.false)) 
+             (\x1.y [bool] false (\y1. reqnat x1 y1))
 sumto : nat -> nat 
-sumto = \x. x [nat] zero (\n. add x (sumto n))
+sumto = fix [nat -> nat]
+          \rsumto. \x. x [nat] zero (\n. add x (rsumto n))
 n5 : nat
 n5 = add two three
 n6 : nat

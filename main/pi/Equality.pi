@@ -98,3 +98,20 @@ k = \ [A][x] p .
 -- From: https://ncatlab.org/nlab/show/axiom+K+%28type+theory%29
 k2 : [A:Type] -> [x:A] -> [P : (x = x) -> Type] -> P Refl -> (h:x = x) -> P h
 k2 = \ [A][x][P] d h . subst d by h
+
+-- here's another version of j
+-- https://ncatlab.org/nlab/show/identity+type#ExplicitDefinition
+
+j : [A:Type]
+  -> [C : (x:A) -> (y:A) -> (x = y) -> Type] 
+  -> ((x:A) -> C x x Refl) 
+  -> (x:A) -> (y:A) -> (p : x = y) -> C x y p
+j = \[A][C] t x y p . subst (t x) by p
+
+-- Can we use this version of j to derive k ? 
+-- I don't think so. At least not without some 
+-- form of heterogenous equality
+
+k' : [A:Type] -> (x:A) -> (p : x = x) -> (p = Refl)
+k' = \ [A] x p . 
+      j [A] [\ x y p . p = Refl] x x Refl

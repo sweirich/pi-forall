@@ -10,6 +10,7 @@ trans = {- SOLN DATA -} \A x y z pf1 pf2 .
 -- properties of booleans
 
 -- an encoding of logical falsity
+
 void : Type 
 void = (A:Type) -> A
 
@@ -30,7 +31,7 @@ not_false_then_true : (b : Bool) -> neg (b = False) -> b = True
 not_false_then_true = {- SOLN DATA -} \b nb. 
   if b then Refl else nb Refl (b = True) {- STUBWITH TRUSTME -}
 
--- showing that decidable equality is correct.
+-- showing that decidable equality for booleans is correct.
 
 eq_bool : Bool -> Bool -> Bool
 eq_bool = \x y. if x then y else not y

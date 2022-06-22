@@ -1616,10 +1616,13 @@ proposition that two terms are equal.
 As a step towards more general indexed datatypes, we'll start by adding a propositional equality type to \pif.
 
 The main idea of the equality type is that it converts a \emph{judgement} that
-two types are equal into a \emph{type} that evaluates to a value only when two
-types are equal.\footnote{Recall that all types are inhabited by an infinite
-  loop in \pif.}  In other words, the new value form $[[refl]]$ has 
-type $[[a = b]]$, as shown in \rref{t-refl} in Figure~\ref{fig:propeq}.  
+two types are equal into a \emph{type} that evaluates to a special value form,
+called $[[refl]]$, only when two types are equal.\footnote{Recall that all
+  types are inhabited in \pif, so to know whether types are equal, we must
+  make sure that we have an actual proof of equality.}  In other words, the
+new value form $[[refl]]$ has type $[[a = b]]$ when these two types are
+definitionally equal to each other, as shown in \rref{t-refl} in
+Figure~\ref{fig:propeq}.
 
 Sometimes, you might see \rref{t-refl} written as follows:
 %
@@ -1633,11 +1636,11 @@ rule for $[[refl]]$ requires checking mode, so that we know which types we
 need to show equivalent.  (See \rref{c-refl}.)  Furthermore, this rule allows
 $[[a]]$ and $[[b]]$ to differ so that there are no restrictions on its
 use. Instead, to implement this rule, we need only compare $[[a]]$ and $[[b]]$
-for definitional equality, as we did in Section~\ref{sec:equality}.
+using our algorithmic equality, as we did in Section~\ref{sec:equality}.
 
 An equality type is well-formed when the terms on both sides of the equality
 have the same type. In other words, when it implements \emph{homogeneous}
-equality, as shown in rule \rref{t-eq}. In the algorithm, \rref{i-eq}, we
+equality, as shown in \rref{t-eq}. In the algorithm, \rref{i-eq}, we
 infer the types of each side of the equality type and then check to make sure
 that those types are equal.
 
@@ -1670,7 +1673,7 @@ equality with dependent pattern matching as we did for booleans. This
 corresponds to the elimination rule \rref{t-subst} in Figure~\ref{fig:propeq},
 that observes that the only way to construct a proof of equality is with the
 term $[[refl]]$.\footnote{This version of subst is similar to an eliminator
-  for propositional equality called \texttt{J}. In our setting, this
+  for propositional equality called \texttt{J}. However, our 
   eliminator is very strong and can be used to derive ``axiom'' K or the
   uniqueness of identity proofs. The eliminator for propositional equality in
   Coq and Agda is not this expressive, leaving the type system open to
@@ -1774,18 +1777,19 @@ types are actually equal. If (somehow) we knew that the argument would always
 evaluate to \texttt{Refl} we could erase it.
 
 
-\subsection{How do we rule this out in the type system?}
+\subsection{How do we track irrelevance in the type system?}
 
-We need to make sure that an irrelevant variable is not ``used'' in the relevant parts of 
-the body of a $\lambda$-abstraction. How can we do so?
+We need to make sure that an irrelevant variable is not ``used'' in the
+relevant parts of the body of a $\lambda$-abstraction. How can we do so?
 
 The key idea is that we mark variables in the context with an $[[ep]]$
 annotation, which is either $[[Rel]]$ (relevant) or $[[Irr]]$ (irrelevant).
 ``Normal'' variables, introduced by $\lambda$-expressions, will always be
 marked as relevant, and only relevant variables can be used in terms.  As a
 result, we revise the variable typing rule to require the relevant annotation.
-In the \texttt{version3} implementation, type declarations in the environment now 
-include an \cd{Epsilon} tag, and the function \cd{checkStage} compares this tag
+In the \texttt{version3} implementation, type signatures in the environment now 
+include an \cd{Epsilon} tag, and the function \cd{checkStage} ensures that this
+tag is $[[Rel]]$ when the variable is used in the term.
 
 \[ 
 \drule{t-evar}
@@ -1801,7 +1805,7 @@ inaccessible in the body of the function.
 
 However, this variable should be available for use in \emph{types} and other
 \emph{irrelevant} parts of the term. To enable this use, we use a special
-context operation $[[G Irr]]$, as in the second premise in \rref{t-elambda}, and
+context operation $[[G Rel]]$, as in the second premise in \rref{t-elambda}, and
 in the \rref{t-eapp} rule below.
 
 \[
@@ -1814,8 +1818,10 @@ perspective: because we have entered an irrelevant part of the term, the
 variables that were not visible before are now available after this context
 modification.
 
-Finally, when checking irrelevant $\Pi$ types, we mark the variable with $[[Rel]]$ when 
-we add it to the context so that it may be used in the range of the $\Pi$ type. Otherwise, we would not be able to verify the type of the polymorphic identity function above.
+Finally, when checking irrelevant $\Pi$ types, we mark the variable with
+$[[Rel]]$ when we add it to the context so that it may be used in the range of
+the $\Pi$ type. Otherwise, we would not be able to verify the type of the
+polymorphic identity function above.
 \[
 \drule[width=3in]{t-epi}
 \]
@@ -1867,16 +1873,16 @@ irrelevance = \p . Refl
 \section{Datatypes and Indexed Datatypes}
 \label{sec:datatypes}
 
-Finally, we'll add datatypes with erasable arguments to \pif.
-The code to look at is the ``complete'' implementation in
-\href{full/}{\texttt{full}}.
+Finally, we'll add a general implementation of datatypes (including
+potentially irrelevant arguments) to \pif.  The code to look at is the
+``complete'' implementation in \href{full/}{\texttt{full}}.
 
 Unfortunately, datatypes are both:
 
 \begin{itemize}
 \item
   Really important (you see them \emph{everywhere} when working with
-  languages like Coq, Agda, Idris, etc.)
+  languages like Haskell, Coq, Agda, Idris, etc.)
 \item
   Really complicated (there are a \emph{lot} of details). In general, datatypes 
   subsume booleans, $\Sigma$-types, propositional equality, and can carry 
@@ -1891,28 +1897,32 @@ is to give you enough information so that you can pick up the Haskell code and
 understand what is going on.
 
 Even then, realize that the implementation that I'm giving you is not the
-complete story! Recall that we're not considering termination. That means that
-we can think about eliminating datatypes merely by writing recursive
-functions; without having to reason about whether those functions
-terminate. Coq, Agda and Idris include a lot of machinery for this termination
-analysis, and we won't cover any of it.
+complete story. Recall that we're not considering termination. That means that
+we can use datatypes merely by writing recursive functions; we don't having to
+reason about whether those functions terminate. Coq, Agda and Idris include a
+lot of machinery for this termination analysis, and we won't cover any of it
+here.
 
-We'll work up the general specification of datatypes piece-by-piece,
-generalizing from features that we already know to more difficult cases.
-We'll start with ``simple'' datatypes, and then extend them with both
-parameters and indices.
+In the rest of this section, we'll work up the general specification of
+datatypes piece-by-piece, generalizing from features that we already know to
+more difficult cases.  We'll start with ``simple'' datatypes, and then extend
+them with both parameters and indices. 
 
 \subsection{``Dirt simple'' datatypes}\label{dirt-simple-datatypes}
 
 Our first goal is simple. What do we need to get the simplest examples of
-non-recursive and recursive datatypes working? By this I mean datatypes that
-you might see in Haskell or ML, such as \texttt{Bool}, \texttt{Void} and
-\texttt{Nat}.
+non-recursive and regular recursive datatypes working? By this I mean
+datatypes that you might see in Haskell or ML, such as \texttt{Bool},
+\texttt{Void} and \texttt{Nat}. Here are some examples of what we would 
+like these types to look like in \pif. If you are looking at the implementation,
+you'll find this code in \texttt{pi/Lec4.pi}.
 
 \subsubsection{Booleans}\label{booleans}
 
-For example, one homework assignment was to implement booleans. Once we
-have booleans then we can
+For example, one homework assignment was to implement booleans as a primitive
+language feature. We'd like to replace this primitive feature with a datatype
+definition of a new type constructor (\cd{Bool}), with two constructors
+\cd{True} and \cd{False}, defined by the following data type declaration.
 
 \begin{piforall}
   data Bool : Type where
@@ -1921,17 +1931,19 @@ have booleans then we can
 \end{piforall}
 
 In the homework assignment, we used \texttt{if} as the elimination form
-for boolean values.
+for boolean values. For example, with the primitive \cd{if} expression, 
+we could write this function.
 
 \begin{piforall}
  not : Bool -> Bool
  not = \ b . if b then False else True
 \end{piforall}
 
-For uniformity, we'll have a common elimination form for all datatypes,
-called \texttt{case} that has branches for all cases. (We'll steal
-Haskell syntax for case expressions, including layout.) For example, we
-might rewrite \texttt{not} with case like this:
+For uniformity, we want to have a common elimination form for all datatypes,
+called \texttt{case}. This expression form has branches for each of the data
+constructors of the data type. (In \pif, we'll steal Haskell's syntax for case
+expressions, including layout.) For example, we might rewrite \texttt{not}
+with \cd{case} like this:
 
 \begin{piforall}
 not : Bool -> Bool
@@ -1957,14 +1969,18 @@ false_elim : (A:Type) -> Void -> A
 false_elim = \ A v . case v of {} 
 \end{piforall}
 
-Void brings up the issue of \emph{exhaustiveness} in case analysis. Can
-we tell whether there are enough patterns so that all of the cases are
-covered? This is something that our implementation should be able to do.
+The \cd{Void} type brings up the issue of \emph{exhaustiveness} in case
+analysis. Can we tell whether there are enough patterns so that all of the
+cases are covered? For \cd{Void} this is simple, as we can see from its declaration
+that it has no cases to cover. But, as our language becomes more sophisticated, we'll need
+to revisit our implementation to make sure that it can correctly identify when a case 
+expression is exhaustive.
 
 \subsubsection{Nat}\label{nat}
 
-Natural numbers include a data constructor with an argument. For
-simplicity in the parser, those parentheses must be there.
+Natural numbers include a data constructor with an argument, which we can
+write in the syntax of \pif as below. (For simplicity in the parser, those
+parentheses must be there.)
 
 \begin{piforall}
 data Nat : Type where
@@ -1979,28 +1995,41 @@ is_zero : Nat -> Bool
 is_zero = \ x . case x of 
    Zero -> True
    Succ n -> False
-   
+\end{piforall}
+
+However, to write \cd{plus}, we need to use recursion:
+
+\begin{piforall}
+plus : Nat -> Nat -> Nat
+plus = \ x y. case x of 
+   Zero -> y
+   Succ x' -> Succ (plus x' y)
 \end{piforall}
 
 \subsubsection{Dependently-typed data constructor args}
 
-Now, even in our ``dirt simple'' system, we'll be able to encode
-some new structures, beyond what is available in functional programming
-languages like Haskell and ML. These structures won't be all that useful
-yet, but as we add parameters and indices to our datatypes, they will
-be. For example, here's an example of a datatype declaration where the
-data constructors have dependent types.
+Now, even in our ``dirt simple'' system, we'll be able to encode some new
+structures that are beyond what is available using regular algebraic datatypes
+in functional programming languages like Haskell and ML. These structures
+won't be all that useful yet, but as we add parameters and indices to our
+datatypes, they will become more so. For example, here's an example of a
+datatype declaration where the data constructors have dependent types.
 
 \begin{piforall}
 data SillyBool : Type where      
-   ImTrue  of (b : Bool) (_ : b = True)
-   ImFalse of (b: Bool)  (_ : b = False)
+   ImTrue  of (b: Bool) (_ : b = True)
+   ImFalse of (b: Bool) (_ : b = False)
+\end{piforall}
+
+In this example, the type of \cd{ImTrue} is 
+\begin{piforall}
+ImTrue : (b:Bool) -> (b = True) -> SillyBool
 \end{piforall}
 
 \subsection{Implementing the type checker for ``dirt simple'' datatypes}
 
-Datatype declarations, such as \texttt{data\ Bool}, \texttt{data\ Void}
-or \texttt{data\ Nat} extend the context with new type constants (aka
+Datatype declarations, such as \cd{data Bool}, \cd{data Void},
+or \cd{data Nat} extend the context with new type constants (i.e.
 type constructors) and new data constructors. It is as if we had added a
 bunch of new typing rules to the type system, such as:
 
@@ -2013,20 +2042,21 @@ name and a list of data constructors.
    data T : Type where
       K1                 -- no arguments
       K2 of (A)          -- single arg of type A
-      K3 of (x:A)        -- also single arg of type A, called x for fun
-      K4 of (x:A)(y:B)   -- two args, the type of B can mention A
-      K5 of (x:A)[x = a] -- one arg, plus constraint about that arg
+      K3 of (x:A)        -- also single arg of type A, called x
+      K4 of (x:A)(y:B)   -- two args, the type B can mention x
+      K5 of (x:A)[x = a] -- one arg, plus an equality constraint about that arg
 \end{piforall}
 
-In fact, each data constructor takes a special sort of list of arguments that
-we call a \emph{telescope}. (The word telescope for this structure was coined
-by de Bruijn~\cite{debruijn} to describe the scoping behavior of this
-structure. The scope of each variable overlaps all of the subsequent ones,
-nesting like an expandable telescope.)
+In this setting, each data constructor takes a special sort of list of
+arguments that we call a \emph{telescope}. (The word telescope for this
+structure was coined by de Bruijn~\cite{debruijn} to describe the scoping
+behavior of this structure. The scope of each variable overlaps all of the
+subsequent ones, nesting like an expandable telescope.)
 
-We can represent this structure in our implementation by adding a new
-form of declaration (some parts have been elided compared to
-\texttt{full}, so we're building up to that version.)
+We can represent this structure in our implementation by adding a new form of
+declaration to the syntax.\footnote{Some parts of this implementation have
+  been elided compared to \texttt{full}. We're building up to that version
+  slowly.}
 
 \begin{verbatim}
 -- | type constructor names
@@ -2035,6 +2065,7 @@ type TCName = String
 -- | data constructor names
 type DCName = String
 
+-- | Declarations stored in the context
 data Decl = 
     -- | Declaration for the type of a term `x : A`
     TypeSig Sig   
@@ -2053,18 +2084,17 @@ newtype Telescope = Telescope [Decl]
 
 \end{verbatim}
 
-For example, a declaration for the \texttt{Bool} type would be the following.
+\noindent For example, a declaration for the \texttt{Bool} datatype would be the following.
 \begin{verbatim}
 boolDecl :: Decl 
-boolDecl = Data "Bool" [ConstructorDef "False" [], 
-                        ConstructorDef "True"  [] ]                                    
+boolDecl = Data "Bool" [ConstructorDef "False" (Telescope []), 
+                        ConstructorDef "True"  (Telescope []) ]                                    
 \end{verbatim}
 
 
-\subsection{Checking (simple) data constructor
-applications}
+\subsection{Type checking uses of (simple) data constructors}
 
-\begin{figure}
+\begin{figure}[h]
 
 
 % \[ 
@@ -2074,32 +2104,27 @@ applications}
 %\end{array}
 % \]
 
-\begin{tabular}{lll}
-$[[G |- args <= D]]$   & \texttt{tcArgTele} 
-   & Type check a list of arguments against a telescope \\
-$[[G |- pat : A => D]]$ & \texttt{declarePat} 
-   & Create telescope containing all of the variables from the pattern \\
-$[[ |- a ~ b => D]]$  & \texttt{unify} 
-   & Compare two terms to create a list of definitions \\
-$[[ D [ a / x ] ]] $  & \texttt{doSubst}   
-   & Substitute through a telescope \\
-$[[ D1 [ args / D2 ] ]]$ & \texttt{substTele}
-   & Substitute a list of args for the variables declared in a telescope \\
-\end{tabular}
-\caption{Functions for checking datatypes and case expressions}
-\label{fig:data}
-\end{figure}
+In general, when we have a datatype declaration, that means that new data type
+$[[T]]$ of type $[[Type]]$ will be added to the context.  Furthermore, the
+context should record all of the data constructors for that type, $[[Ki]]$, as
+well as the telescope, written $[[Di]]$, for each data constructor.  For
+example for natural numbers, the new type $[[T]]$ is $[[Nat]]$, there are two
+new data constructors, $\mathsf{Zero}$ and $\mathsf{Succ}$, the former has an empty
+telescope, the latter has a telescope containing the declaration of a single
+relevant argument of type $[[Nat]]$.  Alternatively, for the \cd{SillyBool}
+example, there are again two new data constructors $\mathsf{ImTrue}$ and
+$[[ImFalse]]$. Each of these constructors takes a telescope with two entries,
+first the declaration of a name of type $[[Bool]]$ and then a definition of
+that name as either $[[True]]$ or $[[False]]$.
 
-When we have a datatype declaration, that means that new data type $[[T]]$ of
-type $[[Type]]$ will be added to the context.  Furthermore, the context should
-record all of the type constructors for that type, $[[Ki]]$, as well as the
-telescope, written $[[Di]]$, for that data constructor. This information will
-be used to check terms that are the applications of data constructors. For
-simplicity, we'll assume that data constructors must be fully applied to all
-of their arguments.
+The information about datatype declarations stored in the context is used to
+check terms that are the applications of data constructors. For simplicity,
+\pif requires that data constructors must be fully applied to all of their
+arguments.
 
-So our typing rule looks a little like this. We have $[[args]]$ as
-representing the list of arguments for the data constructor $[[K]]$.
+So our typing rule for data constructor applications looks a little like
+this. We have $[[args]]$ as representing the list of arguments for the data
+constructor $[[K]]$.
 
 \[ \drule{i-dcon-simple} \]
 
@@ -2121,38 +2146,65 @@ should also get to the end of the telescope.
 
 \[ \drule{tele-nil} \]
 
-In \texttt{TypeCheck.hs}, the function \texttt{tcArgTele} essentially
-implements this judgement. (For reasons that we explain below, we have a
-special type \texttt{Arg} for the arguments to the data constructor.)
+\begin{tabular}{lll}
+$[[G |- args <= D]]$   & \texttt{tcArgTele} 
+   & Type check a list of arguments against a telescope \\
+$[[G |- pat : A => D]]$ & \texttt{declarePat} 
+   & Create telescope containing all of the \\
+   && variables from the pattern \\
+$[[ |- a ~ b => D]]$  & \texttt{unify} 
+   & Compare two terms to create a list of definitions \\
+$[[ D [ a / x ] ]] $  & \texttt{doSubst}   
+   & Substitute through a telescope \\
+$[[ D1 [ args / D2 ] ]]$ & \texttt{substTele}
+   & Substitute a list of args for the variables \\
+   && declared in a telescope \\
+\end{tabular}
+\caption{Functions for checking datatypes and case expressions}
+\label{fig:data}
+\end{figure}
+
+Figure ~\ref{fig:data} lists the relevant judgements for type checking the use
+of datatypes and the corresponding functions in the \pif implementation.  The
+$[[G |- args <= D]]$ judgement, described above, is implemented by the
+\cd{tcArgTele} function in \texttt{TypeCheck.hs}. This function has the
+following type in the implementation: (For reasons that we explain below, we
+have a special type \texttt{Arg} for the arguments to the data constructor.)
 
 \begin{verbatim}
 tcArgTele :: [Arg] -> Telescope -> TcMonad [Arg]
 \end{verbatim}
 
-This function relies on the substitution function for
-telescopes, written $[[D [ a / x] ]]$ in the rules above:
+The \cd{tcArgTele} also function relies on the substitution function for
+telescopes, written $[[D [a/x] ]]$ in the rules above:
 
 \begin{verbatim}
-doSubst :: [(TName, Term)] -> [Assn] -> TcMonad [Assn]
+doSubst :: [(TName, Term)] -> [Decl] -> TcMonad [Assn]
 \end{verbatim}
 
+This substitution function propagates the substitution through 
+the telescope.
 
-\subsection{Eliminating dirt simple datatypes}
 
-In your homework assignment, we used a special \texttt{if} to eliminate boolean types.
+\subsection{Pattern matching with dirt simple datatypes}
+
+In your homework assignment, we used a special \texttt{if} term to eliminate boolean types.
 Now, we'd like to replace that with the more general \texttt{case} expression, of the 
 form $[[case a of { </ pati -> ai // i /> }]]$ 
 that works with any form of datatype. What should the typing rule for
-that sort of expression look like? 
+that sort of expression look like? There is a lot of work to do.
 
 \[ \drule[width=4in]{c-case-simple} \]
 
-Mathematically, this rule checks that the scrutinee has the type of 
-some datatype $[[T]]$. Then, for each case of the pattern match, this rule
-looks at the pattern and its type to calculate a telescope containing declarations of 
-all of the variables bound in that pattern. That telescope is added to the context
-to type check each branch. Furthermore, when checking the type of each branch, we 
-can refine that type because we know that the scrutinee is equal to the pattern. 
+Mathematically, this rule first checks that the scrutinee has the type of some
+datatype $[[T]]$. Then, for each case of the pattern match, this rule looks at
+the pattern $[[pati]]$ and uses the context to calculate a telescope $[[Di]]$
+containing declarations of all of the variables bound in that pattern. That
+telescope is added to the context to type check each branch $[[ai]]$ against the type of 
+the entire expression $[[A]]$. Furthermore, when
+checking the type of each branch, we can refine that type because we know that
+the scrutinee is equal to the pattern. To reflect this information during type checking, 
+we also construct the telescope $[[Di']]$.
 
 How do we implement this rule in our language? The general strategy 
 is as follows:
@@ -2187,10 +2239,9 @@ is as follows:
 \subsection{Datatypes with parameters}
 
 The first extension of the above scheme is for \emph{parameterized
-datatypes}. For example, in pi-forall we can define the \texttt{Maybe}
-type with the following declaration. The type parameter for this
-datatype \texttt{A} can be referred to in any of the telescopes for the
-data constructors.
+  datatypes}. For example, in \pif we can define the \texttt{Maybe} type with
+the following declaration. The type parameter \texttt{A} can
+be referred to in any of the telescopes for the data constructors.
 
 \begin{piforall}
 data Maybe (A : Type) : Type where
@@ -2199,10 +2250,9 @@ data Maybe (A : Type) : Type where
      
 \end{piforall}
 
-Because this is a dependently-typed language, the variables in the
-telescope can be referred to later in the telescope. For example, with
-parameters, we can implement Sigma types as a datatype, instead of
-making them primitive:
+Because this is a dependently-typed language, the variables in the telescope
+can be referred to later in the telescope. For example, with parameters, we
+can implement $\Sigma$-types as a datatype, instead of making them primitive.
 
 \begin{piforall}
 data Sigma (A: Type) (B : A -> Type) : Type
@@ -2215,20 +2265,25 @@ the data constructors.
 
 \begin{piforall}
 data T D : Type where
-   Ki of Di 
+   K1 of D1
+   ...
+   Kn of Dn
 \end{piforall}
 
-That means that when we check an occurrence of a type constructor, we
-need to make sure that its actual arguments match up the parameters in
-the telescope. For this, we can use the argument checking judgement
-above.
-
+That means that when we check an occurrence of a type constructor, we need to
+make sure that its actual arguments match up with the parameters in the
+telescope. For this step, we can reuse the same argument checking judgement as
+we used for data constructor applications.
 
 \[ \drule[width=3in]{i-tcon} \]
 
-We modify the typing rule for data constructors by marking the telescope
-for type constructor in the typing rule, and then substituting the
-actual arguments from the expected type:
+Now, to type check data constructor applications for paramterized types, we
+need to modify the typing rule for data constructors. This rule below
+separates the type constructor telescope ($[[D1]]$) from the data constructor
+telescope $[[D2]]$ when looking up the data constructor from the context. When
+type checking the arguments of the data constructor $[[args]]$, we first
+substitute the arguments of the type constructor $[[bs]]$ into the data
+constructor telescope.
 
 \[ \drule[width=3in]{c-dcon} \]
 
@@ -2242,7 +2297,7 @@ check the argument \texttt{True}.
 
 In \texttt{TypeCheck.hs}, the function
 \begin{verbatim}
-substTele :: Telescope -> [ Term ] -> Telescope -> TcMonad Telescope 
+substTele :: [Decl] -> [Arg] -> [Decl] -> TcMonad [Decl]
 \end{verbatim}
 implements this operation of substituting the actual data type arguments
 for the parameters.
@@ -2257,9 +2312,10 @@ overloading}. In other words, we can have multiple datatypes that use
 the same data constructor. Having the type available allows us to
 disambiguate.
 
-For added flexibility we can also add code to \emph{infer} the types of
-data constructors when they are not actually parameterized (and when
-there is no ambiguity due to overloading).
+For added flexibility we can also add code to \emph{infer} the types of data
+constructors when they are not actually parameterized and when there is no
+ambiguity due to overloading. For example, if we see \cd{True}, we would like
+to infer that it has type \cd{Bool} without any annotation.
 
 \subsection{Datatypes with indices}
 
@@ -2275,14 +2331,14 @@ Inductive beautiful : nat -> Prop :=
 | b_sum : forall n m, beautiful n -> beautiful m -> beautiful (n+m).
 \end{verbatim}
 
-Even though \texttt{beautiful} has type
-\texttt{nat\ -\textgreater{}\ Prop}, we call \texttt{nat} this argument
-an index instead of a parameter because it is determined by each data
+Even though \texttt{beautiful} has type \texttt{nat\ -\textgreater{}\ Prop},
+we call the \texttt{nat} argument an \emph{index} instead of a
+\emph{parameter} because it varies in the result type of each data
 constructor. It is not used uniformly in each case.
 
-In \pif, we'll implement indices by explicitly \emph{constraining}
-parameters. These constraints will just be expressed as equalities written in
-square brackets. In other words, we'll define \texttt{beautiful} this way:
+In \pif, we implement indices by explicitly \emph{constraining}
+parameters. These constraints are just expressed as equalities written in
+square brackets. In other words, we define \texttt{beautiful} this way:
 
 \begin{piforall}
 data Beautiful (n : Nat) : Type where
@@ -2305,7 +2361,7 @@ These constraints interact with the type checker in a few places:
   are satisfied, by appealing to definitional equality when we are
   checking arguments against a telescope (in \texttt{tcArgTele}).
 
-\[ \drule{tele-def} \]
+% \[ \drule{tele-def} \]
 
 \item
   When we substitute through telescopes (in \texttt{doSubst}), we may
@@ -2319,33 +2375,20 @@ These constraints interact with the type checker in a few places:
 \end{itemize}
 
 For example, if we check an occurrence of \texttt{B3}, i.e.~
-
-\begin{verbatim}
+%
+\begin{piforall}
 threeIsBeautiful : Beautiful 3
 threeIsBeautiful = B3
-\end{verbatim}
-
+\end{piforall}
+%
 this requires substituting \texttt{3} for \texttt{n} in the telescope
 \texttt{{[}n\ =\ 3{]}}. That produces an empty telescope.
 
-\subsubsection{Homework: Parameterized datatypes and proofs:
-logic}
-
-Translate the definitions and proofs in
-\href{http://www.cis.upenn.edu/~bcpierce/sf/current/Logic.html}{Logic
-chapter of Software Foundations} to \pif. See
-\href{soln/test/Logic.pi}{Logic.pi} for a start.
-
-\subsubsection{\texorpdfstring{Homework: Indexed datatypes: finite
-numbers in
-\texttt{FinHw.pi}
-}{Homework: Indexed datatypes: finite numbers in FinHw.pi}
-}
-
+\subsubsection{Homework: finite numbers in \texttt{FinHw.pi}}
 
 The module \texttt{FinHw.pi} declares the type of numbers that are drawn
 from some bounded set. For example, the type \texttt{Fin\ 1} only
-includes 1 number (called Zero), \texttt{Fin\ 2} includes 2 numbers,
+includes one number (called Zero), \texttt{Fin\ 2} includes two numbers,
 etc. More generally, \texttt{Fin\ n} is the type of all natural numbers
 smaller than \texttt{n}, i.e.~of all valid indices for lists of size
 \texttt{n}.
@@ -2356,28 +2399,31 @@ data Fin (n : Nat) : Type where
    Succ of (m:Nat)[n = Succ m] (Fin m)     
 \end{piforall}
 
-The file \href{soln/test/FinHw.pi}{FinHw.pi} includes a number of definitions
+The file \texttt{FinHw.pi} includes a number of definitions
 that use these types. Two of these definitions are marked with
 \texttt{TRUSTME}. Replace these expressions with appropriate definitions.
 
-\subsection{Erasure and datatypes}
+\subsection{Irrelevance and datatypes}
 
-What about putting it in data structures? We should be able to define
-datatypes with ``specificational arguments''. For example, see
-\href{soln/test/Vec.pi}{Vec.pi}.
+Datatypes may wish to mark some of their arguments as irrelevant, so that 
+these components of the data structure can be erased at runtime. For example, 
+the \cd{Vec} type in Section~\ref{sec:examples} marked the length of the tail 
+of the vector as irrelevant in the telescope for the \cd{Cons} constructor.
 
-Note: we can only erase \emph{data} constructor arguments, not types
-that appear as arguments to \emph{type} constructors. (Parameters to
-type constructors must always be relevant, they determine the actual
-type.) On the other hand, datatype parameters are never relevant to data
-constructors---we don't even represent them in the abstract syntax.
+The mechanisms that we have set up so far extend naturally to irrelevant data
+constructor arguments. Note however: we can only erase \emph{data} constructor
+arguments; \pif does not allow marking arguments to \emph{type} constructors
+as irrelevant. This is not a significant limitation as we almost always want
+these arguments to actually be relevant---we don't want to equate \cd{Vec 0
+  Int} with \cd{Vec 1 Bool}. However, these type parameters are never relevant
+when they are used with data constructors---we don't even includes them in the
+abstract syntax.
 
-\subsubsection{Homework: Erasure and Indexed datatypes:
-finite numbers in \texttt{FinHw.pi} }
+\subsubsection{Homework: Erasure and Indexed datatypes: finite numbers in \texttt{FinHw.pi} }
 
-Now take your code in \texttt{FinHw.pi} and see if you can mark some of
-the components of the \texttt{Fin} datatype as erasable.
-
+Now take your code in \texttt{FinHw.pi} and see if you can mark some of the
+components of the \texttt{Fin} datatype as erasable. Where do we need to pass
+the length of a list around at runtime?
 
 \section{Where to go next?}
 \label{sec:related-work}

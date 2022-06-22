@@ -1,4 +1,9 @@
+-- Standard library for pi-forall
+-- includes all definitions
+
 module Prelude where
+
+import BoolLib
 
 id : (x:Type) -> x -> x
 id = \x y . y 
