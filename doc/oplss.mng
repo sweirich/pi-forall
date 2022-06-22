@@ -22,7 +22,7 @@
 \usepackage{lstpi}
 \usepackage{lsthaskell}
 \newcommand\cd[1]{\lstinline[language=Haskell]{#1}}
- 
+
 \newcommand\pif{\texttt{pi-forall}\xspace}
 \newcommand\unbound{\texttt{Unbound}\xspace}
 
@@ -85,7 +85,7 @@ Datatypes   & \texttt{full}     & Sections~\ref{sec:examples} and ~\ref{sec:data
 \label{fig:impls}
 \end{figure}
 
-If you are looking at the repository, you'll see that it includes several
+If you are looking at the repository, you will see that it includes several
 incrementally more expressive implementations of \pif in separate
 subdirectories. These implementations build on each other (each is an
 extension of the previous version) and are summarized in
@@ -102,9 +102,9 @@ implemented.
   core \pif type system including its concrete syntax (as found in \pif source
   files), abstract syntax (represented with a Haskell datatype), and core
   typing rules (written using standard mathematical notation). This initial
-  type system is simple and declarative. In other words, its \emph{specifies}
+  type system is simple and declarative. In other words, it \emph{specifies}
   what terms should type check, but cannot be directly implemented.
-  
+
 \item Section~\ref{sec:bidirectional}, reformulates the typing rules so that
   they are \emph{syntax-directed} and correspond to a type checking
   algorithm. The key idea of this section is to recast the typing rules as a
@@ -128,7 +128,7 @@ implemented.
 \item Section~\ref{sec:equality} discusses the role of definitional equality
   in dependently typed languages. After motivating examples, it presents both
   a specification of when terms are equal and a semi-decidable algorithm that
-  can be incorporated into the type checker. 
+  can be incorporated into the type checker.
 %  Ask yourself ``How can we know when types (and terms) are equal?''
 
 \item An important feature of dependently-typed languages is the ability for
@@ -138,12 +138,12 @@ implemented.
   different ways: First how to reflect the gain in information about boolean
   values in each branch of an $\mathsf{if}$ expression. Second, how to reflect the
   equality represented via propositional equality.
-  
+
 \item Section~\ref{sec:irrelevance} introduces the idea of tracking the
   \emph{relevance} of arguments. Relevance tracking enables parts of the
   program to be identified as ``compile-time only'' and thus erased before
   execution. It also identifies parts of terms that can be ignored when
-  deciding equivalence. 
+  deciding equivalence.
 
 % Ask yourself ''How can we decide what parts
 %  of the term are irrelevant during computation? Can be ignored when checking
@@ -158,14 +158,14 @@ implemented.
 
 
 \paragraph{What do these notes \textbf{not} cover?}
-The goal of this notes is to provide an introductory overview to the
+The goal of these notes is to provide an introductory overview of the
 implementation of (dependent) type theories and type checkers. As a result,
 there are many related topics that are not included here. Furthermore, because
 these notes come with a reference implementation, they emphasize only a single
 point in a rich design space.
 
 For a broader view, section~\ref{sec:related-work} includes a discussion of
-alternative tutorials, and describes how this one differs from other
+alternative tutorials and describes how this one differs from other
 approaches.  The key differences are summarized below:
 
 \begin{itemize}
@@ -176,16 +176,16 @@ approaches.  The key differences are summarized below:
   \emph{normalization-by-evaluation} to decide whether types are equivalent
   during type checking.  \pif uses an alternative approach based on
   weak-head-normalization, defined using substitution. This approach is closer
-  to $\lambda$-calculus theory, but can be less efficient in practice.
+  to $\lambda$-calculus theory but can be less efficient in practice.
 \item Also for simplicity, \pif does not attempt to infer missing arguments using
   unification or other means. As a result, example programs in \pif are
   significantly more verbose than in other languages.
 \item This implementation relies on the \unbound library for variable binding,
-  alpha-equivalence and substitution. As a result, these operations can be 
+  alpha-equivalence, and substitution. As a result, these operations can be
   automatically derived. A more common approach is to use de Bruijn indices.
-\item Recent work on cubical type theory, higher-inductive types and
-  univalence is not covered here. Indeed, the rules for dependent pattern matching 
-  that we present will be incompatible with such extension.
+\item Recent work on cubical type theory, higher-inductive types, and
+  univalence is not covered here. Indeed, the rules for dependent pattern matching
+  that we present will be incompatible with such extensions.
 \end{itemize}
 
 \paragraph{What do I want you to get out of all of this?}
@@ -195,15 +195,15 @@ approaches.  The key differences are summarized below:
   systems and logics into code, i.e. how to represent the syntax of a
   programming language and how to implement a type checker. More generally,
   this involves techniques for turning a declarative specification of a system
-  of judgments into an algorithm that determines whether the judgement holds.
-   
+  of judgments into an algorithm that determines whether the judgment holds.
+
 \item Exposure to the design choices of dependently-typed languages. In this
-  respect, the goal is breadth not depth. As a result, I will provide
+  respect, the goal is breadth, not depth. As a result, I will provide
   \emph{simple} solutions to some of the problems that we face and sidestep
   other problems entirely. Because solutions are chosen for simplicity,
   \ref{sec:related-work} includes pointers to related work if you want to go
   deeper.
-   
+
 \item Experience with the Haskell programming language. I think Haskell is an
   awesome tool for this sort of work and I want to demonstrate how its
   features (monads, generic programming) are well-suited for this task.
@@ -226,25 +226,25 @@ approaches.  The key differences are summarized below:
 \section{A taste of \pif}
 \label{sec:examples}
 
-Before diving into the design of the \pif language, we'll start with a few
-motivating examples for dependent types. This way, you'll get to learn a bit
+Before diving into the design of the \pif language, we will start with a few
+motivating examples for dependent types. This way, you will get to learn a bit
 about the syntax of \pif and anticipate the definitions that are to come.
 
 One example that dependently-typed languages are really good at is tracking
-the length of lists. 
+the length of lists.
 
 In \pif, we can define a datatype for length-indexed lists (often called
-vectors) as follows.\footnote{In the \texttt{full} implementation, you can find these 
+vectors) as follows.\footnote{In the \texttt{full} implementation, you can find these
 definitions in the file \texttt{Vec.pi}.}
 \begin{piforall}
 data Vec (A : Type) (n : Nat) : Type where
-  Nil of  [n = Zero] 
+  Nil of  [n = Zero]
   Cons of [m:Nat] (A) (Vec A m) [n = Succ m]
 \end{piforall}
 The type \cd{Vec A n} has two parameters: \cd{A} the type of elements in the
 list and \cd{n}, a natural number indicating the length of the list. This
 datatype also has two constructors: \cd{Nil} and \cd{Cons}, corresponding to
-empty and non empty lists. The \cd{Nil} constructor constrains the length
+empty and non-empty lists. The \cd{Nil} constructor constrains the length
 parameter to be \cd{Zero} when it is used and the \cd{Cons} constructor
 constrains it to be one more than the length of the tail of the list.  In the
 definition of \cd{Cons}, the \cd{m} parameter is the length of the tail of the
@@ -253,24 +253,24 @@ be \emph{irrelevant}: this value is for type checking only and functions
 should not use it.
 
 For example, we can use \pif to check that the list below contains exactly
-three three boolean values.
+three boolean values.
 \begin{piforall}
-v3 : Vec Bool 3 
+v3 : Vec Bool 3
 v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
 \end{piforall}
-Above, \pif never infers arguments, so we must always supply the length of the 
-tail whenever we use \cd{Cons}. 
+Above, \pif never infers arguments, so we must always supply the length of the
+tail whenever we use \cd{Cons}.
 
-We can also map over length indexed lists. 
+We can also map over length indexed lists.
 \begin{piforall}
 map : [A:Type] -> [B:Type] -> [n:Nat] -> (A -> B) -> Vec A n -> Vec B n
 map = \ [A][B][n] f v.
-  case v of 
+  case v of
     Nil -> Nil
     Cons [m] x xs -> Cons [m] (f x) (map[A][B][m] f xs)
 \end{piforall}
 As \pif doesn't infer arguments, the map function needs to take \cd{A}, \cd{B}
-and \cd{n} explicitly at the beginning of the function definition and they
+and \cd{n} explicitly at the beginning of the function definition, and they
 need to be provided as arguments to the recursive call.
 
 Whenever we call map, we also need to supply the appropriate parameters for
@@ -283,10 +283,10 @@ v4 : Vec Bool 3
 v4 = map [Bool][Bool][3] not v3
 \end{piforall}
 
-Because we are statically tracking the length of vectors, we can write 
+Because we are statically tracking the length of vectors, we can write
 a safe indexing operation. We index into the vector using an index where
-the type bounds its range. Below, the \cd{Fin} type has a parameter 
-that states what length of vector it is appropriate for. 
+the type bounds its range. Below, the \cd{Fin} type has a parameter
+that states what length of vector it is appropriate for.
 \begin{piforall}
 data Fin (n : Nat) : Type where
   Zero of [m:Nat][n = Succ m]
@@ -305,42 +305,42 @@ x3 : Fin 3
 x3 = Zero [2]
 \end{piforall}
 
-With the \cd{Fin} type, we can safely index vectors. The following 
-function is guaranteed to return a result because the index is within 
+With the \cd{Fin} type, we can safely index vectors. The following
+function is guaranteed to return a result because the index is within
 range.
 \begin{piforall}
 nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
-nth = \[a][n] v f. case f of 
-   Zero [m] -> case v of 
-           Cons [m'] x xs -> x 
-   Succ [m] f' -> case v of 
+nth = \[a][n] v f. case f of
+   Zero [m] -> case v of
+           Cons [m'] x xs -> x
+   Succ [m] f' -> case v of
            Cons [m'] x xs -> nth [a][m] xs f'
 \end{piforall}
 Note how, in the case analysis above, neither \cd{case} requires a branch for
 the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
 case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
-You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality. 
+You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality.
 
 \subsection{Homework: Check out \pif}
 
 The files in the directory \texttt{full/pi/} demonstrate the full power of the
 \pif language. Take a little time to familiarize yourself with some of these
 modules (such as \cd{Fin.pi} and \cd{Vec.pi}) and compare them to similar
-ones that you might have seen in Agda, Haskell or elsewhere.
+ones that you might have seen in Agda, Haskell, or elsewhere.
 
 To run the type checker on these modules, make sure that you have first
 compiled the implementation using \texttt{stack build} at the terminal.  Then,
 to run \pif on a source file, such as \cd{Fin.pi}, you can issue the command
 \texttt{stack exec -- pi-forall Fin.pi} in the \cd{full/pi} subdirectory. If
-the file type checks, you'll see the contents of the file displayed to the
-terminal window. Otherwise, you'll see an error message from the type checker.
+the file type checks, you will see the contents of the file displayed in the
+terminal window. Otherwise, you will see an error message from the type checker.
 
 For a more extensive series of examples, start with \cd{pi/Lambda0.pi} for an
 interpreter for a small lambda calculus and then compare it with the
 implementations in \cd{pi/Lambda1.pi} and \cd{pi/Lambda2.pi}. These two
 versions index the expression type with the scope depth (a natural number) and
-the expression type to eliminate runtime scope and type errors from the
+the expression type to eliminate run-time scope and type errors from the
 execution of the interpreter.
 
 \subsubsection{Homework (Church encodings)}
@@ -348,7 +348,7 @@ execution of the interpreter.
 The file \texttt{full/test/NatChurch.pi} is a start at a Church encoding of
 natural numbers. Replace the \cd{TRUSTME}s in this file so that it
 compiles. For example, one task in this file is to define a predecessor
-function. By replacing the \cd{TRUSTME} with \cd{Refl} below, you'll be able
+function. By replacing the \cd{TRUSTME} with \cd{Refl} below, you will be able
 to force the type checker to normalize both sides of the equality. The code
 will only type check if you have defined \cd{pred} correctly (on this
 example).
@@ -362,8 +362,8 @@ test_pred = TRUSTME -- replace with Refl
 \section{A Simple Core Language}
 \label{sec:simple}
 
-Now let's turn to the design and implementation of the \pif language
-itself. We'l start with a small core, and then incrementally add features
+Now let us turn to the design and implementation of the \pif language
+itself. We will start with a small core, and then incrementally add features
 throughout the rest of this tutorial.
 
 Consider this simple dependently-typed lambda calculus, shown below. What should it
@@ -380,7 +380,7 @@ contain? At the bare minimum we start with the following five forms:
 \]
 
 As in many dependently-typed languages, we have the \emph{same} syntax for
-both expressions and types. For clarity, I'll used lowercase letters $a$ for
+both expressions and types. For clarity, I will use lowercase letters $a$ for
 expressions and uppercase letters for their types $A$.
 
 Note that $\lambda$ and $\Pi$ above are \emph{binding forms}. They bind the
@@ -390,22 +390,22 @@ variable $x$ in $a$ and $B$ respectively.
 
 We define the type system for this language using an inductive
 relation shown in Figure~\ref{fig:typing}. This relation is between an
-expression $[[a]]$, its type $[[A]]$, and a typing context $[[G]]$. 
+expression $[[a]]$, its type $[[A]]$, and a typing context $[[G]]$.
 
 \[ \fbox{$[[ G |- a : A ]]$} \]
 
 A typing context $[[G]]$ is an ordered list of assumptions about variables and
-their types.  
+their types.
 
     \[ [[ G]]  ::= \emptyset\ |\ [[G, x : A]] \]
 
-We will assume that each of the variables in this list are
-distinct from each other, so that there will always be at most one assumption
+We will assume that each of the variables in this list is
+distinct from each other so that there will always be at most one assumption
 about any variable's type.\footnote{On paper, this assumption is reasonable
   because we always extend the context with variables that come from binders,
   and we can always rename bound variables so that they differ from other
-  variables in scope. Any implementation of the type system will need to somehow 
-  make sure that this invariant is maintained. We'll do this in Section~\ref{sec:implementation} using 
+  variables in scope. Any implementation of the type system will need to somehow
+  make sure that this invariant is maintained. We will do this in Section~\ref{sec:implementation} using
   a freshness monad from the \unbound library.}
 
 \paragraph{An initial set of typing rules: Variables and Functions}
@@ -439,7 +439,7 @@ id = \y -> y
 
 \noindent
 Because the type of \cd{id} is generic we can apply this function to any type of
-argument.  
+argument.
 
 We can also write a polymorphic identity function in \pif, as follows.
 \begin{piforall}
@@ -451,18 +451,18 @@ This definition is similar to Haskell, but with a few modifications. First,
 \pif{} uses a single colon for type annotations and a \cd{.} for function
 binding instead of Haskell's quirky \cd{::} and \cd{->}. Second, the \pif
 definition of \texttt{id} uses two lambdas: one for the ``type'' argument $x$
-and one for the ''term'' argument $y$. In \pif, there is no syntactic
+and one for the ``term'' argument $y$. In \pif, there is no syntactic
 difference between these arguments: both are arguments to the identity
-function. 
+function.
 
 Finally, the \pif{} type of \cd{id} uses the dependent function type, with
 general form $[[(x:A) -> B]]$. This form is like Haskell's usual function type
 $[[A -> B]]$, except that we can name the argument $[[x]]$ so that it can be
-referred to in the body of the type $[[B]]$. In \cd{id}, dependency allows the
+referred to in the body of the type $[[B]]$. In \cd{id}, dependency allows
 the type argument $[[x]]$ to be used later as the type of $[[y]]$.  We call
 types of this form $\Pi$-types. (Often dependent function types are written as
 $\Pi x\!:\!A. B$ in formalizations of dependent type theory.\footnote{The
-  terminology for these types is muddled: sometimes they are call dependent
+  terminology for these types is muddled: sometimes they are called dependent
   function types and sometimes they are called dependent product types. We use
   the non $\Pi$-notation to emphasize the connection to functions.})
 
@@ -480,25 +480,25 @@ function as follows.
 {
    \inferrule*
    {
-              \inferrule*{ [[y:x elem (x:Type,y:x)]]}{[[x:Type, y:x |- y : x]]} 
+              \inferrule*{ [[y:x elem (x:Type,y:x)]]}{[[x:Type, y:x |- y : x]]}
       \qquad \inferrule*{[[ x:Type elem (x:Type) ]] }{[[ x:Type |- x : Type ]]}
    }{
      [[x:Type |- \y. y : (y : x) -> x]]
    }  \qquad \inferrule*{}{[[ |- Type : Type ]]}
 }{
-  [[ |- \x. \y. y : (x:Type) -> (y : x) -> x ]] 
+  [[ |- \x. \y. y : (x:Type) -> (y : x) -> x ]]
 }
 \]
 
-This derivation uses \rref{t-lambda} to type check the two $\lambda$-expressions, before using the variable 
-rule to ensure that both the body of the function $[[x]]$ and its type $[[y]]$ are 
-well-typed. Finally, this rule also uses \rref{t-type} to show that $[[Type]]$ itself 
+This derivation uses \rref{t-lambda} to type check the two $\lambda$-expressions, before using the variable
+rule to ensure that both the body of the function $[[x]]$ and its type $[[y]]$ are
+well-typed. Finally, this rule also uses \rref{t-type} to show that $[[Type]]$ itself
 is a valid type, see below.
 
 \paragraph{More typing rules:  Types}
 
 Observe in the typing derivation above that the rule for typing
-lambda-expressions has second precondition: we need to make sure that
+lambda-expressions has a second precondition: we need to make sure that
 when we add assumptions $x:A$ to the context, that $A$ really is a type.
 Without this precondition, the rules would allow us to derive this nonsensical
 type for the polymorphic identity function.
@@ -510,7 +510,7 @@ actually types. For example, the type of a function is itself a type, so we
 will declare it so with \rref{t-pi}. This rule also ensures that the domain
 and range of the function are also types.
 
-Likewise, for polymorphism we need the somewhat perplexing \rref{t-type}, that
+Likewise, for polymorphism, we need the somewhat perplexing \rref{t-type}, that
 declares, by fiat, that $[[Type]]$ is a valid $[[Type]]$.\footnote{Note that
   this rule makes our language inconsistent as a logic, as it can encode
   Girard's paradox.}
@@ -531,7 +531,7 @@ $[[(y: ((x:Type) -> (y:x) -> x)) -> ((x:Type) -> (y:x) -> x)]]$.  This
 function can take \cd{id} as an argument.
 
 \begin{piforall}
-    idid : (x:Type) -> (y : x) -> x 
+    idid : (x:Type) -> (y : x) -> x
     idid = id ((x:Type) -> (y : x) -> x) id
 \end{piforall}
 
@@ -543,7 +543,7 @@ encoding, is to represent terms by their eliminators. In other words, what is
 important about the value true?  The fact that when you get two choices, you
 pick the first one.  Likewise, false ``means'' that with the same two choices,
 you should pick the second one.  With parametric polymorphism, we can give the
-two terms the same type, which we'll call bool.
+two terms the same type, which we will call bool.
 
 \begin{piforall}
 bool : Type
@@ -551,7 +551,7 @@ bool = (x : Type) -> x -> x -> x
 
 true : bool
 true = \x. \y. \z. y
-     
+
 false : bool
 false = \x. \y. \z. z
 \end{piforall}
@@ -561,7 +561,7 @@ Thus, a conditional expression just takes a boolean and returns it.
 
 \begin{piforall}
 cond : bool -> (x:Type) -> x -> x -> x
-cond = \b. b 
+cond = \b. b
 \end{piforall}
 
 \paragraph{Example: Logical ``and'' }
@@ -589,12 +589,12 @@ and_commutes = \p. \q. \a. conj q p (proj2 p q a) (proj1 p q a)
 \label{sec:bidirectional}
 
 The rules that we have developed so far are great for saying \emph{what} terms
-should type check, but they don't say \emph{how} type checking works. We've
+should type check, but they don't say \emph{how} type checking works. We have
 developed these rules without thinking about how we would implement them.
 
 A set of typing rules, or \emph{type system}, is called \emph{syntax-directed}
 if it is readily apparent how to interpret that collection of typing rules as
-code. In other words, for some type systems, we can directly translate them to 
+code. In other words, for some type systems, we can directly translate them to
 some Haskell function.
 
 For this type system, we would like to implement the following Haskell
@@ -609,7 +609,7 @@ type Ctx = [(Var,Type)]
 inferType :: Term -> Ctx -> Maybe Type
 \end{haskell}
 
-Let's look at our rules in Figure~\ref{fig:typing}.  Is the definition of this
+Let us look at our rules in Figure~\ref{fig:typing}.  Is the definition of this
 function straightforward?  For example, in the variable rule, as long as we
 can look up the type of a variable in the context, we can produce its
 type. That means that, assuming that there is some function \cd{lookupTy},
@@ -619,8 +619,8 @@ following case of the \cd{inferType} function. So far so good!
 \begin{haskell}
 inferType (Var x) ctx = lookupTy ctx x
 \end{haskell}
-	
-\noindent		
+
+\noindent
 Likewise, the case of the typing function for the $[[Type]]$ term is also
 straightforward. When we see the term $[[Type]]$, we know immediately that it
 is its own type.
@@ -636,7 +636,7 @@ $[[A]]$ is not annotated on the function in \pif. So where does it come from?
 
 There is actually an easy fix to turn our current system into an algorithmic
 one. We could just annotate $\lambda$-expressions with the types of the
-abstracted variables.  But, to be ready for future extension, we'll do
+abstracted variables.  But, to be ready for future extension, we will do
 something else.
 
 Look at our example \pif code above: the only types that we wrote were the
@@ -648,21 +648,21 @@ those argument types.
 
 \subsection{A bidirectional type system}
 
-Let's redefine the system using two judgments. The first one is similar to the
-judgement that we saw above, and we will call it type
+Let us redefine the system using two judgments. The first one is similar to the
+judgment that we saw above, and we will call it type
 \emph{inference}.\footnote{The term \emph{type inference} usually refers to
-  much more sophisticated deduction of an expressions type, in the context of
-  much less information encoded in the syntax of the language. We're not doing
+  much more sophisticated deduction of an expression's type, in the context of
+  much less information encoded in the syntax of the language. We are not doing
   anything difficult here, just noting that we can read the judgment with
-  $[[A]]$ as an output. } This judgement will be paired with (and will depend
-on) a second judgement, called type \emph{checking}, that takes advantage of
+  $[[A]]$ as an output. } This judgment will be paired with (and will depend
+on) a second judgment, called type \emph{checking}, that takes advantage of
 known type information, such as the annotations on top-level definitions.
 
-We express these judgements using the notation defined in
+We express these judgments using the notation defined in
 Figure~\ref{fig:bidirectional} and implement them in Haskell using the
 mutually-recursive functions \texttt{inferType} and
 \texttt{checkType}. Furthermore, to keep track of which rule is in which
-judgement, rules that have inference as a conclusion start with
+judgment, rules that have inference as a conclusion start with
 \textsc{i-} and rules that have checking as a conclusion start with
 \textsc{c-}.
 
@@ -670,14 +670,14 @@ judgement, rules that have inference as a conclusion start with
 \drules[i]{$[[G |- a => A]]$}{in context $[[G]]$, infer that term $a$ has type $A$}
 {var,app-simple,pi,type,annot}
 \drules[c]{$[[G |- a <= A]]$}{in context $[[G]]$, check that term $a$ has type $A$}
-{lambda,infer-simple} 
+{lambda,infer-simple}
 \caption{(Simple) Bidirectional type system}
 \label{fig:bidirectional}
 \end{figure}
 
-Let's compare these rules with our original typing rules. For \rref{i-var},
+Let us compare these rules with our original typing rules. For \rref{i-var},
 we need to only change the colon to an inference arrow. The context tells us
-the type to infer. 
+the type to infer.
 
 On the other hand, in \rref{c-lambda} we should check $\lambda$-expressions
 against a known type. If that type is provided, we can propagate it to the
@@ -691,14 +691,14 @@ $\lambda-$expressions that are arguments to other functions (like
 
 For types, it is apparent their type is $[[Type]]$, so \rref{i-pi,i-type} just
 continue to infer that.
-	  
+
 Notice that this system is incomplete. There are inference rules for every
 form of expression except for lambda. On the other hand, only lambda
-expressions can be checked against types.  We can make the checking judgement
+expressions can be checked against types.  We can make the checking judgment
 more applicable with \rref{c-infer-simple} that allows us to use inference
 whenever a checking rule doesn't apply.
 
-Now, let's think about the reverse problem a bit. There are programs that the
+Now, let us think about the reverse problem a bit. There are programs that the
 checking system won't admit but would have been acceptable by our first
 system. What do they look like?
 
@@ -722,7 +722,7 @@ application (in this case, just replace the term with $[[True]]$).
 
 In fact, the bidirectional type system has the property that it only checks
 terms in \emph{normal} form, i.e. those that do not contain any
-$\beta$-reductions. 
+$\beta$-reductions.
 
 \paragraph{Type annotations}
 To type check nonnormal forms in \pif, we also add typing annotations as a new
@@ -730,7 +730,7 @@ form of expression to \pif, written $[[(a : A)]]$, and add \rref{i-annot} to
 the type system.
 
 Type annotations allow us to supply known type information anywhere, not just
-at top level. For example, we can construct this derivation.
+at the top level. For example, we can construct this derivation.
 
 \[
 \inferrule*[Right=i-app]
@@ -788,7 +788,7 @@ implementation}
 \label{sec:implementation}
 
 In the previous section, we defined a bidirectional type system for a small
-core language. Here, we'll start talking about what the implementation of this
+core language. Here, we will start talking about what the implementation of this
 language looks like in Haskell.
 
 First, an overview of the main files of the implementation. There are a few
@@ -800,8 +800,8 @@ are the primary ones.
  Parser.hs      - turn strings into AST
  PrettyPrint.hs - displays AST in a (somewhat) readable form
  Main.hs        - runs the parser and type checker
-  
- Environment.hs - defines the type checking monad         
+
+ Environment.hs - defines the type checking monad
  TypeCheck.hs   - implementation of the bidirectional type checker
 \end{verbatim}
 
@@ -812,7 +812,7 @@ are the primary ones.
 One difficulty with implementing any sort of lambda calculus is the treatment
 of variable binding. Functions ($\lambda$-expressions) and their types
 ($\Pi$-types) \emph{bind} variables. In the implementation of our type
-checker, we'll need to be able to determine whether two terms are
+checker, we will need to be able to determine whether two terms are
 \emph{alpha-equivalent}, calculate the \emph{free variables} of a term, and
 perform \emph{capture-avoiding substitution.} When we work with a
 $\lambda$-expression, we will want to be sure that the binding variable is
@@ -853,7 +853,7 @@ substitution function has a type with the following general pattern for
 \cd{subst a x b}.
 \begin{lstlisting}[language=Haskell]
  class Subst a b where
-    subst  :: Name a -> a -> b -> b       
+    subst  :: Name a -> a -> b -> b
 \end{lstlisting}
 
 The \cd{subst} function in this class ensures that when we see that
@@ -895,7 +895,7 @@ and \cd{Pi} bind a single variable in a \cd{Term}.  However, in a
 variable $[[x]]$.
 
 Because the syntax is all shared, a \cd{Type} is just another name for a
-\cd{Term}. We'll use this name in the source code just for documentation.
+\cd{Term}. We will use this name in the source code just for documentation.
 %
 \begin{lstlisting}[language=Haskell]
   type Type = Term
@@ -904,7 +904,7 @@ Because the syntax is all shared, a \cd{Type} is just another name for a
 
 Among other things, the \cd{Alpha} class enables functions for alpha
 equivalence and free variable calculation, with the types shown below.
-Usually \unbound can derive instance of this class for us, so that we don't
+Usually \unbound can derive instances of this class for us so that we don't
 have to worry about defining these functions manually.
 
 \begin{lstlisting}[language=Haskell]
@@ -915,11 +915,11 @@ For \cd{Term}, we do not use the default definitions of the \cd{Alpha}
 and \cd{Subst} classes. Instead, we need to provide a bit more
 information.  First, we would like the definition of alpha-equivalence of
 terms to ignore type annotations and source code positions for error
-messages. Therefore our instance does so for these constructors of the
+messages. Therefore, our instance does so for these constructors of the
 \cd{Term} data type and defers to the generic definition for the rest.
 
-For example, if \cd{xName} and \cd{yName} are two different names, then 
-\unbound's implementation of $\alpha$-equivalence can equate terms that 
+For example, if \cd{xName} and \cd{yName} are two different names, then
+\unbound's implementation of $\alpha$-equivalence can equate terms that
 differ only in using these names for binding.
 \begin{piforall}
 -- '\x -> x'
@@ -936,14 +936,14 @@ idy = Lam (Unbound.bind yName (Var yName))
 
 Second, the \cd{Subst} instance for \cd{Term} requires telling \unbound where
 variables occur in the \cd{Term}. This short function pattern matches to find
-the \cd{Var} constructor, extracts its name and returns it to \unbound. We
+the \cd{Var} constructor, extracts its name, and returns it to \unbound. We
 don't need to provide any more code to \unbound in the implementation of
 substitution; the generic implementation suffices.
 
 \begin{verbatim}
 instance Unbound.Subst Term Term where
   isvar (Var x) = Just (SubstName x)
-  isvar _ = Nothing  
+  isvar _ = Nothing
 \end{verbatim}
 
 \noindent
@@ -957,7 +957,7 @@ type checking of the following types:
 
 \begin{verbatim}
 inferType :: Term -> Ctx -> Maybe Type
- 
+
 checkType :: Term -> Type -> Ctx -> Bool
 \end{verbatim}
 
@@ -967,7 +967,7 @@ type, and determine whether the term has that type. However, note that the
 types above are not very informative in the case of failure: if a term does
 not type check, then the result is \cd{Nothing} or \cd{False}.
 
-For that reason, we'll do something a bit different. We'll define a \emph{type
+For that reason, we will do something a bit different. We will define a \emph{type
   checking monad}, called \texttt{TcMonad}, that will handle the plumbing for
 the typing context, and more importantly, allow us to return more information
 when a program doesn't type check. Therefore our two functions will have these
@@ -976,7 +976,7 @@ checking failure.
 
 \begin{verbatim}
 inferType :: Term -> TcMonad Type
- 
+
 checkType :: Term -> Type -> TcMonad ()
 \end{verbatim}
 
@@ -987,7 +987,7 @@ and the
 \href{https://hackage.haskell.org/package/mtl-2.1.2/docs/Control-Monad-Error.html}{MonadError},
 which our type checking monad will be instances of. These two classes mean
 that that the \cd{TcMonad} type can provide access to the type checking
-context and can throw errors. We'll wrap this functionality up a bit with the
+context and can throw errors. We will wrap this functionality up a bit with the
 following functions. The first two encapsulate the sort of context
 manipulation we need to do: look up the types of variables and add a new
 assumption about the type of a variable to the context (both \cd{Sig} and
@@ -1000,7 +1000,7 @@ lookupTy :: TName -> TcMonad Sig
 
 -- | Extend the context with a new binding
 extendCtx :: Decl -> TcMonad Term -> TcMonad Term
- 
+
 -- | Throw an error at the corrent location, assembling the error message
 -- from a list of displayable objects. Terminates type checking
 err  :: (Disp a) => [a] -> TcMonad b
@@ -1009,7 +1009,7 @@ err  :: (Disp a) => [a] -> TcMonad b
 warn :: (Disp a) => a -> TcMonad ()
 \end{verbatim}
 
-We'll also need this monad to be a freshness monad, to support working with
+We will also need this monad to be a freshness monad, to support working with
 binding structure (i.e. a source of fresh names), and throw in \cd{MonadIO} so
 that we can print warning messages.
 
@@ -1023,9 +1023,9 @@ implementation. For flexibility \texttt{inferType} and \texttt{checkType} will
 \begin{verbatim}
 inferType :: Term -> TcMonad Type
 inferType t = tcTerm t Nothing
- 
+
 checkType :: Term -> Type -> TcMonad ()
-checkType tm ty = void $ tcTerm tm (Just ty) 
+checkType tm ty = void $ tcTerm tm (Just ty)
 \end{verbatim}
 
 The \texttt{tcTerm} function checks a term, producing its type. The
@@ -1037,7 +1037,7 @@ tcTerm :: Term -> Maybe Type -> TcMonad Type
 \end{verbatim}
 
 We combine these two functions into a single definition so that we can share
-code between checking and inference mode. While none of the expression forms
+code between checking and inference modes. While none of the expression forms
 of the core language can take advantage of this functionality, it is useful
 for some extensions to the language.
 
@@ -1045,14 +1045,14 @@ The general structure of the \cd{tcTerm} function starts with a pattern match
 for the various syntactic forms in inference mode:
 
 \begin{verbatim}
-tcTerm (Var x) Nothing = ... 
- 
+tcTerm (Var x) Nothing = ...
+
 tcTerm Type Nothing = ...
 
 tcTerm (Pi tyA bnd) Nothing = ...
- 
+
 tcTerm (App t1 t2) Nothing = ...
- 
+
 \end{verbatim}
 
 Mixed in here, we also have a pattern for lambda expressions in checking
@@ -1060,7 +1060,7 @@ mode:
 
 \begin{verbatim}
 tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = ...    -- pass in the Pi type for the lambda expression
- 
+
 tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
    err [DS "Lambda expression has a function type, not ", DD nf]
 \end{verbatim}
@@ -1074,10 +1074,10 @@ to the checked type. This case is the implementation of \rref{c-infer}.
 
 \begin{verbatim}
 tcTerm tm (Just ty) = do
- ty' <- inferType tm 
+ ty' <- inferType tm
  unless (Unbound.aeq ty' ty) $
    err [DS "Types don't match", DD ty, DS "and", DD ty']
- return ty    
+ return ty
 \end{verbatim}
 
 The function \texttt{aeq} ensures that the two types are alpha-equivalent. If
@@ -1086,7 +1086,7 @@ they are not, it stops the computation and throws an error.
 % \subsection{Example}
 
 % The \pif source file \href{version1/pi/Lec1.pi}{\tt Lec1.pi} contains the examples
-% that we worked out in Section~\ref{sec:simple}. Let's try to type check it,
+% that we worked out in Section~\ref{sec:simple}. Let us try to type check it,
 % after filling in the missing code in \texttt{TypeCheck.hs}.
 
 \subsection{Exercise:  Add Booleans and
@@ -1097,7 +1097,7 @@ Some fairly standard typing rules for booleans are shown below.
 \drules{$[[G|-a:A]]$}{Booleans}{t-bool,t-true,t-false}
 \[ \drule[width=4in]{t-if-simple} \]
 
-Likewise, we can also extend the language with $\Sigma$-types, or 
+Likewise, we can also extend the language with $\Sigma$-types, or
 products, where the type of the second component of the product can depend on the value of the first component.
 
 \drules{$[[G|-a:A]]$}{$\Sigma$-types}{t-sigma,t-pair}
@@ -1119,7 +1119,7 @@ This part of the homework has two parts:
   concrete syntax for booleans and $\Sigma$-types. The \pif file
   \texttt{version1/test/Hw1.pi} contains examples of using these new
   forms. Your job is to get this file to compile by filling in the missing
-  cases in \texttt{version1/src/TypeCheck.hs} base on the bidirectional rules
+  cases in \texttt{version1/src/TypeCheck.hs} based on the bidirectional rules
   that you worked out in the first part of the exercise.
 \end{enumerate}
 
@@ -1134,9 +1134,9 @@ System F (or something similar)!
 Next, we are going to think about how adding a notion of definitional equality
 can make our language more expressive.
 
-The addition of definitional equality follows several steps. First, we will see why we even want this feature in the language in the first place. Next, we will create a declarative specification of definitional equality and extend our typing relation with 
-a new rule that enables it to be used. After that, we'll talk about algorithmic versions of both the equality relation and how to introduce it into the algorithmic type system. 
-Finally, we'll cover modifications to the Haskell implementation.
+The addition of definitional equality follows several steps. First, we will see why we even want this feature in the language in the first place. Next, we will create a declarative specification of definitional equality and extend our typing relation with
+a new rule that enables it to be used. After that, we will talk about algorithmic versions of both the equality relation and how to introduce it into the algorithmic type system.
+Finally, we will cover modifications to the Haskell implementation.
 
 \subsection{Motivating Example: Type level reduction}
 
@@ -1168,7 +1168,7 @@ Checking module "Lec1"
 Type Error:
 ../test/Lec1.pi:34:22:
     Function a should have a function type. Instead has type and p q
-    When checking the term 
+    When checking the term
        \p . \q . \a . a p ((\x . \y . x))
     against the signature
        (p : Type) -> (q : Type) -> (and p q) -> p
@@ -1184,7 +1184,7 @@ the type checker does not treat these types as equal.
 Note that the type checker already records in the environment that
 \texttt{and} is defined as
 \texttt{\textbackslash{}p.\textbackslash{}q.\ (c:\ Type)\ -\textgreater{}\ (p\ -\textgreater{}\ q\ -\textgreater{}\ c)\ -\textgreater{}\ c}.
-We'd like the type checker to look up this definition when it sees the
+We would like the type checker to look up this definition when it sees the
 variable \texttt{and} and beta-reduce this application.
 
 \subsection{Another example needing more expressive
@@ -1192,14 +1192,14 @@ equality}
 
 As another example, in the full language, we might have a type of length
 indexed vectors, where vectors containing values of type \texttt{A} with
-length \texttt{n} can be given the type \cd{Vec n A}. In this language we may
+length \texttt{n} can be given the type \cd{Vec n A}. In this language, we may
 have a safe head operation, that allows us to access the first element of the
 vector, as long as it is nonzero.
 
 \begin{piforall}
 head : (A : Nat) -> (n : Nat) -> Vec (Succ n) A -> Vec n A
 head = ...
- 
+
 \end{piforall}
 
 However, to call this function, we need to be able to show that the length of
@@ -1234,7 +1234,7 @@ The main idea is that we will:
 
 \begin{itemize}
 \item
-  establish a new judgement that defines when types are equal
+  establish a new judgment that defines when types are equal
 
 \[ \fbox{$[[ G |- A = B]]$} \]
 \item
@@ -1250,7 +1250,7 @@ The main idea is that we will:
 
 What is a good definition of equality? We have implicitly started with a very
 simple one: identify terms up to $\alpha$-equivalence. But we can do
-better. 
+better.
 
 \begin{figure}
 \drules[e]{$[[G |- A = B]]$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,app,lift,annot}
@@ -1271,24 +1271,24 @@ equalities). We declare so with \rref{e-lift}. Finally, we want to ignore type
 annotations, so \rref{e-annot} allows the equality judgment to skip over them
 on the left (and with the help of \rref{e-sym}, on the right as well).
 
-(Note: if we add booleans and $\Sigma-$types, we will also need corresponding 
+(Note: if we add booleans and $\Sigma-$types, we will also need corresponding
 $\beta$-equivalence rules and congruence rules for those constructs.)
 
 \subsection{Using definitional equality in the algorithm}
 
 We would like to consider our type system as having the following rule:
 %
-\[ \drule[width=4in]{t-conv} \] 
+\[ \drule[width=4in]{t-conv} \]
 %
 but this rule is not syntax-directed; it can be used at any place in a
-derivation so how do we know where to check types for equality? And which
+derivation, so how do we know where to check types for equality? And which
 types should we check?
 
 It turns out that in our bidirectional system, there are only a few places
 where type equality matters.
 
 \begin{itemize}
-\item We meed to check for equality when we switch from checking mode to
+\item We need to check for equality when we switch from checking mode to
   inference mode in the algorithm in rule \rref{c-infer}.  Here we need to
   ensure that the type that we infer is the same as the type that is passed to
   the checker.
@@ -1296,7 +1296,7 @@ where type equality matters.
 \[ \drule[width=4in]{c-infer} \]
 
 In this case, the types $[[A]]$ and $[[B]]$ are available to the type checker,
-and the our equality algorithm must decide whether they are equal. We use
+and our equality algorithm must decide whether they are equal. We use
 $[[G |- A <=> B]]$ as the notation for an algorithmic version of our equality
 relation---the relation we defined in Figure~\ref{fig:defeq} does not readily
 lead to an algorithm. (More on this algorithmic version in
@@ -1305,9 +1305,9 @@ Section~\ref{sec:equate} below.)
 \item In the rule for application, when we infer the type of the function we
   need to make sure that the function actually has a function type. But we
   don't really know what the domain and co-domain of the function should
-  be. We'd like our algorithm for type equality to be able to figure this out
+  be. We would like our algorithm for type equality to be able to figure this out
   for us.
- 
+
 \[ \drule[width=4in]{i-app} \]
 
 In this case, we are given a single type $[[A]]$ and we need to know whether
@@ -1316,8 +1316,8 @@ forms, we can do this via reduction. This rule evaluates the type $A$ to its
 head form, using the rules shown in Figure~\ref{fig:whnf}. If that form is a
 $\Pi$-type, then we can access its subcomponents.
 
-\item Whenever we call \cd{checkType} we should call it with a term that 
-has already been reduced to normal form. This will allow \rref{c-lam} to 
+\item Whenever we call \cd{checkType} we should call it with a term that
+has already been reduced to normal form. This will allow \rref{c-lam} to
 match against a literal function type.
 
 \end{itemize}
@@ -1328,51 +1328,51 @@ match against a literal function type.
 \label{fig:whnf}
 \end{figure}
 
-\paragraph{Weak head normal form} 
+\paragraph{Weak head normal form}
 
-The following judgement (shown in Figure~\ref{fig:whnf})
+The following judgment (shown in Figure~\ref{fig:whnf})
 %
 \[ \fbox{$[[whnf a ~> v]]$} \]
 %
-describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak head normal form (whnf)}. 
-For closed terms, these rules correspond to a big-step evaluation relation and produce 
-a value. For open terms, the rules produce a term that is either headed by a variable 
-or by some head form (i.e. $\lambda$ or $\Pi$). 
+describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak head normal form (whnf)}.
+For closed terms, these rules correspond to a big-step evaluation relation and produce
+a value. For open terms, the rules produce a term that is either headed by a variable
+or by some head form (i.e. $\lambda$ or $\Pi$).
 
-For example, the term 
+For example, the term
 \begin{piforall}
- (\x.x) (\x.x)  
+ (\x.x) (\x.x)
 \end{piforall}
 is not in whnf, because there is more reduction to go to get to the head. On
 the other hand, even though there are still internal reductions possible, the terms
 \begin{piforall}
-  \y. (\x.x) (\x.x)   
+  \y. (\x.x) (\x.x)
 \end{piforall}
 and
 \begin{piforall}
- (y:Type) -> (\x.x) Bool 
+ (y:Type) -> (\x.x) Bool
 \end{piforall}
 are in weak head normal form. Furthermore, the term \texttt{x\ y} is also in
 weak head normal form, because, even though we don't know what the head form
-is, we cannot reduce the term any more.
+is, we cannot reduce the term anymore.
 
 Because evaluation may not terminate, this relation is
-semi-decidable. However, it is syntax-directed so we can readily express it as
+semi-decidable. However, it is syntax-directed, so we can readily express it as
 a Haskell function.
 
 \paragraph{Using algorithmic equality}
 
 In the \pif implementation, the function that corresponds to $[[G |- a <=> b]]$
-has type 
+has type
 %
 \begin{verbatim}
 equate :: Term -> Term -> TcMonad ()
 \end{verbatim}
 %
 This function ensures that the two provided types are equal, or throws a type error if
-they are not. 
+they are not.
 
-Additionally, the \pif includes the function 
+Additionally, the \pif includes the function
 % some ``head'' form, without knowing exactly what that form is.  For example,
 % when \emph{checking} lambda expressions, we need to know that the provided
 % type is of the form of a $\Pi$-type ($[[(x:A)-> B]]$). Likewise, when inferring
@@ -1393,12 +1393,12 @@ whnf :: Term -> TcMonad Term
 
 \noindent
 In \texttt{version2} of the \href{version2/src/TypeCheck.hs}{implementation},
-these functions are called in a few places: 
+these functions are called in a few places:
 \begin{itemize}
 \item \texttt{equate} is called at the
-end of \texttt{tcTerm} 
+end of \texttt{tcTerm}
 \item \texttt{ensurePi} is called in the \texttt{App} case
-of \texttt{tcTerm} 
+of \texttt{tcTerm}
 \item \texttt{whnf} is called in \texttt{checkType}, before the call to
   \texttt{tcTerm}, to make sure that we are using the head form in checking
   mode.
@@ -1408,11 +1408,11 @@ of \texttt{tcTerm}
 \label{sec:equate}
 
 The rules for $[[G |- a = b ]]$ \emph{specify} when terms should be equal, but
-they are not an algorithm. But how do we implement its algorithmic analogue
+they are not an algorithm. But how do we implement its algorithmic analog
 $[[G |- a <=> b]]$?
 
 
-There are several ways to do so. 
+There are several ways to do so.
 
 The easiest one to explain is based on reduction---for \texttt{equate} to
 reduce the two arguments to some normal form and then compare those normal
@@ -1421,15 +1421,15 @@ forms for equivalence.
 One way to do this is with the following algorithm:
 
 \begin{verbatim}
- equate t1 t2 = do 
+ equate t1 t2 = do
     nf1 <- reduce t1  -- full reduction, not just weak head reduction
-    nf2 <- reduce t2  
+    nf2 <- reduce t2
     Unbound.aeq nf1 nf2
 \end{verbatim}
 
 However, we can do better.  Sometimes we can equate the terms without
 completely reducing them. Because reduction can be expensive (or even
-nonterminating) we'd like to only reduce as much as necessary.
+nonterminating) we would like to only reduce as much as necessary.
 
 Therefore, the implementation of \cd{equate} has the following form.
 \begin{verbatim}
@@ -1437,9 +1437,9 @@ Therefore, the implementation of \cd{equate} has the following form.
      if (Unbound.aeq t1 t1) then return () else do
       nf1 <- whnf t1  -- reduce only to 'weak head normal form'
       nf2 <- whnf t2
-      case (nf1,nf2) of 
+      case (nf1,nf2) of
         (Lam bnd1, Lam bnd2) -> do
-            -- ignore variable names, but use the same 
+            -- ignore variable names, but use the same
             -- fresh name for both lambda bodies
             (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
              equate b1 b2
@@ -1457,7 +1457,7 @@ are, we do not need to do anything else, we can return immediately
 (i.e. without throwing an error, which is what the function does when it
 decides that the terms are not equal). The next step is to reduce both terms
 to their weak head normal forms.  If two terms have different head forms, then
-we know that they must be different terms so we can throw an error. If they have 
+we know that they must be different terms, so we can throw an error. If they have
 the same head forms, then we can call the function recursively on analogous
 subcomponents until the function either terminates or finds a mismatch.
 
@@ -1485,11 +1485,11 @@ Why do we use weak head reduction vs.~full reduction?
 \section{Dependent pattern matching and propositional equality}
 \label{sec:pattern-matching}
 
-One of the powerful features of dependently-typed languages is the 
-idea of ``learning by testing''. In other words, the information gained 
-in pattern matching can be reflected into the type system, allowing it 
-to reason in a flow-sensitive manner. We'll demonstrate how this works in 
-this section. 
+One of the powerful features of dependently-typed languages is the
+idea of ``learning by testing''. In other words, the information gained
+in pattern matching can be reflected into the type system, allowing it
+to reason in a flow-sensitive manner. We will demonstrate how this works in
+this section.
 
 
 \subsection{More expressive rules for if and $\Sigma$-type elimination}
@@ -1506,8 +1506,8 @@ checking based on how control flows in a \pif program.
 \[ \drule[width=4in]{t-if-full} \]
 
 For example, here is a simple program that requires this stronger rule to type
-check. The function \cd{T} is an example of a \emph{large elimination}: a function 
-that destructs a boolean value to produce a type. Then in the type of \cd{bar} below, 
+check. The function \cd{T} is an example of a \emph{large elimination}: a function
+that destructs a boolean value to produce a type. Then in the type of \cd{bar} below,
 each branch can return a different type of result, according to \cd{T}.
 
 \begin{piforall}
@@ -1517,7 +1517,7 @@ T = \b. if b then Unit else Bool
 
 -- returns Unit when the argument is True
 bar : (b : Bool) -> T b
-bar = \b . if b then () else True     
+bar = \b . if b then () else True
 \end{piforall}
 
 It turns out that this strong typechecking rule is difficult to implement. In
@@ -1526,14 +1526,14 @@ syntax. Given $[[A[True/x] ]]$ and $[[A [False/x] ]]$ and $[[ A [a/x] ]]$ (or
 anything that they are definitionally equal to!)  how can we figure out
 whether they correspond to each other? Neither inference nor checking mode works, because we don't ever see the type $[[A]]$ with just the variable $[[x]]$.
 
-So, we'll not be so ambitious in \pif. We'll only allow this refinement when
+So, we will not be so ambitious in \pif. We will only allow this refinement when
 the scrutinee is a variable, deferring to the weaker, non-refining typing rule
 for all other cases.
 
 \[ \drule[width=4in]{t-if} \]
 
-And, in the our bidirectional system, we'll only allow refinement
-when we are in checking mode. That way, because $[[a]]$ is just $[[x]]$, we can 
+And, in our bidirectional system, we will only allow refinement
+when we are in checking mode. That way, because $[[a]]$ is just $[[x]]$, we can
 easily identify how the type should vary in each branch.
 
 \[ \drule[width=4in]{c-if} \]
@@ -1547,8 +1547,8 @@ during a prior summer school:
 \[ \drule[width=4in]{i-if-alt} \]
 
 It has a nice symmetry---\textsf{if} expressions are typed by \textsf{if}
-types. Note however, to make this rule work, we'll need a stronger
-definitional equivalence than we have. In particular, we'll want our
+types. Note, however, that to make this rule work, we will need a stronger
+definitional equivalence than we have. In particular, we will want our
 definition of equivalence to support the following equality:
 
 \[ \drule[width=4in]{e-if-eta} \]
@@ -1610,12 +1610,12 @@ proposition. For example, in Coq, when you say
 Theorem plus_O_n : forall n : nat, 0 + n  = n.
 \end{verbatim}
 \noindent
-you are using a built in type, \texttt{a\ =\ b} that represents the
+you are using a built-in type, \texttt{a\ =\ b} that represents the
 proposition that two terms are equal.
 
-As a step towards more general indexed datatypes, we'll start by adding a propositional equality type to \pif.
+As a step towards more general indexed datatypes, we will start by adding a propositional equality type to \pif.
 
-The main idea of the equality type is that it converts a \emph{judgement} that
+The main idea of the equality type is that it converts a \emph{judgment} that
 two types are equal into a \emph{type} that evaluates to a special value form,
 called $[[refl]]$, only when two types are equal.\footnote{Recall that all
   types are inhabited in \pif, so to know whether types are equal, we must
@@ -1632,7 +1632,7 @@ However, this rule is equivalent to the above version because types are equal up
 
 However, in the bidirectional version of the rules, shown in
 Figure~\ref{fig:propeq-alg}, it does make a difference. The algorithmic typing
-rule for $[[refl]]$ requires checking mode, so that we know which types we
+rule for $[[refl]]$ requires checking mode so that we know which types we
 need to show equivalent.  (See \rref{c-refl}.)  Furthermore, this rule allows
 $[[a]]$ and $[[b]]$ to differ so that there are no restrictions on its
 use. Instead, to implement this rule, we need only compare $[[a]]$ and $[[b]]$
@@ -1648,11 +1648,11 @@ The elimination rule for propositional equality is written $[[subst a by b]]$
 in \pif.  This term allows us to convert the type of one expression to
 another, as shown in rule \rref{t-subst-simple} below. In this rule, we can change the type
 of some expression $[[a]]$ by replacing an occurrence of some term $[[a1]]$
-with an equivalent type. 
+with an equivalent type.
 
 \[ \drule[width=4in]{t-subst-simple} \]
 
-How can we implement this rule? For simplicity, we'll play the same trick that
+How can we implement this rule? For simplicity, we will play the same trick that
 we did with booleans, requiring that one of the sides of the equality be a
 variable.
 
@@ -1671,9 +1671,9 @@ trans : (A:Type) -> (x:A) -> (y:A) -> (z:A)
 Furthermore, we can also extend the elimination form for propositional
 equality with dependent pattern matching as we did for booleans. This
 corresponds to the elimination rule \rref{t-subst} in Figure~\ref{fig:propeq},
-that observes that the only way to construct a proof of equality is with the
+which observes that the only way to construct a proof of equality is with the
 term $[[refl]]$.\footnote{This version of subst is similar to an eliminator
-  for propositional equality called \texttt{J}. However, our 
+  for propositional equality called \texttt{J}. However, our
   eliminator is very strong and can be used to derive ``axiom'' K or the
   uniqueness of identity proofs. The eliminator for propositional equality in
   Coq and Agda is not this expressive, leaving the type system open to
@@ -1684,7 +1684,7 @@ the corresponding left rule) only applies when $b$ is also a variable.
 
 One last addition: \texttt{contra}. If we can somehow prove a false statement,
 then we should be able to prove anything. A contradiction is a proposition
-between two terms that have different head forms. For now, we'll use
+between two terms that have different head forms. For now, we will use
 \rref{t-contra}, shown in Figure~\ref{fig:propeq}, that requires a proof that
 $[[True]]$ equals $[[False]]$. The algorithmic version of this rule,
 \rref{c-contra}, must use weak-head normalization multiple times: first to
@@ -1700,25 +1700,25 @@ gives you practice with working with equality propositions in \pif.
 \section{Irrelevance: the $\forall$ of \pif}
 \label{sec:irrelevance}
 
-Now, let's talk about irrelevance. In dependently typed languages, some
+Now, let us talk about irrelevance. In dependently typed languages, some
 arguments are ``ghost'' or ``specificational'' and only there for proofs. For
 efficient executables, we don't want to have to ``run'' these arguments, nor
 do we want them taking up space in data structures.
 
 Functional languages do this all the time: they erase \emph{type annotations}
 and \emph{type} arguments as part of the compilation pipeline. This erasure
-makes sense because of parametric polymorphic functions are not allowed to
+makes sense because parametric polymorphic functions are not allowed to
 depend on types. The behavior of map must be the same no matter whether it is
 operating on a list of integers or a list of booleans.
 
-In a dependently-typed language we'd like to erase types too. And erase proofs
+In a dependently-typed language, we would like to erase types too. And erase proofs
 that are only there to make things type check. Coq does this by making a
 distinction between \texttt{Prop} and \texttt{Set}. Everything in \texttt{Set}
 stays around until run time, and is guaranteed not to depend on \texttt{Prop}.
 
-We'll take another approach.
+We will take another approach.
 
-In \pif we have new kind of quantification, called ``forall'', that marks
+In \pif we have a new kind of quantification, called ``forall'', that marks
 erasable arguments. We mark forall quantified arguments with square
 brackets. For example, we can mark the type argument of the polymorphic
 identity function as erasable.
@@ -1728,7 +1728,7 @@ id : [x:Type] -> (y : x) -> x
 id = \ [x] y. y
 \end{piforall}
 
-When we apply such functions, we'll put the argument in brackets too, so
+When we apply such functions, we will put the argument in brackets too, so
 we remember that \texttt{id} is not really using that type.
 
 \begin{piforall}
@@ -1744,15 +1744,15 @@ id' = \ [x][y]. y
 \end{piforall}
 \indent
 Here \texttt{id'} claims that its second parameter \cd{y} is
-erasable, but it is not. And, when we check this this code with 
-\texttt{version3} of \pif, it is rejected with the following error 
+erasable, but it is not. And, when we check this code with
+\texttt{version3} of \pif, it is rejected with the following error
 message.
 
 \begin{verbatim}
 Type Error:
 Lec3.pi:16:16:
   Cannot access irrelevant variables in this context
-  When checking the term 
+  When checking the term
     \[x] [y]. y
   against the signature
     id' : [x : Type] -> [x] -> x
@@ -1766,11 +1766,11 @@ irrelevant.
 
 \begin{piforall}
 proprel : [a : Type] -> (pf : a = Bool) -> (x : a) -> Bool
-proprel = \ [a] pf x . 
-  subst x by pf 
+proprel = \ [a] pf x .
+  subst x by pf
 \end{piforall}
 
-The reason for this restriction is because the language includes
+The reason for this restriction is that the language includes
 non-termination. We don't know whether this proof is \texttt{Refl} or some
 infinite loop. So this argument must be evaluated to be sure that the two
 types are actually equal. If (somehow) we knew that the argument would always
@@ -1787,11 +1787,11 @@ annotation, which is either $[[Rel]]$ (relevant) or $[[Irr]]$ (irrelevant).
 ``Normal'' variables, introduced by $\lambda$-expressions, will always be
 marked as relevant, and only relevant variables can be used in terms.  As a
 result, we revise the variable typing rule to require the relevant annotation.
-In the \texttt{version3} implementation, type signatures in the environment now 
+In the \texttt{version3} implementation, type signatures in the environment now
 include an \cd{Epsilon} tag, and the function \cd{checkStage} ensures that this
 tag is $[[Rel]]$ when the variable is used in the term.
 
-\[ 
+\[
 \drule{t-evar}
 \]
 
@@ -1830,7 +1830,7 @@ polymorphic identity function above.
 
 What does checking irrelevance buy us? Because we know that irrelevant
 arguments are not actually used by the function, we know that they can be
-\emph{erased} prior to execution. 
+\emph{erased} prior to execution.
 
 However, there is another benefit to marking some arguments as irrelevant: we
 can ignore them during equivalence checking. When deciding whether two terms
@@ -1838,7 +1838,7 @@ are equal, we don't need to look at their irrelevant components. In other
 words, we can add the following equality rule to our definitional equality in
 the case of applications with irrelevant arguments.
 
-\[ 
+\[
 \drule{e-eapp}
 \]
 
@@ -1847,23 +1847,23 @@ use this idea in the definition of equality. Note in this version that
 arguments are now tagged with their relevance, and when we compare arguments
 that are tagged as irrelevant, we do nothing. In fact, what we are doing is
 actually \emph{defining} equality over just the computationally relevant parts
-of the term instead of the entire term. And we've been doing this in a limited
+of the term instead of the entire term. And we have been doing this in a limited
 form from the beginning---recall that \texttt{version1} of \pif \pif already
 ignores type annotations. Just as type annotations do not affect computation
 and can be ignored, the same reasoning holds for irrelevant arguments.
 
-Why is compile-time irrelevance important? 
+Why is compile-time irrelevance important?
 \begin{itemize}
 \item faster comparison: don't have to look at the
 whole term when comparing for equality
-\item more expressive: these parts of the term don't actually have 
-to be equal 
+\item more expressive: these parts of the term don't actually have
+to be equal
 \end{itemize}
 
 For example, consider the example below. The parameter $p$ takes an irrelevant
-argument, so we know that it must be a constant function. Therefore it is
+argument, so we know that it must be a constant function. Therefore, it is
 sound to equate any two applications of $p$ because we know that we will
-always get the same result. 
+always get the same result.
 
 \begin{piforall}
 irrelevance : (p : [i : Nat] -> Type) -> p [1] = p [2]
@@ -1873,7 +1873,7 @@ irrelevance = \p . Refl
 \section{Datatypes and Indexed Datatypes}
 \label{sec:datatypes}
 
-Finally, we'll add a general implementation of datatypes (including
+Finally, we will add a general implementation of datatypes (including
 potentially irrelevant arguments) to \pif.  The code to look at is the
 ``complete'' implementation in \href{full/}{\texttt{full}}.
 
@@ -1884,8 +1884,8 @@ Unfortunately, datatypes are both:
   Really important (you see them \emph{everywhere} when working with
   languages like Haskell, Coq, Agda, Idris, etc.)
 \item
-  Really complicated (there are a \emph{lot} of details). In general, datatypes 
-  subsume booleans, $\Sigma$-types, propositional equality, and can carry 
+  Really complicated (there are a \emph{lot} of details). In general, datatypes
+  subsume booleans, $\Sigma$-types, propositional equality, and can carry
   irrelevant arguments. So they combine all of the complexity of the previous
   sections in one construct.
 \end{itemize}
@@ -1896,42 +1896,42 @@ won't be able to do that here. There is just too much! The goal of this part
 is to give you enough information so that you can pick up the Haskell code and
 understand what is going on.
 
-Even then, realize that the implementation that I'm giving you is not the
-complete story. Recall that we're not considering termination. That means that
-we can use datatypes merely by writing recursive functions; we don't having to
-reason about whether those functions terminate. Coq, Agda and Idris include a
+Even then, realize that the implementation that I am giving you is not the
+complete story. Recall that we are not considering termination. That means that
+we can use datatypes merely by writing recursive functions; we do not have to
+reason about whether those functions terminate. Coq, Agda, and Idris include a
 lot of machinery for this termination analysis, and we won't cover any of it
 here.
 
-In the rest of this section, we'll work up the general specification of
+In the rest of this section, we will work up the general specification of
 datatypes piece-by-piece, generalizing from features that we already know to
-more difficult cases.  We'll start with ``simple'' datatypes, and then extend
-them with both parameters and indices. 
+more difficult cases.  We will start with ``simple'' datatypes, and then extend
+them with both parameters and indices.
 
 \subsection{``Dirt simple'' datatypes}\label{dirt-simple-datatypes}
 
 Our first goal is simple. What do we need to get the simplest examples of
 non-recursive and regular recursive datatypes working? By this I mean
 datatypes that you might see in Haskell or ML, such as \texttt{Bool},
-\texttt{Void} and \texttt{Nat}. Here are some examples of what we would 
+\texttt{Void} and \texttt{Nat}. Here are some examples of what we would
 like these types to look like in \pif. If you are looking at the implementation,
-you'll find this code in \texttt{pi/Lec4.pi}.
+you will find this code in \texttt{pi/Lec4.pi}.
 
 \subsubsection{Booleans}\label{booleans}
 
 For example, one homework assignment was to implement booleans as a primitive
-language feature. We'd like to replace this primitive feature with a datatype
+language feature. We would like to replace this primitive feature with a datatype
 definition of a new type constructor (\cd{Bool}), with two constructors
 \cd{True} and \cd{False}, defined by the following data type declaration.
 
 \begin{piforall}
   data Bool : Type where
-     True 
+     True
      False
 \end{piforall}
 
 In the homework assignment, we used \texttt{if} as the elimination form
-for boolean values. For example, with the primitive \cd{if} expression, 
+for boolean values. For example, with the primitive \cd{if} expression,
 we could write this function.
 
 \begin{piforall}
@@ -1941,14 +1941,14 @@ we could write this function.
 
 For uniformity, we want to have a common elimination form for all datatypes,
 called \texttt{case}. This expression form has branches for each of the data
-constructors of the data type. (In \pif, we'll steal Haskell's syntax for case
+constructors of the data type. (In \pif, we will steal Haskell's syntax for case
 expressions, including layout.) For example, we might rewrite \texttt{not}
 with \cd{case} like this:
 
 \begin{piforall}
 not : Bool -> Bool
-not = \ b . 
-  case b of 
+not = \ b .
+  case b of
        True -> False
        False -> True
 \end{piforall}
@@ -1966,14 +1966,14 @@ this type doesn't need any cases!
 
 \begin{piforall}
 false_elim : (A:Type) -> Void -> A
-false_elim = \ A v . case v of {} 
+false_elim = \ A v . case v of {}
 \end{piforall}
 
 The \cd{Void} type brings up the issue of \emph{exhaustiveness} in case
 analysis. Can we tell whether there are enough patterns so that all of the
 cases are covered? For \cd{Void} this is simple, as we can see from its declaration
-that it has no cases to cover. But, as our language becomes more sophisticated, we'll need
-to revisit our implementation to make sure that it can correctly identify when a case 
+that it has no cases to cover. But, as our language becomes more sophisticated, we will need
+to revisit our implementation to make sure that it can correctly identify when a case
 expression is exhaustive.
 
 \subsubsection{Nat}\label{nat}
@@ -1992,7 +1992,7 @@ In case analysis, we can give a name to that argument in the pattern.
 
 \begin{piforall}
 is_zero : Nat -> Bool
-is_zero = \ x . case x of 
+is_zero = \ x . case x of
    Zero -> True
    Succ n -> False
 \end{piforall}
@@ -2001,27 +2001,27 @@ However, to write \cd{plus}, we need to use recursion:
 
 \begin{piforall}
 plus : Nat -> Nat -> Nat
-plus = \ x y. case x of 
+plus = \ x y. case x of
    Zero -> y
    Succ x' -> Succ (plus x' y)
 \end{piforall}
 
 \subsubsection{Dependently-typed data constructor args}
 
-Now, even in our ``dirt simple'' system, we'll be able to encode some new
+Now, even in our ``dirt simple'' system, we will be able to encode some new
 structures that are beyond what is available using regular algebraic datatypes
 in functional programming languages like Haskell and ML. These structures
 won't be all that useful yet, but as we add parameters and indices to our
-datatypes, they will become more so. For example, here's an example of a
+datatypes, they will become more so. For example, here is an example of a
 datatype declaration where the data constructors have dependent types.
 
 \begin{piforall}
-data SillyBool : Type where      
+data SillyBool : Type where
    ImTrue  of (b: Bool) (_ : b = True)
    ImFalse of (b: Bool) (_ : b = False)
 \end{piforall}
 
-In this example, the type of \cd{ImTrue} is 
+In this example, the type of \cd{ImTrue} is
 \begin{piforall}
 ImTrue : (b:Bool) -> (b = True) -> SillyBool
 \end{piforall}
@@ -2055,7 +2055,7 @@ subsequent ones, nesting like an expandable telescope.)
 
 We can represent this structure in our implementation by adding a new form of
 declaration to the syntax.\footnote{Some parts of this implementation have
-  been elided compared to \texttt{full}. We're building up to that version
+  been elided compared to \texttt{full}. We are building up to that version
   slowly.}
 
 \begin{verbatim}
@@ -2066,13 +2066,13 @@ type TCName = String
 type DCName = String
 
 -- | Declarations stored in the context
-data Decl = 
+data Decl =
     -- | Declaration for the type of a term `x : A`
-    TypeSig Sig   
+    TypeSig Sig
   | -- | The definition of a particular name `x = a`
     Def TName Term
     ...
-   
+
   | -- | Datatype definition  `data T = ...`
     Data TCName [ConstructorDef]
 
@@ -2086,9 +2086,9 @@ newtype Telescope = Telescope [Decl]
 
 \noindent For example, a declaration for the \texttt{Bool} datatype would be the following.
 \begin{verbatim}
-boolDecl :: Decl 
-boolDecl = Data "Bool" [ConstructorDef "False" (Telescope []), 
-                        ConstructorDef "True"  (Telescope []) ]                                    
+boolDecl :: Decl
+boolDecl = Data "Bool" [ConstructorDef "False" (Telescope []),
+                        ConstructorDef "True"  (Telescope []) ]
 \end{verbatim}
 
 
@@ -2097,14 +2097,14 @@ boolDecl = Data "Bool" [ConstructorDef "False" (Telescope []),
 \begin{figure}[h]
 
 
-% \[ 
+% \[
 %\begin{array}{llcl}
 %\mathit{Telescope} &[[ D ]]& ::= &[[ x : A , D ]]\ |\ [[ x = b , D ]]\ |\ \mathit{empty} \\
 %\mathit{Pattern}   &[[ p ]]& ::= &[[ x ]]\ |\ [[K ps]] \\
 %\end{array}
 % \]
 
-In general, when we have a datatype declaration, that means that new data type
+In general, when we have a datatype declaration, that means that a new data type
 $[[T]]$ of type $[[Type]]$ will be added to the context.  Furthermore, the
 context should record all of the data constructors for that type, $[[Ki]]$, as
 well as the telescope, written $[[Di]]$, for each data constructor.  For
@@ -2129,15 +2129,15 @@ constructor $[[K]]$.
 \[ \drule{i-dcon-simple} \]
 
 We need to check that list against the telescope for the constructor, using
-the judgment $[[G |- args <= D]]$.  
+the judgment $[[G |- args <= D]]$.
 
-In this judgement, each argument must have
+In this judgment, each argument must have
 the right type. Furthermore, because of dependency, we substitute that
 argument for the variable in the rest of the telescope.
 
 \[ \drule[width=3in]{tele-sig} \]
 
-Furthermore, we also substitute when the telescope contains definitions. 
+Furthermore, we also substitute when the telescope contains definitions.
 
 \[ \drule[width=3in]{tele-def} \]
 
@@ -2147,14 +2147,14 @@ should also get to the end of the telescope.
 \[ \drule{tele-nil} \]
 
 \begin{tabular}{lll}
-$[[G |- args <= D]]$   & \texttt{tcArgTele} 
+$[[G |- args <= D]]$   & \texttt{tcArgTele}
    & Type check a list of arguments against a telescope \\
-$[[G |- pat : A => D]]$ & \texttt{declarePat} 
+$[[G |- pat : A => D]]$ & \texttt{declarePat}
    & Create telescope containing all of the \\
    && variables from the pattern \\
-$[[ |- a ~ b => D]]$  & \texttt{unify} 
+$[[ |- a ~ b => D]]$  & \texttt{unify}
    & Compare two terms to create a list of definitions \\
-$[[ D [ a / x ] ]] $  & \texttt{doSubst}   
+$[[ D [ a / x ] ]] $  & \texttt{doSubst}
    & Substitute through a telescope \\
 $[[ D1 [ args / D2 ] ]]$ & \texttt{substTele}
    & Substitute a list of args for the variables \\
@@ -2164,9 +2164,9 @@ $[[ D1 [ args / D2 ] ]]$ & \texttt{substTele}
 \label{fig:data}
 \end{figure}
 
-Figure ~\ref{fig:data} lists the relevant judgements for type checking the use
+Figure ~\ref{fig:data} lists the relevant judgments for type checking the use
 of datatypes and the corresponding functions in the \pif implementation.  The
-$[[G |- args <= D]]$ judgement, described above, is implemented by the
+$[[G |- args <= D]]$ judgment, described above, is implemented by the
 \cd{tcArgTele} function in \texttt{TypeCheck.hs}. This function has the
 following type in the implementation: (For reasons that we explain below, we
 have a special type \texttt{Arg} for the arguments to the data constructor.)
@@ -2182,15 +2182,15 @@ telescopes, written $[[D [a/x] ]]$ in the rules above:
 doSubst :: [(TName, Term)] -> [Decl] -> TcMonad [Assn]
 \end{verbatim}
 
-This substitution function propagates the substitution through 
+This substitution function propagates the substitution through
 the telescope.
 
 
 \subsection{Pattern matching with dirt simple datatypes}
 
 In your homework assignment, we used a special \texttt{if} term to eliminate boolean types.
-Now, we'd like to replace that with the more general \texttt{case} expression, of the 
-form $[[case a of { </ pati -> ai // i /> }]]$ 
+Now, we would like to replace that with the more general \texttt{case} expression, of the
+form $[[case a of { </ pati -> ai // i /> }]]$
 that works with any form of datatype. What should the typing rule for
 that sort of expression look like? There is a lot of work to do.
 
@@ -2200,13 +2200,13 @@ Mathematically, this rule first checks that the scrutinee has the type of some
 datatype $[[T]]$. Then, for each case of the pattern match, this rule looks at
 the pattern $[[pati]]$ and uses the context to calculate a telescope $[[Di]]$
 containing declarations of all of the variables bound in that pattern. That
-telescope is added to the context to type check each branch $[[ai]]$ against the type of 
+telescope is added to the context to type check each branch $[[ai]]$ against the type of
 the entire expression $[[A]]$. Furthermore, when
 checking the type of each branch, we can refine that type because we know that
-the scrutinee is equal to the pattern. To reflect this information during type checking, 
+the scrutinee is equal to the pattern. To reflect this information during type checking,
 we also construct the telescope $[[Di']]$.
 
-How do we implement this rule in our language? The general strategy 
+How do we implement this rule in our language? The general strategy
 is as follows:
 
 \begin{enumerate}
@@ -2245,9 +2245,9 @@ be referred to in any of the telescopes for the data constructors.
 
 \begin{piforall}
 data Maybe (A : Type) : Type where
-    Nothing 
+    Nothing
      Just of (A)
-     
+
 \end{piforall}
 
 Because this is a dependently-typed language, the variables in the telescope
@@ -2272,7 +2272,7 @@ data T D : Type where
 
 That means that when we check an occurrence of a type constructor, we need to
 make sure that its actual arguments match up with the parameters in the
-telescope. For this step, we can reuse the same argument checking judgement as
+telescope. For this step, we can reuse the same argument checking judgment as
 we used for data constructor applications.
 
 \[ \drule[width=3in]{i-tcon} \]
@@ -2288,11 +2288,11 @@ constructor telescope.
 \[ \drule[width=3in]{c-dcon} \]
 
 For example, if we are trying to check the expression
-\texttt{Just\ True}, with expected type \texttt{Maybe\ Bool}, we'll
+\texttt{Just\ True}, with expected type \texttt{Maybe\ Bool}, we will
 first see that \texttt{Maybe} requires the telescope
 \texttt{(A\ :\ Type)}. That means we need to substitute \texttt{Bool}
 for \texttt{A} in \texttt{(\_\ :\ A)}, the telescope for \texttt{Just}.
-That produces the telescope \texttt{(\_\ :\ Bool)}, which we'll use to
+That produces the telescope \texttt{(\_\ :\ Bool)}, which we will use to
 check the argument \texttt{True}.
 
 In \texttt{TypeCheck.hs}, the function
@@ -2307,12 +2307,12 @@ of inferring them) we don't need to explicitly provide the parameters to
 the data constructor. The type system can figure them out from the
 provided type.
 
-Also note that checking mode also enables \emph{data constructor
+Also, note that checking mode also enables \emph{data constructor
 overloading}. In other words, we can have multiple datatypes that use
 the same data constructor. Having the type available allows us to
 disambiguate.
 
-For added flexibility we can also add code to \emph{infer} the types of data
+For added flexibility, we can also add code to \emph{infer} the types of data
 constructors when they are not actually parameterized and when there is no
 ambiguity due to overloading. For example, if we see \cd{True}, we would like
 to infer that it has type \cd{Bool} without any annotation.
@@ -2345,12 +2345,12 @@ data Beautiful (n : Nat) : Type where
   B0 of [n = 0]
   B3 of [n = 3]
   B5 of [n = 5]
-  Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[m = m1+m2]   
+  Bsum of (m1:Nat)(m2:Nat)(Beautiful m1)(Beautiful m2)[m = m1+m2]
 \end{piforall}
 
 Constraints can appear anywhere in the telescope of a data constructor.
 However, they are not arbitrary equality constraints---we want to
-consider them as deferred substitutions. So therefore, the term on the
+consider them as deferred substitutions. Therefore, the term on the
 left must always be a variable.
 
 These constraints interact with the type checker in a few places:
@@ -2395,8 +2395,8 @@ smaller than \texttt{n}, i.e.~of all valid indices for lists of size
 
 \begin{piforall}
 data Fin (n : Nat) : Type where
-   Zero of (m:Nat)[n = Succ m] 
-   Succ of (m:Nat)[n = Succ m] (Fin m)     
+   Zero of (m:Nat)[n = Succ m]
+   Succ of (m:Nat)[n = Succ m] (Fin m)
 \end{piforall}
 
 The file \texttt{FinHw.pi} includes a number of definitions
@@ -2405,9 +2405,9 @@ that use these types. Two of these definitions are marked with
 
 \subsection{Irrelevance and datatypes}
 
-Datatypes may wish to mark some of their arguments as irrelevant, so that 
-these components of the data structure can be erased at runtime. For example, 
-the \cd{Vec} type in Section~\ref{sec:examples} marked the length of the tail 
+Datatypes may wish to mark some of their arguments as irrelevant so that
+these components of the data structure can be erased at run time. For example,
+the \cd{Vec} type in Section~\ref{sec:examples} marked the length of the tail
 of the vector as irrelevant in the telescope for the \cd{Cons} constructor.
 
 The mechanisms that we have set up so far extend naturally to irrelevant data
@@ -2416,14 +2416,14 @@ arguments; \pif does not allow marking arguments to \emph{type} constructors
 as irrelevant. This is not a significant limitation as we almost always want
 these arguments to actually be relevant---we don't want to equate \cd{Vec 0
   Int} with \cd{Vec 1 Bool}. However, these type parameters are never relevant
-when they are used with data constructors---we don't even includes them in the
+when they are used with data constructors---we don't even include them in the
 abstract syntax.
 
 \subsubsection{Homework: Erasure and Indexed datatypes: finite numbers in \texttt{FinHw.pi} }
 
 Now take your code in \texttt{FinHw.pi} and see if you can mark some of the
 components of the \texttt{Fin} datatype as erasable. Where do we need to pass
-the length of a list around at runtime?
+the length of a list around at run time?
 
 \section{Where to go next?}
 \label{sec:related-work}
@@ -2435,7 +2435,7 @@ the length of a list around at runtime?
 \item A. Löh, C. McBride, W. Swierstra, %2007-2010
   \emph{A tutorial implementation of a dependently typed lambda calculus}    \cite{loeh:tutorial}.
 
-  This tutorial implements the ``LambdaPi'' language, and is accompanied by a
+  This tutorial implements the ``LambdaPi'' language and is accompanied by a
   Haskell implementation available
   online~\footnote{\url{https://www.andres-loeh.de/LambdaPi/}}. The tutorial
   starts with an implementation of the simply-typed lambda calculus, using a
@@ -2450,15 +2450,15 @@ the length of a list around at runtime?
   The goal of Augustsson's tutorial, inspired by an earlier version of
   LambdaPi, is to be the simplest implementation possible. Therefore, he uses
   a string representation of variables and binding and weak-head normalization
-  for implementation of equality. His version is a Haskell implementation of
+  for the implementation of equality. His version is a Haskell implementation of
   Barendregt's lambda cube~\cite{barendregt:lambda-calculi-with-types}.
 
 \item Coquand, Kinoshita, Nordstrom, Takeyama. \emph{A simple type-theoretic
     language: Mini-TT} \cite{coquand:tutorial}
 
   Coquand et al. describe another Haskell implementation of dependent types,
-  called ``Mini-TT'', that shows how to implement (in about 400 lines of code)
-  a small dependently-typed language that includes $\Sigma$-types, void, unit
+  called ``Mini-TT'', which shows how to implement (in about 400 lines of code)
+  a small dependently-typed language that includes $\Sigma$-types, void, unit,
   and sums.  The language does not include propositional equality or indexed
   datatypes, nor does it enforce termination.  The implementation uses strings
   to represent variable binding, which are converted to de Bruijn indices
@@ -2472,17 +2472,17 @@ the length of a list around at runtime?
   substitution and alpha-equality. This version uses full normalization to
   implement definitional equality. Then, in the second version, Bauer revises
   the implementation to use normalization by evaluation. In the third version,
-  he revises again to use de Bruijn indices, explicit substitutions and
+  he revises again to use de Bruijn indices, explicit substitutions, and
   switches back to weak-head normalization.
 
 \item Tiark Rompf, \emph{Implementing Dependent Types} \cite{rompf:tutorial}.
 
-  A recent blog post tutorial, Rompf uses Javascript to implement a core
+  In a recent blog post tutorial, Rompf uses Javascript to implement a core
   dependent type theory using higher-order abstract syntax.
 
 \item Andras Kovacs, \emph{Elaboration Zoo} \cite{kovacs:tutorial}
 
-  Kovacs' github repository includes several different implementations of
+  Kovacs' GitHub repository includes several different implementations of
   evaluation and type checking for a minimal dependently typed
   languages. These implementations are accompanied by video recordings of a
   seminar that goes over this code. Notably, this tutorial includes implicit
@@ -2519,12 +2519,12 @@ ML. As a result, type checkers and elaborators for these languages must
 abandon complete type inference and require users to annotate their code.
 
 Bidirectional type systems provide a platform for propagating type annotations
-through judgements, and notably, support a syntax-directed specification of
+through judgments, and notably, support a syntax-directed specification of
 where to apply the conversion rule during type checking. As a result, such
 type systems are frequently used as the basis for type checking, with
 elaboration for implicit arguments layered on top.
 
-Pierce and Turner~\cite{pierce:lti} popularized the used of bidirectional type
+Pierce and Turner~\cite{pierce:lti} popularized the use of bidirectional type
 systems, in the context of polymorphic languages with subtyping.  The Haskell
 language uses bidirectional type checking layered on top of Hindley-Milner
 unification in order to support type inference for higher-rank
@@ -2538,7 +2538,7 @@ introduces the idea of bidirectional type checking as an independent
 topic. For another description of the role of bidirectional type systems in
 the context of dependent types, see L\"oh, McBride and Swierstra's
 tutorial~\cite{loeh:tutorial}. Unlike \pif, this tutorial separates the syntax
-of terms based whether they are inferrable or checkable.
+of terms based on whether they are inferable or checkable.
 
 Finally, Dunfield and Krishnaswami's extensive survey
 paper~\cite{dunfield:bidirectional-survey} catalogs and organizes recent
@@ -2549,7 +2549,7 @@ results in this area.
 Equality has been called the hardest problem in type theory, and that is not
 an exaggeration.
 
-Many implementations, such as Coq and Agda use a procedure called \emph{normalization-by-evaluation} to decide whether two terms are equivalent. 
+Many implementations, such as Coq and Agda use a procedure called \emph{normalization-by-evaluation} to decide whether two terms are equivalent.
 
 \begin{itemize}
 \item Coq~\cite{gregoire:strong-reduction}
@@ -2593,11 +2593,11 @@ Idris~\cite{idris2} languages.
 \paragraph{Both run-time and compile-time irrelevance, but no distinction}
 
 The Implicit Calculus of Constructions~\cite{miquel} ensures that some
-arguments are treated irrelevantly (at both runtime and compiletime) by simply
+arguments are treated irrelevantly (at both run time and compile time) by simply
 not including them in the syntax of terms. This work was extended to decidable
 type checking through the use of an erasure operation---terms may include
-irrelevant arguments, but these arguments must be erased prior to runtime and
-equality checking\cite{icc-star}. This approach lead to Erasure Pure Type
+irrelevant arguments, but these arguments must be erased prior to run time and
+equality checking\cite{icc-star}. This approach led to Erasure Pure Type
 Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
 Dependent Haskell~\cite{weirich:systemd}.
 
@@ -2609,11 +2609,11 @@ The implementation of indexed datatypes in \pif is inspired by the compilation
 of \emph{Generalized Algebraic Datatypes} in
 Haskell~\cite{vytiniotis2011outsidein,vytiniotis2006simple}. The
 distinguishing feature of this formalization is that internally, datatype
-indices are representated by constrained parameters and so are an extension of
+indices are represented by constrained parameters and so are an extension of
 the parameterized recursive sums of products found in functional programming
 languages.
 
-In contrast, the theory of inductive datatypes found in Coq and Agda must ensure that they cannot be used to implement nonterminating functions. This means that there are several restrictions: they must be strictly positive, their eliminators must be defined separately, and they must satisfy constraints based on universe-levels. 
+In contrast, the theory of inductive datatypes found in Coq and Agda must ensure that they cannot be used to implement nonterminating functions. This means that there are several restrictions: they must be strictly positive, their eliminators must be defined separately, and they must satisfy constraints based on universe-levels.
 
 
 \begin{itemize}
