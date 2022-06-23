@@ -121,7 +121,7 @@ type LParser a = ParsecT
                     String                      -- The input is a sequence of Char
                     [Column] (                  -- The internal state for Layout tabs
 
-                    Unbound.FreshM)                  -- The internal state for generating fresh names, 
+                    Unbound.FreshM)             -- The internal state for generating fresh names, 
                     a                           -- the type of the object being parsed
 
 instance Unbound.Fresh (ParsecT s u Unbound.FreshM)  where
@@ -279,7 +279,7 @@ expr = do
         mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi tyA (Unbound.bind (n{- SOLN EP -},Rel{- STUBWITH -}) tyB)
+               Pi Rel tyA (Unbound.bind n tyB)
         mkTupleType = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
@@ -345,7 +345,7 @@ lambda = do reservedOp "\\"
             body <- expr
             return $ foldr lam body binds 
   where
-    lam (x, ep) m = Lam (Unbound.bind (x, ep) m)           
+    lam (x, ep) m = Lam ep (Unbound.bind x m)           
   
 
                             
@@ -405,7 +405,7 @@ impProd =
         <|> ((,) <$> Unbound.fresh wildcardName <*> expr))
      reservedOp "->" 
      tyB <- expr
-     return $ Pi tyA (Unbound.bind (x,Irr) tyB)
+     return $ Pi Irr tyA (Unbound.bind x tyB)
 
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
@@ -442,7 +442,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi a (Unbound.bind (x{- SOLN EP -},Rel{- STUBWITH -}) b))
+                      return $ Pi Rel a (Unbound.bind x b))
          Colon a b -> return $ Ann a b
       
          Comma a b -> 

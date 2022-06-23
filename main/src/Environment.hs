@@ -10,11 +10,11 @@ module Environment
     lookupTyMaybe,
     lookupDef,
     lookupRecDef,
-    lookupHint {- SOLN DATA -},
+    lookupHint {- SOLN DATA -} ,
     lookupTCon,
     lookupDCon,
     lookupDConAll,
-    extendCtxTele {- STUBWITH -},
+    extendCtxTele {- STUBWITH -} ,
     getCtx,
     getLocalCtx,
     extendCtx,
@@ -28,7 +28,7 @@ module Environment
     warn,
     extendErr,
     D (..),
-    Err (..){- SOLN EP -},
+    Err (..){- SOLN EP -} ,
     withStage,
     checkStage {- STUBWITH -}
   )

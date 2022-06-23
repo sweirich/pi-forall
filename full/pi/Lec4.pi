@@ -1,6 +1,15 @@
-module Lec3 where
+module Lec4 where
 
--- simple datatypes 
+-- Examples of "dirt-simple" datatypes 
+-- booleans are primitive to the implementation (so that we can continue
+-- to use if), but Void and Nat must be defined
+
+not : Bool -> Bool
+not = \ b . 
+  case b of 
+       True -> False
+       False -> True
+
 
 data Void : Type where {}   -- no constructors
 
@@ -20,6 +29,8 @@ plus : Nat -> Nat -> Nat
 plus = \ x y. case x of 
    Zero -> y
    Succ x' -> Succ (plus x' y)
+
+-- Dependently-typed data constructor arguments
 
 data SillyBool : Type where      
   ImTrue  of (b : Bool) (_ : b = True)

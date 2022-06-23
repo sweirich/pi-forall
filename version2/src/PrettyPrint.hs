@@ -235,7 +235,7 @@ instance Display Term where
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
   display (Pi a bnd) = do
-    Unbound.lunbind bnd $ \((n ), b) -> do
+    Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
             if n `elem` toListOf Unbound.fv b
@@ -364,7 +364,7 @@ instance Display Term where
 
 gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
 gatherBinders (Lam b) =
-  Unbound.lunbind b $ \((n ), body) -> do
+  Unbound.lunbind b $ \(n, body) -> do
     dn <- display n
     let db =  dn
     (rest, body') <- gatherBinders body
@@ -374,42 +374,6 @@ gatherBinders body = do
   return ([], db)
 
 
-
-{-
--- | decide whether to add parens to the function of an application
-wrapf :: Term -> Doc -> Doc
-wrapf f = case f of
-  Var _ -> id
-  App _ _ -> id
-  Ann a _ -> wrapf a
-  Pos _ a -> wrapf a
-  TrustMe -> id
-  PrintMe -> id
-  _ -> parens
-
--- | decide whether to add parens to an argument in an application
-wraparg :: DispInfo -> Term -> Doc -> Doc
-wraparg st a = case a of
-  Var _ -> std
-  Type -> std
-  TyUnit -> std
-  LitUnit -> std
-  TyBool -> std
-  LitBool b -> std
-  Sigma _ _ -> std
-  Prod _ _ -> force
-  Ann b _ -> wraparg st b
-  Pos _ b -> wraparg st b
-  TrustMe -> std
-  PrintMe -> std
-
-  Refl -> std
-  
-  _ -> force
-  where
-    std = id
-    force = parens
--}    
 
 -------------------------------------------------------------------------
 

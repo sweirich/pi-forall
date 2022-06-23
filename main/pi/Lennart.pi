@@ -1,8 +1,10 @@
 module Lennart where
 
 -- stack exec -- pi-forall Lennart.pi  
--- time: 7.39s user 0.35s system 99% cpu 7.755 total
-
+-- with unbind / subst
+-- 7.81s user 0.52s system 97% cpu 8.568 total
+-- with substBind
+-- 3.81s user 0.28s system 94% cpu 4.321 total
 import Fix
 
 bool : Type

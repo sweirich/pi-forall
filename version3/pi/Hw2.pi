@@ -9,6 +9,7 @@ trans = TRUSTME
 -- properties of booleans
 
 -- an encoding of logical falsity
+
 void : Type 
 void = (A:Type) -> A
 
@@ -27,7 +28,7 @@ not_not_equal = TRUSTME
 not_false_then_true : (b : Bool) -> neg (b = False) -> b = True
 not_false_then_true = TRUSTME
 
--- showing that decidable equality is correct.
+-- showing that decidable equality for booleans is correct.
 
 eq_bool : Bool -> Bool -> Bool
 eq_bool = \x y. if x then y else not y

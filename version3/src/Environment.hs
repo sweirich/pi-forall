@@ -10,7 +10,7 @@ module Environment
     lookupTyMaybe,
     lookupDef,
     lookupRecDef,
-    lookupHint ,
+    lookupHint  ,
     getCtx,
     getLocalCtx,
     extendCtx,
@@ -24,9 +24,9 @@ module Environment
     warn,
     extendErr,
     D (..),
-    Err (..){- SOLN EP -},
+    Err (..),
     withStage,
-    checkStage {- STUBWITH -}
+    checkStage 
   )
 where
 
@@ -117,8 +117,7 @@ demoteSig ep s = s { sigEp = min ep (sigEp s) }
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
 lookupTy ::
-  (MonadReader Env m, MonadError Err m) =>
-  TName -> m Sig
+  TName -> TcMonad Sig
 lookupTy v =
   do
     x <- lookupTyMaybe v

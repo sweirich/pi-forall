@@ -57,7 +57,7 @@ instance Arbitrary (Unbound.Name a) where
 base :: Gen Term
 base = elements [Type, TrustMe, PrintMe,
                 tyUnit, litUnit, tyBool, 
-                litTrue, litFalse{- SOLN EQUAL -}, Refl {- STUBWITH -} ]
+                litTrue, litFalse, Refl  ]
     where tyUnit = TyUnit
           litUnit = LitUnit
           tyBool = TyBool
@@ -93,16 +93,18 @@ genTerm n
 genLam :: Int -> Gen Term
 genLam n = do 
     p <- genName
+
     b <- genTerm n
-    return $ Lam (Unbound.bind p b)
+    return $ Lam  (Unbound.bind p b)
 
 
 genPi :: Int -> Gen Term
 genPi n = do 
     p <- genName
+
     tyA <- genTerm n
     tyB <- genTerm n
-    return $ Pi tyA (Unbound.bind p tyB)
+    return $ Pi  tyA (Unbound.bind p tyB)
 
 genSigma :: Int -> Gen Term
 genSigma n = do

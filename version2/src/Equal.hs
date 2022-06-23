@@ -26,11 +26,13 @@ equate t1 t2 = do
     (Var x,  Var y) | x == y -> return ()
     (Lam bnd1, Lam bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
+
       equate b1 b2
     (App a1 a2, App b1 b2) ->
       equate a1 b1 >> equate a2 b2
     (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do 
-      (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2
+      (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -96,13 +98,12 @@ equate t1 t2 = do
 -- the type.
 -- Throws an error if this is not the case.
 ensurePi :: Type -> 
-  TcMonad (TName,  Type, Type)
+  TcMonad ( Type, (Unbound.Bind TName Type))
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
-    (Pi tyA bnd) -> do 
-      ((x), tyB) <- Unbound.unbind bnd
-      return (x, tyA, tyB)
+    (Pi  tyA bnd) -> do 
+      return ( tyA, bnd)
     _ -> Env.err [DS "Expected a function type, instead found", DD nf]
     
     
@@ -137,9 +138,8 @@ whnf (Var x) = do
 whnf (App t1 t2) = do
   nf <- whnf t1 
   case nf of 
-    (Lam bnd) -> do
-      (x, body) <- Unbound.unbind bnd 
-      whnf (Unbound.subst x t2 body)
+    (Lam  bnd) -> do
+      whnf (Unbound.substBind bnd t2)
     _ -> do
       return (App nf t2)
       
@@ -154,7 +154,7 @@ whnf (LetPair a bnd) = do
   case nf of 
     Prod b1 c -> do
       ((x,y), body) <- Unbound.unbind bnd
-      whnf (Unbound.subst x b1 (Unbound.subst y c body))
+      whnf (Unbound.substs [(x, b1), (y, c)] body)
     _ -> return (LetPair nf bnd)
 
 -- ignore/remove type annotations and source positions when normalizing  
@@ -162,8 +162,8 @@ whnf (Ann tm _) = whnf tm
 whnf (Pos _ tm) = whnf tm
  
 whnf (Let rhs bnd)  = do
-  (x,body) <- Unbound.unbind bnd
-  whnf (Unbound.subst x rhs body)  
+  -- (x,body) <- Unbound.unbind bnd
+  whnf (Unbound.substBind bnd rhs)  
 whnf (Subst tm pf) = do
   pf' <- whnf pf
   case pf' of 

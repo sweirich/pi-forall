@@ -783,6 +783,29 @@ This issue is not significant, but we could resolve it by adding an annotation
 before substitution. However, in our implementation of \pif, we do not do so
 to reduce clutter.
 
+\subsection{Exercise:  Add Booleans and
+$\Sigma$-types (Part I)}
+
+Some fairly standard typing rules for booleans are shown below.
+
+\drules{$[[G|-a:A]]$}{Booleans}{t-bool,t-true,t-false}
+\[ \drule[width=4in]{t-if-simple} \]
+
+Likewise, we can also extend the language with $\Sigma$-types, or 
+products, where the type of the second component of the product can depend on the value of the first component.
+
+\drules{$[[G|-a:A]]$}{$\Sigma$-types}{t-sigma,t-pair}
+\[ \drule[width=4in]{t-letpair-weak} \]
+
+We destruct $\Sigma$-types using pattern matching. The simple rule for pattern
+matching introduces variables into the context when type checking the body of
+the \textsf{let} expression.  These variables are not allowed to appear free
+in the result type of the pattern match.
+
+For your exercise, rewrite the rules above in bidirectional style. Which rules
+should be inference rules? Which ones should be checking rules? If you are
+familiar with other systems, how do these rules compare?
+
 \section{Putting it all together in a Haskell
 implementation}
 \label{sec:implementation}
@@ -1090,39 +1113,14 @@ they are not, it stops the computation and throws an error.
 % after filling in the missing code in \texttt{TypeCheck.hs}.
 
 \subsection{Exercise:  Add Booleans and
-$\Sigma$-types}
+$\Sigma$-types (Part II)}
 
-Some fairly standard typing rules for booleans are shown below.
-
-\drules{$[[G|-a:A]]$}{Booleans}{t-bool,t-true,t-false}
-\[ \drule[width=4in]{t-if-simple} \]
-
-Likewise, we can also extend the language with $\Sigma$-types, or 
-products, where the type of the second component of the product can depend on the value of the first component.
-
-\drules{$[[G|-a:A]]$}{$\Sigma$-types}{t-sigma,t-pair}
-\[ \drule[width=4in]{t-letpair-weak} \]
-
-We destruct $\Sigma$-types using pattern matching. The simple rule for pattern
-matching introduces variables into the context when type checking the body of
-the \textsf{let} expression.  These variables are not allowed to appear free
-in the result type of the pattern match.
-
-This part of the homework has two parts:
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\item First, on paper: rewrite the rules above in bidirectional style. Which
-  rules should be inference rules? Which ones should be checking rules? If you
-  are familiar with other systems, how do these rules compare?
-\item Second, in Haskell: The code in \texttt{version1/} includes abstract and
-  concrete syntax for booleans and $\Sigma$-types. The \pif file
-  \texttt{version1/test/Hw1.pi} contains examples of using these new
-  forms. Your job is to get this file to compile by filling in the missing
-  cases in \texttt{version1/src/TypeCheck.hs} base on the bidirectional rules
-  that you worked out in the first part of the exercise.
-\end{enumerate}
-
+Second, in Haskell: The code in \texttt{version1/} includes abstract and
+concrete syntax for booleans and $\Sigma$-types. The \pif file
+\texttt{version1/test/Hw1.pi} contains examples of using these new forms. Your
+job is to get this file to compile by filling in the missing cases in
+\texttt{version1/src/TypeCheck.hs} base on the bidirectional rules that you
+worked out in the previous exercise.
 
 \section{Equality in Dependently-Typed Languages}
 \label{sec:equality}
@@ -2546,10 +2544,15 @@ results in this area.
 
 \paragraph{Section~\ref{sec:equality}: Definitional equality}
 
-Equality has been called the hardest problem in type theory, and that is not
-an exaggeration.
+Many implementations, such as Coq and Agda, use a procedure called
+\emph{normalization-by-evaluation} to decide whether two terms are equivalent.
+Briefly, normalztion-by-evaluation works by translating
+expressions to domain that supports evaluation in the presence of 
 
-Many implementations, such as Coq and Agda use a procedure called \emph{normalization-by-evaluation} to decide whether two terms are equivalent. 
+that identifies all terms with their normal
+forms. The second step is to read back the terms
+
+In Coq, this procedure is implemented by compilation through
 
 \begin{itemize}
 \item Coq~\cite{gregoire:strong-reduction}
@@ -2558,6 +2561,33 @@ Many implementations, such as Coq and Agda use a procedure called \emph{normaliz
 
 \item Daniel Gratzer, NBE for MLTT
 \url{https://github.com/jozefg/nbe-for-mltt}
+\end{itemize}
+
+\paragraph{Section~\ref{sec:pattern-matching} and \ref{sec:datatypes}: Dependently-typed pattern matching}
+
+The implementation of indexed datatypes in \pif is inspired by the compilation
+of \emph{Generalized Algebraic Datatypes} in
+Haskell~\cite{vytiniotis2011outsidein,vytiniotis2006simple}. The
+distinguishing feature of this formalization is that internally, datatype
+indices are representated by constrained parameters and so are an extension of
+the parameterized recursive sums of products found in functional programming
+languages.
+
+In contrast, the theory of inductive datatypes found in Coq and Agda must
+ensure that they cannot be used to implement nonterminating functions. This
+means that there are several restrictions: they must be strictly positive,
+their eliminators must be defined separately, and they must satisfy
+constraints based on universe-levels.
+
+\begin{itemize}
+\item
+  Coq pattern matching:
+  \href{https://coq.inria.fr/refman/language/core/inductive.html#theory-of-inductive-definitions}{Coq
+  User manual}
+\item
+  Agda pattern matching:
+  \href{http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf}{Ulf Norell's
+  dissertation}
 \end{itemize}
 
 \paragraph{Section~\ref{sec:irrelevance}: Compile-time and run-time irrelevance}
@@ -2600,32 +2630,6 @@ irrelevant arguments, but these arguments must be erased prior to runtime and
 equality checking\cite{icc-star}. This approach lead to Erasure Pure Type
 Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
 Dependent Haskell~\cite{weirich:systemd}.
-
-
-
-\paragraph{Section~\ref{sec:pattern-matching}: Dependently-typed pattern matching}
-
-The implementation of indexed datatypes in \pif is inspired by the compilation
-of \emph{Generalized Algebraic Datatypes} in
-Haskell~\cite{vytiniotis2011outsidein,vytiniotis2006simple}. The
-distinguishing feature of this formalization is that internally, datatype
-indices are representated by constrained parameters and so are an extension of
-the parameterized recursive sums of products found in functional programming
-languages.
-
-In contrast, the theory of inductive datatypes found in Coq and Agda must ensure that they cannot be used to implement nonterminating functions. This means that there are several restrictions: they must be strictly positive, their eliminators must be defined separately, and they must satisfy constraints based on universe-levels. 
-
-
-\begin{itemize}
-\item
-  Coq pattern matching:
-  \href{https://coq.inria.fr/refman/language/core/inductive.html#theory-of-inductive-definitions}{Coq
-  User manual}
-\item
-  Agda pattern matching:
-  \href{http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf}{Ulf Norell's
-  dissertation}
-\end{itemize}
 
 
 \section{Conclusion}
