@@ -1,24 +1,5 @@
 module Lec2 where
 
--- this code only type checks with a definition of type equality that 
--- includes definition unfolding and beta-equivalence
-
--- logical "and"
-
-and : Type -> Type -> Type
-and = \p. \q. (c: Type) -> (p -> q -> c) -> c
-
-conj : (p:Type) -> (q:Type) -> p -> q -> and p q
-conj = \p.\q. \x.\y. \c. \f. f x y
-
-proj1 : (p:Type) -> (q:Type) -> and p q -> p
-proj1  = \p. \q. \a. a p (\x.\y.x)
-
-proj2 : (p:Type) -> (q:Type) -> and p q -> q
-proj2  = \p. \q. \a. a q (\x.\y.y)
-
-and_commutes : (p:Type) -> (q:Type) -> and p q -> and q p
-and_commutes = \p. \q. \a. conj q p (proj2 p q a) (proj1 p q a)
 
 -- "large eliminations" 
 
@@ -46,7 +27,9 @@ z2 = True
 -- context-dependent. In otherwords, it should add new 
 -- definitions to the context in the true/false branches
 -- when the scrutinee is a variable
+-- (i.e. >= version3)
 
+{- 
 not : Bool -> Bool 
 not = \x. if x then False else True
 
@@ -55,6 +38,7 @@ bar = \b. if b then () else True
 
 barnot : (b : Bool) -> T (not b) 
 barnot = \b. if b then False else ()
+-}
 
 -- projections for sigma types
 

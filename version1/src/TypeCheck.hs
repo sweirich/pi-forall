@@ -85,12 +85,20 @@ tcTerm TrustMe (Just ty) = return ty
 tcTerm TyUnit Nothing = return Type
 tcTerm LitUnit Nothing = return TyUnit
 -- i-bool
-tcTerm TyBool Nothing = Env.err [DS "unimplemented"]
+tcTerm TyBool Nothing = return Type
 -- i-true/false
-tcTerm (LitBool b) Nothing = Env.err [DS "unimplemented"]
+tcTerm (LitBool b) Nothing = return TyBool
 -- c-if
-tcTerm t@(If t1 t2 t3) mty = Env.err [DS "unimplemented"]
-tcTerm (Let rhs bnd) mty = Env.err [DS "unimplemented"]
+tcTerm t@(If t1 t2 t3) mty = do
+  checkType t1 TyBool  
+  ty <- inferType t2 
+  checkType t3 ty
+  return ty
+tcTerm (Let rhs bnd) mty = do
+  ty <- inferType rhs
+  (x,body) <- Unbound.unbind bnd
+  Env.extendCtx (mkSig x ty) $ tcTerm body mty
+
 tcTerm t@(Sigma tyA bnd) Nothing = Env.err [DS "unimplemented"]
 tcTerm t@(Prod a b) (Just ty) = Env.err [DS "unimplemented"]
 tcTerm t@(LetPair p bnd) (Just ty) = Env.err [DS "unimplemented"]
