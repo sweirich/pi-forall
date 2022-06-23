@@ -16,7 +16,7 @@ each other.
 Installation
 ----------
 
-  Compiling pi-forall requires GHC and cabal or stack
+  Compiling pi-forall requires GHC and stack
   
   Recommended tools (see links for instructions):
   
@@ -47,6 +47,19 @@ Each implementation has the following structure:
   stack.yaml         
 
 ```
+
+To build each version, go to that directory and type:
+
+```
+stack build
+```
+
+and to typecheck a source file:
+
+```
+stack exec -- pi-forall <sourcefile>
+```
+
 
 Acknowledgement
 ---------------
