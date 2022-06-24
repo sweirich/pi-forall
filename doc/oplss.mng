@@ -772,7 +772,7 @@ This issue is not significant, but we could resolve it by adding an annotation
 before substitution. However, in our implementation of \pif, we do not do so
 to reduce clutter.
 
-\subsection{Homework:  Add Booleans, Let expressions, and
+\subsection{Homework:  Add Booleans and
 $\Sigma$-types (Part I)}
 
 Some fairly standard typing rules for booleans are shown below.
