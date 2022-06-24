@@ -94,12 +94,12 @@ tcTerm (App t1 t2) Nothing = do
   -- if the argument is Irrelevant, resurrect the context
   (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ 
     checkType (unArg t2) tyA
-  return (Unbound.substBind bnd (unArg t2))
+  return (Unbound.instantiate bnd [unArg t2])
   {- STUBWITH 
 
   (tyA,bnd) <- ensurePi ty1
   checkType t2 tyA
-  return (Unbound.substBind bnd t2) -}
+  return (Unbound.instantiate bnd [t2]) -}
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do
