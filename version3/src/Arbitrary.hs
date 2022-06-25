@@ -57,7 +57,7 @@ instance Arbitrary (Unbound.Name a) where
 base :: Gen Term
 base = elements [Type, TrustMe, PrintMe,
                 tyUnit, litUnit, tyBool, 
-                litTrue, litFalse{- SOLN EQUAL -}, Refl {- STUBWITH -} ]
+                litTrue, litFalse, Refl  ]
     where tyUnit = TyUnit
           litUnit = LitUnit
           tyBool = TyBool
@@ -76,7 +76,7 @@ genTerm n
             frequency [
               (1, Var <$> genName),
               (1, genLam n'),
-              (1, App <$> go False n' <*> {- SOLN EP -}genArg {- STUBWITH go True -} n'),
+              (1, App <$> go False n' <*> genArg  n'),
               (1, genPi n'),
               (1, genLet n'),
                             (1, TyEq <$> go True n' <*> go True n'),
@@ -92,19 +92,19 @@ genTerm n
 
 genLam :: Int -> Gen Term
 genLam n = do 
-    p <- (,) <$> genName <*> arbitrary  
-    
+    p <- genName
+    ep <- arbitrary 
     b <- genTerm n
-    return $ Lam (Unbound.bind p b)
+    return $ Lam ep (Unbound.bind p b)
 
 
 genPi :: Int -> Gen Term
 genPi n = do 
-    p <- (,) <$> genName <*> arbitrary 
-    
+    p <- genName
+    ep <- arbitrary 
     tyA <- genTerm n
     tyB <- genTerm n
-    return $ Pi tyA (Unbound.bind p tyB)
+    return $ Pi ep tyA (Unbound.bind p tyB)
 
 genSigma :: Int -> Gen Term
 genSigma n = do
@@ -150,11 +150,11 @@ instance Arbitrary Term where
 
     -- when QC finds a counterexample, it tries to shrink it to find a smaller one
     shrink (App tm arg) = 
-        [tm, {- SOLN EP -}unArg{- STUBWITH -} arg] ++ [App tm' arg | tm' <- QC.shrink tm] 
+        [tm, unArg arg] ++ [App tm' arg | tm' <- QC.shrink tm] 
                         ++ [App tm arg' | arg' <- QC.shrink arg]
 
-    shrink (Lam bnd) = []
-    shrink (Pi tyA bnd) = [tyA]
+    shrink (Lam ep bnd) = []
+    shrink (Pi ep tyA bnd) = [tyA]
     shrink (Let rhs bnd) = [rhs]
     shrink (Sigma tyA bnd) = [tyA]
     shrink (TyEq a b) = [a,b] ++ [TyEq a' b | a' <- QC.shrink a] ++ [TyEq a b' | b' <- QC.shrink b]

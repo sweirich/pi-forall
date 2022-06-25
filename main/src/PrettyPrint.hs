@@ -258,7 +258,7 @@ instance Display (Unbound.Name Term) where
 instance Display Term where
   display Type = return $ PP.text "Type"
   display (Var n) = display n
-  display a@(Lam b) = do
+  display a@(Lam {- SOLN EP -} _ {- STUBWITH -}b) = do
     n <- ask prec
     (binds, body) <- withPrec levelLam $ gatherBinders a
     return $ parens (levelLam < n) $ PP.hang (PP.text "\\" PP.<> PP.sep binds PP.<> PP.text ".") 2 body
@@ -267,8 +267,8 @@ instance Display Term where
     df <- withPrec levelApp (display f)
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
-  display (Pi a bnd) = do
-    Unbound.lunbind bnd $ \((n {- SOLN EP -}, ep {- STUBWITH -}), b) -> do
+  display (Pi {- SOLN EP -} ep {- STUBWITH -}a bnd) = do
+    Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
             if n `elem` toListOf Unbound.fv b
@@ -462,8 +462,8 @@ instance Display ConstructorDef where
 -------------------------------------------------------------------------
 
 gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
-gatherBinders (Lam b) =
-  Unbound.lunbind b $ \((n {- SOLN EP -}, ep {- STUBWITH -}), body) -> do
+gatherBinders (Lam {- SOLN EP -} ep {- STUBWITH -}b) =
+  Unbound.lunbind b $ \(n, body) -> do
     dn <- display n
     let db = {- SOLN EP -} bindParens ep {- STUBWITH -} dn
     (rest, body') <- gatherBinders body
@@ -489,49 +489,6 @@ mandatoryBindParens Rel d = PP.parens d
 mandatoryBindParens Irr d = PP.brackets d
 
 {- STUBWITH -}
-
-{-
--- | decide whether to add parens to the function of an application
-wrapf :: Term -> Doc -> Doc
-wrapf f = case f of
-  Var _ -> id
-  App _ _ -> id
-  Ann a _ -> wrapf a
-  Pos _ a -> wrapf a
-  TrustMe -> id
-  PrintMe -> id
-  _ -> parens
-
--- | decide whether to add parens to an argument in an application
-wraparg :: DispInfo -> {- SOLN EP -} Arg {- STUBWITH Term -} -> Doc -> Doc
-wraparg st a = {- SOLN EP -} case unArg a of {- STUBWITH case a of -}
-  Var _ -> std
-  Type -> std
-  TyUnit -> std
-  LitUnit -> std
-  TyBool -> std
-  LitBool b -> std
-  Sigma _ _ -> std
-  Prod _ _ -> force
-  Ann b _ -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
-  Pos _ b -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
-  TrustMe -> std
-  PrintMe -> std
-{- SOLN DATA -}
-  TCon _ [] -> std
-  (isNumeral -> Just x) -> std
-  DCon _ [] -> std
-  {- STUBWITH -}
-{- SOLN EQUAL -}
-  Refl -> std
-  {- STUBWITH -}
-  _ -> force
-  where
-    std = {- SOLN EP -} bindParens (argEp a)
-    {- STUBWITH id -}
-    force = {- SOLN EP -} mandatoryBindParens (argEp a)
-    {- STUBWITH parens -}
--}    
 
 -------------------------------------------------------------------------
 

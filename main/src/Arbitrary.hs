@@ -71,9 +71,9 @@ genDCName = elements dcNames
 base :: Gen Term
 base = elements [Type, TrustMe, PrintMe,
                 tyUnit, litUnit, tyBool, 
-                litTrue, litFalse{- SOLN EQUAL -}, Refl {- STUBWITH -} ]
-    where tyUnit = {- SOLN DATA -}TCon "Unit" [] {- STUBWITH TyUnit -}
-          litUnit = {- SOLN DATA -}DCon "()" [] {- STUBWITH LitUnit -}
+                litTrue, litFalse{- SOLN EQUAL -} , Refl {- STUBWITH -} ]
+    where tyUnit = {- SOLN DATA -} TCon "Unit" [] {- STUBWITH TyUnit -}
+          litUnit = {- SOLN DATA -} DCon "()" [] {- STUBWITH LitUnit -}
           tyBool = {- SOLN DATA -} TCon "Bool" [] {- STUBWITH TyBool -}
           litTrue = {- SOLN DATA -} DCon "True" [] {- STUBWITH LitBool True -}
           litFalse = {- SOLN DATA -} DCon "False" [] {- STUBWITH LitBool False -}
@@ -90,7 +90,7 @@ genTerm n
             frequency [
               (1, Var <$> genName),
               (1, genLam n'),
-              (1, App <$> go False n' <*> {- SOLN EP -}genArg {- STUBWITH go True -} n'),
+              (1, App <$> go False n' <*> {- SOLN EP -} genArg {- STUBWITH go True -} n'),
               (1, genPi n'),
               (1, genLet n'),
               {- SOLN EQUAL -}
@@ -111,21 +111,21 @@ genTerm n
 
 genLam :: Int -> Gen Term
 genLam n = do 
+    p <- genName
 {- SOLN EP -}
-    p <- (,) <$> genName <*> arbitrary  
-    {- STUBWITH     p <- genName -}
+    ep <- arbitrary {- STUBWITH  -}
     b <- genTerm n
-    return $ Lam (Unbound.bind p b)
+    return $ Lam {- SOLN EP -} ep{- STUBWITH -} (Unbound.bind p b)
 
 
 genPi :: Int -> Gen Term
 genPi n = do 
+    p <- genName
 {- SOLN EP -}
-    p <- (,) <$> genName <*> arbitrary 
-    {- STUBWITH     p <- genName -}
+    ep <- arbitrary {- STUBWITH  -}
     tyA <- genTerm n
     tyB <- genTerm n
-    return $ Pi tyA (Unbound.bind p tyB)
+    return $ Pi {- SOLN EP -} ep{- STUBWITH -} tyA (Unbound.bind p tyB)
 
 genSigma :: Int -> Gen Term
 genSigma n = do
@@ -193,11 +193,11 @@ instance Arbitrary Term where
 
     -- when QC finds a counterexample, it tries to shrink it to find a smaller one
     shrink (App tm arg) = 
-        [tm, {- SOLN EP -}unArg{- STUBWITH -} arg] ++ [App tm' arg | tm' <- QC.shrink tm] 
+        [tm, {- SOLN EP -} unArg{- STUBWITH -} arg] ++ [App tm' arg | tm' <- QC.shrink tm] 
                         ++ [App tm arg' | arg' <- QC.shrink arg]
 
-    shrink (Lam bnd) = []
-    shrink (Pi tyA bnd) = [tyA]
+    shrink (Lam {- SOLN EP -} ep {- STUBWITH -}bnd) = []
+    shrink (Pi {- SOLN EP -} ep {- STUBWITH -}tyA bnd) = [tyA]
     shrink (Let rhs bnd) = [rhs]
     shrink (Sigma tyA bnd) = [tyA]
 {- SOLN EQUAL -}

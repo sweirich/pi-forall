@@ -118,7 +118,7 @@ type LParser a = ParsecT
                     String                      -- The input is a sequence of Char
                     [Column] (                  -- The internal state for Layout tabs
 
-                    Unbound.FreshM)                  -- The internal state for generating fresh names, 
+                    Unbound.FreshM)             -- The internal state for generating fresh names, 
                     a                           -- the type of the object being parsed
 
 instance Unbound.Fresh (ParsecT s u Unbound.FreshM)  where
@@ -276,7 +276,7 @@ expr = do
         mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi tyA (Unbound.bind (n) tyB)
+               Pi tyA (Unbound.bind n tyB)
         mkTupleType = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
@@ -421,7 +421,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi a (Unbound.bind (x) b))
+                      return $ Pi a (Unbound.bind x b))
          Colon a b -> return $ Ann a b
       
          Comma a b -> 

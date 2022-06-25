@@ -64,10 +64,6 @@ goFilename pathToMainFile = do
   putStrLn $ render $ disp (last defs)
 
 
-
-        
-  
-
 -- | 'pi <filename>' invokes the type checker on the given 
 -- file and either prints the types of all definitions in the module
 -- or prints an error message.

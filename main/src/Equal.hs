@@ -24,19 +24,19 @@ equate t1 t2 = do
   case (n1, n2) of 
     (Type, Type) -> return ()
     (Var x,  Var y) | x == y -> return ()
-    (Lam bnd1, Lam bnd2) -> do
+    (Lam {- SOLN EP -} ep1 {- STUBWITH -}bnd1, Lam {- SOLN EP -} ep2 {- STUBWITH -}bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
+{- SOLN EP -} 
+      unless (ep1 == ep2) $
+          tyErr n1 n2 {- STUBWITH -}
       equate b1 b2
     (App a1 a2, App b1 b2) ->
       equate a1 b1 >> {- SOLN EP -} equateArg{- STUBWITH equate -} a2 b2
-    (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do 
+    (Pi {- SOLN EP -} ep1 {- STUBWITH -}tyA1 bnd1, Pi {- SOLN EP -} ep2 {- STUBWITH -}tyA2 bnd2) -> do 
+      (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
 {- SOLN EP -} 
-      ((_,ep1), tyB1, 
-       (_,ep2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
       unless (ep1 == ep2) $
-          tyErr n1 n2 {- STUBWITH 
-
-      (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 -}
+          tyErr n1 n2 {- STUBWITH -}
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -142,13 +142,12 @@ equateArg a1 a2 =
 -- the type.
 -- Throws an error if this is not the case.
 ensurePi :: Type -> 
-  TcMonad (TName, {- SOLN EP -}Epsilon, {- STUBWITH -} Type, Type)
+  TcMonad ({- SOLN EP -} Epsilon, {- STUBWITH -} Type, (Unbound.Bind TName Type))
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
-    (Pi tyA bnd) -> do 
-      ((x{- SOLN EP -},ep{- STUBWITH -}), tyB) <- Unbound.unbind bnd
-      return (x,{- SOLN EP -}ep,{- STUBWITH -} tyA, tyB)
+    (Pi {- SOLN EP -} ep {- STUBWITH -} tyA bnd) -> do 
+      return ({- SOLN EP -} ep,{- STUBWITH -} tyA, bnd)
     _ -> Env.err [DS "Expected a function type, instead found", DD nf]
     
     
@@ -195,15 +194,8 @@ whnf (Var x) = do
 whnf (App t1 t2) = do
   nf <- whnf t1 
   case nf of 
-    (Lam bnd) -> do
-{- SOLN EP -} 
-
-      ((x, _), body) <- Unbound.unbind bnd
-      whnf (Unbound.subst x (unArg t2) body)
-      {- STUBWITH 
-      
-      (x, body) <- Unbound.unbind bnd 
-      whnf (Unbound.subst x t2 body) -}
+    (Lam {- SOLN EP -} ep {- STUBWITH -} bnd) -> do
+      whnf (Unbound.instantiate bnd {- SOLN EP -} [unArg t2] {- STUBWITH [t2] -})
     _ -> do
       return (App nf t2)
       
@@ -217,8 +209,7 @@ whnf (LetPair a bnd) = do
   nf <- whnf a 
   case nf of 
     Prod b1 c -> do
-      ((x,y), body) <- Unbound.unbind bnd
-      whnf (Unbound.subst x b1 (Unbound.subst y c body))
+      whnf (Unbound.instantiate bnd [b1, c])
     _ -> return (LetPair nf bnd)
 
 -- ignore/remove type annotations and source positions when normalizing  
@@ -227,8 +218,8 @@ whnf (Pos _ tm) = whnf tm
  
 {- SOLN HW -}
 whnf (Let rhs bnd)  = do
-  (x,body) <- Unbound.unbind bnd
-  whnf (Unbound.subst x rhs body){- STUBWITH -}  
+  -- (x,body) <- Unbound.unbind bnd
+  whnf (Unbound.instantiate bnd [rhs]){- STUBWITH -}  
 {- SOLN EQUAL -}  
 whnf (Subst tm pf) = do
   pf' <- whnf pf
@@ -288,14 +279,13 @@ unify ns tx ty = do
         | s1 == s2 -> unifyArgs tms1 tms2
       (DCon s1 a1s, DCon s2 a2s)
         | s1 == s2 -> unifyArgs a1s a2s
-      (Lam bnd1, Lam bnd2) -> do
-        ((x,ep1), b1, (_, ep2), b2) <- Unbound.unbind2Plus bnd1 bnd2
+      (Lam ep1 bnd1, Lam ep2 bnd2) -> do
+        (x, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
         unless (ep1 == ep2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
         unify (x:ns) b1 b2
-      (Pi tyA1 bnd1, Pi tyA2 bnd2) -> do
-        ((x, ep1), tyB1, 
-         (_, ep2), tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+      (Pi ep1 tyA1 bnd1, Pi ep2 tyA2 bnd2) -> do
+        (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
         unless (ep1 == ep2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
         ds1 <- unify ns tyA1 tyA2

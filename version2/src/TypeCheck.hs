@@ -13,8 +13,9 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
 import Syntax
+import Debug.Trace
 
-import Text.PrettyPrint.HughesPJ (($$))
+import Text.PrettyPrint.HughesPJ (($$), render)
 
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
@@ -56,23 +57,23 @@ tcTerm (Pi tyA bnd) Nothing = do
   Env.extendCtx (mkSig x tyA) (tcType tyB)
   return Type
 -- c-lam: check the type of a function
-tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
+tcTerm (Lam  bnd) (Just (Pi tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
-  (x, body,_, tyB) <- Unbound.unbind2Plus bnd bnd2
+  (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
 
   -- check the type of the body of the lambda expression
   Env.extendCtx (mkSig x tyA) (checkType body tyB)
-  return (Pi tyA bnd2)
+  return (Pi  tyA bnd2)
 tcTerm (Lam _) (Just nf) =
-  Env.err [DS "Lambda expression should have a function type, not ", DD nf]
+  Env.err [DS "Lambda expression should have a function type, not", DD nf]
 -- i-app
 tcTerm (App t1 t2) Nothing = do
   ty1 <- inferType t1 
   let ensurePi = Equal.ensurePi 
   
-  (x,tyA,tyB) <- ensurePi ty1
+  (tyA,bnd) <- ensurePi ty1
   checkType t2 tyA
-  return (Unbound.subst x t2 tyB)
+  return (Unbound.substBind bnd t2)
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do
@@ -101,20 +102,20 @@ tcTerm (LitBool b) Nothing = do
 
 
 -- c-if
-tcTerm t@(If t1 t2 t3) (Just ty) = do
+tcTerm t@(If t1 t2 t3) mty = do
   checkType t1 TyBool
   dtrue <- def t1 (LitBool True)
   dfalse <- def t1 (LitBool False)
-  Env.extendCtxs dtrue $ checkType t2 ty
+  ty <- Env.extendCtxs dtrue $ tcTerm t2 mty
   Env.extendCtxs dfalse $ checkType t3 ty
   return ty
 
 
-tcTerm (Let rhs bnd) ann = do
+tcTerm (Let rhs bnd) mty = do
   (x, body) <- Unbound.unbind bnd
   aty <- inferType rhs 
   ty <- Env.extendCtxs [mkSig x aty, Def x rhs] $
-      tcTerm body ann
+      tcTerm body mty
   when (x `elem` Unbound.toListOf Unbound.fv ty) $
     Env.err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]
   return ty
@@ -129,7 +130,7 @@ tcTerm Refl (Just ty@(TyEq a b)) = do
   Equal.equate a b
   return ty
 tcTerm Refl (Just ty) = 
-  Env.err [DS "Refl annotated with ", DD ty]
+  Env.err [DS "Refl annotated with", DD ty]
 tcTerm t@(Subst a b) (Just ty) = do
   -- infer the type of the proof 'b'
   tp <- inferType b
@@ -201,8 +202,8 @@ tcTerm t@(LetPair p bnd) (Just ty) = do
 
 tcTerm PrintMe (Just ty) = do
   gamma <- Env.getLocalCtx
-  Env.warn [DS "Unmet obligation.\nContext: ", DD gamma,
-        DS "\nGoal: ", DD ty]
+  Env.warn [DS "Unmet obligation.\nContext:", DD gamma,
+        DS "\nGoal:", DD ty]
   return ty
 
 -- c-infer
@@ -213,7 +214,7 @@ tcTerm tm (Just ty) = do
   return ty'
 
 tcTerm tm Nothing = 
-  Env.err [DS "Must have a type annotation to check ", DD tm]
+  Env.err [DS "Must have a type annotation to check", DD tm]
 
 ---------------------------------------------------------------------
 -- helper functions for type checking
@@ -224,6 +225,7 @@ def t1 t2 = do
     nf1 <- Equal.whnf t1
     nf2 <- Equal.whnf t2
     case (nf1, nf2) of
+      (Var x, Var y) | x == y -> return []
       (Var x, _) -> return [Def x nf2]
       (_, Var x) -> return [Def x nf1]
       _ -> return []
@@ -299,7 +301,7 @@ tcEntry (Def n term) = do
               msg' =
                 disp
                   [ 
-                    DS "When checking the term ",
+                    DS "When checking the term",
                     DD term,
                     DS "against the signature",
                     DD sig
@@ -340,7 +342,7 @@ duplicateTypeBindingCheck sig = do
     sig' : _ ->
       let (Pos p _) = sigType sig
           msg =
-            [ DS "Duplicate type signature ",
+            [ DS "Duplicate type signature",
               DD sig,
               DS "Previous was",
               DD sig'

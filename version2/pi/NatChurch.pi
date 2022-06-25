@@ -17,11 +17,17 @@ one = s z
 two : nat
 two = s (s z)
 
+three : nat
+three = TRUSTME   -- replace with correct definition of 3
+
 plus : nat -> nat -> nat
 plus = \x. \y. x nat y s
 
 test0 : plus one one = two
 test0 = Refl
+
+test1 : plus one two = three
+test1 = TRUSTME  -- replace with Refl
 
 spec0 : (n : nat) -> plus z n = n
 spec0 = \n . Refl
@@ -29,7 +35,8 @@ spec0 = \n . Refl
 spec1 : (n : nat) -> (m : nat) -> plus (s n) m  = s (plus n m)
 spec1 = \n m . Refl
 
--- this one is *really* tricky!
+-- The predecessor function is *really* tricky! Don't try this 
+-- first if you have never seen it before.
 
 pred : nat -> nat
 pred = TRUSTME
@@ -64,13 +71,13 @@ scott_three = scott_s (scott_s (scott_s scott_z))
 scott_pred : scott_nat -> scott_nat
 scott_pred = TRUSTME
 
-test1 : scott_pred scott_two = scott_one
-test1 = TRUSTME -- replace with Refl
+testNC1 : scott_pred scott_two = scott_one
+testNC1 = TRUSTME -- replace with Refl
 
 -- Now write plus: with Scott encoded nats, note that you need to use recursion.
 
 scott_plus : scott_nat -> scott_nat -> scott_nat 
 scott_plus = TRUSTME
 
-test2 : scott_plus scott_one scott_two = scott_three
-test2 = TRUSTME -- replace with Refl
+testNC2 : scott_plus scott_one scott_two = scott_three
+testNC2 = TRUSTME -- replace with Refl

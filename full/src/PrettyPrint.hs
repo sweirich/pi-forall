@@ -252,7 +252,7 @@ instance Display (Unbound.Name Term) where
 instance Display Term where
   display Type = return $ PP.text "Type"
   display (Var n) = display n
-  display a@(Lam b) = do
+  display a@(Lam _ b) = do
     n <- ask prec
     (binds, body) <- withPrec levelLam $ gatherBinders a
     return $ parens (levelLam < n) $ PP.hang (PP.text "\\" PP.<> PP.sep binds PP.<> PP.text ".") 2 body
@@ -261,8 +261,8 @@ instance Display Term where
     df <- withPrec levelApp (display f)
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
-  display (Pi a bnd) = do
-    Unbound.lunbind bnd $ \((n {- SOLN EP -}, ep {- STUBWITH -}), b) -> do
+  display (Pi ep a bnd) = do
+    Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
             if n `elem` toListOf Unbound.fv b
@@ -452,8 +452,8 @@ instance Display ConstructorDef where
 -------------------------------------------------------------------------
 
 gatherBinders :: Term -> DispInfo -> ([Doc], Doc)
-gatherBinders (Lam b) =
-  Unbound.lunbind b $ \((n {- SOLN EP -}, ep {- STUBWITH -}), body) -> do
+gatherBinders (Lam ep b) =
+  Unbound.lunbind b $ \(n, body) -> do
     dn <- display n
     let db = bindParens ep  dn
     (rest, body') <- gatherBinders body
@@ -477,47 +477,6 @@ mandatoryBindParens Rel d = PP.parens d
 mandatoryBindParens Irr d = PP.brackets d
 
 
-
-{-
--- | decide whether to add parens to the function of an application
-wrapf :: Term -> Doc -> Doc
-wrapf f = case f of
-  Var _ -> id
-  App _ _ -> id
-  Ann a _ -> wrapf a
-  Pos _ a -> wrapf a
-  TrustMe -> id
-  PrintMe -> id
-  _ -> parens
-
--- | decide whether to add parens to an argument in an application
-wraparg :: DispInfo -> Arg  -> Doc -> Doc
-wraparg st a = case unArg a of 
-  Var _ -> std
-  Type -> std
-  TyUnit -> std
-  LitUnit -> std
-  TyBool -> std
-  LitBool b -> std
-  Sigma _ _ -> std
-  Prod _ _ -> force
-  Ann b _ -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
-  Pos _ b -> wraparg st {- SOLN EP -}a{unArg = b} {- STUBWITH b -}
-  TrustMe -> std
-  PrintMe -> std
-  TCon _ [] -> std
-  (isNumeral -> Just x) -> std
-  DCon _ [] -> std
-  
-  Refl -> std
-  
-  _ -> force
-  where
-    std = bindParens (argEp a)
-    
-    force = mandatoryBindParens (argEp a)
-    
--}    
 
 -------------------------------------------------------------------------
 

@@ -4,8 +4,10 @@ resolver: lts-18.28
 packages:
 - '.'
 
-extra-deps: 
-- unbound-generics-0.4.1@sha256:5020e8397dad610846cbd5bdc855e20edf9b9cb74f93f6c09488bba21118c409,5485
+extra-deps:
+- git: git@github.com:lambdageek/unbound-generics.git
+  commit: a2a558058012b09bb313b3eb03cddb734fcf4a98
+
 
 flags: {}
 

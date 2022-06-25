@@ -99,12 +99,14 @@ genTerm n
 genLam :: Int -> Gen Term
 genLam n = do
   p <- genName
+
   b <- genTerm n
   return $ Lam (Unbound.bind p b)
 
 genPi :: Int -> Gen Term
 genPi n = do
   p <- genName
+
   tyA <- genTerm n
   tyB <- genTerm n
   return $ Pi tyA (Unbound.bind p tyB)

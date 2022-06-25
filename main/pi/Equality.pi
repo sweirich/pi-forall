@@ -112,6 +112,8 @@ j = \[A][C] t x y p . subst (t x) by p
 -- I don't think so. At least not without some 
 -- form of heterogenous equality
 
+{- -- Don't work, and I don't think it ever will.
 k' : [A:Type] -> (x:A) -> (p : x = x) -> (p = Refl)
 k' = \ [A] x p . 
       j [A] [\ x y p . p = Refl] x x Refl
+-}

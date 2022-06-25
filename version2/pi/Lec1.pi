@@ -18,21 +18,16 @@ idT = (x:Type) -> x -> x
 selfapp : idT -> idT
 selfapp = (\x.x : (idT -> idT) -> (idT -> idT)) (\x.x)
 
--- some Church encodings: booleans
+-- Church encoding: booleans
 
-bool : Type 
-bool = (A:Type) -> A -> A -> A 
-
-true : bool
+true : (A:Type) -> A -> A -> A 
 true = \A x y. x
 
-false : bool
+false : (A:Type) -> A -> A -> A 
 false = \A x y. y
 
-cond : bool -> (x:Type) -> x -> x -> x
+cond : ((A:Type) -> A -> A -> A) -> (x:Type) -> x -> x -> x
 cond = \ b . b 
-
-
 
 -- void type
 
@@ -42,10 +37,31 @@ void = (x:Type) -> x
 -- inhabited by diverging term
 
 loop : (x:Type) -> x
-loop = loop
+loop = \x. loop x
 
 -- unit type 
 
 unit : Type
 unit = (x:Type) -> x -> x
 
+-- this code only type checks with a definition of type equality that 
+-- includes beta-equivalence/definitions (i.e. >= version2)
+
+-- Church encoding of simply-typed pairs
+{-
+
+pair : Type -> Type -> Type
+pair = \p. \q. (c: Type) -> (p -> q -> c) -> c
+
+prod : (p:Type) -> (q:Type) -> p -> q -> pair p q
+prod = \p.\q. \x.\y. \c. \f. f x y
+
+proj1 : (p:Type) -> (q:Type) -> pair p q -> p
+proj1  = \p. \q. \a. a p (\x.\y.x)
+
+proj2 : (p:Type) -> (q:Type) -> pair p q -> q
+proj2  = \p. \q. \a. a q (\x.\y.y)
+
+swap : (p:Type) -> (q:Type) -> pair p q -> pair q p
+swap = \p. \q. \a. prod q p (proj2 p q a) (proj1 p q a)
+-}

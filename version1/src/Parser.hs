@@ -256,7 +256,7 @@ expr = do
       do
         n <- Unbound.fresh wildcardName
         return $ \tyA tyB ->
-          Pi tyA (Unbound.bind (n) tyB)
+          Pi tyA (Unbound.bind n tyB)
     mkTupleType =
       do
         n <- Unbound.fresh wildcardName
@@ -398,7 +398,7 @@ expProdOrAnnotOrParens =
               (Ann (Var x) a)
               ( do
                   b <- afterBinder
-                  return $ Pi a (Unbound.bind (x) b)
+                  return $ Pi a (Unbound.bind x b)
               )
           Colon a b -> return $ Ann a b
           Comma a b ->

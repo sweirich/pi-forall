@@ -45,11 +45,11 @@ data Term
   | -- | variables  `x`
     Var TName
   | -- | abstraction  `\x. a`
-    Lam (Unbound.Bind {- SOLN EP -}(TName, Epsilon){- STUBWITH TName -} Term)
+    Lam Epsilon (Unbound.Bind TName Term)
   | -- | application `a b`
-    App Term {- SOLN EP -}Arg{- STUBWITH Term -}
+    App Term Arg
   | -- | function type   `(x : A) -> B`
-    Pi Type (Unbound.Bind {- SOLN EP -}(TName, Epsilon){- STUBWITH TName -} Type)
+    Pi Epsilon Type (Unbound.Bind TName Type)
   | -- | annotated terms `( a : A )`
     Ann Term Type
   | -- | marked source position, for error messages
@@ -131,7 +131,7 @@ newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
 -- | A type declaration (or type signature)
-data Sig = Sig {sigName :: TName {- SOLN EP -}, sigEp :: Epsilon {- STUBWITH -}, sigType :: Type}
+data Sig = Sig {sigName :: TName , sigEp :: Epsilon  , sigType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 -- | Declare the type of a term
@@ -224,11 +224,11 @@ yName = Unbound.string2Name "y"
 
 -- '\x -> x`
 idx :: Term
-idx = Lam (Unbound.bind {- SOLN EP -}(xName, Rel){- STUBWITH xName -} (Var xName))
+idx = Lam Rel (Unbound.bind xName (Var xName))
 
 -- '\y -> y`
 idy :: Term
-idy = Lam (Unbound.bind {- SOLN EP -}(yName, Rel){- STUBWITH yName -} (Var yName))
+idy = Lam Rel (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq idx idy
 -- True
@@ -252,14 +252,15 @@ instance Unbound.Subst Term Term where
 
 -- '(y : x) -> y'
 pi1 :: Term 
-pi1 = Pi (Var xName) (Unbound.bind {- SOLN EP -}(yName, Rel){- STUBWITH yName -} (Var yName))
+pi1 = Pi Rel (Var xName) (Unbound.bind yName (Var yName))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi TyBool (Unbound.bind {- SOLN EP -}(yName, Rel){- STUBWITH yName -} (Var yName))
+pi2 = Pi Rel TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
 -- True
+-- 
 
 
 
@@ -285,7 +286,7 @@ instance Unbound.Alpha SourcePos where
   acompare' _ _ _ = EQ
 
 -- Substitutions ignore source positions
-instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id
+instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substPat _ _ = id
 
 -- Internally generated source positions
 internalPos :: SourcePos

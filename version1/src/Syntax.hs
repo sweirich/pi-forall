@@ -219,6 +219,7 @@ pi2 = Pi TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
 -- True
+--
 
 -----------------
 
@@ -242,7 +243,7 @@ instance Unbound.Alpha SourcePos where
   acompare' _ _ _ = EQ
 
 -- Substitutions ignore source positions
-instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id
+instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substPat _ _ = id
 
 -- Internally generated source positions
 internalPos :: SourcePos

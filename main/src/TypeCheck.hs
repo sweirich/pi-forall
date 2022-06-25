@@ -40,7 +40,7 @@ checkType tm ty = {- SOLN EQUAL -} do
 
 -- | Make sure that the term is a "type" (i.e. that it has type 'Type')
 tcType :: Term -> TcMonad ()
-tcType tm = void $ {- SOLN EP -}Env.withStage Irr $ {- STUBWITH -}checkType tm Type
+tcType tm = void $ {- SOLN EP -} Env.withStage Irr $ {- STUBWITH -}checkType tm Type
 
 ---------------------------------------------------------------------
 
@@ -57,22 +57,22 @@ tcTerm t@(Var x) Nothing = do
 -- i-type
 tcTerm Type Nothing = return Type
 -- i-pi
-tcTerm (Pi tyA bnd) Nothing = do
-  ({- SOLN EP -}(x,ep){- STUBWITH x -}, tyB) <- Unbound.unbind bnd
+tcTerm (Pi {- SOLN EP -} ep {- STUBWITH -}tyA bnd) Nothing = do
+  (x, tyB) <- Unbound.unbind bnd
   tcType tyA
   Env.extendCtx {- SOLN EP -} (TypeSig (Sig x ep tyA)){- STUBWITH (mkSig x tyA) -} (tcType tyB)
   return Type
 -- c-lam: check the type of a function
-tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = do
+tcTerm (Lam {- SOLN EP -} ep1 {- STUBWITH -} bnd) (Just (Pi {- SOLN EP -} ep2 {- STUBWITH -}tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
-  ({- SOLN EP -}(x,ep1){- STUBWITH x -}, body,{- SOLN EP -}(_,ep2){- STUBWITH _ -}, tyB) <- Unbound.unbind2Plus bnd bnd2
+  (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
 {- SOLN EP -} -- epsilons should match up
   unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
                                  DS "but found", DD ep1, DS "instead."] {- STUBWITH -}
   -- check the type of the body of the lambda expression
   Env.extendCtx {- SOLN EP -} (TypeSig (Sig x ep1 tyA)){- STUBWITH (mkSig x tyA) -} (checkType body tyB)
-  return (Pi tyA bnd2)
-tcTerm (Lam _) (Just nf) =
+  return (Pi {- SOLN EP -} ep1{- STUBWITH -} tyA bnd2)
+tcTerm (Lam {- SOLN EP -} _ {- STUBWITH -}_) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not", DD nf]
 -- i-app
 tcTerm (App t1 t2) Nothing = do
@@ -81,27 +81,25 @@ tcTerm (App t1 t2) Nothing = do
   let ensurePi = Equal.ensurePi 
   {- STUBWITH
 
-  let ensurePi :: Type -> TcMonad (TName, Type, Type) 
+  let ensurePi :: Type -> TcMonad (Type, Unbound.Bind TName Type) 
       ensurePi (Ann a _) = ensurePi a 
       ensurePi (Pos _ a) = ensurePi a
-      ensurePi (Pi tyA bnd) = do
-        (x, tyB) <- Unbound.unbind bnd
-        return (x,tyA,tyB)
+      ensurePi (Pi tyA bnd) = return (tyA,bnd)
       ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty] -}
 {- SOLN EP -}
-  (x, ep1, tyA, tyB) <- ensurePi ty1
+  (ep1, tyA, bnd) <- ensurePi ty1
   unless (ep1 == argEp t2) $ Env.err 
     [DS "In application, expected", DD ep1, DS "argument but found", 
                                     DD t2, DS "instead." ]
   -- if the argument is Irrelevant, resurrect the context
   (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ 
     checkType (unArg t2) tyA
-  return (Unbound.subst x (unArg t2) tyB)
+  return (Unbound.instantiate bnd [unArg t2])
   {- STUBWITH 
 
-  (x,tyA,tyB) <- ensurePi ty1
+  (tyA,bnd) <- ensurePi ty1
   checkType t2 tyA
-  return (Unbound.subst x t2 tyB) -}
+  return (Unbound.instantiate bnd [t2]) -}
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do
@@ -539,7 +537,7 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [TypeSig (Sig n {- SOLN EP -}Rel{- STUBWITH -} ty), Def n term]
+          return $ AddCtx [TypeSig (Sig n {- SOLN EP -} Rel{- STUBWITH -} ty), Def n term]
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
