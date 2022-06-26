@@ -1,548 +1,463 @@
-@techreport{Coc,
-  TITLE = {{The calculus of constructions}},
-  AUTHOR = {Coquand, T. and Huet, G{\'e}rard},
-  URL = {https://hal.inria.fr/inria-00076024},
-  NUMBER = {RR-0530},
-  INSTITUTION = {{INRIA}},
-  YEAR = {1986},
-  MONTH = May,
-  PDF = {https://hal.inria.fr/inria-00076024/file/RR-0530.pdf},
-  HAL_ID = {inria-00076024},
-  HAL_VERSION = {v1},
+@phdthesis{abel_2013,
+  title  = {{Normalization by Evaluation: Dependent Types and Impredicativity}},
+  author = {Abel, Andreas},
+  year   = {2013},
+  type   = {Habilitation thesis},
+  school = {Ludwig-Maximilians-Universität München},
+  url    = {http://www.cse.chalmers.se/~abela/habil.pdf}
 }
-
-@inproceedings{idris2,
-  author    = {Edwin C. Brady},
-  editor    = {Anders M{\o}ller and
-               Manu Sridharan},
-  title     = {Idris 2: Quantitative Type Theory in Practice},
-  booktitle = {35th European Conference on Object-Oriented Programming, {ECOOP} 2021,
-               July 11-17, 2021, Aarhus, Denmark (Virtual Conference)},
-  series    = {LIPIcs},
-  volume    = {194},
-  pages     = {9:1--9:26},
-  publisher = {Schloss Dagstuhl - Leibniz-Zentrum f{\"{u}}r Informatik},
-  year      = {2021},
-  url       = {https://doi.org/10.4230/LIPIcs.ECOOP.2021.9},
-  doi       = {10.4230/LIPIcs.ECOOP.2021.9},
-  timestamp = {Sun, 25 Jul 2021 11:47:10 +0200},
-  biburl    = {https://dblp.org/rec/conf/ecoop/Brady21.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
-}
-
-@inproceedings{pfenning:2001,
- author = {Pfenning, Frank},
- title = {Intensionality, Extensionality, and Proof Irrelevance in Modal Type Theory},
- booktitle = {Proceedings of the 16th Annual IEEE Symposium on Logic in Computer Science},
- series = {LICS '01},
- year = {2001},
- pages = {221--},
- url = {http://dl.acm.org/citation.cfm?id=871816.871845},
- acmid = {871845},
- publisher = {IEEE Computer Society},
- address = {Washington, DC, USA},
-}
-
-
-
-@article{weirich:systemd,
- author = {Weirich, Stephanie and Voizard, Antoine and de Amorim, Pedro Henrique Avezedo and Eisenberg, Richard A.},
- title = {A Specification for Dependent Types in {Haskell}},
- journal = {Proc. ACM Program. Lang.},
- issue_date = {September 2017},
- volume = {1},
- number = {ICFP},
- month = aug,
- year = {2017},
- issn = {2475-1421},
- pages = {31:1--31:29},
- articleno = {31},
- numpages = {29},
- doi = {10.1145/3110275},
- acmid = {3110275},
- publisher = {ACM},
- address = {New York, NY, USA},
- keywords = {Dependent Types, Haskell},
- plclub = {yes}
-}
-
 
 @article{abel-scherer,
-	doi = {10.2168/lmcs-8(1:29)2012},
-	year = 2012,
-	month = {mar},
-	publisher = {Logical Methods in Computer Science e.V.},
-	volume = {8},
-	number = {1},
-	author = {Andreas Abel and Gabriel Scherer},
-	editor = {Pawel Urzyczyn},
-	title = {On Irrelevance and Algorithmic Equality in Predicative Type Theory},
-	journal = {Logical Methods in Computer Science}
+  title     = {{On Irrelevance and Algorithmic Equality in Predicative Type Theory}},
+  author    = {Andreas Abel and Gabriel Scherer},
+  year      = 2012,
+  month     = {mar},
+  journal   = {Logical Methods in Computer Science},
+  editor    = {Pawel Urzyczyn},
+  publisher = {Logical Methods in Computer Science e.V.},
+  volume    = {8},
+  number    = {1},
+  doi       = {10.2168/lmcs-8(1:29)2012}
 }
-
-@InProceedings{miquel,
-author="Miquel, Alexandre",
-editor="Abramsky, Samson",
-title="The Implicit Calculus of Constructions Extending Pure Type Systems with an Intersection Type Binder and Subtyping",
-booktitle="Typed Lambda Calculi and Applications",
-year="2001",
-publisher="Springer Berlin Heidelberg",
-address="Berlin, Heidelberg",
-pages="344--359",
-abstract="In this paper, we introduce a new type system, the Implicit Calculus of Constructions, which is a Curry-style variant of the Calculus of Constructions that we extend by adding an intersection type binder---called the implicit dependent product. Unlike the usual approach of Type Assignment Systems, the implicit product can be used at every place in the universe hierarchy. We study syntactical properties of this calculus such as the $\beta$$\eta$-subject reduction property, and we show that the implicit product induces a rich subtyping relation over the type system in a natural way. We also illustrate the specificities of this calculus by revisiting the impredicative encodings of the Calculus of Constructions, and we show that their translation into the implicit calculus helps to reflect the computational meaning of the underlying terms in a more accurate way.",
-isbn="978-3-540-45413-7"
-}
-
-@InProceedings{icc-star,
-author="Barras, Bruno
-and Bernardo, Bruno",
-editor="Amadio, Roberto",
-title="The Implicit Calculus of Constructions as a Programming Language with Dependent Types",
-booktitle="Foundations of Software Science and Computational Structures",
-year="2008",
-publisher="Springer Berlin Heidelberg",
-address="Berlin, Heidelberg",
-pages="365--379",
-abstract="In this paper, we show how Miquel's Implicit Calculus of Constructions (ICC) can be used as a programming language featuring dependent types. Since this system has an undecidable type-checking, we introduce a more verbose variant, called ICC* which fixes this issue. Datatypes and program specifications are enriched with logical assertions (such as preconditions, postconditions, invariants) and programs are decorated with proofs of those assertions. The point of using ICC* rather than the Calculus of Constructions (the core formalism of the Coq proof assistant) is that all of the static information (types and proof objects) is transparent, in the sense that it does not affect the computational behavior. This is concretized by a built-in extraction procedure that removes this static information. We also illustrate the main features of ICC* on classical examples of dependently typed programs.",
-isbn="978-3-540-78499-9"
-}
-
-@inproceedings{mishra-linger:epts,
-author = {Mishra-Linger, Nathan and Sheard, Tim},
-title = {Erasure and Polymorphism in Pure Type Systems},
-year = {2008},
-isbn = {3540784977},
-publisher = {Springer-Verlag},
-address = {Berlin, Heidelberg},
-abstract = {We introduce Erasure Pure Type Systems, an extension to Pure Type Systems with an erasure semantics centered around a type constructor ¬ indicating parametric polymorphism. The erasure phase is guided by lightweight program annotations. The typing rules guarantee that well-typed programs obey a phase distinction between erasable (compile-time) and non-erasable (run-time) terms.The erasability of an expression depends only on how its value is used in the rest of the program. Despite this simple observation, most languages treat erasability as an intrinsic property of expressions, leading to code duplication problems. Our approach overcomes this deficiency by treating erasability extrinsically.Because the execution model of EPTS generalizes the familiar notions of type erasure and parametric polymorphism, we believe functional programmers will find it quite natural to program in such a setting.},
-booktitle = {Proceedings of the Theory and Practice of Software, 11th International Conference on Foundations of Software Science and Computational Structures},
-pages = {350–364},
-numpages = {15},
-location = {Budapest, Hungary},
-series = {FOSSACS'08/ETAPS'08}
-}
-
 
 @inproceedings{atkey,
-author = {Atkey, Robert},
-title = {Syntax and Semantics of Quantitative Type Theory},
-year = {2018},
-isbn = {9781450355834},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-doi = {10.1145/3209108.3209189},
-abstract = {We present Quantitative Type Theory, a Type Theory that records usage information for each variable in a judgement, based on a previous system by McBride. The usage information is used to give a realizability semantics using a variant of Linear Combinatory Algebras, refining the usual realizability semantics of Type Theory by accurately tracking resource behaviour. We define the semantics in terms of Quantitative Categories with Families, a novel extension of Categories with Families for modelling resource sensitive type theories.},
-booktitle = {Proceedings of the 33rd Annual ACM/IEEE Symposium on Logic in Computer Science},
-pages = {56–65},
-numpages = {10},
-keywords = {Linear Logic, Type Theory},
-location = {Oxford, United Kingdom},
-series = {LICS '18}
+  title     = {{Syntax and Semantics of Quantitative Type Theory}},
+  author    = {Atkey, Robert},
+  year      = {2018},
+  booktitle = {Proceedings of the 33rd Annual ACM/IEEE Symposium on Logic in Computer Science},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  location  = {Oxford, United Kingdom},
+  series    = {LICS '18},
+  pages     = {56--65},
+  numpages  = {10},
+  doi       = {10.1145/3209108.3209189},
+  keywords  = {Linear Logic, Type Theory},
+  isbn      = {9781450355834}
 }
 
-@article{matus,
-author = {Teji\v{s}\v{c}\'{a}k, Mat\'{u}\v{s}},
-title = {A Dependently Typed Calculus with Pattern Matching and Erasure Inference},
-year = {2020},
-issue_date = {August 2020},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {4},
-number = {ICFP},
-doi = {10.1145/3408973},
-abstract = {Some parts of dependently typed programs constitute evidence of their type-correctness and, once checked, are unnecessary for execution. These parts can easily become asymptotically larger than the remaining runtime-useful computation, which can cause normally linear-time programs run in exponential time, or worse. We should not make programs run slower by just describing them more precisely. Current dependently typed systems do not erase such computation satisfactorily. By modelling erasure indirectly through type universes or irrelevance, they impose the limitations of these means to erasure. Some useless computation then cannot be erased and idiomatic programs remain asymptotically sub-optimal. In this paper, we explain why we need erasure, that it is different from other concepts like irrelevance, and propose a dependently typed calculus with pattern matching with erasure annotations to model it. We show that erasure in well-typed programs is sound in that it commutes with reduction. Assuming the Church-Rosser property, erasure furthermore preserves convertibility in general. We also give an erasure inference algorithm for erasure-unannotated or partially annotated programs and prove it sound, complete, and optimal with respect to the typing rules of the calculus. Finally, we show that this erasure method is effective in that it can not only recover the expected asymptotic complexity in compiled programs at run time, but it can also shorten compilation times.},
-journal = {Proc. ACM Program. Lang.},
-month = aug,
-articleno = {91},
-numpages = {29},
-keywords = {erasure, dependent types, inference}
+@misc{augustsson:tutorial,
+  title  = {{Simpler, Easier!}},
+  author = {Lennart Augustsson},
+  year   = 2007,
+  note   = {Available from \url{https://augustss.blogspot.com/2007/10/simpler-easier-in-recent-paper-simply.html}}
 }
-
-
-@InProceedings{choudhury:ddc,
-  author="Choudhury, Pritam and Eades III, Harley and Weirich, Stephanie",
-  editor="Sergey, Ilya",
-  title="A Dependent Dependency Calculus",
-  booktitle="Programming Languages and Systems, ESOP 2022",
-  year="2022",
-  series="Lecture Notes in Computer Science",
-  volume=13240,
-  publisher="Springer International Publishing",
-  address="Cham",
-  pages="403--430",
-  abstract="Over twenty years ago, Abadi et al. established the Dependency
-                  Core Calculus (DCC) as a general purpose framework for
-                  analyzing dependency in typed programming languages. Since
-                  then, dependency analysis has shown many practical benefits
-                  to language design: its results can help users and compilers
-                  enforce security constraints, eliminate dead code, among
-                  other applications. In this work, we present a Dependent
-                  Dependency Calculus (DDC), which extends this general idea
-                  to the setting of a dependently-typed language. We use this
-                  calculus to track both run-time and compile-time
-                  irrelevance, enabling faster type-checking and program
-                  execution.",
-  isbn="978-3-030-99336-8",
-  doi="10.1007/978-3-030-99336-8_15",
-  url={https://github.com/sweirich/graded-haskell}, 
-  plclub = yes
-}
-
-
-@article{vytiniotis2011outsidein,
-author = {Vytiniotis, Dimitrios and Peyton Jones, Simon and Schrijvers, Tom and Sulzmann, Martin},
-title = {OutsideIn(X): Modular type inference with local assumptions},
-year = {2011},
-month = {September},
-abstract = {Advanced type system features, such as GADTs, type classes and type families, have proven to be invaluable language extensions for ensuring data invariants and program correctness. Unfortunately, they pose a tough problem for type inference when they are used as local type assumptions. Local type assumptions often result in the lack of principal types and cast the generalisation of local let-bindings prohibitively difficult to implement and specify. User-declared axioms only make this situation worse. In this paper, we explain the problems and-perhaps controversially-argue for abandoning local let-binding generalisation. We give empirical results that local let generalisation is only sporadically used by Haskell programmers. Moving on, we present a novel constraint-based type inference approach for local type assumptions. Our system, called OutsideIn(X), is parameterised over the particular underlying constraint domain X, in the same way as HM(X). This stratification allows us to use a common metatheory and inference algorithm. OutsideIn(X) extends the constraints of X by introducing implication constraints on top. We describe the strategy for solving these implication constraints, which, in turn, relies on a constraint solver for X. We characterise the properties of the constraint solver for X so that the resulting algorithm only accepts programs with principal types, even when the type system specification accepts programs that do not enjoy principal types. Going beyond the general framework, we give a particular constraint solver for X = type classes + GADTs + type families, a non-trivial challenge in its own right. This constraint solver has been implemented and distributed as part of GHC 7.},
-publisher = {Cambridge University Press},
-url = {https://www.microsoft.com/en-us/research/publication/outsideinx-modular-type-inference-with-local-assumptions/},
-pages = {333-412},
-journal = {Journal of Functional Programming},
-volume = {21},
-edition = {Journal of Functional Programming},
-}
-
-@inproceedings{vytiniotis2006simple,
-author = {Vytiniotis, Dimitrios and Weirich, Stephanie and Peyton Jones, Simon},
-title = {Simple unification-based type inference for GADTs},
-organization = {ACM SIGPLAN},
-booktitle = {International Conference on Functional Programming (ICFP'06)},
-year = {2006},
-month = {April},
-abstract = {Generalized algebraic data types (GADTs), sometimes known as "guarded recursive data types" or "first-class phantom types", are a simple but powerful generalization of the data types of Haskell and ML. Recent works have given compelling examples of the utility of GADTs, although type inference is known to be difficult. Our contribution is to show how to exploit programmer-supplied type annotations to make the type inference task almost embarrassingly easy. Our main technical innovation is wobbly types, which express in a declarative way the uncertainty caused by the incremental nature of typical type-inference algorithms.
-
- 	Related papers},
-url = {https://www.microsoft.com/en-us/research/publication/simple-unification-based-type-inference-for-gadts/},
-note = {2016 ACM SIGPLAN Most Influential ICFP Paper Award},
-}
-
-@phdthesis{abel_2013,
-    type = {Habilitation thesis},
-    title = {Normalization by {Evaluation}: {Dependent} {Types} and {Impredicativity}},
-    url = {http://www.cse.chalmers.se/~abela/habil.pdf},
-    school = {Ludwig-Maximilians-Universität München},
-    author = {Abel, Andreas},
-    year = {2013}
-}
-
-@inproceedings{gregoire:strong-reduction,
-author = {Gr\'{e}goire, Benjamin and Leroy, Xavier},
-title = {A Compiled Implementation of Strong Reduction},
-year = {2002},
-isbn = {1581134878},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1145/581478.581501},
-doi = {10.1145/581478.581501},
-abstract = {Motivated by applications to proof assistants based on dependent types, we develop and prove correct a strong reducer and \ss{}-equivalence checker for the λ-calculus with products, sums, and guarded fixpoints. Our approach is based on compilation to the bytecode of an abstract machine performing weak reductions on non-closed terms, derived with minimal modifications from the ZAM machine used in the Objective Caml bytecode interpreter, and complemented by a recursive "read back" procedure. An implementation in the Coq proof assistant demonstrates important speed-ups compared with the original interpreter-based implementation of strong reduction in Coq.},
-booktitle = {Proceedings of the Seventh ACM SIGPLAN International Conference on Functional Programming},
-pages = {235–246},
-numpages = {12},
-keywords = {beta-equivalence, calculus of constructions, virtual machine, abstract machine, Coq, strong reduction, normalization by evaluation},
-location = {Pittsburgh, PA, USA},
-series = {ICFP '02}
-}
-
-
-@article{10.1145/583852.581501,
-author = {Gr\'{e}goire, Benjamin and Leroy, Xavier},
-title = {A Compiled Implementation of Strong Reduction},
-year = {2002},
-issue_date = {September 2002},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {37},
-number = {9},
-issn = {0362-1340},
-url = {https://doi.org/10.1145/583852.581501},
-doi = {10.1145/583852.581501},
-abstract = {Motivated by applications to proof assistants based on dependent types, we develop and prove correct a strong reducer and \ss{}-equivalence checker for the λ-calculus with products, sums, and guarded fixpoints. Our approach is based on compilation to the bytecode of an abstract machine performing weak reductions on non-closed terms, derived with minimal modifications from the ZAM machine used in the Objective Caml bytecode interpreter, and complemented by a recursive "read back" procedure. An implementation in the Coq proof assistant demonstrates important speed-ups compared with the original interpreter-based implementation of strong reduction in Coq.},
-journal = {SIGPLAN Not.},
-month = {sep},
-pages = {235–246},
-numpages = {12},
-keywords = {Coq, abstract machine, normalization by evaluation, strong reduction, calculus of constructions, beta-equivalence, virtual machine}
-}
-
-
-@Misc{kovacs:tutorial,
-  author =    {Andras Kovacs},
-  title =     {Elaboration Zoo},
-  howpublished = 2022,
-  note =      {\url{https://github.com/AndrasKovacs/elaboration-zoo/}}}
 
 @inbook{barendregt:lambda-calculi-with-types,
-author = {Barendregt, H. P.},
-title = {Lambda Calculi with Types},
-year = {1993},
-isbn = {0198537611},
-publisher = {Oxford University Press, Inc.},
-address = {USA},
-booktitle = {Handbook of Logic in Computer Science (Vol. 2): Background: Computational Structures},
-pages = {117–309},
-numpages = {193}
-}
-
-
-@Article{debruijn,
-  Title                    = {Lambda calculus notation with nameless dummies, a tool for automatic formula manipulation, with application to the {C}hurch-{R}osser theorem},
-  Author                   = {de Bruijn, Nicolaas Govert},
-  Journal                  = {Indagationes Mathematicae (Proceedings)},
-  Year                     = {1972},
-  Number                   = {5},
-  Pages                    = {381–392},
-  Volume                   = {75},
-
-  __markedentry            = {[rae:6]},
-  Doi                      = {10.1016/1385-7258(72)90034-0},
-  ISSN                     = {1385-7258},
-  Owner                    = {rae},
-  Publisher                = {Elsevier BV},
-  Timestamp                = {2015.05.08},
-  Url                      = {http://dx.doi.org/10.1016/1385-7258(72)90034-0}
-}
-
-
-@article{dunfield:bidirectional-survey,
-author = {Dunfield, Jana and Krishnaswami, Neel},
-title = {Bidirectional Typing},
-year = {2021},
-issue_date = {June 2022},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {54},
-number = {5},
-issn = {0360-0300},
-url = {https://doi.org/10.1145/3450952},
-doi = {10.1145/3450952},
-abstract = {Bidirectional typing combines two modes of typing: type checking, which checks that a program satisfies a known type, and type synthesis, which determines a type from the program. Using checking enables bidirectional typing to support features for which inference is undecidable; using synthesis enables bidirectional typing to avoid the large annotation burden of explicitly typed languages. In addition, bidirectional typing improves error locality. We highlight the design principles that underlie bidirectional type systems, survey the development of bidirectional typing from the prehistoric period before Pierce and Turner’s local type inference to the present day, and provide guidance for future investigations.},
-journal = {ACM Comput. Surv.},
-month = {may},
-articleno = {98},
-numpages = {38},
-keywords = {Type checking, type inference}
-}
-
-
-
-@Misc{christiansen:tutorial-bidirectional,
-  author =    {David Raymond Christiansen},
-  title =     {Bidirectional Typing Rules: A Tutorial},
-  howpublished = {Tutorial},
-  month =     {October},
-  year =      2013,
-  url = {http://davidchristiansen.dk/tutorials/bidirectional.pdf}
-}
-
-@Misc{christiansen:tutorial-nbe,
-  author =    {David Thrane Christiansen},
-  title =     {Checking Dependent Types with Normalization by Evaluation: A Tutorial},
-  note = {Available from \url{https://davidchristiansen.dk/tutorials/nbe/}},
-  year =      2018}
-
-
-@Article{practical-type-inference,
-  Title                    = {Practical type inference for arbitrary-rank types},
-  Author                   = {{Peyton Jones}, Simon and Dimitrios Vytiniotis and Stephanie Weirich and Mark Shields},
-  Journal                  = {Journal of Functional Programming},
-  Year                     = {2007},
-
-  Month                    = jan,
-  Number                   = {1},
-  Volume                   = {17},
-}
-
-
-@techreport{cardelli:1986,
-	author={Luca Cardelli},
-	title={A Polymorphic $\lambda$ Calculus with {Type}:{Type}},
-	year={1986},
-	number={10},
-	institution={Digital Equipment Corporation, SRC},
-        url = {http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-10.pdf}
-}
-
-@Unpublished{martin-lof71,
-  author = 		  {Per Martin-L\"of},
-  title = 		  {A Theory of Types},
-  note = 		  {Unpublished manuscript},
-  year = 	  1971}
-
-
-@incollection{martin-lof73,
-	Author = {Martin-L{\"o}f, Per},
-	Booktitle = {Logic Colloquium '73, Proceedings of the Logic Colloquium},
-	Editor = {H.E. Rose and J.C. Shepherdson},
-	Mrclass = {02C15 (02D99)},
-	Mrnumber = {0387009 (52 \#7856)},
-	Mrreviewer = {Horst Luckhardt},
-	Pages = {73--118},
-	Publisher = {North-Holland},
-	Series = {Studies in Logic and the Foundations of Mathematics},
-	Title = {An intuitionistic theory of types: predicative part},
-	Volume = 80,
-	Year = 1975}
-
-@PhdThesis{luo-ecc,
-  Title                    = {An Extended Calculus of Constructions},
-  Author                   = {Luo, Zhaohui},
-  School                   = {University of Edinburgh},
-  Year                     = {1990},
-
-  Owner                    = {rae},
-  Timestamp                = {2016.06.28}
-}
-
-@article{pierce:lti,
- author = {Pierce, Benjamin C. and Turner, David N.},
- title = {Local Type Inference},
- journal = {ACM Trans. Program. Lang. Syst.},
- issue_date = {Jan. 2000},
- volume = {22},
- number = {1},
- month = jan,
- year = {2000},
- issn = {0164-0925},
- pages = {1--44},
- numpages = {44},
- url = {http://doi.acm.org/10.1145/345099.345100},
- doi = {10.1145/345099.345100},
- acmid = {345100},
- publisher = {ACM},
- address = {New York, NY, USA},
- keywords = {polymorphism, subtyping, type inference},
-}
-
-
-@inproceedings{steele:ppop17,
-author = {Steele, Guy L.},
-title = {It's Time for a New Old Language},
-year = {2017},
-isbn = {9781450344937},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1145/3018743.3018773},
-doi = {10.1145/3018743.3018773},
-abstract = {The most popular programming language in computer science has no compiler or interpreter. Its definition is not written down in any one place. It has changed a lot over the decades, and those changes have introduced ambiguities and inconsistencies. Today, dozens of variations are in use, and its complexity has reached the point where it needs to be re-explained, at least in part, every time it is used. Much effort has been spent in hand-translating between this language and other languages that do have compilers. The language is quite amenable to parallel computation, but this fact has gone unexploited.In this talk we will summarize the history of the language, highlight the variations and some of the problems that have arisen, and propose specific solutions. We suggest that it is high time that this language be given a complete formal specification, and that compilers, IDEs, and proof-checkers be created to support it, so that all the best tools and techniques of our trade may be applied to it also.},
-booktitle = {Proceedings of the 22nd ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming},
-pages = {1},
-numpages = {1},
-keywords = {programming languages, specifications, compilers},
-location = {Austin, Texas, USA},
-series = {PPoPP '17}
-}
-
-@article{loeh:tutorial,
-author = {Löh, Andres and McBride, Conor and Swierstra, Wouter},
-year = {2010},
-month = {01},
-pages = {177-207},
-title = {A Tutorial Implementation of a Dependently Typed Lambda Calculus},
-volume = {102},
-journal = {Fundam. Inform.},
-note = {Available from \url{http://www.andres-loeh.de/LambdaPi/}},
-doi = {10.3233/FI-2010-304}
+  title     = {{Lambda Calculi with Types}},
+  author    = {Barendregt, H. P.},
+  year      = {1993},
+  booktitle = {Handbook of Logic in Computer Science (Vol. 2): Background: Computational Structures},
+  publisher = {Oxford University Press, Inc.},
+  address   = {USA},
+  pages     = {117--309},
+  numpages  = {193},
+  isbn      = {0198537611}
 }
 
 @misc{bauer:tutorial,
-  author =       {Andrej Bauer},
-  title =        {How to implement dependent type theory},
-  note =         {Available from {\url{http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/}}},
-  month =     nov,
-  year =      2012}
+  title  = {{How to implement dependent type theory}},
+  author = {Andrej Bauer},
+  year   = 2012,
+  month  = nov,
+  note   = {Available from {\url{http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/}}}
+}
 
+@techreport{cardelli:1986,
+  title       = {{A Polymorphic $\lambda$ Calculus with Type:Type}},
+  author      = {Luca Cardelli},
+  year        = {1986},
+  institution = {Digital Equipment Corporation, SRC},
+  number      = {10},
+  url         = {http://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-10.pdf}
+}
 
+@inproceedings{choudhury:ddc,
+  title     = {{A Dependent Dependency Calculus}},
+  author    = {Choudhury, Pritam and Eades III, Harley and Weirich, Stephanie},
+  year      = {2022},
+  booktitle = {Programming Languages and Systems, ESOP 2022},
+  editor    = {Sergey, Ilya},
+  publisher = {Springer International Publishing},
+  address   = {Cham},
+  series    = {Lecture Notes in Computer Science},
+  volume    = 13240,
+  pages     = {403--430},
+  doi       = {10.1007/978-3-030-99336-8_15},
+  url       = {https://github.com/sweirich/graded-haskell},
+  isbn      = {978-3-030-99336-8},
+  plclub    = yes
+}
 
-@misc{rompf:tutorial,
-  author =       {Tiark Rompf},
-  title =        {Implementing Dependent Types},
-  note =         {Available from
-  {\url{https://tiarkrompf.github.io/notes/?/dependent-types/}}},
-  month =     dec,
-  year =      2020}
+@misc{christiansen:tutorial-bidirectional,
+  title        = {{Bidirectional Typing Rules: A Tutorial}},
+  author       = {David Raymond Christiansen},
+  year         = 2013,
+  month        = {October},
+  howpublished = {Tutorial},
+  url          = {http://davidchristiansen.dk/tutorials/bidirectional.pdf}
+}
 
-@Book{friedman:typer,
-  author =    {Daniel P. Friedman and David Thrane Christiansen},
-  title =        {The Little Typer},
-  publisher =    {MIT Press},
-  year =         2018,
-  address =   {Cambridge, MA, USA},
-  month =     sep}
+@misc{christiansen:tutorial-nbe,
+  title  = {{Checking Dependent Types with Normalization by Evaluation: A Tutorial}},
+  author = {David Thrane Christiansen},
+  year   = 2018,
+  note   = {Available from \url{https://davidchristiansen.dk/tutorials/nbe/}}
+}
 
-
-
-@Misc{augustsson:tutorial,
-  author =    {Lennart Augustsson},
-  title =     {Simpler, Easier!},
-  note = {Available from \url{https://augustss.blogspot.com/2007/10/simpler-easier-in-recent-paper-simply.html}},
-  year =      2007}
-
+@techreport{Coc,
+  title       = {{The calculus of constructions}},
+  author      = {Coquand, T. and Huet, G{\'e}rard},
+  year        = {1986},
+  month       = May,
+  institution = {{INRIA}},
+  number      = {RR-0530},
+  url         = {https://hal.inria.fr/inria-00076024},
+  pdf         = {https://hal.inria.fr/inria-00076024/file/RR-0530.pdf},
+  hal_id      = {inria-00076024},
+  hal_version = {v1}
+}
 
 @incollection{coquand:tutorial,
-  place={Cambridge}, 
-  title={A simple type-theoretic language: Mini-TT}, 
-  DOI={10.1017/CBO9780511770524.007}, 
-  booktitle={From Semantics to Computer Science: Essays in Honour of Gilles Kahn}, 
-  publisher={Cambridge University Press}, 
-  author={Coquand, Thierry and Kinoshita, Yoshiki and Nordström, Bengt and Takeyama, Makoto},
-  editor={Bertot, Yves and Huet, Gérard and Lévy, Jean-Jacques and Plotkin, Gordon}, 
-  year=2009, 
-  pages={139–164}}
+  title     = {{A simple type-theoretic language: Mini-TT}},
+  author    = {Coquand, Thierry and Kinoshita, Yoshiki and Nordström, Bengt and Takeyama, Makoto},
+  year      = 2009,
+  booktitle = {From Semantics to Computer Science: Essays in Honour of Gilles Kahn},
+  editor    = {Bertot, Yves and Huet, Gérard and Lévy, Jean-Jacques and Plotkin, Gordon},
+  publisher = {Cambridge University Press},
+  pages     = {139--164},
+  doi       = {10.1017/CBO9780511770524.007},
+  place     = {Cambridge}
+}
 
-@article{10.1145/1291220.1291155,
-author = {Sewell, Peter and Nardelli, Francesco Zappa and Owens, Scott and Peskine, Gilles and Ridge, Thomas and Sarkar, Susmit and Strni\v{s}a, Rok},
-title = {Ott: Effective Tool Support for the Working Semanticist},
-year = {2007},
-issue_date = {September 2007},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {42},
-number = {9},
-issn = {0362-1340},
-url = {https://doi.org/10.1145/1291220.1291155},
-doi = {10.1145/1291220.1291155},
-abstract = {It is rare to give a semantic definition of a full-scale programming language, despite the many potential benefits. Partly this is because the available metalanguages for expressing semantics - usually either L<scp>a</scp>TEX for informal mathematics, or the formal mathematics of a proof assistant - make it much harder than necessary to work with large definitions.We present a metalanguage specifically designed for this problem, and a tool, ott, that sanity-checks such definitions and compiles them into proof assistant code for Coq, HOL, Isabelle, and (in progress) Twelf, together with L<scp>a</scp>TEX code for production-quality typesetting, and OCaml boilerplate. The main innovations are:(1) metalanguage design to make definitions concise, and easy to read and edit;(2) an expressive but intuitive metalanguage for specifying binding structures; and (3) compilation to proof assistant code.This has been tested in substantial case studies, including modular specifications of calculi from the TAPL text, a Lightweight Java with Java JSR 277/294 module system proposals, and a large fragment of OCaml (around 306 rules), with machine proofs of various soundness results. Our aim with this work is to enable a phase change: making it feasible to work routinely, without heroic effort, with rigorous semantic definitions of realistic languages.},
-journal = {SIGPLAN Not.},
-month = {oct},
-pages = {1–12},
-numpages = {12}
+@article{debruijn,
+  title         = {{Lambda calculus notation with nameless dummies, a tool for automatic formula manipulation, with application to the Church-Rosser theorem}},
+  author        = {de Bruijn, Nicolaas Govert},
+  year          = {1972},
+  journal       = {Indagationes Mathematicae (Proceedings)},
+  publisher     = {Elsevier BV},
+  volume        = {75},
+  number        = {5},
+  pages         = {381--392},
+  doi           = {10.1016/1385-7258(72)90034-0},
+  url           = {http://dx.doi.org/10.1016/1385-7258(72)90034-0},
+  timestamp     = {2015.05.08},
+  __markedentry = {[rae:6]},
+  issn          = {1385-7258},
+  owner         = {rae}
+}
+
+@article{dunfield:bidirectional-survey,
+  title      = {{Bidirectional Typing}},
+  author     = {Dunfield, Jana and Krishnaswami, Neel},
+  year       = {2021},
+  month      = {may},
+  journal    = {ACM Comput. Surv.},
+  publisher  = {Association for Computing Machinery},
+  address    = {New York, NY, USA},
+  volume     = {54},
+  number     = {5},
+  numpages   = {38},
+  doi        = {10.1145/3450952},
+  url        = {https://doi.org/10.1145/3450952},
+  keywords   = {Type checking, type inference},
+  issue_date = {June 2022},
+  issn       = {0360-0300},
+  articleno  = {98}
+}
+
+@book{friedman:typer,
+  title     = {{The Little Typer}},
+  author    = {Daniel P. Friedman and David Thrane Christiansen},
+  year      = 2018,
+  month     = sep,
+  publisher = {MIT Press},
+  address   = {Cambridge, MA, USA}
+}
+
+@inproceedings{gregoire:strong-reduction,
+  title     = {{A Compiled Implementation of Strong Reduction}},
+  author    = {Gr\'{e}goire, Benjamin and Leroy, Xavier},
+  year      = {2002},
+  booktitle = {Proceedings of the Seventh ACM SIGPLAN International Conference on Functional Programming},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  location  = {Pittsburgh, PA, USA},
+  series    = {ICFP '02},
+  pages     = {235--246},
+  numpages  = {12},
+  doi       = {10.1145/581478.581501},
+  url       = {https://doi.org/10.1145/581478.581501},
+  keywords  = {beta-equivalence, calculus of constructions, virtual machine, abstract machine, Coq, strong reduction, normalization by evaluation},
+  isbn      = {1581134878}
+}
+
+@inproceedings{icc-star,
+  title     = {{The Implicit Calculus of Constructions as a Programming Language with Dependent Types}},
+  author    = {Barras, Bruno and Bernardo, Bruno},
+  year      = {2008},
+  booktitle = {Foundations of Software Science and Computational Structures},
+  editor    = {Amadio, Roberto},
+  publisher = {Springer Berlin Heidelberg},
+  address   = {Berlin, Heidelberg},
+  pages     = {365--379},
+  isbn      = {978-3-540-78499-9}
+}
+
+@inproceedings{idris2,
+  title     = {{Idris 2: Quantitative Type Theory in Practice}},
+  author    = {Edwin C. Brady},
+  year      = {2021},
+  booktitle = {35th European Conference on Object-Oriented Programming, {ECOOP} 2021, July 11-17, 2021, Aarhus, Denmark (Virtual Conference)},
+  editor    = {Anders M{\o}ller and Manu Sridharan},
+  publisher = {Schloss Dagstuhl - Leibniz-Zentrum f{\"{u}}r Informatik},
+  series    = {LIPIcs},
+  volume    = {194},
+  pages     = {9:1--9:26},
+  doi       = {10.4230/LIPIcs.ECOOP.2021.9},
+  url       = {https://doi.org/10.4230/LIPIcs.ECOOP.2021.9},
+  timestamp = {Sun, 25 Jul 2021 11:47:10 +0200},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/ecoop/Brady21.bib}
+}
+
+@misc{kovacs:tutorial,
+  title        = {{Elaboration Zoo}},
+  author       = {Andras Kovacs},
+  howpublished = 2022,
+  note         = {\url{https://github.com/AndrasKovacs/elaboration-zoo/}}
+}
+
+@article{loeh:tutorial,
+  title   = {{A Tutorial Implementation of a Dependently Typed Lambda Calculus}},
+  author  = {Löh, Andres and McBride, Conor and Swierstra, Wouter},
+  year    = {2010},
+  month   = {01},
+  journal = {Fundam. Inform.},
+  volume  = {102},
+  pages   = {177--207},
+  doi     = {10.3233/FI-2010-304},
+  note    = {Available from \url{http://www.andres-loeh.de/LambdaPi/}}
+}
+
+@phdthesis{luo-ecc,
+  title     = {{An Extended Calculus of Constructions}},
+  author    = {Luo, Zhaohui},
+  year      = {1990},
+  school    = {University of Edinburgh},
+  timestamp = {2016.06.28},
+  owner     = {rae}
+}
+
+@unpublished{martin-lof71,
+  title  = {{A Theory of Types}},
+  author = {Per Martin-L\"of},
+  year   = 1971,
+  note   = {Unpublished manuscript}
+}
+
+@incollection{martin-lof73,
+  title      = {{An intuitionistic theory of types: predicative part}},
+  author     = {Martin-L{\"o}f, Per},
+  year       = 1975,
+  booktitle  = {Logic Colloquium '73, Proceedings of the Logic Colloquium},
+  editor     = {H.E. Rose and J.C. Shepherdson},
+  publisher  = {North-Holland},
+  series     = {Studies in Logic and the Foundations of Mathematics},
+  volume     = 80,
+  pages      = {73--118},
+  mrclass    = {02C15 (02D99)},
+  mrnumber   = {0387009 (52 \#7856)},
+  mrreviewer = {Horst Luckhardt}
+}
+
+@article{matus,
+  title      = {{A Dependently Typed Calculus with Pattern Matching and Erasure Inference}},
+  author     = {Teji\v{s}\v{c}\'{a}k, Mat\'{u}\v{s}},
+  year       = {2020},
+  month      = aug,
+  journal    = {Proc. ACM Program. Lang.},
+  publisher  = {Association for Computing Machinery},
+  address    = {New York, NY, USA},
+  volume     = {4},
+  number     = {ICFP},
+  numpages   = {29},
+  doi        = {10.1145/3408973},
+  keywords   = {erasure, dependent types, inference},
+  issue_date = {August 2020},
+  articleno  = {91}
+}
+
+@inproceedings{miquel,
+  title     = {{The Implicit Calculus of Constructions Extending Pure Type Systems with an Intersection Type Binder and Subtyping}},
+  author    = {Miquel, Alexandre},
+  year      = {2001},
+  booktitle = {Typed Lambda Calculi and Applications},
+  editor    = {Abramsky, Samson},
+  publisher = {Springer Berlin Heidelberg},
+  address   = {Berlin, Heidelberg},
+  pages     = {344--359},
+  isbn      = {978-3-540-45413-7}
+}
+
+@inproceedings{mishra-linger:epts,
+  title     = {{Erasure and Polymorphism in Pure Type Systems}},
+  author    = {Mishra-Linger, Nathan and Sheard, Tim},
+  year      = {2008},
+  booktitle = {Proceedings of the Theory and Practice of Software, 11th International Conference on Foundations of Software Science and Computational Structures},
+  publisher = {Springer-Verlag},
+  address   = {Berlin, Heidelberg},
+  location  = {Budapest, Hungary},
+  series    = {FOSSACS'08/ETAPS'08},
+  pages     = {350--364},
+  numpages  = {15},
+  isbn      = {3540784977}
 }
 
 @inproceedings{ott,
-author = {Sewell, Peter and Nardelli, Francesco Zappa and Owens, Scott and Peskine, Gilles and Ridge, Thomas and Sarkar, Susmit and Strni\v{s}a, Rok},
-title = {Ott: Effective Tool Support for the Working Semanticist},
-year = {2007},
-isbn = {9781595938152},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1145/1291151.1291155},
-doi = {10.1145/1291151.1291155},
-abstract = {It is rare to give a semantic definition of a full-scale programming language, despite the many potential benefits. Partly this is because the available metalanguages for expressing semantics - usually either L<scp>a</scp>TEX for informal mathematics, or the formal mathematics of a proof assistant - make it much harder than necessary to work with large definitions.We present a metalanguage specifically designed for this problem, and a tool, ott, that sanity-checks such definitions and compiles them into proof assistant code for Coq, HOL, Isabelle, and (in progress) Twelf, together with L<scp>a</scp>TEX code for production-quality typesetting, and OCaml boilerplate. The main innovations are:(1) metalanguage design to make definitions concise, and easy to read and edit;(2) an expressive but intuitive metalanguage for specifying binding structures; and (3) compilation to proof assistant code.This has been tested in substantial case studies, including modular specifications of calculi from the TAPL text, a Lightweight Java with Java JSR 277/294 module system proposals, and a large fragment of OCaml (around 306 rules), with machine proofs of various soundness results. Our aim with this work is to enable a phase change: making it feasible to work routinely, without heroic effort, with rigorous semantic definitions of realistic languages.},
-booktitle = {Proceedings of the 12th ACM SIGPLAN International Conference on Functional Programming},
-pages = {1–12},
-numpages = {12},
-location = {Freiburg, Germany},
-series = {ICFP '07}
+  title     = {{Ott: Effective Tool Support for the Working Semanticist}},
+  author    = {Sewell, Peter and Nardelli, Francesco Zappa and Owens, Scott and Peskine, Gilles and Ridge, Thomas and Sarkar, Susmit and Strni\v{s}a, Rok},
+  year      = {2007},
+  booktitle = {Proceedings of the 12th ACM SIGPLAN International Conference on Functional Programming},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  location  = {Freiburg, Germany},
+  series    = {ICFP '07},
+  pages     = {1--12},
+  numpages  = {12},
+  doi       = {10.1145/1291151.1291155},
+  url       = {https://doi.org/10.1145/1291151.1291155},
+  isbn      = {9781595938152}
 }
 
-@book{tapl,
-author = {Pierce, Benjamin C.},
-title = {Types and Programming Languages},
-year = {2002},
-isbn = {0262162091},
-publisher = {The MIT Press},
-edition = {1st},
-abstract = {A type system is a syntactic method for automatically checking the absence of certain erroneous behaviors by classifying program phrases according to the kinds of values they compute. The study of type systems -- and of programming languages from a type-theoretic perspective -- has important applications in software engineering, language design, high-performance compilers, and security.This text provides a comprehensive introduction both to type systems in computer science and to the basic theory of programming languages. The approach is pragmatic and operational; each new concept is motivated by programming examples and the more theoretical sections are driven by the needs of implementations. Each chapter is accompanied by numerous exercises and solutions, as well as a running implementation, available via the Web. Dependencies between chapters are explicitly identified, allowing readers to choose a variety of paths through the material.The core topics include the untyped lambda-calculus, simple type systems, type reconstruction, universal and existential polymorphism, subtyping, bounded quantification, recursive types, kinds, and type operators. Extended case studies develop a variety of approaches to modeling the features of object-oriented languages.}
+@inproceedings{pfenning:2001,
+  title     = {{Intensionality, Extensionality, and Proof Irrelevance in Modal Type Theory}},
+  author    = {Pfenning, Frank},
+  year      = {2001},
+  booktitle = {Proceedings of the 16th Annual IEEE Symposium on Logic in Computer Science},
+  publisher = {IEEE Computer Society},
+  address   = {Washington, DC, USA},
+  series    = {LICS '01},
+  pages     = {221--},
+  url       = {http://dl.acm.org/citation.cfm?id=871816.871845},
+  acmid     = {871845}
 }
 
 @book{pfpl,
-author = {Harper, Robert},
-title = {Practical Foundations for Programming Languages},
-year = {2016},
-isbn = {1107150302},
-publisher = {Cambridge University Press},
-address = {USA},
-edition = {2nd},
-abstract = {This text develops a comprehensive theory of programming languages based on type systems and structural operational semantics. Language concepts are precisely defined by their static and dynamic semantics, presenting the essential tools both intuitively and rigorously while relying on only elementary mathematics. These tools are used to analyze and prove properties of languages and provide the framework for combining and comparing language features. The broad range of concepts includes fundamental data types such as sums and products, polymorphic and abstract types, dynamic typing, dynamic dispatch, subtyping and refinement types, symbols and dynamic classification, parallelism and cost semantics, and concurrency and distribution. The methods are directly applicable to language implementation, to the development of logics for reasoning about programs, and to the formal verification language properties such as type safety. This thoroughly revised second edition includes exercises at the end of nearly every chapter and a new chapter on type refinements.}
+  title     = {{Practical Foundations for Programming Languages}},
+  edition   = {2nd},
+  author    = {Harper, Robert},
+  year      = {2016},
+  publisher = {Cambridge University Press},
+  address   = {USA},
+  isbn      = {1107150302}
+}
+
+@article{pierce:lti,
+  title      = {{Local Type Inference}},
+  author     = {Pierce, Benjamin C. and Turner, David N.},
+  year       = {2000},
+  month      = jan,
+  journal    = {ACM Trans. Program. Lang. Syst.},
+  publisher  = {ACM},
+  address    = {New York, NY, USA},
+  volume     = {22},
+  number     = {1},
+  pages      = {1--44},
+  numpages   = {44},
+  doi        = {10.1145/345099.345100},
+  url        = {http://doi.acm.org/10.1145/345099.345100},
+  keywords   = {polymorphism, subtyping, type inference},
+  issue_date = {Jan. 2000},
+  issn       = {0164-0925},
+  acmid      = {345100}
+}
+
+@article{practical-type-inference,
+  title   = {{Practical type inference for arbitrary-rank types}},
+  author  = {{Peyton Jones}, Simon and Dimitrios Vytiniotis and Stephanie Weirich and Mark Shields},
+  year    = {2007},
+  month   = jan,
+  journal = {Journal of Functional Programming},
+  volume  = {17},
+  number  = {1}
+}
+
+@misc{rompf:tutorial,
+  title  = {{Implementing Dependent Types}},
+  author = {Tiark Rompf},
+  year   = 2020,
+  month  = dec,
+  note   = {Available from {\url{https://tiarkrompf.github.io/notes/?/dependent-types/}}}
+}
+
+@inproceedings{steele:ppop17,
+  title     = {{It's Time for a New Old Language}},
+  author    = {Steele, Guy L.},
+  year      = {2017},
+  booktitle = {Proceedings of the 22nd ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  location  = {Austin, Texas, USA},
+  series    = {PPoPP '17},
+  pages     = {1},
+  numpages  = {1},
+  doi       = {10.1145/3018743.3018773},
+  url       = {https://doi.org/10.1145/3018743.3018773},
+  keywords  = {programming languages, specifications, compilers},
+  isbn      = {9781450344937}
+}
+
+@book{tapl,
+  title     = {{Types and Programming Languages}},
+  edition   = {1st},
+  author    = {Pierce, Benjamin C.},
+  year      = {2002},
+  publisher = {The MIT Press},
+  isbn      = {0262162091}
+}
+
+@inproceedings{vytiniotis2006simple,
+  title        = {{Simple unification-based type inference for GADTs}},
+  author       = {Vytiniotis, Dimitrios and Weirich, Stephanie and Peyton Jones, Simon},
+  year         = {2006},
+  month        = {April},
+  booktitle    = {International Conference on Functional Programming (ICFP'06)},
+  url          = {https://www.microsoft.com/en-us/research/publication/simple-unification-based-type-inference-for-gadts/},
+  note         = {2016 ACM SIGPLAN Most Influential ICFP Paper Award},
+  organization = {ACM SIGPLAN}
+}
+
+@article{vytiniotis2011outsidein,
+  title     = {{OutsideIn(X): Modular type inference with local assumptions}},
+  edition   = {Journal of Functional Programming},
+  author    = {Vytiniotis, Dimitrios and Peyton Jones, Simon and Schrijvers, Tom and Sulzmann, Martin},
+  year      = {2011},
+  month     = {September},
+  journal   = {Journal of Functional Programming},
+  publisher = {Cambridge University Press},
+  volume    = {21},
+  pages     = {333--412},
+  url       = {https://www.microsoft.com/en-us/research/publication/outsideinx-modular-type-inference-with-local-assumptions/}
+}
+
+@article{weirich:systemd,
+  title      = {{A Specification for Dependent Types in Haskell}},
+  author     = {Weirich, Stephanie and Voizard, Antoine and de Amorim, Pedro Henrique Avezedo and Eisenberg, Richard A.},
+  year       = {2017},
+  month      = aug,
+  journal    = {Proc. ACM Program. Lang.},
+  publisher  = {ACM},
+  address    = {New York, NY, USA},
+  volume     = {1},
+  number     = {ICFP},
+  pages      = {31:1--31:29},
+  numpages   = {29},
+  doi        = {10.1145/3110275},
+  keywords   = {Dependent Types, Haskell},
+  issue_date = {September 2017},
+  issn       = {2475-1421},
+  articleno  = {31},
+  acmid      = {3110275},
+  plclub     = {yes}
 }

@@ -9,7 +9,7 @@
 \usepackage{verbatim}
 \usepackage[utf8]{inputenc}
 \usepackage[hyphens]{url}
-\usepackage[hidelinks]{hyperref}
+\usepackage[hidelinks,bookmarksnumbered]{hyperref}
 \usepackage{supertabular}
 \usepackage{listings}
 \usepackage{xspace}
@@ -545,10 +545,10 @@ you should pick the second one.  With parametric polymorphism, we can give the
 two terms the same type, which we'll call ``bool''.
 
 \begin{piforall}
-true : (A:Type) -> A -> A -> A 
+true : (A:Type) -> A -> A -> A
 true = \x. \y. \z. y
-     
-false : (A:Type) -> A -> A -> A 
+
+false : (A:Type) -> A -> A -> A
 false = \x. \y. \z. z
 \end{piforall}
 
@@ -557,17 +557,17 @@ Thus, a conditional expression just takes a boolean and returns it.
 
 \begin{piforall}
 cond : ((A:Type) -> A -> A -> A) -> ((x:Type) -> x -> x -> x)
-cond = \b. b 
+cond = \b. b
 \end{piforall}
 
 \paragraph{Example: void type}
 
 The type \cd{(x:Type) -> x}, called ``void'' is usually an \emph{empty type}
-in polymorphic languages.  There is no way to return a value of any type without 
+in polymorphic languages.  There is no way to return a value of any type without
 some sort of type case (not part of \pif).
 
-However, because \pif does not enforce termination, we can define a value that 
-has this type. 
+However, because \pif does not enforce termination, we can define a value that
+has this type.
 
 \begin{piforall}
 loop : (x:Type) -> x
@@ -780,7 +780,7 @@ Some fairly standard typing rules for booleans are shown below.
 \drules{$[[G|-a:A]]$}{Booleans}{t-bool,t-true,t-false}
 \[ \drule[width=4in]{t-if-simple} \]
 
-Likewise, we can also extend the language with $\Sigma$-types, or 
+Likewise, we can also extend the language with $\Sigma$-types, or
 products, where the type of the second component of the product can depend on the value of the first component.
 
 \drules{$[[G|-a:A]]$}{$\Sigma$-types}{t-sigma,t-pair}
@@ -1071,9 +1071,9 @@ Mixed in here, we also have a pattern for lambda expressions in checking
 mode:
 
 \begin{verbatim}
-tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = ...    
+tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = ...
    -- pass in the Pi type for the lambda expression
- 
+
 tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
    err [DS "Lambda expression has a function type, not ", DD nf]
 \end{verbatim}
@@ -1303,8 +1303,8 @@ forms, we can do this via reduction. This rule evaluates the type $A$ to its
 head form, using the rules shown in Figure~\ref{fig:whnf}. If that form is a
 $\Pi$-type, then we can access its subcomponents.
 
-\item Whenever we call \cd{checkType} we should call it with a term that 
-has already been reduced to normal form. This will allow \rref{c-lambda} to 
+\item Whenever we call \cd{checkType} we should call it with a term that
+has already been reduced to normal form. This will allow \rref{c-lambda} to
 match against a literal function type.
 
 \end{itemize}
@@ -2393,9 +2393,9 @@ that use these types. Two of these definitions are marked with
 
 \subsection{Irrelevance and datatypes}
 
-Datatypes may wish to mark some of their arguments as irrelevant, so that 
-these components of the data structure can be erased at run time. For example, 
-the \cd{Vec} type in Section~\ref{sec:examples} marked the length of the tail 
+Datatypes may wish to mark some of their arguments as irrelevant, so that
+these components of the data structure can be erased at run time. For example,
+the \cd{Vec} type in Section~\ref{sec:examples} marked the length of the tail
 of the vector as irrelevant in the telescope for the \cd{Cons} constructor.
 
 The mechanisms that we have set up so far extend naturally to irrelevant data
@@ -2608,8 +2608,8 @@ equality checking\cite{icc-star}. This approach lead to Erasure Pure Type
 Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
 Dependent Haskell~\cite{weirich:systemd}.
 
-\section{References}
-
+\phantomsection
+\addcontentsline{toc}{section}{References}
 \bibliographystyle{alpha}
 \bibliography{weirich}
 
