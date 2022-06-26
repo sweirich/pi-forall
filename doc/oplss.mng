@@ -403,7 +403,7 @@ their types.
 
     \[ [[ G]]  ::= \emptyset\ |\ [[G, x : A]] \]
 
-We will assume that each of the variables in this list is
+We will assume that each of the variables in this list are
 distinct from each other so that there will always be at most one assumption
 about any variable's type.\footnote{On paper, this assumption is reasonable
   because we always extend the context with variables that come from binders,
