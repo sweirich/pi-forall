@@ -9,7 +9,12 @@
 \usepackage{verbatim}
 \usepackage[utf8]{inputenc}
 \usepackage[hyphens]{url}
-\usepackage[hidelinks,bookmarksnumbered]{hyperref}
+\usepackage[hidelinks,bookmarksnumbered,pdfencoding=auto, psdextra]{hyperref}
+% From https://tex.stackexchange.com/a/430877/133551 and Heiko's comment
+\pdfstringdefDisableCommands{%
+  \def\({}%
+  \def\){}%
+}
 \usepackage{supertabular}
 \usepackage{listings}
 \usepackage{xspace}
@@ -773,7 +778,7 @@ before substitution. However, in our implementation of \pif, we do not do so
 to reduce clutter.
 
 \subsection{Homework:  Add Booleans and
-$\Sigma$-types (Part I)}
+\(\Sigma\)-types (Part I)}
 
 Some fairly standard typing rules for booleans are shown below.
 
@@ -1103,7 +1108,7 @@ they are not, it stops the computation and throws an error.
 % after filling in the missing code in \texttt{TypeCheck.hs}.
 
 \subsection{Exercise:  Add Booleans and
-$\Sigma$-types (Part II)}
+\(\Sigma\)-types (Part II)}
 
 Second, in Haskell: The code in \texttt{version1/} includes abstract and
 concrete syntax for booleans and $\Sigma$-types. The \pif file
@@ -1479,7 +1484,7 @@ to reason in a flow-sensitive manner. We will demonstrate how this works in
 this section.
 
 
-\subsection{More expressive rules for if and $\Sigma$-type elimination}
+\subsection{More expressive rules for if and \(\Sigma\)-type elimination}
 
 Consider our elimination rule for if from your homework assignment:
 
@@ -1684,7 +1689,7 @@ different head forms. This rule must be in checking mode because we can use
 Complete the file \href{version2/test/Hw2.pi}{\texttt{Hw2.pi}}. This file
 gives you practice with working with equality propositions in \pif.
 
-\section{Irrelevance: the $\forall$ of \pif}
+\section{Irrelevance: the \(\forall\) of \pif}
 \label{sec:irrelevance}
 
 Now, let us talk about irrelevance. In dependently typed languages, some
