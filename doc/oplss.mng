@@ -110,8 +110,8 @@ implemented.
   type system is simple and declarative. In other words, it \emph{specifies}
   what terms should type check, but cannot be directly implemented.
 
-\item Section~\ref{sec:bidirectional}, reformulates the typing rules so that
-  they are \emph{syntax-directed} and correspond to a type checking
+\item Section~\ref{sec:bidirectional} reformulates the typing rules so that
+  they are \emph{syntax-directed} and correspond to a type-checking
   algorithm. The key idea of this section is to recast the typing rules as a
   \emph{bidirectional type system}.
 
@@ -197,7 +197,7 @@ approaches.  The key differences are summarized below:
 
 \begin{enumerate}
 \item An understanding of how to translate mathematical specifications of type
-  systems and logics into code, i.e. how to represent the syntax of a
+  systems and logics into code, i.e., how to represent the syntax of a
   programming language and how to implement a type checker. More generally,
   this involves techniques for turning a declarative specification of a system
   of judgments into an algorithm that determines whether the judgment holds.
@@ -206,7 +206,7 @@ approaches.  The key differences are summarized below:
   respect, the goal is breadth, not depth. As a result, I will provide
   \emph{simple} solutions to some of the problems that we face and sidestep
   other problems entirely. Because solutions are chosen for simplicity,
-  \ref{sec:related-work} includes pointers to related work if you want to go
+  Section~\ref{sec:related-work} includes pointers to related work if you want to go
   deeper.
 
 \item Experience with the Haskell programming language. I think Haskell is an
@@ -266,7 +266,7 @@ v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
 Above, \pif never infers arguments, so we must always supply the length of the
 tail whenever we use \cd{Cons}.
 
-We can also map over length indexed lists.
+We can also map over length-indexed lists.
 \begin{piforall}
 map : [A:Type] -> [B:Type] -> [n:Nat] -> (A -> B) -> Vec A n -> Vec B n
 map = \ [A][B][n] f v.
@@ -279,7 +279,7 @@ and \cd{n} explicitly at the beginning of the function definition, and they
 need to be provided as arguments to the recursive call.
 
 Whenever we call map, we also need to supply the appropriate parameters for
-the function and vector that we are giving to \cd{map}. For example, to map
+the function and the vector that we are giving to \cd{map}. For example, to map
 the boolean \cd{not} function, of type \cd{Bool -> Bool}, we need to provide
 these two \cd{Bool}s along with the length of the vector.
 
@@ -337,7 +337,7 @@ ones that you might have seen in Agda, Haskell, or elsewhere.
 To run the type checker on these modules, make sure that you have first
 compiled the implementation using \texttt{stack build} at the terminal.  Then,
 to run \pif on a source file, such as \cd{Fin.pi}, you can issue the command
-\texttt{stack exec -- pi-forall Fin.pi} in the \cd{full/pi} subdirectory. If
+\texttt{stack exec pi-forall -{}- Fin.pi} in the \cd{full/pi} subdirectory. If
 the file type checks, you will see the contents of the file displayed in the
 terminal window. Otherwise, you will see an error message from the type checker.
 
@@ -350,7 +350,7 @@ execution of the interpreter.
 
 \subsubsection{Homework: Church and Scott  encodings}
 
-The file \texttt{full/test/NatChurch.pi} is a start at a Church encoding of
+The file \texttt{full/pi/NatChurch.pi} is a start at a Church encoding of
 natural numbers. Replace the \cd{TRUSTME}s in this file so that it
 compiles. For example, one task in this file is to define a predecessor
 function. By replacing the \cd{TRUSTME} with \cd{Refl} below, you will be able
@@ -427,7 +427,7 @@ find an association between $x$ and the type $A$ in the list $[[G]]$.
 
 The second rule, for type checking functions, introduces a new variable into
 the context when we type check the body of a $\lambda$-expression. It also
-requires $[[A]]$, the type of the function's argument to be a valid type.
+requires $[[A]]$, the type of the function's argument, to be a valid type.
 
 \paragraph{Example: Polymorphic identity functions}
 
@@ -502,7 +502,7 @@ is a valid type, see below.
 \paragraph{More typing rules:  Types}
 
 Observe in the typing derivation above that the rule for typing
-lambda-expressions has a second precondition: we need to make sure that
+$lambda$-expressions has a second precondition: we need to make sure that
 when we add assumptions $x:A$ to the context, that $A$ really is a type.
 Without this precondition, the rules would allow us to derive this nonsensical
 type for the polymorphic identity function.
@@ -542,7 +542,7 @@ function can take \cd{id} as an argument.
 \paragraph{Example: Church booleans}
 
 Because we have (impredicative) polymorphism, we can \emph{encode} familiar
-types, such as booleans. The idea behind this encoding, called a Church
+types, such as booleans. The idea behind this encoding, called the Church
 encoding, is to represent terms by their eliminators. In other words, what is
 important about the value true?  The fact that when you get two choices, you
 pick the first one.  Likewise, false ``means'' that with the same two choices,
@@ -592,8 +592,8 @@ code. In other words, for some type systems, we can directly translate them to
 some Haskell function.
 
 For this type system, we would like to implement the following Haskell
-function, that when given a term and a typing context, represented as a list
-of pairs of variables and their types, produces the type of the term, if it
+function, which when given a term and a typing context, represented as a list
+of pairs of variables and their types, produces the type of the term if it
 exists.\footnote{Note: If you are looking at the \pif implementation, note
   that this is not the final type of \cd{inferType}.}
 
@@ -656,8 +656,8 @@ We express these judgments using the notation defined in
 Figure~\ref{fig:bidirectional} and implement them in Haskell using the
 mutually-recursive functions \texttt{inferType} and
 \texttt{checkType}. Furthermore, to keep track of which rule is in which
-judgment, rules that have inference as a conclusion start with
-\textsc{i-} and rules that have checking as a conclusion start with
+judgment, rules that have inference as conclusion start with
+\textsc{i-} and rules that have checking as conclusion start with
 \textsc{c-}.
 
 \begin{figure}
@@ -1464,7 +1464,7 @@ Why do we use weak head reduction vs.~full reduction?
   don't want to substitute all variables through eagerly---not only does
   this make extra work, but error messages can be extremely long.
 \item Furthermore, we allow recursive definitions in \pif, so normalization
-  may just fail completely, if we unfold recursive definitions inside
+  may just fail completely if we unfold recursive definitions inside
   functions before they are applied. In contrast, the definition based on
   \texttt{whnf} only unfolds recursive definitions when they stand in the way
   of equivalence, so avoids some infinite loops in the type checker.
