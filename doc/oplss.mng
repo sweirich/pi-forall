@@ -9,7 +9,7 @@
 \usepackage{verbatim}
 \usepackage[utf8]{inputenc}
 \usepackage[hyphens]{url}
-\usepackage[hidelinks,bookmarksnumbered,pdfencoding=auto, psdextra]{hyperref}
+\usepackage[hidelinks,bookmarksnumbered,pdfencoding=auto,psdextra]{hyperref}
 % From https://tex.stackexchange.com/a/430877/133551 and Heiko's comment
 \pdfstringdefDisableCommands{%
   \def\({}%
@@ -2615,7 +2615,7 @@ Dependent Haskell~\cite{weirich:systemd}.
 
 \phantomsection
 \addcontentsline{toc}{section}{References}
-\bibliographystyle{alpha}
+\bibliographystyle{alphaurl}
 \bibliography{weirich}
 
 
