@@ -1400,7 +1400,7 @@ of \texttt{tcTerm}
 \label{sec:equate}
 
 The rules for $[[G |- a = b ]]$ \emph{specify} when terms should be equal, but
-they are not an algorithm. But how do we implement its algorithmic analog
+they are not an algorithm. But how do we implement its algorithmic analogue
 $[[G |- a <=> b]]$?
 
 
