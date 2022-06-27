@@ -52,7 +52,7 @@ putTypeError typeError = do
 -- | Type check the given file    
 goFilename :: String -> IO ()  
 goFilename pathToMainFile = do
-  let prefixes = [mainFilePrefix, currentDir]
+  let prefixes = [currentDir, mainFilePrefix]
       (mainFilePrefix, name) = splitFileName pathToMainFile
       currentDir = "" 
   putStrLn $ "processing " ++ name ++ "..."
