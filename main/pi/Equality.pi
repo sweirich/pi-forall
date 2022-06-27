@@ -99,7 +99,7 @@ k = \ [A][x] p .
 k2 : [A:Type] -> [x:A] -> [P : (x = x) -> Type] -> P Refl -> (h:x = x) -> P h
 k2 = \ [A][x][P] d h . subst d by h
 
--- here's another version of j
+-- here's j
 -- https://ncatlab.org/nlab/show/identity+type#ExplicitDefinition
 
 j : [A:Type]
@@ -108,11 +108,9 @@ j : [A:Type]
   -> (x:A) -> (y:A) -> (p : x = y) -> C x y p
 j = \[A][C] t x y p . subst (t x) by p
 
--- Can we use this version of j to derive k ? 
--- I don't think so. At least not without some 
--- form of heterogenous equality
+-- Can't derive k from j 
 
-{- -- Don't work, and I don't think it ever will.
+{- -- Doesn't type check
 k' : [A:Type] -> (x:A) -> (p : x = x) -> (p = Refl)
 k' = \ [A] x p . 
       j [A] [\ x y p . p = Refl] x x Refl

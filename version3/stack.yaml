@@ -6,7 +6,7 @@ packages:
 
 extra-deps:
 - git: git@github.com:lambdageek/unbound-generics.git
-  commit: 04f940740d95aecd105fd87ed9f49ee0b81da408 
+  commit: a2a558058012b09bb313b3eb03cddb734fcf4a98
 
 
 flags: {}

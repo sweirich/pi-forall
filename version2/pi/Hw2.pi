@@ -19,7 +19,7 @@ neg = \ A . ( (A) -> void )
 not : Bool -> Bool 
 not = \ x . if x then False else True
 
--- to be or not to be, that is the question
+-- show that true is not false
 
 not_not_equal : (b : Bool) -> (b = not b) -> void
 not_not_equal = TRUSTME
@@ -28,7 +28,7 @@ not_not_equal = TRUSTME
 not_false_then_true : (b : Bool) -> neg (b = False) -> b = True
 not_false_then_true = TRUSTME
 
--- showing that decidable equality for booleans is correct.
+-- show that decidable equality for booleans is correct.
 
 eq_bool : Bool -> Bool -> Bool
 eq_bool = \x y. if x then y else not y

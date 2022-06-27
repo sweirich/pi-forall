@@ -139,7 +139,7 @@ whnf (App t1 t2) = do
   nf <- whnf t1 
   case nf of 
     (Lam  bnd) -> do
-      whnf (Unbound.substBind bnd t2)
+      whnf (Unbound.instantiate bnd [t2])
     _ -> do
       return (App nf t2)
       
@@ -153,8 +153,7 @@ whnf (LetPair a bnd) = do
   nf <- whnf a 
   case nf of 
     Prod b1 c -> do
-      ((x,y), body) <- Unbound.unbind bnd
-      whnf (Unbound.substs [(x, b1), (y, c)] body)
+      whnf (Unbound.instantiate bnd [b1, c])
     _ -> return (LetPair nf bnd)
 
 -- ignore/remove type annotations and source positions when normalizing  
@@ -163,7 +162,7 @@ whnf (Pos _ tm) = whnf tm
  
 whnf (Let rhs bnd)  = do
   -- (x,body) <- Unbound.unbind bnd
-  whnf (Unbound.substBind bnd rhs)  
+  whnf (Unbound.instantiate bnd [rhs])  
 whnf (Subst tm pf) = do
   pf' <- whnf pf
   case pf' of 

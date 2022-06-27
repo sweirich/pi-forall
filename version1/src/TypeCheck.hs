@@ -67,7 +67,7 @@ tcTerm (App t1 t2) Nothing = do
       ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty]
   (tyA, bnd) <- ensurePi ty1
   checkType t2 tyA
-  return (Unbound.substBind bnd t2)
+  return (Unbound.instantiate bnd [t2])
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing = do
@@ -85,20 +85,12 @@ tcTerm TrustMe (Just ty) = return ty
 tcTerm TyUnit Nothing = return Type
 tcTerm LitUnit Nothing = return TyUnit
 -- i-bool
-tcTerm TyBool Nothing = return Type
+tcTerm TyBool Nothing = Env.err [DS "unimplemented"]
 -- i-true/false
-tcTerm (LitBool b) Nothing = return TyBool
+tcTerm (LitBool b) Nothing = Env.err [DS "unimplemented"]
 -- c-if
-tcTerm t@(If t1 t2 t3) mty = do
-  checkType t1 TyBool  
-  ty <- inferType t2 
-  checkType t3 ty
-  return ty
-tcTerm (Let rhs bnd) mty = do
-  ty <- inferType rhs
-  (x,body) <- Unbound.unbind bnd
-  Env.extendCtx (mkSig x ty) $ tcTerm body mty
-
+tcTerm t@(If t1 t2 t3) mty = Env.err [DS "unimplemented"]
+tcTerm (Let rhs bnd) mty = Env.err [DS "unimplemented"]
 tcTerm t@(Sigma tyA bnd) Nothing = Env.err [DS "unimplemented"]
 tcTerm t@(Prod a b) (Just ty) = Env.err [DS "unimplemented"]
 tcTerm t@(LetPair p bnd) (Just ty) = Env.err [DS "unimplemented"]

@@ -401,7 +401,7 @@ instance Unbound.Alpha SourcePos where
   acompare' _ _ _ = EQ
 
 -- Substitutions ignore source positions
-instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substPat _ _ = id
+instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substBvs _ _ = id
 
 -- Internally generated source positions
 internalPos :: SourcePos
