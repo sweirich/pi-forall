@@ -17,6 +17,7 @@
 }
 \usepackage{supertabular}
 \usepackage{listings}
+\usepackage{textcomp}
 \usepackage{xspace}
 \usepackage{ottalt}
 \usepackage[T1]{fontenc}
@@ -337,7 +338,7 @@ ones that you might have seen in Agda, Haskell, or elsewhere.
 To run the type checker on these modules, make sure that you have first
 compiled the implementation using \texttt{stack build} at the terminal.  Then,
 to run \pif on a source file, such as \cd{Fin.pi}, you can issue the command
-\texttt{stack exec pi-forall -{}- Fin.pi} in the \cd{full/pi} subdirectory. If
+\texttt{stack exec -{}- pi-forall Fin.pi} in the \cd{full/pi} subdirectory. If
 the file type checks, you will see the contents of the file displayed in the
 terminal window. Otherwise, you will see an error message from the type checker.
 
@@ -715,7 +716,7 @@ replace them with something equivalent by doing a $\beta$-reduction of the
 application (in this case, just replace the term with $[[True]]$).
 
 In fact, the bidirectional type system has the property that it only checks
-terms in \emph{normal} form, i.e. those that do not contain any
+terms in \emph{normal} form, i.e., those that do not contain any
 $\beta$-reductions.
 
 \paragraph{Type annotations}
@@ -842,7 +843,7 @@ this library in the definition of the abstract syntax of \pif, and those types
 specify the binding structure of \pif expressions.
 
 First, the \unbound library defines a type for variable names, called
-\cd{TName} and we use this type to define \cd{TName}, the type of term
+\cd{Name} and we use this type to define \cd{TName}, the type of term
 names in our AST.
 %
 \begin{verbatim}
@@ -853,12 +854,12 @@ type TName = Unbound.Name Term
 The \cd{Unbound.Name} type is indexed by \cd{Term}, the AST type that it is a
 name for, whose definition we will see shortly. That way \unbound can make
 sure that we only substitute the right form of syntax for the right name,
-i.e. we can only replace a \cd{TName} with a \cd{Term}.  The library
+i.e., we can only replace a \cd{TName} with a \cd{Term}.  The library
 includes an overloaded function \cd{subst\ x\ a\ b}, which corresponds to
 the substitution we have been writing as $[[ b[a/x] ]]$ in our inference
-rules\footnote{See Guy Steele's talk about the notation for
+rules,\footnote{See Guy Steele's talk about the notation for
   substitution~\cite{steele:ppop17}. This is the most common mathematical
-  notation for this operation.}, i.e. substitute $[[a]]$ for $[[x]]$ in
+  notation for this operation.} i.e., substitute $[[a]]$ for $[[x]]$ in
 $[[b]]$.
 
 In general, we want to apply a substitution to many different sorts of
@@ -1027,7 +1028,7 @@ warn :: (Disp a) => a -> TcMonad ()
 \end{verbatim}
 
 We will also need this monad to be a freshness monad, to support working with
-binding structure (i.e. a source of fresh names), and throw in \cd{MonadIO} so
+binding structure (i.e., a source of fresh names), and throw in \cd{MonadIO} so
 that we can print warning messages.
 
 \subsection{Implementing the Type Checking Algorithm
@@ -1110,11 +1111,11 @@ they are not, it stops the computation and throws an error.
 \subsection{Exercise:  Add Booleans and
 \(\Sigma\)-types (Part II)}
 
-Second, in Haskell: The code in \texttt{version1/} includes abstract and
+The code in \texttt{version1/} includes abstract and
 concrete syntax for booleans and $\Sigma$-types. The \pif file
 \texttt{version1/test/Hw1.pi} contains examples of using these new forms. Your
 job is to get this file to compile by filling in the missing cases in
-\texttt{version1/src/TypeCheck.hs} base on the bidirectional rules that you
+\texttt{version1/src/TypeCheck.hs} based on the bidirectional rules that you
 worked out in the previous exercise.
 
 \section{Equality in Dependently-Typed Languages}
@@ -1329,7 +1330,7 @@ The following judgment (shown in Figure~\ref{fig:whnf})
 describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak head normal form (whnf)}.
 For closed terms, these rules correspond to a big-step evaluation relation and produce
 a value. For open terms, the rules produce a term that is either headed by a variable
-or by some head form (i.e. $\lambda$ or $\Pi$).
+or by some head form (i.e., $\lambda$ or $\Pi$).
 
 For example, the term
 \begin{piforall}
@@ -1446,7 +1447,7 @@ Therefore, the implementation of \cd{equate} has the following form.
 \end{verbatim}
 Above, we first check whether the terms are already alpha-equivalent. If they
 are, we do not need to do anything else, we can return immediately
-(i.e. without throwing an error, which is what the function does when it
+(i.e., without throwing an error, which is what the function does when it
 decides that the terms are not equal). The next step is to reduce both terms
 to their weak head normal forms.  If two terms have different head forms, then
 we know that they must be different terms, so we can throw an error. If they have
@@ -2461,7 +2462,7 @@ the length of a list around at run time?
 
   Bauer explores several different implementations of dependent type theory in
   a series of blog posts using the OCaml language. The first version uses a
-  named representation (i.e. strings) and generates fresh names during
+  named representation (i.e., strings) and generates fresh names during
   substitution and alpha-equality. This version uses full normalization to
   implement definitional equality. Then, in the second version, Bauer revises
   the implementation to use normalization by evaluation. In the third version,

@@ -1,11 +1,12 @@
-\lstdefinelanguage{Haskell}{ 
+\lstdefinelanguage{Haskell}{
+%
 %
 %
 % Anything betweeen $ becomes LaTeX math mode
 mathescape=true,
 %
 % Comments may or not include Latex commands
-texcl=false, 
+texcl=false,
 %
 %
 morekeywords=[1]{class,data,default,deriving,hiding,infix,infixl,infixr,import,instance,type,where,forall},%
@@ -18,9 +19,9 @@ morecomment=[l]{--},
 % Spaces are not displayed as a special character
 showstringspaces=false,
 %
+upquote          = true,
 % String delimiters
 morestring=[b]",
-morestring=[d],
 %
 % Size of tabulations
 tabsize=3,
@@ -67,9 +68,9 @@ literate=
     {->}{{$\rightarrow\;$}}1
     {<->}{{$\leftrightarrow\;$}}1
     {<==}{{$\leq\;$}}1
-    {\#}{{$^\star$}}1 
-    {\\o}{{$\circ\;$}}1 
-    {\@}{{$\cdot$}}1 
+    {\#}{{$^\star$}}1
+    {\\o}{{$\circ\;$}}1
+    {\@}{{$\cdot$}}1
     {\/\\}{{$\wedge\;$}}1
     {\\\/}{{$\vee\;$}}1
     {++}{{\code{++}}}1
@@ -81,4 +82,3 @@ literate=
 }[keywords,comments,strings]
 
 \lstnewenvironment{haskell}{\lstset{language=Haskell}}{}
-
