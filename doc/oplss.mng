@@ -337,7 +337,7 @@ ones that you might have seen in Agda, Haskell, or elsewhere.
 To run the type checker on these modules, make sure that you have first
 compiled the implementation using \texttt{stack build} at the terminal.  Then,
 to run \pif on a source file, such as \cd{Fin.pi}, you can issue the command
-\texttt{stack exec pi-forall -{}- Fin.pi} in the \cd{full/pi} subdirectory. If
+\texttt{stack exec -{}- pi-forall Fin.pi} in the \cd{full/pi} subdirectory. If
 the file type checks, you will see the contents of the file displayed in the
 terminal window. Otherwise, you will see an error message from the type checker.
 
