@@ -156,6 +156,8 @@ formula :: 'formula_' ::=
   | formula1 .. formulai     ::   :: dots
   | x : A elem G             ::   :: inG
   | G |- A <=> B             ::   :: equate
+  | notlam a                 ::   :: notlam
+     {{ tex [[a]]\mbox{ is not a $\lambda$-expression } }}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -393,10 +395,12 @@ G |- A <= Type
 --------------------------- ::  lambda
 G |- \x.a <= (x:A) -> B
 
+notlam a
 G |- a => A
 ------------- :: infer_simple 
 G |- a <= A 
 
+notlam a
 G |- a => A    
 G |- A <=> B
 -------------------------- :: infer

@@ -97,7 +97,8 @@ subdirectories. These implementations build on each other (each is an
 extension of the previous version) and are summarized in
 Figure~\ref{fig:impls}.  As you read each chapter, refer to its corresponding
 implementation to see how the features described in that chapter can be
-implemented.
+implemented. The directory \texttt{main} is the source of all of these
+implementations and contains the markup needed to generate the four versions.
 
 
 \begin{itemize}
@@ -326,7 +327,9 @@ Note how, in the case analysis above, neither \cd{case} requires a branch for
 the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
 case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
-You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality.
+You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality. (When arguments are marked in this way, the type checker must ensure that this erasure is sound and the argument is never actually used in a meaningful way.)
+Similarly, the constraints that are part of datatype definitions, such as \cd{n = Succ m} above, are enclosed in 
+square brackets because there is no runtime witness stored with the data constructor.
 
 \subsection{Homework: Check out \pif}
 
@@ -691,7 +694,8 @@ Notice that this system is incomplete. There are inference rules for every
 form of expression except for lambda. On the other hand, only lambda
 expressions can be checked against types.  We can make the checking judgment
 more applicable with \rref{c-infer-simple} that allows us to use inference
-whenever a checking rule doesn't apply.
+whenever a checking rule doesn't apply. This rule only applies when the 
+term is not a lambda expression.
 
 Now, let us think about the reverse problem a bit. There are programs that the
 checking system won't admit but would have been acceptable by our first
