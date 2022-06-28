@@ -506,7 +506,7 @@ is a valid type, see below.
 \paragraph{More typing rules:  Types}
 
 Observe in the typing derivation above that the rule for typing
-$lambda$-expressions has a second precondition: we need to make sure that
+$\lambda$-expressions has a second precondition: we need to make sure that
 when we add assumptions $x:A$ to the context, that $A$ really is a type.
 Without this precondition, the rules would allow us to derive this nonsensical
 type for the polymorphic identity function.
@@ -582,6 +582,25 @@ has this type.
 loop : (x:Type) -> x
 loop = \x . loop x
 \end{piforall}
+
+\paragraph{Typing invariant}
+
+Overall, a property that we want for our type system is that if a term type
+checks, then its \emph{type} will also type check. More formally, to state
+this property, we first need to say what it means to check all types in a
+context.
+
+\begin{definition}[Context type checks] 
+Define \fbox{$[[|-G]]$} with the following rules. \[ \drule{g-nil} \qquad \drule{g-cons} \]
+\end{definition}
+\noindent
+With this judgement, we can state the following property of our type system.
+\begin{lemma}[Regularity]
+If $[[G |- a : A ]]$ and $[[|- G]]$, then $[[ G |- A : Type]]$
+\end{lemma}
+\noindent
+Making sure that this property holds for the type system is the motivation for the 
+$[[G |- A : Type]]$ premise in \rref{t-lambda}.
 
 \section{From typing rules to a typing algorithm}
 \label{sec:bidirectional}
@@ -679,7 +698,8 @@ the type to infer.
 
 On the other hand, in \rref{c-lambda} we should check $\lambda$-expressions
 against a known type. If that type is provided, we can propagate it to the
-body of the lambda expression. We also want to check that $A$ is a $[[Type]]$.
+body of the lambda expression. (For subtle reasons, we can skip checking that
+$A$ is a $[[Type]]$.)
 
 The rule for applications, \rref{i-app-simple}, is in inference mode. Here, we
 first infer the type of the function, but once we have that type, we may use
@@ -747,11 +767,12 @@ language.
 
 Furthermore, we want to convince ourselves that the bidirectional system
 checks the same terms as the original type system. This means that we want to
-prove a property like this one:
+prove a property like this one\footnote{This result requires the addition of a
+  typing rule for annotated terms $[[(a:A)]]$ to the original system.}:
 
 \begin{lemma}[Correctness of the bidirectional type system]
-If $[[G |- a => A]]$ then $[[G |- a : A]]$.
-If $[[G |- a <= A]]$ then $[[G |- a : A]]$.
+If $[[G |- a => A]]$ and $[[|- G]]$ then $[[G |- a : A]]$.
+If $[[G |- a <= A]]$ and $[[|- G]]$ and $[[G |- A : Type]]$ then $[[G |- a : A]]$.
 \end{lemma}
 
 On the other hand, the reverse property is not true. Even if there exists some
@@ -762,7 +783,7 @@ addition of typing annotations that can be inferred or checked instead.
 
 One issue with this bidirectional system is that it is not closed under
 substitution.  What this means is that given some term $[[b]]$ with a free
-variable, $[[ G, x :A |- b <= B]]$, and another term $[[a]]$ with the same
+variable, $[[ G, x : A |- b <= B]]$, and another term $[[a]]$ with the same
 type $[[ G |- a <= A]]$ of that variable, we \emph{do not} have a derivation
 $[[ G |- b[a/x] <= A]]$. The reason is that types of variables are always
 inferred, but the term $[[a]]$, may need the type $[[A]]$ to be supplied to
@@ -775,10 +796,10 @@ not have enough annotations to be checked themselves. We can express the propert
 that does hold about our system, using this lemma:
 
 \begin{lemma}[Regularity]
-If $[[G |- a => A]]$ then $[[G |- A : Type]]$.
+If $[[G |- a => A]]$ and $[[|- G]]$ then $[[G |- A : Type]]$.
 \end{lemma}
 
-This issue is not significant, but we could resolve it by adding an annotation
+This issue is not significant, and we could resolve it by adding an annotation
 before substitution. However, in our implementation of \pif, we do not do so
 to reduce clutter.
 

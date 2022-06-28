@@ -109,6 +109,7 @@ grammar
 context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
 
    |                 ::    :: Nil  
+   {{ tex \emptyset }}
 
    | G , x : A       ::    :: Cons   {{ tex [[G]], [[x]]\! :\![[A]] }}
 
@@ -356,11 +357,6 @@ x : A elem G
 ----------- :: var 
 G |- x => A
 
-
-G |- a <= A 
------------------- :: annot
-G |- (a : A) => A
-
 G |- a => (x:A) -> B 
 G |- b <= A
 ---------------------------  :: app_simple
@@ -380,8 +376,9 @@ G |- (x:A) -> B => Type
 ------------------- :: type
 G |- Type => Type
 
+G |- A <= Type
 G |- a <= A
------------------- :: ann
+------------------ :: annot
 G |- (a : A) => A
 
    
@@ -391,7 +388,6 @@ G |- a <= B ::    :: checkType :: 'c_'
 by
 
 G, x:A |- a <= B       
-G |- A <= Type
 --------------------------- ::  lambda
 G |- \x.a <= (x:A) -> B
 
@@ -407,3 +403,16 @@ G |- A <=> B
 G |- a <= B
 
 
+defn
+|- G ::   :: checkCtx :: 'g_'
+{{ com check all types in the context }}
+by
+
+-------- :: nil
+|- 
+
+
+G |- A : Type
+|- G
+-------------- :: cons
+|- G , x : A 

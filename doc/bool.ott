@@ -118,7 +118,7 @@ G |- a : Bool
 G |- b1 : A
 G |- b2 : A
 ---------------------------- :: if_simple
- |- if a then b1 else b2 : A
+G |- if a then b1 else b2 : A
 
 G |- a : Bool 
 G |- b1 : A [ True / x ]
@@ -166,11 +166,11 @@ G |- a <= Bool
 G |- b1 <= A
 G |- b2 <= A
 ---------------------------- :: if_weak
- |- if a then b1 else b2 <= A
+G |- if a then b1 else b2 <= A
 
 
- G |- x => Bool 
- G |- b1 <= A [ True / x ]
- G |- b2 <= A [ False / x ]
- ------------------------------ :: if
- G |- if x then b1 else b2 <= A
+G |- x => Bool 
+G |- b1 <= A [ True / x ]
+G |- b2 <= A [ False / x ]
+------------------------------ :: if
+G |- if x then b1 else b2 <= A
