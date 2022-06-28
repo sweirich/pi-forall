@@ -17,6 +17,7 @@
 }
 \usepackage{supertabular}
 \usepackage{listings}
+\usepackage{textcomp}
 \usepackage{xspace}
 \usepackage{ottalt}
 \usepackage[T1]{fontenc}
