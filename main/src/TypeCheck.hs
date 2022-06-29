@@ -130,12 +130,19 @@ tcTerm (LitBool b) Nothing = {- SOLN HW -} do
 
 -- c-if
 tcTerm t@(If t1 t2 t3) mty = {- SOLN HW -} do
-  checkType t1 TyBool
-  dtrue <- def t1 (LitBool True)
-  dfalse <- def t1 (LitBool False)
-  ty <- Env.extendCtxs dtrue $ tcTerm t2 mty
-  Env.extendCtxs dfalse $ checkType t3 ty
-  return ty
+  case mty of 
+    Just ty -> do
+      checkType t1 TyBool
+      dtrue <- def t1 (LitBool True)
+      dfalse <- def t1 (LitBool False)
+      Env.extendCtxs dtrue $ checkType t2 ty
+      Env.extendCtxs dfalse $ checkType t3 ty
+      return ty
+    Nothing -> do
+      checkType t1 TyBool
+      ty <- inferType t2
+      checkType t3 ty
+      return ty
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
 tcTerm (Let rhs bnd) mty = {- SOLN HW -} do

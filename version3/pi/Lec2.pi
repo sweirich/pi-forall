@@ -27,9 +27,9 @@ z2 = True
 -- context-dependent. In otherwords, it should add new 
 -- definitions to the context in the true/false branches
 -- when the scrutinee is a variable
--- (i.e. >= version3)
+-- (i.e. >= version2)
 
-{- 
+
 not : Bool -> Bool 
 not = \x. if x then False else True
 
@@ -38,7 +38,7 @@ bar = \b. if b then () else True
 
 barnot : (b : Bool) -> T (not b) 
 barnot = \b. if b then False else ()
--}
+
 
 -- projections for sigma types
 
