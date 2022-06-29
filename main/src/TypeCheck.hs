@@ -150,9 +150,9 @@ tcTerm (Let rhs bnd) mty = {- SOLN HW -} do
   aty <- inferType rhs 
   ty <- Env.extendCtxs [mkSig x aty, Def x rhs] $
       tcTerm body mty
-  when (x `elem` Unbound.toListOf Unbound.fv ty) $
-    Env.err [DS "Let bound variable", DD x, DS "escapes in type", DD ty]
-  return ty
+  case mty of 
+    Just _ -> return ty
+    Nothing -> return $ Unbound.subst x rhs ty
 {- STUBWITH   Env.err [DS "unimplemented"] -}
 {- SOLN DATA -}
 -- Type constructor application
