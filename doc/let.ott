@@ -1,0 +1,104 @@
+% Language additions for 
+
+grammar
+
+tm, a , b , A , B , u , v :: '' ::= {{ com terms and types }}
+
+  | let x = a in b  ::   :: Let 
+    {{ com name an expression }}
+
+context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
+
+  | G , x = a       ::   :: Def
+
+defns 
+Jwhnf :: '' ::= 
+
+defn
+whnf a = v ::    :: whnf :: 'whnf_' 
+by
+
+whnf (b[a/x]) ~> v
+------------------------------- :: let_beta
+whnf (let x = a in b) ~> v
+
+defns
+JOp :: '' ::=
+
+defn
+a ~> b ::   :: step :: 's_'
+{{ com single-step operational semantics, i. e. head reduction }}
+by
+
+
+--------------------------------- :: letbeta
+let x = a in b ~> b [ a / x ] 
+
+
+defns 
+JEq :: '' ::=
+
+defn
+G |- A = B ::  :: eq :: 'e_'
+{{ com Definitional equality }}
+by
+
+
+--------------------------------- :: letbeta
+G |- let x = a in b = b [ a / x ] 
+
+
+G |- a1 = a2
+G, x:A, x = a1 |- b1 = b2
+--------------------------------------------- :: let
+G |- let x = a1 in b1 = let x = a2 in b2
+
+
+defns
+JTyping :: '' ::= 
+
+defn 
+
+G |- a : A   ::   :: typing :: 't_'
+{{ com Typing }}
+by
+
+G |- a : A 
+G , x : A |- b : B
+G |- B : Type
+-------------------------- :: let_simple
+G |- let x = a in b : B 
+
+G |- a : A 
+G , x : A, x = a |- b : B
+G |- B : Type
+-------------------------- :: let
+G |- let x = a in b : B 
+
+
+defns
+JBidirectional :: '' ::= 
+
+defn 
+G |- a => A ::    :: inferType :: 'i_'
+{{ com type synthesis (algorithmic) }}
+by
+
+G |- a => A 
+G , x : A, x = a |- b => B
+G |- B <= Type
+-------------------------- :: let
+G |- let x = a in b => B 
+
+
+
+defn 
+G |- a <= B ::    :: checkType :: 'c_'
+{{ com type checking (algorithmic) }}
+by
+
+G |- a => A 
+G , x : A, x = a |- b <= B
+G |- B <= Type
+-------------------------- :: let
+G |- let x = a in b <= B 

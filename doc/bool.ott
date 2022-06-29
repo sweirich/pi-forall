@@ -150,7 +150,7 @@ G |- True => Bool
 ---------------- :: false
 G |- False => Bool
 
-G |- a => Bool 
+G |- a <= Bool 
 G |- b1 => B1
 G |- b2 => B2
 ----------------------------------------------- :: if_alt
@@ -169,7 +169,7 @@ G |- b2 <= A
 G |- if a then b1 else b2 <= A
 
 
-G |- x => Bool 
+G |- x <= Bool 
 G |- b1 <= A [ True / x ]
 G |- b2 <= A [ False / x ]
 ------------------------------ :: if
