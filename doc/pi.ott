@@ -201,7 +201,7 @@ whnf x ~> x
 
 
 whnf a ~> path
----------------------- :: lam_cong
+---------------------- :: app
 whnf a b ~> path b
 
 % remove type annotations when normalizing

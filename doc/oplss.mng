@@ -1277,7 +1277,7 @@ better.
 \end{figure}
 
 The rules in Figure~\ref{fig:defeq} define what it means for two terms to be
-equivalent, by stating the properties that we want to be true of this
+equivalent by stating the properties that we want to be true of this
 relation.  \Rref{e-beta} ensures that our relation \emph{contains
   beta-equivalence}. Terms that evaluate to each other should be equal.
 \Rref{e-refl,e-sym,e-trans} makes sure that this relation is an
@@ -1291,6 +1291,13 @@ on the left (and with the help of \rref{e-sym}, on the right as well).
 
 (Note: if we add booleans and $\Sigma-$types, we will also need corresponding
 $\beta$-equivalence rules and congruence rules for those constructs.)
+
+How do we know our definition is good? We want to make sure that whatever
+rules that we add to the system, we define a relation that is
+\emph{consistent}. We want to equate as many terms/types as possible, but 
+we don't want to be be able to derive an equality between $[[Type]]$ and some 
+function type (e.g. $[[(x:Type) -> Type]]$), or an equality between $[[True]]$ and $[[False]]$. To be absolutely confident about our definition, we want a proof 
+that such equalties are not derivable in our system.
 
 \subsection{Using definitional equality in the algorithm}
 
@@ -1341,7 +1348,7 @@ match against a literal function type.
 \end{itemize}
 
 \begin{figure}
-\drules[whnf]{$[[whnf a ~> v]]$}{Weak head normal form reduction}{lam-beta,let-beta,type,lam,pi,var,lam-cong}
+\drules[whnf]{$[[whnf a ~> v]]$}{Weak head normal form reduction}{lam-beta,annot,type,lam,pi,var,lam-cong}
 \caption{Relation computing the weak head normal form of a term}
 \label{fig:whnf}
 \end{figure}
