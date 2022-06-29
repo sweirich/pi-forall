@@ -38,6 +38,7 @@ checkType tm ty = {- SOLN EQUAL -} do
   void $ tcTerm tm (Just nf)
 {- STUBWITH void $ tcTerm tm (Just ty) -}
 
+
 -- | Make sure that the term is a "type" (i.e. that it has type 'Type')
 tcType :: Term -> TcMonad ()
 tcType tm = void $ {- SOLN EP -} Env.withStage Irr $ {- STUBWITH -}checkType tm Type
@@ -309,18 +310,17 @@ tcTerm t@(Prod a b) (Just ty) = {- SOLN EQUAL -} do
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
 tcTerm t@(LetPair p bnd) (Just ty) = {- SOLN EQUAL -} do
+  ((x, y), body) <- Unbound.unbind bnd
   pty <- inferType p
   pty' <- Equal.whnf pty
   case pty' of
     Sigma tyA bnd' -> do
-      (x, tyB) <- Unbound.unbind bnd'
-      ((x', y'), body) <- Unbound.unbind bnd
-      let tyB' = Unbound.subst x (Var x') tyB
-      decl <- def p (Prod (Var x') (Var y'))
-      Env.extendCtxs ([mkSig x' tyA, mkSig y' tyB'] ++ decl) $
+      let tyB = Unbound.instantiate bnd' [Var x]
+      decl <- def p (Prod (Var x) (Var y))
+      Env.extendCtxs ([mkSig x tyA, mkSig y tyB] ++ decl) $
           checkType body ty
       return ty
-    _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
+    _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
 {- STUBWITH Env.err [DS "unimplemented"] -}
 
 tcTerm PrintMe (Just ty) = do

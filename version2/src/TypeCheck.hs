@@ -34,6 +34,7 @@ checkType tm ty = do
   void $ tcTerm tm (Just nf)
 
 
+
 -- | Make sure that the term is a "type" (i.e. that it has type 'Type')
 tcType :: Term -> TcMonad ()
 tcType tm = void $ checkType tm Type
@@ -186,18 +187,17 @@ tcTerm t@(Prod a b) (Just ty) = do
 
 
 tcTerm t@(LetPair p bnd) (Just ty) = do
+  ((x, y), body) <- Unbound.unbind bnd
   pty <- inferType p
   pty' <- Equal.whnf pty
   case pty' of
     Sigma tyA bnd' -> do
-      (x, tyB) <- Unbound.unbind bnd'
-      ((x', y'), body) <- Unbound.unbind bnd
-      let tyB' = Unbound.subst x (Var x') tyB
-      decl <- def p (Prod (Var x') (Var y'))
-      Env.extendCtxs ([mkSig x' tyA, mkSig y' tyB'] ++ decl) $
+      let tyB = Unbound.instantiate bnd' [Var x]
+      decl <- def p (Prod (Var x) (Var y))
+      Env.extendCtxs ([mkSig x tyA, mkSig y tyB] ++ decl) $
           checkType body ty
       return ty
-    _ -> Env.err [DS "Scrutinee of pcase must have Sigma type"]
+    _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
 
 
 tcTerm PrintMe (Just ty) = do

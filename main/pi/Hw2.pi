@@ -1,10 +1,44 @@
 module Hw2 where
 
--- show that propositional equality is transitive 
+-- First: read section 7.2 of the lecture notes about how 
+-- propositional equality works in pi-forall. The key points are
+-- that `Refl` is a proof of the identity type `(a = b)` when 
+-- a is definitionally equal to b, and that `subst` is the elimination
+-- form.
+
+-- For example, we can show that equality is symmetric by 
+-- eliminating pf (of type `x = y`) when type checking 
+-- `Refl` against type `y = x`.  The `subst` adds the definition 
+-- `x = y` to the context, so both sides of `y = x` wh normalize to y. 
+
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  subst Refl by pf 
+
+-- Homework: show that propositional equality is transitive 
 
 trans : (A:Type) -> (x:A) -> (y:A) -> (z:A) -> (x = z) -> (z = y) -> (x = y)
 trans = {- SOLN DATA -} \A x y z pf1 pf2 . 
   subst pf1 by pf2 {- STUBWITH TRUSTME -}
+
+-- Homework: show that it is congruent for (nondependent) application
+
+f_cong : (A:Type) -> (B : Type) -> (f : A -> B) -> (g : A -> B)
+       -> (x:A) -> (y:A) 
+       -> (f = g) -> (x = y) -> (f x = g y)
+f_cong = {- SOLN DATA -} \ A B f g x y pf1 pf2 . 
+   subst (subst Refl by pf1) by pf2 {- STUBWITH TRUSTME -}
+
+-- Homework: what does congruence for dependent application look like?
+-- In other words, what if f and g above have a dependent type?
+
+{- SOLN DATA -}
+f_cong_dep : (A:Type) -> (B : A -> Type) 
+       -> (f : (x:A) -> B x) -> (g : (x:A) -> B x)
+       -> (x:A) -> (y:A) 
+       -> (f = g) -> (p : x = y) -> (f x = subst g y by p)
+f_cong_dep =  \ A B f g x y pf1 pf2 . 
+   subst (subst Refl by pf1) by pf2 {- STUBWITH -}
 
 
 -- properties of booleans
