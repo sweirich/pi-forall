@@ -123,6 +123,7 @@ G |- if a then b1 else b2 : A
 G |- a : Bool 
 G |- b1 : A [ True / x ]
 G |- b2 : A [ False / x ]
+G, x:Bool |- A : Type
 -------------------------------- :: if_full
 G |- if a then b1 else b2 : A[a/x]
 
@@ -151,6 +152,12 @@ G |- True => Bool
 G |- False => Bool
 
 G |- a <= Bool 
+G |- b1 => A
+G |- b2 => A
+---------------------------- :: if_simple
+G |- if a then b1 else b2 => A
+
+G |- a <= Bool 
 G |- b1 => B1
 G |- b2 => B2
 ----------------------------------------------- :: if_alt
@@ -165,7 +172,7 @@ by
 G |- a <= Bool 
 G |- b1 <= A
 G |- b2 <= A
----------------------------- :: if_weak
+---------------------------- :: if_simple
 G |- if a then b1 else b2 <= A
 
 

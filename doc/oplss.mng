@@ -1516,10 +1516,26 @@ Consider our elimination rule for if from your homework assignment:
 
 \[ \drule[width=4in]{t-if-simple} \]
 
-We can strengthen this rule by making the result type \texttt{A} depend on
-whether the condition is true or false when type checking each branch. In this
-way, our type system is flow-sensitive: we do different things while type
-checking based on how control flows in a \pif program.
+One solution to the homework assignment is to add the following two 
+rules to the algorithmic system, one in inference mode and one in 
+checking mode.
+
+\[ \drule[width=4in]{c-if-simple}\]
+\[\drule[width=4in]{i-if-simple} \]
+
+In both of these rules, we should check that the condition has type bool (when using the checking judgement here, the algorithm will infer the type of the condition and then compare the inferred type against bool using definitional equality.) However, there is no unique best way to handle the branches of the if expression. Some examples work better using the first rule and some examples require the second rule. 
+For example, we can only type check the example below using the first (checking) rule:
+\[ [[ |- \y. if y then (\x.x) else (\x. not x) <= Bool -> Bool -> Bool]] \]
+and we can only type check this next example using the second (inference) rule:
+\[ [[ x:Bool,y:Bool->Bool |- (if x then y else not) true => Bool ]] \]
+Fortunately, it is not difficult to implement our type checking function so that it implements both rules. Indeed, because \cd{tcTerm} combines both judgments into a single Haskell function in the implementation, it is possible to implement both 
+rules with the same code.
+
+However, note that we can strengthen the specification of the typechecking
+rule for \cd{if} by making the result type \texttt{A} depend on whether the
+condition is true or false when type checking each branch. In this way, our
+type system is flow-sensitive: we do different things while type checking
+based on how control flows in a \pif program.
 
 \[ \drule[width=4in]{t-if-full} \]
 
@@ -1542,11 +1558,13 @@ It turns out that this strong type checking rule is difficult to implement. In
 fact, it is not syntax-directed because $A$ and $x$ are not fixed by the
 syntax. Given $[[A[True/x] ]]$ and $[[A [False/x] ]]$ and $[[ A [a/x] ]]$ (or
 anything that they are definitionally equal to!)  how can we figure out
-whether they correspond to each other? Neither inference nor checking mode works, because we don't ever see the type $[[A]]$ with just the variable $[[x]]$.
+whether they correspond to each other? Neither inference nor checking mode
+works, because we don't ever see the type $[[A]]$ with just the variable
+$[[x]]$.
 
 So, we will not be so ambitious in \pif. We will only allow this refinement when
 the scrutinee is a variable, deferring to the weaker, non-refining typing rule
-for all other cases.
+for all other cases. Specificationally, we will implement this rule:
 
 \[ \drule[width=4in]{t-if} \]
 
@@ -1600,6 +1618,7 @@ snd : (A:Type) -> (B : A -> Type) -> (p : { x2 : A | B x2 }) -> B (fst A B p)
 snd = \A B p. let (x,y) = p in y
 \end{piforall}
 
+\noindent
 (Try this out using \texttt{version2} of the implementation and the \texttt{Lec2.pi}
 input file.)
 

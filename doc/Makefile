@@ -1,6 +1,6 @@
 ## Makefile for paper
 
-OTT_SOURCE = pi sigma bool tyeq epsilon data
+OTT_SOURCE = pi sigma bool tyeq epsilon data let
 BIBFILES = weirich.bib
 
 OTTFILES  = $(foreach i, $(OTT_SOURCE), $(i).ott)

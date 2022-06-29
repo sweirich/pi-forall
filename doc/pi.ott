@@ -52,8 +52,6 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
   | PRINTME         ::   :: PrintMe   
     {{ com print the current context }}
 
-  | let x = a in b  ::   :: Let 
-    {{ com name an expression }}
 
   | Unit            ::   :: TyUnit  
     {{ com unit type }}
@@ -183,9 +181,6 @@ whnf (a'[b/x]) ~> v
 ---------------------- :: lam_beta
 whnf a b ~> v
 
-whnf (b[a/x]) ~> v
-------------------------------- :: let_beta
-whnf (let x = a in b) ~> v
 
 ------------------ :: type
 whnf Type ~> Type
@@ -227,9 +222,6 @@ by
 ----------------------------------  :: lambeta
 (\x.a) b ~> a [ b / x]
 
-
---------------------------------- :: letbeta
-let x = a in b ~> b [ a / x ] 
 
 
 a ~> a'
