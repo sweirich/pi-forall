@@ -1506,7 +1506,6 @@ Why do we use weak head reduction vs.~full reduction?
   be terms that can cause \texttt{equate} to loop forever.
 \end{itemize}
 
-
 \section{Dependent pattern matching and propositional equality}
 \label{sec:pattern-matching}
 
@@ -1628,6 +1627,71 @@ snd = \A B p. let (x,y) = p in y
 \noindent
 (Try this out using \texttt{version2} of the implementation and the \texttt{Lec2.pi}
 input file.)
+
+\subsubsection{Definitions and let expressions}
+
+Now let's consider let expressions, of the form $[[let x = a in b]]$. The simplest rule 
+that we can use for this term is the following:
+
+\[ \drule[width=4in]{t-let-simple} \]
+
+Note the last premise: we need to make sure that the variable $[[x]]$ does not
+appear in the type $[[B]]$ because otherwise it would escape its scope. In the
+specificational version of the type system, this version of the let rule is
+derivable from function application: $[[let x = a in b]]$ is equivalent to
+$[[ (\x. b) a ]]$. On the other hand, the bidirectional system won't typecheck
+this definition without an annotation, so we should add this expression form
+directly.
+
+However, we can also develop a stronger rule, which statically tracks that, because this 
+is a let-expression, we know that $[[x]]$ is equal to its definition. This view leads to the 
+following rule: 
+
+\[ \drule[width=4in]{t-let-def} \]
+
+In this rule, we've added a definition to our context, i.e. $[[x = a]]$. These
+definitions are used during weak head normalization. If we get to a variable
+in the head position, and there is a definition for it in the context, we
+should look it up and keep normalizing.
+
+Definitions in the context act like deferred substitutions. Indeed,
+\rref{t-let-def} doesn't really increase the expressiveness of the type system
+compared to \rref{t-let-simple}: if we had derivation that uses this rule, we
+can replace it with one that uses $[[b [a /x] ]]$ instead of $[[b]]$ in the
+body of the let expression. However, for programmers, if $[[a]]$ is a large
+expression and important for type checking, it is more convenient for to write
+$[[x]]$ instead.
+
+How do we approach let expressions in the bidirectional system? As with if and
+letpair expressions, it makes sense to have both checking and inference
+rules.  In checking mode, the rule is very similar to the specification. We
+extend the context appropriately and use the known type to check the body of
+the expression.
+
+\[ \drule[width=4in]{c-let} \]
+
+However, in inference mode, we have to be careful that the variable $[[x]]$
+does not escape its scope. One option would be just to reject the program if
+this would happen.  However, a more flexible approach is to substitute this
+variable away with its definition.\footnote{This rule for let can be used to 
+derive the more general form of refinement rules for booleans and other datatypes. In the 
+general case, we can annotate an elimination form with a \emph{motive}:
+\[ \drule[width=4in]{i-if-motive} \] 
+This annotation lets us use refinement, even when the condition is not a variable, and even in inference mode. However, we can also derive this rule via let:
+\[ [[ if a then b1 else b2 [x.A] ]] = [[ let x = a in (if x then b1 else b2 : A) ]] \]
+}
+
+\[ \drule[width=4in]{i-let} \]
+
+\paragraph{Definitions and refinement}
+
+With the addition of definitions, we can revise our refining rules for booleans and 
+$\Sigma$-types. Instead of substituting in the result type, we can replace those rules 
+with suspended definitions in the context. 
+
+\[ \drule[width=4in]{c-if-def} \]
+
+\[ \drule[width=4in]{c-letpair-def} \]
 
 \subsection{Propositional equality}
 

@@ -122,8 +122,8 @@ G |- a => A ::    :: inferType :: 'i_'
 {{ com type synthesis (algorithmic) }}
 by
 
-G |- A => Type     
-G, x:A |- B => Type
+G |- A <= Type     
+G, x:A |- B <= Type
 ------------------------------------- :: sigma
 G |- { x : A | B } => Type
 
@@ -140,12 +140,10 @@ G |- (a,b) <= { x : A | B }
 
 G |- a => { x : A1 | A2 }
 G, x:A1, y:A2 |- b <= B
-G |- B <= Type
 ------------------------------ :: letpair_simple
 G |- let (x,y) = a in b <= B
 
 G |- z => { x : A1 | A2 }
 G, x:A1, y:B2 |- b <= B [ (x,y) / z ]
-G |- B <= Type
 -------------------------------------- :: letpair
 G |- let (x,y) = z in b <= B

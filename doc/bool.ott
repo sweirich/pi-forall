@@ -9,6 +9,8 @@ tm, a , b , A , B  :: '' ::= {{ com terms and types }}
   | False                 ::   :: LitFalse {{ com boolean value false }}
   | if a then b1 else b2  ::   :: If {{ com conditional }}
 
+  | if a then b1 else b2 [ x . B ]  ::   :: IfM {{ com conditional }}
+
 v :: 'v_' ::= 
   | Bool                  ::   :: TyBool 
   | True                  ::   :: LitTrue
@@ -127,9 +129,11 @@ G, x:Bool |- A : Type
 -------------------------------- :: if_full
 G |- if a then b1 else b2 : A[a/x]
 
+
 G |- x : Bool 
 G |- b1 : A [ True / x ]
 G |- b2 : A [ False / x ]
+G |- A : Type
 ---------------------------- :: if
 G |- if x then b1 else b2 : A 
 
@@ -158,6 +162,14 @@ G |- b2 => A
 G |- if a then b1 else b2 => A
 
 G |- a <= Bool 
+G |- b1 <= A [ True / x ]
+G |- b2 <= A [ False / x ]
+G, x:Bool |- A <= Type
+-------------------------------- :: if_motive
+G |- if a then b1 else b2 [x.A] => A[a/x]
+
+
+G |- a <= Bool 
 G |- b1 => B1
 G |- b2 => B2
 ----------------------------------------------- :: if_alt
@@ -181,3 +193,4 @@ G |- b1 <= A [ True / x ]
 G |- b2 <= A [ False / x ]
 ------------------------------ :: if
 G |- if x then b1 else b2 <= A
+

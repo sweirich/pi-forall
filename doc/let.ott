@@ -11,12 +11,21 @@ context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
 
   | G , x = a       ::   :: Def
 
+
+formula :: 'formula_' ::=
+  | x = a elem G      ::   :: Def
+
 defns 
 Jwhnf :: '' ::= 
 
 defn
 whnf a = v ::    :: whnf :: 'whnf_' 
 by
+
+x = a elem G 
+whnf a ~> v
+------------- :: def
+whnf x ~> v
 
 whnf (b[a/x]) ~> v
 ------------------------------- :: let_beta
@@ -72,7 +81,7 @@ G |- let x = a in b : B
 G |- a : A 
 G , x : A, x = a |- b : B
 G |- B : Type
--------------------------- :: let
+-------------------------- :: let_def
 G |- let x = a in b : B 
 
 
@@ -84,11 +93,17 @@ G |- a => A ::    :: inferType :: 'i_'
 {{ com type synthesis (algorithmic) }}
 by
 
+
+G |- a => A 
+G , x : A |- b => B
+G |- B <= Type
+----------------------------------- :: let_simple
+G |- let x = a in b => B 
+
 G |- a => A 
 G , x : A, x = a |- b => B
-G |- B <= Type
--------------------------- :: let
-G |- let x = a in b => B 
+----------------------------------- :: let
+G |- let x = a in b => B [ a / x ] 
 
 
 
@@ -99,6 +114,16 @@ by
 
 G |- a => A 
 G , x : A, x = a |- b <= B
-G |- B <= Type
 -------------------------- :: let
 G |- let x = a in b <= B 
+
+G |- x <= Bool 
+G, x = True |- b1 <= A 
+G, x = False |- b2 <= A 
+------------------------------ :: if_def
+G |- if x then b1 else b2 <= A
+
+G |- z => { x : A1 | A2 }
+G, x:A1, y:B2, z = (x,y) |- b <= B
+-------------------------------------- :: letpair_def
+G |- let (x,y) = z in b <= B
