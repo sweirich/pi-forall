@@ -1,6 +1,7 @@
 module Lec3 where
 
 -- can mark some arguments as irrelevant
+-- irrelevant parameters can only appear in types (or as part of irrelevant arguments)
 
 id : [x:Type] -> (y : x) -> x
 id = \[x] y. (y : x)
@@ -9,18 +10,33 @@ t0 = id [Bool] True
 
 t1 = id [Bool] (id [Bool] True)
 
+id2 : [x:Type] -> (y : x) -> x
+id2 = \[x] y. id [x] (y : x)
+
 --  This shouldn't type check because y is relevant
 --
+
 {-
 id' : [x:Type] -> [y:x] -> x
 id' = \[x][y]. y
 -}
 
+{-
+id2' : [x:Type] -> Type
+id2' = \[x]. id [Type] x 
+-}
+
+
+
 -----------------------------------------------------
 --  Irrelevant arguments are ignored during type equality
 
-irrelevance : (p : [i : Bool] -> Bool) -> p [False] = p [False]
+irrelevance : (p : [i : Bool] -> Bool) -> p [True] = p [False]
 irrelevance = \p . Refl
+
+
+
+
 
 -----------------------------------------------------
 -- Propositional equality is relevant
