@@ -35,7 +35,7 @@ $(RULESFILE): $(OTTFILES)
           -tex_wrap false \
           -tex_show_meta false
 
-$(TOP).pdf : $(TOP).tex  $(BIBFILES) $(PAPER_SOURCE) Makefile lstparams.sty abstract.tex lstpi.sty
+$(TOP).pdf : $(TOP).tex  $(BIBFILES) $(PAPER_SOURCE) Makefile lstparams.sty lstpi.sty
 	echo $(PAPER_SOURCE)
 	latexmk -pdflatex="texfot pdflatex" -bibtex -pdf $(TOP).tex && latexmk -c
 

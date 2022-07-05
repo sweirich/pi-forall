@@ -1345,7 +1345,7 @@ match against a literal function type.
 \end{itemize}
 
 \begin{figure}
-\drules[whnf]{$[[whnf a ~> v]]$}{Weak head normal form reduction}{lam-beta,annot,type,lam,pi,var,lam-cong}
+\drules[whnf]{$[[whnf a ~> v]]$}{Weak head normal form reduction}{lam-beta,annot,type,lam,pi,var,app}
 \caption{Relation computing the weak head normal form of a term}
 \label{fig:whnf}
 \end{figure}
