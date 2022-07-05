@@ -53,10 +53,7 @@ These lecture notes describe the design of a minimal dependently-typed
 language called ``\pif'' and walk through the implementation of its type
 checker. They are based on lectures given at the \emph{Oregon Programming
   Languages Summer School} during June 2022 and derived from earlier lectures
-from summer schools during 2014 and 2013.\footnote{NOTE: if the date
-  on this document is before June 27, 2022, then these notes are still in
-  draft form. If you find any errors or typos, please send pull requests
-  to \url{https://github.com/sweirich/pi-forall}.}
+from summer schools during 2014 and 2013.
 
 \paragraph{What do I expect from you, dear reader?} This discussion assumes a
 familiarity with the basics of the lambda calculus, including its standard
@@ -1537,7 +1534,7 @@ and we can only type check this next example using the second (inference) rule:
 Fortunately, it is not difficult to implement our type checking function so that it implements both rules. Indeed, because \cd{tcTerm} combines both judgments into a single Haskell function in the implementation, it is possible to implement both 
 rules with the same code.
 
-However, note that we can strengthen the specification of the typechecking
+However, note that we can strengthen the specification of the type checking
 rule for \cd{if} by making the result type \texttt{A} depend on whether the
 condition is true or false when type checking each branch. In this way, our
 type system is flow-sensitive: we do different things while type checking
@@ -1639,7 +1636,7 @@ Note the last premise: we need to make sure that the variable $[[x]]$ does not
 appear in the type $[[B]]$ because otherwise it would escape its scope. In the
 specificational version of the type system, this version of the let rule is
 derivable from function application: $[[let x = a in b]]$ is equivalent to
-$[[ (\x. b) a ]]$. On the other hand, the bidirectional system won't typecheck
+$[[ (\x. b) a ]]$. On the other hand, the bidirectional system won't type check
 this definition without an annotation, so we should add this expression form
 directly.
 
@@ -2728,6 +2725,10 @@ irrelevant arguments, but these arguments must be erased prior to run time and
 equality checking\cite{icc-star}. This approach lead to Erasure Pure Type
 Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
 Dependent Haskell~\cite{weirich:systemd}.
+
+\section*{Acknowledgments} 
+Thanks to ``Team Weirich'' from OPLSS 2022 (Kartik Singhal, Jonathan Chan, Shengyi Jiang and Thomas Binetruy), the Penn PLClub, and the attendees of OPLSS 2022, OPLSS 2014 and OPLSS 2013, for feedback and suggestions about these lecture notes. Some parts of the implementation  This work was supported by the National Science Foundation under grants 
+NSF 2006535, NSF 1703835 and NSF 0910786.
 
 \phantomsection
 \addcontentsline{toc}{section}{References}
