@@ -1456,7 +1456,7 @@ nonterminating) we would like to only reduce as much as necessary.
 Therefore, the implementation of \cd{equate} has the following form.
 \begin{verbatim}
   equate t1 t2 = do
-     if (Unbound.aeq t1 t1) then return () else do
+     if (Unbound.aeq t1 t2) then return () else do
       nf1 <- whnf t1  -- reduce only to 'weak head normal form'
       nf2 <- whnf t2
       case (nf1,nf2) of
