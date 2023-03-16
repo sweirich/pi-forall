@@ -30,7 +30,7 @@ go str = do
     Right term -> do 
       putStrLn "parsed as"
       putStrLn $ render $ disp term
-      res <- runTcMonad emptyEnv (inferType term)
+      res <- runTcMonad emptyEnv (inferType term 0)
       case res of 
         Left typeError -> putTypeError typeError
         Right ty -> do

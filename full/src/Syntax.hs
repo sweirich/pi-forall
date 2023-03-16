@@ -11,6 +11,7 @@ import Data.Typeable (Typeable)
 import GHC.Generics (Generic,from)
 import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, newPos)
 import Unbound.Generics.LocallyNameless qualified as Unbound
+import Unbound.Generics.LocallyNameless.Unsafe qualified as Unbound
 import Data.Function (on)
 
 -----------------------------------------
@@ -39,6 +40,8 @@ type DCName = String
 
 -----------------------------------------
 
+
+
 -- | Combined syntax for types and terms
 -- (type synonym for documentation)
 type Type = Term
@@ -50,7 +53,7 @@ data Term
   | -- | variables  `x`
     Var TName
   | -- | abstraction  `\x. a`
-    Lam Epsilon (Unbound.Bind TName Term)
+    Lam Rho (Unbound.Bind TName Term)
   | -- | application `a b`
     App Term Arg
   | -- | function type   `(x : A) -> B`
@@ -77,7 +80,7 @@ data Term
   | -- | `if a then b1 else b2` expression for eliminating booleans
     If Term Term Term
   | -- | Sigma-type (homework), written `{ x : A | B }`  
-    Sigma Term (Unbound.Bind TName Term)
+    Sigma Term Level (Unbound.Bind TName Term)
   | -- | introduction form for Sigma-types `( a , b )`
     Prod Term Term
   | -- | elimination form for Sigma-types `let (x,y) = a in b`
@@ -97,15 +100,21 @@ data Term
     DCon DCName [Arg] 
   | -- | case analysis  `case a of matches`
     Case Term [Match]
+    -- | displace a value found in the environment
+  | Displace Term Int 
   
   deriving (Show, Generic)
 
 -- | An argument to a function
-data Arg = Arg {argEp :: Epsilon, unArg :: Term}
+data Arg = Arg {argEp :: Rho, unArg :: Term}
   deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
 
+data Epsilon = 
+    Mode { rho :: Rho, level ::  Level } deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term)
+data Level = Dep Int | NonDep deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term)
+
 -- | Epsilon annotates the stage of a variable
-data Epsilon
+data Rho
   = Rel
   | Irr
   deriving
@@ -128,7 +137,7 @@ newtype Match = Match (Unbound.Bind Pattern Term)
 -- | The patterns of case expressions bind all variables
 -- in their respective branches.
 data Pattern
-  = PatCon DCName [(Pattern, Epsilon)]
+  = PatCon DCName [(Pattern, Rho)]
   | PatVar TName
   deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
@@ -154,12 +163,17 @@ newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
 -- | A type declaration (or type signature)
-data Sig = Sig {sigName :: TName , sigEp :: Epsilon  , sigType :: Type}
+data Sig = Sig {sigName :: TName , sigEp :: Epsilon , sigType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
+sigLevel :: Sig -> Int
+sigLevel s = case sigEp s of
+     (Mode _ (Dep j)) -> j
+     (Mode _ NonDep ) -> 0
+
 -- | Declare the type of a term
-mkSig :: TName -> Type -> Decl
-mkSig n ty = TypeSig (Sig n Rel  ty)
+mkSig :: TName -> Type -> Level -> Decl
+mkSig n ty l = TypeSig (Sig n (Mode Rel l) ty)
 
 -- | Declarations are the components of modules
 data Decl
@@ -172,14 +186,14 @@ data Decl
     -- a particular name, must be declared
     RecDef TName Term 
     -- | Adjust the context for relevance checking
-  | Demote Epsilon  
+  | Demote Rho  
   | -- | Declaration for a datatype including all of
     -- its data constructors
-    Data TCName Telescope [ConstructorDef]
+    Data TCName Telescope [ConstructorDef] Int
   | -- | An abstract view of a datatype. Does
     -- not include any information about its data
     -- constructors
-    DataSig TCName Telescope
+    DataSig TCName Telescope Int
   
   deriving (Show, Generic, Typeable)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
@@ -266,9 +280,9 @@ initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
 preludeDataDecls :: [Decl]
 preludeDataDecls = 
-  [ Data sigmaName  sigmaTele      [prodConstructorDef]
-  , Data tyUnitName (Telescope []) [unitConstructorDef]
-  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef]
+  [ Data sigmaName  sigmaTele      [prodConstructorDef] 1
+  , Data tyUnitName (Telescope []) [unitConstructorDef] 0
+  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef] 0
   ]  where
         -- boolean
         trueConstructorDef = ConstructorDef internalPos trueName (Telescope [])
@@ -278,12 +292,14 @@ preludeDataDecls =
         unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
 
         -- Sigma-type
+        -- Sigma (A :: Type) (B :: Pi x:A. Type)
+        -- prod :: (x :: A) (y :: B x) -> Sigma A B
         sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
         prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
-        sigA = Sig aName Rel Type
-        sigB = Sig bName Rel (Pi Rel (Var aName) (Unbound.bind xName Type))
-        sigX = Sig xName Rel (Var aName)
-        sigY = Sig yName Rel (App (Var bName) (Arg Rel (Var xName)))
+        sigA = Sig aName (Mode Rel (Dep 0)) Type
+        sigB = Sig bName (Mode Rel NonDep) (Pi (Mode Rel NonDep) (Var aName) (Unbound.bind xName Type))
+        sigX = Sig xName (Mode Rel NonDep) (Var aName)
+        sigY = Sig yName (Mode Rel NonDep) (App (Var bName) (Arg Rel (Var xName)))
         aName = Unbound.string2Name "a"
         bName = Unbound.string2Name "b"
 
@@ -367,11 +383,11 @@ instance Unbound.Subst Term Term where
 
 -- '(y : x) -> y'
 pi1 :: Term 
-pi1 = Pi Rel (Var xName) (Unbound.bind yName (Var yName))
+pi1 = Pi (Mode Rel (Dep 0)) (Var xName) (Unbound.bind yName (Var yName))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi Rel TyBool (Unbound.bind yName (Var yName))
+pi2 = Pi (Mode Rel (Dep 0)) TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
 -- True
@@ -406,3 +422,74 @@ instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substBvs
 -- Internally generated source positions
 internalPos :: SourcePos
 internalPos = initialPos "internal"
+
+
+displaceArg :: Int -> Arg -> Arg
+displaceArg j (Arg r t) = Arg r (displace j t) 
+
+displace :: Int -> Term -> Term
+displace j t = case t of
+    Lam r bnd -> 
+      let (x, a) = Unbound.unsafeUnbind bnd in
+      Lam r (Unbound.bind x (displace j a))
+    App f a -> App (displace j f) (displaceArg j a)
+    Pi (Mode ep (Dep k)) tyA bnd -> 
+      let (y, tyB) = Unbound.unsafeUnbind bnd in
+      Pi (Mode ep (Dep (j+k))) (displace j tyA) (Unbound.bind y (displace j tyB))
+    Ann tm ty -> Ann (displace j tm) (displace j ty)
+    Pos pos tm -> Pos pos (displace j tm)
+    Let rhs bnd -> 
+      let (x,body) = Unbound.unsafeUnbind bnd in 
+      Let (displace j rhs) (Unbound.bind x (displace j body))
+    If a1 a2 a3 -> 
+      If (displace j a1) (displace j a2) (displace j a3)
+    Displace a j0 -> Displace a (j + j0)
+    _ -> t
+
+
+{-    
+  | -- | annotated terms `( a : A )`
+    Ann Term Type
+  | -- | marked source position, for error messages
+    Pos SourcePos Term
+  | -- | an axiom 'TRUSTME', inhabits all types
+    TrustMe
+  | -- | a directive to the type checker to print out the current context
+    PrintMe
+  | -- | let expression, introduces a new (non-recursive) definition in the ctx
+    -- | `let x = a in b`
+    Let Term (Unbound.Bind TName Term)
+  | -- | the type with a single inhabitant, called `Unit`
+    TyUnit
+  | -- | the inhabitant of `Unit`, written `()`
+    LitUnit
+  | -- | the type with two inhabitants (homework) `Bool`
+    TyBool
+  | -- | `True` and `False`
+    LitBool Bool
+  | -- | `if a then b1 else b2` expression for eliminating booleans
+    If Term Term Term
+  | -- | Sigma-type (homework), written `{ x : A | B }`  
+    Sigma Term Level (Unbound.Bind TName Term)
+  | -- | introduction form for Sigma-types `( a , b )`
+    Prod Term Term
+  | -- | elimination form for Sigma-types `let (x,y) = a in b`
+    LetPair Term (Unbound.Bind (TName, TName) Term) 
+  | -- | Equality type  `a = b`
+    TyEq Term Term
+  | -- | Proof of equality `Refl`
+    Refl 
+  | -- | equality type elimination  `subst a by pf`
+    Subst Term Term 
+  | -- | witness to an equality contradiction
+    Contra Term
+    
+  | -- | type constructors (fully applied)
+    TCon TCName [Arg]
+  | -- | term constructors (fully applied)
+    DCon DCName [Arg] 
+  | -- | case analysis  `case a of matches`
+    Case Term [Match]
+    -- | displace a value found in the environment
+  | Displace Term Int 
+-}

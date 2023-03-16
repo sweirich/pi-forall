@@ -124,7 +124,8 @@ genSigma n = do
     p <- genName 
     tyA <- genTerm n
     tyB <- genTerm n
-    return $ Sigma tyA (Unbound.bind p tyB)
+    l <- arbitrary
+    return $ Sigma tyA l (Unbound.bind p tyB)
 
 genLet :: Int -> Gen Term 
 genLet n = do
@@ -151,10 +152,12 @@ genArg n = Arg <$> arbitrary <*> genTerm (n `div` 2)
 genArgs :: Int -> Gen [Arg]
 genArgs n = genBoundedList 2 (genArg n)
         
-instance Arbitrary Epsilon where
+instance Arbitrary Rho where
     arbitrary = elements [ Rel, Irr ]
-
-
+instance Arbitrary Level where
+    arbitrary = elements [ NonDep, Dep 0, Dep 1, Dep 2, Dep 3]
+instance Arbitrary Epsilon where
+    arbitrary = Mode <$> arbitrary <*> arbitrary
 
 genPattern :: Int -> Gen Pattern
 genPattern n | n == 0 = PatVar <$> genName
@@ -189,7 +192,7 @@ instance Arbitrary Term where
     shrink (Lam ep bnd) = []
     shrink (Pi ep tyA bnd) = [tyA]
     shrink (Let rhs bnd) = [rhs]
-    shrink (Sigma tyA bnd) = [tyA]
+    shrink (Sigma tyA lvl bnd) = [tyA]
     shrink (TyEq a b) = [a,b] ++ [TyEq a' b | a' <- QC.shrink a] ++ [TyEq a b' | b' <- QC.shrink b]
     shrink (Subst a b) = [a,b] ++ [Subst a' b | a' <- QC.shrink a] ++ [Subst a b' | b' <- QC.shrink b]
     shrink (Contra a) = [a] ++ [Contra a' | a' <- QC.shrink a]

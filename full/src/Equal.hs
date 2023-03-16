@@ -24,6 +24,7 @@ equate t1 t2 = do
   case (n1, n2) of 
     (Type, Type) -> return ()
     (Var x,  Var y) | x == y -> return ()
+    (Displace (Var x) j, Displace (Var y) k) | x == y && j == k -> return ()
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       unless (ep1 == ep2) $
@@ -56,8 +57,10 @@ equate t1 t2 = do
       equate rhs1 rhs2
       equate body1 body2
             
-    (Sigma tyA1 bnd1, Sigma tyA2 bnd2) -> do 
+    (Sigma tyA1 l1 bnd1, Sigma tyA2 l2 bnd2) -> do 
       Just (x, tyB1, _, tyB2) <- Unbound.unbind2 bnd1 bnd2
+      unless (l1 == l2) $
+          tyErr n1 n2 
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -182,7 +185,11 @@ whnf (Var x) = do
           case maybeRecDef of 
             (Just d) -> whnf d
             _ -> return (Var x)
-        
+whnf (Displace (Var x) j) = do
+  maybeDef <- Env.lookupDef x
+  case maybeDef of 
+    (Just d) -> whnf (displace j d) 
+    _ -> return (Displace (Var x) j)
 whnf (App t1 t2) = do
   nf <- whnf t1 
   case nf of 
@@ -227,7 +234,8 @@ whnf (Case scrut mtchs) = do
             `catchError` \ _ -> f alts
       f [] = Env.err $ [DS "Internal error: couldn't find a matching",
                     DS "branch for", DD nf, DS "in"] ++ map DD mtchs
-    _ -> return (Case nf mtchs)            
+    _ -> return (Case nf mtchs)
+   
 -- all other terms are already in WHNF
 -- don't do anything special for them
 whnf tm = return tm

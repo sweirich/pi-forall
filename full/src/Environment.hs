@@ -114,8 +114,11 @@ lookupTyMaybe v = do
 
     go (_ : ctx) = go ctx
 
-demoteSig :: Epsilon -> Sig -> Sig
-demoteSig ep s = s { sigEp = min ep (sigEp s) }
+demoteSig :: Rho -> Sig -> Sig
+demoteSig r s = s { sigEp = newEp } where
+  se = sigEp s
+  r' = rho se
+  newEp = se { rho = min r r' }
 
 
 -- | Find the type of a name specified in the context
@@ -156,7 +159,7 @@ lookupRecDef v = do
 lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
-  m (Telescope, Maybe [ConstructorDef])
+  m (Telescope, Maybe [ConstructorDef], Int)
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
@@ -170,13 +173,13 @@ lookupTCon v = do
           DS "The current environment is",
           DD currentEnv
         ]
-    scanGamma ((Data v' delta cs) : g) =
+    scanGamma ((Data v' delta cs k) : g) =
       if v == v'
-        then return (delta, Just cs)
+        then return (delta, Just cs, k)
         else scanGamma g
-    scanGamma ((DataSig v' delta) : g) =
+    scanGamma ((DataSig v' delta k) : g) =
       if v == v'
-        then return (delta, Nothing)
+        then return (delta, Nothing, k)
         else scanGamma g
     scanGamma (_ : g) = scanGamma g
 
@@ -185,19 +188,19 @@ lookupTCon v = do
 lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
-  m [(TCName, (Telescope, ConstructorDef))]
+  m [(TCName, (Telescope, ConstructorDef, Int))]
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
   where
     scanGamma [] = return []
-    scanGamma ((Data v' delta cs) : g) =
+    scanGamma ((Data v' delta cs k) : g) =
       case find (\(ConstructorDef _ v'' tele) -> v'' == v) cs of
         Nothing -> scanGamma g
         Just c -> do
           more <- scanGamma g
-          return $ (v', (delta, c)) :  more
-    scanGamma ((DataSig v' delta) : g) = scanGamma g
+          return $ (v', (delta, c, k)) :  more
+    scanGamma ((DataSig v' delta _) : g) = scanGamma g
     scanGamma (_ : g) = scanGamma g
 
 -- | Given the name of a data constructor and the type that it should
@@ -207,12 +210,12 @@ lookupDCon ::
   (MonadReader Env m, MonadError Err m) =>
   DCName ->
   TCName ->
-  m (Telescope, Telescope)
+  m (Telescope, Telescope, Int)
 lookupDCon c tname = do
   matches <- lookupDConAll c
   case lookup tname matches of
-    Just (delta, ConstructorDef _ _ deltai) ->
-      return (delta, deltai)
+    Just (delta, ConstructorDef _ _ deltai, k) ->
+      return (delta, deltai, k)
     Nothing ->
       err
         ( [ DS "Cannot find data constructor",
@@ -222,7 +225,7 @@ lookupDCon c tname = do
             DS "Potential matches were:"
           ]
             ++ map (DD . fst) matches
-            ++ map (DD . snd . snd) matches
+            -- ++ map (DD . snd) matches
         )
 
 
@@ -330,7 +333,7 @@ warn e = do
 
 checkStage ::
   (MonadReader Env m, MonadError Err m) =>
-  Epsilon ->
+  Rho ->
   m ()
 checkStage ep1 = do
   unless (ep1 <= Rel) $ do
@@ -340,7 +343,7 @@ checkStage ep1 = do
         DS "variables in this context"
       ]
 
-withStage :: (MonadReader Env m) => Epsilon -> m a -> m a
+withStage :: (MonadReader Env m) => Rho -> m a -> m a
 withStage Irr = extendCtx (Demote Rel)
 withStage ep = id
 

@@ -2,47 +2,51 @@
 
 module Lec1 where
 
-id : (x:Type) -> x -> x
+id : (x:Type @ 0) -> x -> x @ 1
 id = \x y . y 
 
-idid : ((x:Type) -> (y : x) -> x) 
-idid = id ((x:Type) -> (y : x) -> x) id
+idid : ((x:Type @ 0) -> x -> x) @ 2
+idid = (\x y. y : (x:Type @ 1) -> x -> x) ((x:Type @ 0) -> x -> x) id
 
-compose : (A : Type) -> (B : Type) -> (C:Type) ->
-  (B -> C) -> (A -> B) -> (A -> C)
+-- needs displacement 
+idid2 : ((x:Type @ 0) -> x -> x) @ 2
+idid2 = (^1 id) ((x:Type @ 0) -> x -> x) id
+
+compose : (A : Type @ 0) -> (B : Type @ 0) -> (C:Type @ 0) ->
+  (B -> C) -> (A -> B) -> (A -> C) @ 1
 compose = \ A B C f g x. (f (g x))
 
-idT : Type
-idT = (x:Type) -> x -> x
+idT : Type @ 1
+idT = (x:Type @ 0) -> x -> x
 
 selfapp : idT -> idT
 selfapp = (\x.x : (idT -> idT) -> (idT -> idT)) (\x.x)
 
 -- Church encoding: booleans
 
-true : (A:Type) -> A -> A -> A 
+true : (A:Type @ 0) -> A -> A -> A @ 1
 true = \A x y. x
 
-false : (A:Type) -> A -> A -> A 
+false : (A:Type @ 0) -> A -> A -> A @ 1
 false = \A x y. y
 
-cond : ((A:Type) -> A -> A -> A) -> (x:Type) -> x -> x -> x
+cond : ((A:Type @ 0) -> A -> A -> A) -> (x:Type @ 0) -> x -> x -> x @ 1
 cond = \ b . b 
 
 -- void type
 
-void : Type
-void = (x:Type) -> x
+void : Type @ 1
+void = (x:Type @ 0) -> x
 
 -- inhabited by diverging term
 
-loop : (x:Type) -> x
+loop : (x:Type @ 0) -> x @ 1
 loop = \x. loop x
 
 -- unit type 
 
-unit : Type
-unit = (x:Type) -> x -> x
+unit : Type @ 1
+unit = (x:Type @ 0) -> x -> x
 
 -- this code only type checks with a definition of type equality that 
 -- includes beta-equivalence/definitions (i.e. >= version2)

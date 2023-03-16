@@ -1,26 +1,30 @@
 -- from Jonathan Chan
+-- NOTE: displacement is not necessary for this example
 module Hurkens where
 
 data Void : Type where {}
-neg : Type -> Type
+neg : Type -> Type 
 neg = \X. X -> Void
 P : Type -> Type
 P = \S. S -> Type
-U : Type
-U = (x : Type) -> ((P (P x)) -> x) -> P (P x)
+U : Type @ 1
+U = (x : Type @ 0) -> ((P (P x)) -> x) -> P (P x)
 tau : (P (P U)) -> U
 tau = \t. \x. \f. \p. t (\s. p (f (s x f)))
-sigma : U -> P (P U)
+sigma : U -> P (P U) @ 2
 sigma = \s. s U (\t. tau t)
-Delta : P U
-Delta = \y. neg ((p : P U) -> sigma y p -> p (tau (sigma y)))
-Omega : U
-Omega = tau (\p. (x : U) -> sigma x p -> p x)
+Delta : P U @ 2
+Delta = \y. neg ((p : P U @ 1) -> sigma y p -> p (tau (sigma y)))
+Omega : U @ 3
+Omega = tau (\p. (x : U @ 2) -> sigma x p -> p x)
+M : (x : U @ 2) -> sigma x Delta -> Delta x @ 4
+M = \x. \two. \three. three Delta two (\p. three (\y. p (tau (sigma y))))
+
+{-  -- can't type check
 R : (p : P U) -> ((x : U) -> sigma x p -> p x) -> p Omega
 R = \zero. \one. one Omega (\x. one (tau (sigma x)))
-M : (x : U) -> sigma x Delta -> Delta x
-M = \x. \two. \three. three Delta two (\p. three (\y. p (tau (sigma y))))
 L : neg ((p : P U) -> ((x : U) -> sigma x p -> p x) -> p Omega)
 L = \zero. zero Delta M (\p. zero (\y. p (tau (sigma y))))
 false : Void
 false = L R
+-}

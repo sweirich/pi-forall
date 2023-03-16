@@ -89,7 +89,6 @@ instance Disp Term
 
 instance Disp Arg
 
-
 instance Disp Pattern
 
 instance Disp Match
@@ -105,10 +104,16 @@ instance Disp Match
 instance Disp [Decl] where
   disp = PP.vcat . map disp
 
-instance Disp Epsilon where
+instance Disp Rho where
   disp Irr = PP.text "irrelevant"
   disp Rel = PP.text "relevant"
 
+instance Disp Epsilon where
+  disp (Mode rho lvl) = disp rho <+> disp lvl
+
+instance Disp Level where
+  disp NonDep = mempty
+  disp (Dep i) = PP.text "@" <+> PP.int i
 
 
 instance Disp Module where
@@ -121,7 +126,9 @@ instance Disp ModuleImport where
   disp (ModuleImport i) = PP.text "import" <+> disp i
 
 instance Disp Sig where
-  disp (Sig n ep  ty) = disp n <+> PP.text ":" <+> disp ty
+  disp (Sig n (Mode r (Dep k)) ty) = disp n <+> PP.text ":" <+> disp ty 
+    <+> if k /= 0 then PP.text "@" <+> PP.int k else mempty
+  disp (Sig n (Mode r NonDep) ty) = disp n <+> PP.text ":" <+> disp ty 
 
 instance Disp Decl where
   disp (Def n term)  = disp n <+> PP.text "=" <+> disp term
@@ -129,18 +136,19 @@ instance Disp Decl where
   disp (TypeSig sig) = disp sig
   disp (Demote ep)   = mempty
 
-  disp (Data n params constructors) =
+  disp (Data n params constructors i) =
     PP.hang
       ( PP.text "data" <+> disp n <+> disp params
           <+> PP.colon
           <+> PP.text "Type"
+          <+> (if i /= 0 then PP.text "@" <+> disp i else mempty)
           <+> PP.text "where"
       )
       2
       (PP.vcat $ map disp constructors)
-  disp (DataSig t delta) =
+  disp (DataSig t delta i) =
     PP.text "data" <+> disp t <+> disp delta <+> PP.colon
-      <+> PP.text "Type"
+      <+> PP.text "Type" <+> (if i /= 0 then PP.text "@" <+> disp i else mempty)
 
 instance Disp ConstructorDef where
   disp (ConstructorDef _ c (Telescope [])) = PP.text c
@@ -261,7 +269,7 @@ instance Display Term where
     df <- withPrec levelApp (display f)
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
-  display (Pi ep a bnd) = do
+  display (Pi (Mode ep _) a bnd) = do
     Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
@@ -301,14 +309,14 @@ instance Display Term where
       PP.text "if" <+> da <+> PP.text "then" <+> db
         <+> PP.text "else"
         <+> dc
-  display (Sigma tyA bnd) =
+  display (Sigma tyA lvl bnd) =
     Unbound.lunbind bnd $ \(x, tyB) -> do
       if x `elem` toListOf Unbound.fv tyB then do
         dx <- display x
         dA <- withPrec 0 $ display tyA
         dB <- withPrec 0 $ display tyB
         return $
-          PP.text "{" <+> dx <+> PP.text ":" <+> dA
+          PP.text "{" <+> dx <+> PP.text ":" <+> dA <+> disp lvl
             <+> PP.text "|"
             <+> dB
             <+> PP.text "}"
@@ -401,7 +409,9 @@ instance Display Term where
     return $
       parens (levelCase < p) $
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
-
+  display (Displace t j) = do
+    dt <- display t
+    return $    PP.text "^" <+> PP.int j <+> dt
 
 
 instance Display Arg where
@@ -435,7 +445,7 @@ instance Disp Telescope where
   disp (Telescope t) = PP.sep $ map (PP.parens . disp) t
 
 instance Display a => Display (a, Epsilon) where
-  display (t, ep) = bindParens ep <$> display t
+  display (t, Mode ep _) = bindParens ep <$> display t
 
 instance Display ConstructorDef where
   display (ConstructorDef pos dc tele) = do 
@@ -462,17 +472,17 @@ gatherBinders body = do
   db <- display body
   return ([], db)
 
-precBindParens :: Epsilon -> Bool -> Doc -> Doc
+precBindParens :: Rho -> Bool -> Doc -> Doc
 precBindParens Rel b d = parens b d 
 precBindParens Irr b d = PP.brackets d
 
 -- | Add [] for irrelevant arguments, leave other arguments alone
-bindParens :: Epsilon -> Doc -> Doc
+bindParens :: Rho -> Doc -> Doc
 bindParens Rel d = d
 bindParens Irr d = PP.brackets d
 
 -- | Always add () or [], shape determined by epsilon
-mandatoryBindParens :: Epsilon -> Doc -> Doc
+mandatoryBindParens :: Rho -> Doc -> Doc
 mandatoryBindParens Rel d = PP.parens d
 mandatoryBindParens Irr d = PP.brackets d
 
