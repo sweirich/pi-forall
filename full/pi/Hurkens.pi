@@ -9,15 +9,15 @@ P : Type -> Type
 P = \S. S -> Type
 U : Type @ 1
 U = (x : Type @ 0) -> ((P (P x)) -> x) -> P (P x)
-tau : (P (P U)) -> U
+tau : (P (P U)) -> U @ 1
 tau = \t. \x. \f. \p. t (\s. p (f (s x f)))
-sigma : U -> P (P U) @ 2
+sigma : U^1 -> P (P U) @ 2
 sigma = \s. s U (\t. tau t)
-Delta : P U @ 2
+Delta : P U^1 @ 2
 Delta = \y. neg ((p : P U @ 1) -> sigma y p -> p (tau (sigma y)))
 Omega : U @ 3
-Omega = tau (\p. (x : U @ 2) -> sigma x p -> p x)
-M : (x : U @ 2) -> sigma x Delta -> Delta x @ 4
+Omega = tau (\p. (x : U^1 @ 2) -> sigma x p -> p x)
+M : (x : U^2 @ 3) -> sigma x Delta -> Delta^1 x @ 4
 M = \x. \two. \three. three Delta two (\p. three (\y. p (tau (sigma y))))
 
 {-  -- can't type check

@@ -10,7 +10,7 @@ idid = (\x y. y : (x:Type @ 1) -> x -> x) ((x:Type @ 0) -> x -> x) id
 
 -- needs displacement 
 idid2 : ((x:Type @ 0) -> x -> x) @ 2
-idid2 = (^1 id) ((x:Type @ 0) -> x -> x) id
+idid2 = id^1 ((x:Type @ 0) -> x -> x) id
 
 compose : (A : Type @ 0) -> (B : Type @ 0) -> (C:Type @ 0) ->
   (B -> C) -> (A -> B) -> (A -> C) @ 1
@@ -19,7 +19,7 @@ compose = \ A B C f g x. (f (g x))
 idT : Type @ 1
 idT = (x:Type @ 0) -> x -> x
 
-selfapp : idT -> idT
+selfapp : idT -> idT @ 1
 selfapp = (\x.x : (idT -> idT) -> (idT -> idT)) (\x.x)
 
 -- Church encoding: booleans

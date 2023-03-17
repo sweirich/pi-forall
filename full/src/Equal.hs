@@ -11,6 +11,8 @@ import qualified Environment as Env
 import qualified Unbound.Generics.LocallyNameless as Unbound
 
 import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
+import Debug.Trace
+
 
 -- | compare two expressions for equality
 -- first check if they are alpha equivalent then

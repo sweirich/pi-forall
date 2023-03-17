@@ -113,6 +113,7 @@ instance Disp Epsilon where
 
 instance Disp Level where
   disp NonDep = mempty
+  disp (Dep 0) = mempty
   disp (Dep i) = PP.text "@" <+> PP.int i
 
 
@@ -269,7 +270,7 @@ instance Display Term where
     df <- withPrec levelApp (display f)
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
-  display (Pi (Mode ep _) a bnd) = do
+  display (Pi (Mode ep k) a bnd) = do
     Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
@@ -277,7 +278,7 @@ instance Display Term where
               then do
                 dn <- display n
                 da <- withPrec 0 (display a)
-                return $ mandatoryBindParens ep  (dn <+> PP.colon <+> da)
+                return $ mandatoryBindParens ep  (dn <+> PP.colon <+> da <+> disp k)
               else do
                 case ep of 
                   Rel -> withPrec (levelArrow+1) (display a)
@@ -411,7 +412,7 @@ instance Display Term where
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
   display (Displace t j) = do
     dt <- display t
-    return $    PP.text "^" <+> PP.int j <+> dt
+    return $ dt <> PP.text "^" <> PP.int j
 
 
 instance Display Arg where

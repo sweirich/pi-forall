@@ -7,9 +7,9 @@ data Eq (A : Type) (a : A) (b : A) : Type where
 
 j : [A : Type] -> [a1 : A] -> [a2 : A] 
   -> (a : Eq A a1 a2) 
-  -> [B : ((x:A) -> (Eq A x a2) -> Type)] 
+  -> [B : ((x:A) -> (Eq A x a2) -> Type) @ 1] 
   -> (b : B a2 EqRefl)
-  -> B a1 a
+  -> B a1 a @ 2
 j = \[A] [a1] [a2] a [B] b . 
    case a of 
       EqRefl -> b

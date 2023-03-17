@@ -13,7 +13,7 @@ not = \ b .
 
 data Void : Type where {}   -- no constructors
 
-false_elim : [A:Type] -> Void -> A
+false_elim : [A:Type] -> Void -> A @ 1
 false_elim = \ [A] v . case v of {}
 
 data Nat : Type where
@@ -63,7 +63,7 @@ next_weekday = \d . case d of
 neg : Type -> Type
 neg = \ x . (x -> Void)
 
-next_is_not_saturday : (d: Day) -> neg (next_weekday d = Saturday) 
+next_is_not_saturday : (d: Day) -> neg (next_weekday d = Saturday) @ 1
 next_is_not_saturday = \ d. 
   \pf. case d of
      Monday -> contra pf
@@ -99,7 +99,7 @@ threeIsBeautiful = B3
 eightIsBeautiful : Beautiful 8
 eightIsBeautiful = Bsum 3 5 B3 B5
 
-beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful (plus 8 n)
+beautifulPlusEight : (n:Nat) -> Beautiful n -> Beautiful (plus 8 n) @ 1
 beautifulPlusEight = \ n bn. Bsum 8 n eightIsBeautiful bn
 
 data Gorgeous (n : Nat) : Type where
@@ -107,11 +107,11 @@ data Gorgeous (n : Nat) : Type where
    Gplus3 of (m : Nat) (Gorgeous m) [n = plus 3 m]
    Gplus5 of (m : Nat) (Gorgeous m) [n = plus 5 m]
 
-gorgeousPlus13 : (n : Nat) -> Gorgeous n -> Gorgeous (plus 13 n)
+gorgeousPlus13 : (n : Nat) -> Gorgeous n -> Gorgeous (plus 13 n) @ 1
 gorgeousPlus13 = \n gn. 
    Gplus5 (plus 5 (plus 3 n)) (Gplus5 (plus 3 n) (Gplus3 n gn)) 
 
-gorgeousBeautiful : (n : Nat) -> Gorgeous n -> Beautiful n
+gorgeousBeautiful : (n : Nat) -> Gorgeous n -> Beautiful n @ 1
 gorgeousBeautiful = \n gn . case gn of 
    G0 -> B0
    Gplus3 m gm -> Bsum 3 m B3 (gorgeousBeautiful m gm)
@@ -165,27 +165,27 @@ example = \ a .
 -- can define strong elimnators 
 
 
-Abs2 : Type
+Abs2 : Type @ 1
 Abs2 = { t : Type | (Nat -> t) * (t -> t) * (t -> Nat) }
 
 abs2 : Abs2
 abs2 = ( Nat , counter )
 
-ty : (a : Abs2) -> Type
+ty : Abs2 -> Type @ 1
 ty = \a. let (x,y) = a in x
 
-constr : (a : Abs2) -> Nat -> (ty a)
+constr : (a : Abs2) -> Nat -> (ty a) @ 2
 constr = \a. let (x,y) = a in 
   let (c, rest) = y in 
   c
 
-incr : (a : Abs2) -> ty a -> ty a 
+incr : (a : Abs2) -> ty a -> ty a  @ 2
 incr = \a. let (x,y) = a in 
   let (c, r) = y in 
   let (i, t) = r in 
   i
 
-toNat : (a : Abs2) -> ty a -> Nat 
+toNat : (a : Abs2) -> ty a -> Nat  @ 2
 toNat = \a. let (x,y) = a in 
   let (c, r) = y in 
   let (i, t) = r in 

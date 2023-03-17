@@ -6,7 +6,7 @@ not : Bool -> Bool
 not = \ b . if b then False else True
 
 -- to be or not to be, that is the question
-not_not_equal : (b : Bool) -> (b = not b) -> Void
+not_not_equal : (b : Bool) -> (b = not b) -> Void @ 1
 not_not_equal = \b pf. 
   if b then (contra pf) else (contra pf)
 
@@ -29,19 +29,19 @@ negb : Bool -> Bool
 negb = \ b . if b then False else True
 
 
-andb_prop : (a : Bool) -> (b : Bool) -> andb a b = True -> And (a = True) (b = True)
+andb_prop : (a : Bool) -> (b : Bool) -> andb a b = True -> And (a = True) (b = True) @ 1
 andb_prop = \a b p . 
    if a then (if b then Conj Refl Refl
              else contra p)
    else (contra p)
 
-andb_true_intro : (b1 : Bool) -> (b2 : Bool) -> And (b1 = True) (b2 = True) -> andb b1 b2 = True
+andb_true_intro : (b1 : Bool) -> (b2 : Bool) -> And (b1 = True) (b2 = True) -> andb b1 b2 = True @ 1
 andb_true_intro = TRUSTME
 
 eq_bool : Bool -> Bool -> Bool
 eq_bool =  \ x y . if x then y else not y
 
-eq_true : (b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = True -> (b1 = b2)
+eq_true : (b1 : Bool) -> (b2 : Bool) -> eq_bool b1 b2 = True -> (b1 = b2) @ 1 
 eq_true = \b1 b2 pf. 
   if b1 then if b2 then Refl else contra pf
                   else if b2 then contra pf else Refl

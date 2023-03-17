@@ -41,6 +41,11 @@ checkType tm ty k = do
 tcType :: Term -> Int -> TcMonad ()
 tcType tm k = void $ Env.withStage Irr $ checkType tm Type k
 
+
+localize :: Int -> Level -> Int
+localize k (Dep j) = j 
+localize k NonDep  = k
+
 ---------------------------------------------------------------------
 
 -- | Combined type checking/inference function
@@ -50,7 +55,11 @@ tcTerm :: Term -> Maybe Type -> Int -> TcMonad Type
 -- i-var
 tcTerm t@(Var x) Nothing k = do
   sig <- Env.lookupTy x   -- make sure the variable is accessible
-  Env.checkStage (rho (sigEp sig))
+  let ep = sigEp sig
+  Env.checkStage (rho ep)
+  case level ep of 
+      Dep j -> unless (j <= k) $ Env.err [DD "Variable", DD x, DS "not in bounds ", DD k]
+      NonDep -> Env.err [DD "No level for ", DD x]
   return (sigType sig)
 -- i-type
 tcTerm Type Nothing k = return Type
@@ -73,9 +82,10 @@ tcTerm (Lam ep1  bnd) (Just (Pi (Mode ep2 lvl) tyA bnd2)) k = do
   (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
 -- epsilons should match up
   unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
-                                 DS "but found", DD ep1, DS "instead."] 
+                                 DS "but found", DD ep1, DS "instead."]
+  let lvl' = Dep $ localize k lvl
   -- check the type of the body of the lambda expression
-  Env.extendCtx (TypeSig (Sig x (Mode ep1 lvl) tyA)) (checkType body tyB k)
+  Env.extendCtx (TypeSig (Sig x (Mode ep1 lvl') tyA)) (checkType body tyB k)
   return (Pi (Mode ep1 lvl) tyA bnd2)
 tcTerm (Lam _ _) (Just nf) k =
   Env.err [DS "Lambda expression should have a function type, not", DD nf]
@@ -89,9 +99,8 @@ tcTerm (App t1 t2) Nothing k = do
     [DS "In application, expected", DD ep1, DS "argument but found", 
                                     DD t2, DS "instead." ]
   -- if the argument is Irrelevant, resurrect the context
-  let argLvl = case lvl of { NonDep -> k ; Dep j -> j }
   (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ 
-    checkType (unArg t2) tyA argLvl
+    checkType (unArg t2) tyA (localize k lvl)
   return (Unbound.instantiate bnd [unArg t2])
   
 
@@ -170,13 +179,13 @@ tcTerm (TCon c params) Nothing k = do
 tcTerm t@(DCon c args) Nothing k = do
   matches <- Env.lookupDConAll c
   case matches of
-    [(tname, (Telescope [], ConstructorDef _ _ (Telescope deltai),j))] -> do
+    [(tname, (Telescope [], cd@(ConstructorDef _ _ (Telescope deltai)),j))] -> do
       unless (j <= k) $ Env.err [DS "level too low for data con c ", DS c]
       let numArgs = length deltai
       unless (length args == numArgs) $
         Env.err
           [ DS "Constructor",
-            DS c,
+            DD cd,
             DS "should have",
             DD numArgs,
             DS "data arguments, but was given",
@@ -208,6 +217,7 @@ tcTerm t@(DCon c args) (Just ty) k = do
         Env.err
           [ DS "Constructor",
             DS c,
+            DD deltai,
             DS "should have",
             DD numArgs,
             DS "data arguments, but was given",
@@ -345,7 +355,7 @@ tcTerm PrintMe (Just ty) k = do
 
 tcTerm (Displace t j) Nothing k = do
   case t of 
-    (Pos _ (Var x)) -> do
+    (Var x) -> do
       unless (j <= k) $ Env.err [DD "cannot displace more than the context", DD k]
       sig <- Env.lookupTy x   -- make sure the variable is accessible
       Env.checkStage (rho (sigEp sig))
@@ -388,8 +398,7 @@ tcArgTele args (Def x ty : tele) k = do
   tcArgTele args tele' k
 tcArgTele (Arg ep1 tm : terms) (TypeSig (Sig x (Mode ep2 l) ty) : tele) k 
   | ep1 == ep2 = do
-      let tmk = case l of Dep j -> j ; NonDep -> k
-      Env.withStage ep1 $ checkType tm ty tmk
+      Env.withStage ep1 $ checkType tm ty (localize k l)
       tele' <- doSubst [(x, tm)] tele
       tcArgTele terms tele' k
   | otherwise =

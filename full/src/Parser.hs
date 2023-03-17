@@ -73,6 +73,7 @@ Optional components in this BNF are marked with < >
     | a [b]                    Irr application
     | [x : A] -> B             Irr pi    
 
+    | x ^ i                    Displacement
 
   declarations:
 
@@ -220,9 +221,9 @@ dconstructor :: LParser DCName
 dconstructor =
   do i <- identifier
      cnames <- get
-     if (i `S.member` dconNames cnames)
+     if i `S.member` dconNames cnames
        then return i
-       else if (i `S.member` tconNames cnames)
+       else if i `S.member` tconNames cnames
              then fail "Expected a data constructor, but a type constructor was found."
              else fail "Expected a constructor, but a variable was found"
 
@@ -298,24 +299,20 @@ telescope = do
   bindings <- telebindings
   return $ Telescope (foldr id [] bindings) where
 
+-- Omitted levels are "0"
 levelP :: LParser Level
 levelP = do
-  try (Dep <$> (at *> natural)) <|> return NonDep
+  try (Dep <$> (at *> natural)) <|> return (Dep 0)
 
 telebindings :: LParser [[Decl] -> [Decl]]
 telebindings = many teleBinding
   where
-    annot = do
-      (x,ty,lvl) <-    try ((,,) <$> varOrWildcard        <*> (colon >> expr) <*> levelP)
-                <|>    ((,,) <$> (Unbound.fresh wildcardName) <*> expr <*> levelP)
-      return (TypeSig (Sig x (Mode Rel lvl) ty):)
-
-    imp = do
-        v <- varOrWildcard
-        colon
-        t <- expr
-        l <- levelP
-        return (TypeSig (Sig v (Mode Irr l) t):)
+    --  `_ : A`   or `x : A @ l`  or `A`
+    annot rho = do
+      (x,ty,lvl) <-    try ((,,) <$> wildcard <*> (colon >> expr) <*> pure NonDep)
+                <|>    try ((,,) <$> variable <*> (colon >> expr) <*> levelP)
+                <|>        ((,,) <$> Unbound.fresh wildcardName <*> expr <*> pure NonDep)
+      return (TypeSig (Sig x (Mode rho lvl) ty):)
 
     equal = do
         v <- variable
@@ -326,9 +323,9 @@ telebindings = many teleBinding
 
     teleBinding :: LParser ([Decl] -> [Decl])
     teleBinding =
-      (    parens annot
-       <|> try (brackets imp)
-       <|> brackets equal) <?> "binding"
+      (    parens (annot Rel)
+       <|> try (brackets equal)
+       <|> (brackets (annot Irr))) <?> "binding"
 
 
 ---
@@ -456,7 +453,8 @@ funapp = do
 
 
 
-factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
+factor = choice [ try displaceTm <?> "displaced term"
+                , varOrCon   <?> "a variable or nullary data constructor"
 
                 , typen      <?> "Type"
                 , lambda     <?> "a lambda"
@@ -473,7 +471,7 @@ factor = choice [ varOrCon   <?> "a variable or nullary data constructor"
                 , bconst     <?> "a constant"
                 , ifExpr     <?> "an if expression"
                 , sigmaTy    <?> "a sigma type"
-                , displaceTm <?> "a displaced term"
+               
                 , expProdOrAnnotOrParens
                     <?> "an explicit function type or annotated expression"
                 ]
@@ -689,8 +687,8 @@ sigmaTy = do
 
 
 displaceTm :: LParser Term
-displaceTm = do 
+displaceTm = do
+  x <- variable
   reservedOp "^"
   k <- natural
-  t <- expr
-  return $ Displace t k
+  return $ Displace (Var x) k

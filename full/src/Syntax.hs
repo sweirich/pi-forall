@@ -444,6 +444,7 @@ displace j t = case t of
     If a1 a2 a3 -> 
       If (displace j a1) (displace j a2) (displace j a3)
     Displace a j0 -> Displace a (j + j0)
+    TyEq a b -> TyEq (displace j a) (displace j b)
     _ -> t
 
 
