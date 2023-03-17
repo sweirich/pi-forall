@@ -27,6 +27,7 @@ module Environment
     err,
     warn,
     extendErr,
+    Locality(..),
     D (..),
     Err (..),
     withStage,
@@ -68,6 +69,8 @@ data SourceLocation where
 data Env = Env
   { -- | elaborated term and datatype declarations.
     ctx :: [Decl],
+    -- | How many local variables are stored in the context
+    locals :: Int,
     -- | how long the tail of "global" variables in the context is
     --    (used to supress printing those in error messages)
     globals :: Int,
@@ -85,6 +88,7 @@ data Env = Env
 emptyEnv :: Env
 emptyEnv = Env {ctx = preludeDataDecls 
                , globals = length preludeDataDecls 
+               , locals = 0
                , hints = []
                , sourceLocation = []
               }
@@ -98,21 +102,37 @@ lookupHint v = do
   hints <- asks hints
   return $ listToMaybe [ sig | sig <- hints, v == sigName sig]
 
+data Locality = Local | Global | Any
+
+-- | Find either the local or the global or both
+localizedDecls :: MonadReader Env m => Locality -> m [Decl]
+localizedDecls l = do
+  ctx <- asks ctx
+  locals <- asks locals
+  globals <- asks globals
+  let (start, stop) = case l of 
+                Local -> (ctx, locals)
+                Global -> (drop locals ctx, globals)
+                Any -> (ctx, locals + globals)
+  return (take stop start)
+
 -- | Find a name's type in the context.
 lookupTyMaybe ::
   (MonadReader Env m) =>
+  Locality ->
   TName ->
   m (Maybe Sig)
-lookupTyMaybe v = do
-  ctx <- asks ctx
-  return $ go ctx where
-    go [] = Nothing
-    go (TypeSig sig : ctx)
-      | v == sigName sig = Just sig
-      | otherwise = go ctx 
-    go (Demote ep : ctx) = demoteSig ep <$> go ctx
-
-    go (_ : ctx) = go ctx
+lookupTyMaybe l v = do
+  ctx <- localizedDecls l
+  let go [] = Nothing
+      go (TypeSig sig : ctx')
+        | v == sigName sig = Just sig
+        | otherwise = go ctx' 
+      go (Demote ep : ctx') = demoteSig ep <$> go ctx'
+      go (_ : ctx') = go ctx'
+  return $ go ctx 
+    
+      
 
 demoteSig :: Rho -> Sig -> Sig
 demoteSig r s = s { sigEp = newEp } where
@@ -127,7 +147,7 @@ lookupTy ::
   TName -> TcMonad Sig
 lookupTy v =
   do
-    x <- lookupTyMaybe v
+    x <- lookupTyMaybe Any v
     gamma <- getLocalCtx
     case x of
       Just res -> return res
@@ -141,10 +161,11 @@ lookupTy v =
 -- | Find a name's def in the context.
 lookupDef ::
   (MonadReader Env m) =>
+  Locality ->
   TName ->
   m (Maybe Term)
-lookupDef v = do
-  ctx <- asks ctx
+lookupDef l v = do
+  ctx <- localizedDecls l
   return $ listToMaybe [a | Def v' a <- ctx, v == v']
 
 lookupRecDef ::
@@ -233,26 +254,29 @@ lookupDCon c tname = do
 -- | Extend the context with a new binding
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
 extendCtx d =
-  local (\m@Env{ctx = cs} -> m {ctx = d : cs})
+  local (\m@Env{ctx = cs, locals=l} -> m {ctx = d : cs, locals = l+1})
 
 -- | Extend the context with a list of bindings
 extendCtxs :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxs ds =
-  local (\m@Env {ctx = cs} -> m {ctx = ds ++ cs})
+  local (\m@Env {ctx = cs, locals=l} -> m {ctx = ds ++ cs, locals = l + length ds})
 
 -- | Extend the context with a list of bindings, marking them as "global"
-extendCtxsGlobal :: (MonadReader Env m) => [Decl] -> m a -> m a
-extendCtxsGlobal ds =
+extendCtxsGlobal :: (MonadError Err m, MonadReader Env m) => [Decl] -> m a -> m a
+extendCtxsGlobal ds ma = do
+  nl <- asks locals
+  unless (nl == 0) $ err [DS "Global extension of nonempty local context"]
   local
-    ( \m@Env {ctx = cs} ->
+    ( \m@Env {ctx = cs, globals = l} ->
         m
           { ctx = ds ++ cs,
-            globals = length (ds ++ cs)
+            globals = length ds + l
           }
-    )
+    ) ma
 
 -- | Extend the context with a telescope
-extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m a -> m a
+extendCtxTele :: 
+  (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m a -> m a
 extendCtxTele [] m = m
 extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
@@ -265,11 +289,11 @@ extendCtxTele ( _ : tele) m =
 
 -- | Extend the context with a module
 -- Note we must reverse the order.
-extendCtxMod :: (MonadReader Env m) => Module -> m a -> m a
-extendCtxMod m = extendCtxs (reverse $ moduleEntries m)
+extendCtxMod :: (MonadError Err m, MonadReader Env m) => Module -> m a -> m a
+extendCtxMod m = extendCtxsGlobal (reverse $ moduleEntries m)
 
 -- | Extend the context with a list of modules
-extendCtxMods :: (MonadReader Env m) => [Module] -> m a -> m a
+extendCtxMods :: (MonadError Err m, MonadReader Env m) => [Module] -> m a -> m a
 extendCtxMods mods k = foldr extendCtxMod k mods
 
 -- | Get the complete current context

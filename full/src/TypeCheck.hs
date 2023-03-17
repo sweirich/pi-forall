@@ -9,7 +9,7 @@ import Data.List (nub)
 import Data.Maybe ( catMaybes )
 
 
-import Environment (D (..), TcMonad)
+import Environment (D (..), Locality(..), TcMonad)
 import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp))
@@ -357,9 +357,13 @@ tcTerm (Displace t j) Nothing k = do
   case t of 
     (Var x) -> do
       unless (j <= k) $ Env.err [DD "cannot displace more than the context", DD k]
-      sig <- Env.lookupTy x   -- make sure the variable is accessible
-      Env.checkStage (rho (sigEp sig))
-      return (displace j (sigType sig))
+      msig <- Env.lookupTyMaybe Global x   -- make sure the variable is accessible
+      case msig of 
+        Just sig -> do
+            Env.checkStage (rho (sigEp sig))
+            t' <- Equal.displace j (sigType sig)
+            return t'
+        Nothing -> Env.err [DS "Can only displace top-level vars", DD x]
     u -> 
       Env.err [DS "Found displacement", DD (show t)]
 
@@ -561,7 +565,7 @@ data HintOrCtx
 -- | Check each sort of declaration in a module
 tcEntry :: Decl -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
-  oldDef <- Env.lookupDef n
+  oldDef <- Env.lookupDef Any n
   maybe tc die oldDef
   where
     tc = do
@@ -631,7 +635,7 @@ duplicateTypeBindingCheck :: Sig -> TcMonad ()
 duplicateTypeBindingCheck sig = do
   -- Look for existing type bindings ...
   let n = sigName sig
-  l <- Env.lookupTyMaybe n
+  l <- Env.lookupTyMaybe Local n
   l' <- Env.lookupHint n
   -- ... we don't care which, if either are Just.
   case catMaybes [l, l'] of
