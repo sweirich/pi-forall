@@ -1,5 +1,4 @@
 -- from Jonathan Chan
--- NOTE: displacement is not necessary for this example
 module Hurkens where
 
 data Void : Type where {}
@@ -16,6 +15,7 @@ sigma = \s. s U (\t. tau t)
 Delta : P U^1 @ 2
 Delta = \y. neg ((p : P U @ 1) -> sigma y p -> p (tau (sigma y)))
 Omega : U @ 3
+-- Omega doesn't typecheck: expected U but found U^1 in application "p x"
 Omega = tau (\p. (x : U^1 @ 2) -> sigma x p -> p x)
 M : (x : U^2 @ 3) -> sigma x Delta -> Delta^1 x @ 4
 M = \x. \two. \three. three Delta two (\p. three (\y. p (tau (sigma y))))
