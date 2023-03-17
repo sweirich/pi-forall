@@ -8,18 +8,18 @@ data Eq (A : Type) (a : A) (b : A) : Type where
 j : [A : Type] -> [a1 : A] -> [a2 : A] 
   -> (a : Eq A a1 a2) 
   -> [B : ((x:A) -> (Eq A x a2) -> Type) @ 1] 
-  -> (b : B a2 EqRefl)
+  -> (b : B a2 EqRefl @ 1)
   -> B a1 a @ 2
 j = \[A] [a1] [a2] a [B] b . 
    case a of 
       EqRefl -> b
 
-sym : [A:Type] -> [x:A] -> [y:A] -> (Eq A x y) -> Eq A y x
+sym : [A:Type] -> [x:A] -> [y:A] -> (Eq A x y) -> Eq A y x @ 1
 sym = \ [A] [x][y] pf .
   case pf of 
      EqRefl -> EqRefl
 
-trans : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (Eq A x z) -> (Eq A z y) -> (Eq A x y)
+trans : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> (Eq A x z) -> (Eq A z y) -> (Eq A x y) @ 1
 trans = \[A][x][y][z] pf1 pf2 . 
   case pf2 of 
     EqRefl -> pf1 

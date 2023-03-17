@@ -20,9 +20,9 @@ eq_bool = \ b1 b2 .
 
 --- sigma types
 
-double : (A:Type) -> (x : A) -> { x : A | A }
+double : (A:Type) -> (x : A) -> { x : A | A } @ 1
 double = \A x. (x,x) 
 
-fst : (A:Type) -> (B : A -> Type) -> { x : A | B x } -> A
+fst : (A:Type) -> (B : A -> Type) -> { x : A | B x } -> A @ 1
 fst = \A B p. let (x0,y) = p in x0
 

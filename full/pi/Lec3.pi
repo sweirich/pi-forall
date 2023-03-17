@@ -3,11 +3,13 @@ module Lec3 where
 -- can mark some arguments as irrelevant
 -- irrelevant parameters can only appear in types (or as part of irrelevant arguments)
 
-id : [x:Type] -> (y : x) -> x @ 1
+id : [x:Type] -> x -> x @ 1
 id = \[x] y. (y : x)
 
+t0 : Bool @ 1
 t0 = id [Bool] True
 
+t1 : Bool @ 1
 t1 = id [Bool] (id [Bool] True)
 
 id2 : [x:Type] -> (y : x) -> x @ 1

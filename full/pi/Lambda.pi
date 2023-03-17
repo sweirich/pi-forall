@@ -4,7 +4,7 @@ import Nat
 import Fin
 import Vec 
 
-lookup : [a:Type] -> [n:Nat] -> Fin n -> Vec a n -> a
+lookup : [a:Type] -> [n:Nat] -> Fin n -> Vec a n -> a @ 1
 lookup = \[a][n] f v. case f of 
    Zero [m] -> case v of 
            Cons [m'] x xs -> x 
