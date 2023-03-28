@@ -24,6 +24,7 @@ common shared-properties
     -Wall -fno-warn-unused-matches -fno-warn-orphans -fno-warn-unused-top-binds -fno-warn-unused-imports
   default-extensions: 
     EmptyDataDecls
+    DataKinds
     DefaultSignatures
     DeriveAnyClass
     DeriveDataTypeable
@@ -42,6 +43,7 @@ common shared-properties
     RankNTypes
     ScopedTypeVariables
     TupleSections
+    TypeFamilies
     TypeSynonymInstances
     UndecidableInstances 
     ViewPatterns
@@ -57,7 +59,8 @@ common shared-properties
     directory,
     filepath,
     HUnit,
-    QuickCheck
+    QuickCheck,
+    sbv
   if !impl(ghc >= 8.0)
     build-depends: semigroups == 0.18.*      
  
@@ -75,6 +78,7 @@ library
     Syntax
     TypeCheck
     Arbitrary
+    LevelSolver
   
 executable pi-forall
   import: shared-properties

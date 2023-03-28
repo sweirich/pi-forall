@@ -299,20 +299,24 @@ telescope = do
   bindings <- telebindings
   return $ Telescope (foldr id [] bindings) where
 
--- Omitted levels are "0"
+-- Omitted levels are unification variables
 levelP :: LParser Level
-levelP = do
-  try (Dep <$> (at *> natural)) <|> return (Dep 0)
+levelP = 
+  try (LConst <$> (at *> natural)) <|> do
+    x <- Unbound.fresh (Unbound.string2Name "l")
+    return (LVar x)
 
 telebindings :: LParser [[Decl] -> [Decl]]
 telebindings = many teleBinding
   where
     --  `_ : A`   or `x : A @ l`  or `A`
+    -- named variables must have fixed levels. If the level is not present, then 
+    -- a unification variable is generated
     annot rho = do
-      (x,ty,lvl) <-    try ((,,) <$> wildcard <*> (colon >> expr) <*> pure NonDep)
-                <|>    try ((,,) <$> variable <*> (colon >> expr) <*> levelP)
-                <|>        ((,,) <$> Unbound.fresh wildcardName <*> expr <*> pure NonDep)
-      return (TypeSig (Sig x (Mode rho lvl) ty):)
+      (x,ty,lvl) <-    try ((,,) <$> wildcard <*> (colon >> expr) <*> pure Nothing)
+                <|>    try ((,,) <$> variable <*> (colon >> expr) <*> (Just <$> levelP))
+                <|>        ((,,) <$> Unbound.fresh wildcardName <*> expr <*> pure Nothing)
+      return (TypeSig (Sig x rho lvl ty):)
 
     equal = do
         v <- variable
@@ -344,7 +348,6 @@ dataDef = do
   colon
   Type <- typen
   lvl  <- levelP
-  let l = case lvl of Dep j -> j ; NonDep -> 0
   modify (\cnames ->
            cnames{ tconNames = S.insert name
                                (tconNames cnames) })
@@ -353,7 +356,7 @@ dataDef = do
   forM_ cs
     (\(ConstructorDef _ cname _) ->
        modify (\cnames -> cnames{ dconNames = S.insert cname (dconNames cnames)}))
-  return $ Data name params cs l
+  return $ Data name params cs lvl
 
 constructorDef :: LParser ConstructorDef
 constructorDef = do
@@ -412,7 +415,7 @@ expr = do
         mkArrowType  =
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB ->
-               Pi (Mode Rel NonDep) tyA (Unbound.bind n tyB)
+               Pi (Mode Rel Nothing) tyA (Unbound.bind n tyB)
         mkTupleType =
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB ->
@@ -557,8 +560,8 @@ letPairExp = do
 impProd :: LParser Term
 impProd =
   do (x,tyA,lvl) <- brackets
-       (try ((,,) <$> variable <*> (colon >> expr) <*> levelP)
-        <|> ((,,) <$> Unbound.fresh wildcardName <*> expr <*> pure NonDep))
+       (try ((,,) <$> variable <*> (colon >> expr) <*> (Just <$> levelP))
+        <|> ((,,) <$> Unbound.fresh wildcardName <*> expr <*> pure Nothing))
      reservedOp "->"
      Pi (Mode Irr lvl) tyA . Unbound.bind x <$> expr
 
@@ -586,11 +589,9 @@ expProdOrAnnotOrParens =
     beforeBinder = parens $
       choice [do e1 <- try (term >>= (\e1 -> colon >> return e1))
                  e2 <- expr
-                 l <- levelP
-                 return $ Colon e1 e2 l
+                 Colon e1 e2 <$> levelP
              , do e1 <- try (term >>= (\e1 -> comma >> return e1))
-                  e2 <- expr
-                  return $ Comma e1 e2
+                  Comma e1 <$> expr
              , Nope <$> expr]
   in
     do bd <- beforeBinder
@@ -598,7 +599,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a l ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi (Mode Rel l) a (Unbound.bind x b))
+                      return $ Pi (Mode Rel (Just l)) a (Unbound.bind x b))
          Colon a b _ -> return $ Ann a b
 
          Comma a b ->

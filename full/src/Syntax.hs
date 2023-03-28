@@ -34,6 +34,10 @@ type TCName = String
 -- | data constructor names
 type DCName = String
 
+
+-- | level names
+type LName = Unbound.Name Level
+
 -----------------------------------------
 
 -- * Core language
@@ -103,17 +107,29 @@ data Term
     -- | displace a value found in the environment
   | Displace Term Int 
   
-  deriving (Show, Generic)
+  deriving (Show, Generic, Unbound.Subst Level)
 
 -- | An argument to a function
 data Arg = Arg {argEp :: Rho, unArg :: Term}
-  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term)
+  deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
 data Epsilon = 
-    Mode { rho :: Rho, level ::  Level } deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term)
-data Level = Dep Int | NonDep deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term)
+    Mode { rho :: Rho, level :: Maybe Level } 
+      deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
--- | Epsilon annotates the stage of a variable
+data Level = 
+    LConst Int 
+  | LVar   LName
+  | LAdd   Level Level
+  deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term)
+
+data LevelConstraint = 
+    Lt Level Level
+  | Le Level Level
+  | Eq Level Level
+  deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
+
+-- | Rho annotates the stage of a variable
 data Rho
   = Rel
   | Irr
@@ -126,21 +142,21 @@ data Rho
       Ord,
       Generic,
       Unbound.Alpha,
-      Unbound.Subst Term
+      Unbound.Subst Term,
+      Unbound.Subst Level
     )
 
 -- | A 'Match' represents a case alternative
 newtype Match = Match (Unbound.Bind Pattern Term)
   deriving (Show, Generic, Typeable)
-  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
 -- | The patterns of case expressions bind all variables
 -- in their respective branches.
 data Pattern
   = PatCon DCName [(Pattern, Rho)]
   | PatVar TName
-  deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
-
+  deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
 -----------------------------------------
 
@@ -162,21 +178,23 @@ data Module = Module
 newtype ModuleImport = ModuleImport MName
   deriving (Show, Eq, Generic, Typeable)
 
--- | A type declaration (or type signature)
-data Sig = Sig {sigName :: TName , sigEp :: Epsilon , sigType :: Type}
-  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
-sigLevel :: Sig -> Int
-sigLevel s = case sigEp s of
-     (Mode _ (Dep j)) -> j
-     (Mode _ NonDep ) -> 0
+-- | A type declaration (or type signature)
+-- If this a toplevel signature the level *must* be defined
+-- nondependent local signatures may omit the level
+-- we could use a GADT to enforce this invariant, but then the 
+-- generic programming would be more awkward
+data Sig where
+   Sig :: {sigName :: TName , sigRho :: Rho , sigLevel :: Maybe Level , sigType :: Type} -> Sig
+  deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
 -- | Declare the type of a term
 mkSig :: TName -> Type -> Level -> Decl
-mkSig n ty l = TypeSig (Sig n (Mode Rel l) ty)
+mkSig n ty l = TypeSig (Sig n Rel (Just l) ty)
+
 
 -- | Declarations are the components of modules
-data Decl
+data Decl 
   = -- | Declaration for the type of a term
     TypeSig Sig
   | -- | The definition of a particular name, must
@@ -188,15 +206,15 @@ data Decl
     -- | Adjust the context for relevance checking
   | Demote Rho  
   | -- | Declaration for a datatype including all of
-    -- its data constructors
-    Data TCName Telescope [ConstructorDef] Int
+    -- its data constructors. Must be toplevel
+    Data TCName Telescope [ConstructorDef] Level
   | -- | An abstract view of a datatype. Does
     -- not include any information about its data
-    -- constructors
-    DataSig TCName Telescope Int
+    -- constructors. Must be toplevel
+    DataSig TCName Telescope Level
   
   deriving (Show, Generic, Typeable)
-  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 -- | The names of type/data constructors used in the module
 data ConstructorNames = ConstructorNames
   { tconNames :: Set String,
@@ -207,7 +225,7 @@ data ConstructorNames = ConstructorNames
 -- | A Data constructor has a name and a telescope of arguments
 data ConstructorDef = ConstructorDef SourcePos DCName Telescope
   deriving (Show, Generic)
-  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
 -- * Telescopes
 
@@ -218,7 +236,7 @@ data ConstructorDef = ConstructorDef SourcePos DCName Telescope
 --     Delta = [ x:Type , y:x, y = w ]
 newtype Telescope = Telescope [Decl]
   deriving (Show, Generic)
-  deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+  deriving anyclass (Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
 
 -- * Auxiliary functions on syntax
@@ -280,9 +298,9 @@ initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
 preludeDataDecls :: [Decl]
 preludeDataDecls = 
-  [ Data sigmaName  sigmaTele      [prodConstructorDef] 1
-  , Data tyUnitName (Telescope []) [unitConstructorDef] 0
-  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef] 0
+  [ Data sigmaName  sigmaTele      [prodConstructorDef] (LConst 1)
+  , Data tyUnitName (Telescope []) [unitConstructorDef] (LConst 0)
+  , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef] (LConst 0)
   ]  where
         -- boolean
         trueConstructorDef = ConstructorDef internalPos trueName (Telescope [])
@@ -296,10 +314,11 @@ preludeDataDecls =
         -- prod :: (x :: A) (y :: B x) -> Sigma A B
         sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
         prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
-        sigA = Sig aName (Mode Rel (Dep 0)) Type
-        sigB = Sig bName (Mode Rel NonDep) (Pi (Mode Rel NonDep) (Var aName) (Unbound.bind xName Type))
-        sigX = Sig xName (Mode Rel NonDep) (Var aName)
-        sigY = Sig yName (Mode Rel NonDep) (App (Var bName) (Arg Rel (Var xName)))
+        sigA = Sig aName Rel (Just (LConst 0)) Type
+        sigB = Sig bName Rel Nothing (Pi (Mode Rel Nothing) (Var aName) (Unbound.bind xName Type))
+        sigX = Sig xName Rel (Just (LConst 0)) (Var aName)
+        sigY = Sig yName Rel Nothing (App (Var bName) (Arg Rel (Var xName)))
+
         aName = Unbound.string2Name "a"
         bName = Unbound.string2Name "b"
 
@@ -380,14 +399,18 @@ instance Unbound.Subst Term Term where
   isvar (Var x) = Just (Unbound.SubstName x)
   isvar _ = Nothing
 
+instance Unbound.Subst Level Level where
+  isvar (LVar x) = Just (Unbound.SubstName x)
+  isvar _ = Nothing
+
 
 -- '(y : x) -> y'
 pi1 :: Term 
-pi1 = Pi (Mode Rel (Dep 0)) (Var xName) (Unbound.bind yName (Var yName))
+pi1 = Pi (Mode Rel (Just (LConst 0))) (Var xName) (Unbound.bind yName (Var yName))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi (Mode Rel (Dep 0)) TyBool (Unbound.bind yName (Var yName))
+pi2 = Pi (Mode Rel (Just (LConst 0))) TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
 -- True
@@ -417,7 +440,9 @@ instance Unbound.Alpha SourcePos where
   acompare' _ _ _ = EQ
 
 -- Substitutions ignore source positions
-instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substBvs _ _ = id
+instance Unbound.Subst b SourcePos where 
+  subst _ _ = id; substs _ = id; substBvs _ _ = id
+
 
 -- Internally generated source positions
 internalPos :: SourcePos

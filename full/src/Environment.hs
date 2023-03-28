@@ -23,6 +23,8 @@ module Environment
     extendCtxMods,
     extendHints,
     extendSourceLocation,
+    extendLevelConstraint,
+    dumpConstraints,
     getSourceLocation,
     err,
     warn,
@@ -39,6 +41,7 @@ import Control.Monad.Except
     ( unless, MonadError(..), MonadIO(..), ExceptT, runExceptT )
 import Control.Monad.Reader
     ( MonadReader(local), asks, ReaderT(runReaderT) )
+import Control.Monad.State
 import Data.List 
 import Data.Maybe ( listToMaybe )
 import PrettyPrint ( SourcePos, render, D(..), Disp(..), Doc )
@@ -50,15 +53,15 @@ import qualified Unbound.Generics.LocallyNameless as Unbound
 -- environment), freshness state (for supporting locally-nameless
 -- representations), error (for error reporting), and IO
 -- (for e.g.  warning messages).
-type TcMonad = Unbound.FreshMT (ReaderT Env (ExceptT Err IO))
+type TcMonad = StateT TcState (Unbound.FreshMT (ReaderT Env (ExceptT Err IO)))
 
 -- | Entry point for the type checking monad, given an
 -- initial environment, returns either an error message
 -- or some result.
-runTcMonad :: Env -> TcMonad a -> IO (Either Err a)
+runTcMonad :: Env -> TcMonad a -> IO (Either Err (a, TcState))
 runTcMonad env m =
   runExceptT $
-    runReaderT (Unbound.runFreshMT m) env
+    runReaderT (Unbound.runFreshMT (runStateT m initState)) env
 
 -- | Marked locations in the source code
 data SourceLocation where
@@ -79,7 +82,12 @@ data Env = Env
     -- has been checked.
     hints :: [Sig],
     -- | what part of the file we are in (for errors/warnings)
-    sourceLocation :: [SourceLocation] 
+    sourceLocation :: [SourceLocation]
+  }
+
+data TcState = TcState {
+    -- | constraints about levels
+    constraints :: [LevelConstraint] 
   }
 
 --deriving Show
@@ -93,8 +101,14 @@ emptyEnv = Env {ctx = preludeDataDecls
                , sourceLocation = []
               }
 
+initState :: TcState
+initState = TcState { constraints = [] }
+
 instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
+
+instance Disp TcState where
+  disp s = vcat [disp c | c <- constraints s ]
 
 -- | Find a name's user supplied type signature.
 lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
@@ -135,10 +149,7 @@ lookupTyMaybe l v = do
       
 
 demoteSig :: Rho -> Sig -> Sig
-demoteSig r s = s { sigEp = newEp } where
-  se = sigEp s
-  r' = rho se
-  newEp = se { rho = min r r' }
+demoteSig r s = s { sigRho = min r (sigRho s) } 
 
 
 -- | Find the type of a name specified in the context
@@ -180,7 +191,7 @@ lookupRecDef v = do
 lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
-  m (Telescope, Maybe [ConstructorDef], Int)
+  m (Telescope, Maybe [ConstructorDef], Level)
 lookupTCon v = do
   g <- asks ctx
   scanGamma g
@@ -209,7 +220,7 @@ lookupTCon v = do
 lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
-  m [(TCName, (Telescope, ConstructorDef, Int))]
+  m [(TCName, (Telescope, ConstructorDef, Level))]
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
@@ -231,7 +242,7 @@ lookupDCon ::
   (MonadReader Env m, MonadError Err m) =>
   DCName ->
   TCName ->
-  m (Telescope, Telescope, Int)
+  m (Telescope, Telescope, Level)
 lookupDCon c tname = do
   matches <- lookupDConAll c
   case lookup tname matches of
@@ -371,3 +382,23 @@ withStage :: (MonadReader Env m) => Rho -> m a -> m a
 withStage Irr = extendCtx (Demote Rel)
 withStage ep = id
 
+
+
+extendLevelConstraint :: (MonadReader Env m, MonadError Err m, MonadState TcState m) => LevelConstraint -> m ()
+extendLevelConstraint c@(Lt (LConst i) (LConst j)) = 
+    if i < j then return () else err [DS "Cannot solve constraint", DD c]
+extendLevelConstraint (Eq l1 l2) | l1 == l2 = return ()
+extendLevelConstraint (Le l1 l2) | l1 == l2 = return ()
+extendLevelConstraint c@(Lt l1 l2) | l1 == l2 = 
+  err [DS "Cannot solve constraint", DD c]
+extendLevelConstraint c = do
+  st <- get
+  let cs = constraints st
+  if c `elem` cs then return ()
+  else put $ TcState { constraints = c : cs }
+
+dumpConstraints :: (MonadState TcState m) => m [LevelConstraint]
+dumpConstraints = do
+  st <- get
+  put (TcState [])
+  return (constraints st)

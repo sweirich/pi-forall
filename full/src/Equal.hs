@@ -4,7 +4,7 @@
 
 module Equal (whnf, equate, ensurePi,
               ensureTyEq,
-              ensureTCon, unify, displace ) where
+              ensureTCon, unify, displace, equateLevel ) where
 
 import Syntax
 import Environment ( D(DS, DD), TcMonad, Locality(..) )
@@ -13,6 +13,22 @@ import qualified Unbound.Generics.LocallyNameless as Unbound
 
 import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
 import Debug.Trace
+
+equateLevel :: Level -> Level -> TcMonad ()
+equateLevel (LConst i) (LConst j) =
+  if i == j then return ()
+  else
+   Env.err [DS "Level mismatch",
+              DS "Expected " , DD i, DS "Found ", DD j]
+equateLevel l1 l2 =
+  Env.extendLevelConstraint (Eq l1 l2)
+
+equateMaybeLevel :: Maybe Level -> Maybe Level -> TcMonad ()
+equateMaybeLevel (Just i) (Just j) = equateLevel i j
+equateMaybeLevel Nothing Nothing = return ()
+equateMaybeLevel i j =
+   Env.err [DS "Level annotation mismatch",
+              DS "Expected " , DD i, DS "Found ", DD j]
 
 
 -- | compare two expressions for equality
@@ -27,7 +43,7 @@ equate t1 t2 = do
   case (n1, n2) of
     (Type, Type) -> return ()
     (Var x,  Var y) | x == y -> return ()
-    (Displace (Var x) j, Displace (Var y) k) | x == y && j == k -> return ()
+    (Displace (Var x) j, Displace (Var y) k) | x == y -> equateLevel (LConst j) (LConst k)
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       unless (ep1 == ep2) $
@@ -35,10 +51,11 @@ equate t1 t2 = do
       equate b1 b2
     (App a1 a2, App b1 b2) ->
       equate a1 b1 >> equateArg a2 b2
-    (Pi ep1 tyA1 bnd1, Pi ep2 tyA2 bnd2) -> do
+    (Pi (Mode r1 l1) tyA1 bnd1, Pi (Mode r2 l2) tyA2 bnd2) -> do
       (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2
-      unless (ep1 == ep2) $
+      unless (r1 == r2) $
           tyErr n1 n2
+      equateMaybeLevel l1 l2
       equate tyA1 tyA2
       equate tyB1 tyB2
 
@@ -143,7 +160,7 @@ equateArg a1 a2 =
 -- the type.
 -- Throws an error if this is not the case.
 ensurePi :: Type ->
-  TcMonad (Epsilon,  Type, (Unbound.Bind TName Type))
+  TcMonad (Epsilon, Type, Unbound.Bind TName Type)
 ensurePi ty = do
   nf <- whnf ty
   case nf of
@@ -283,9 +300,10 @@ unify ns tx ty = do
         unless (ep1 == ep2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
         unify (x:ns) b1 b2
-      (Pi ep1 tyA1 bnd1, Pi ep2 tyA2 bnd2) -> do
+      (Pi (Mode r1 l1) tyA1 bnd1, Pi (Mode r2 l2) tyA2 bnd2) -> do
         (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2
-        unless (ep1 == ep2) $ do
+        equateMaybeLevel l1 l2
+        unless (r1 == r2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
         ds1 <- unify ns tyA1 tyA2
         ds2 <- unify (x:ns) tyB1 tyB2
@@ -307,7 +325,7 @@ unify ns tx ty = do
 -- solutions.
 amb :: Term -> Bool
 amb (App t1 t2) = True
-amb (If _ _ _) = True
+amb If {} = True
 amb (LetPair _ _) = True
 amb (Case _ _) = True
 amb _ = False
@@ -329,21 +347,28 @@ displace j t = case t of
       a' <- displace j a
       return $ Lam r (Unbound.bind x a')
     App f a -> App <$> displace j f <*> displaceArg j a
-    Pi (Mode ep (Dep k)) tyA bnd -> do
+    Pi (Mode ep (Just (LConst k))) tyA bnd -> do
       (y, tyB) <- Unbound.unbind bnd
-      Pi (Mode ep (Dep (j+k))) <$> displace j tyA 
+      Pi (Mode ep (Just (LConst (j+k)))) <$> displace j tyA
                                <*> (Unbound.bind y <$> displace j tyB)
-    Pi (Mode ep NonDep) tyA bnd -> do
+    Pi (Mode ep (Just lexp)) tyA bnd -> do
+      x' <- Unbound.fresh (Unbound.string2Name "j")
+      let lx = LVar x'
       (y, tyB) <- Unbound.unbind bnd
-      Pi (Mode ep NonDep) <$> displace j tyA 
+      equateLevel lx (LAdd (LConst j) lexp)
+      Pi (Mode ep (Just lx)) <$> displace j tyA
+                               <*> (Unbound.bind y <$> displace j tyB)
+    Pi (Mode ep Nothing) tyA bnd -> do
+      (y, tyB) <- Unbound.unbind bnd
+      Pi (Mode ep Nothing) <$> displace j tyA
                                <*> (Unbound.bind y <$> displace j tyB)
     Ann tm ty -> Ann <$> displace j tm <*> displace j ty
     Pos pos tm -> Pos pos <$> displace j tm
     Let rhs bnd -> do
       (x,body) <- Unbound.unbind bnd
-      Let <$> (displace j rhs) <*> (Unbound.bind x <$> (displace j body))
+      Let <$> displace j rhs <*> (Unbound.bind x <$> displace j body)
     If a1 a2 a3 ->
-      If <$> (displace j a1) <*> (displace j a2) <*> (displace j a3)
+      If <$> displace j a1 <*> displace j a2 <*> displace j a3
     Displace a j0 -> return $ Displace a (j + j0)
-    TyEq a b -> TyEq <$> (displace j a) <*> (displace j b)
+    TyEq a b -> TyEq <$> displace j a <*> displace j b
     _ -> return t

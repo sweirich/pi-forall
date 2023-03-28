@@ -15,6 +15,8 @@ import Control.Monad.Except ( runExceptT )
 import System.Environment(getArgs)
 import System.Exit (exitFailure,exitSuccess)
 import System.FilePath (splitFileName)
+import Syntax (Level(..))
+import qualified Unbound.Generics.LocallyNameless as Unbound
 
 exitWith :: Either a b -> (a -> IO ()) -> IO b
 exitWith res f = 
@@ -30,12 +32,13 @@ go str = do
     Right term -> do 
       putStrLn "parsed as"
       putStrLn $ render $ disp term
-      res <- runTcMonad emptyEnv (inferType term 0)
+      res <- runTcMonad emptyEnv (inferType term (LConst 0))
       case res of 
         Left typeError -> putTypeError typeError
-        Right ty -> do
+        Right (ty,st) -> do
           putStrLn "typed with type"
           putStrLn $ render $ disp ty
+          
   
 -- | Display a parse error to the user  
 putParseError :: ParseError -> IO ()  
@@ -60,8 +63,10 @@ goFilename pathToMainFile = do
   val <- v `exitWith` putParseError
   putStrLn "type checking..."
   d <- runTcMonad emptyEnv (tcModules val)
-  defs <- d `exitWith` putTypeError
+  (defs, cs) <- d `exitWith` putTypeError
   putStrLn $ render $ disp (last defs)
+  putStrLn "level constraints..."
+  putStrLn $ render $ disp cs
 
 
 -- | 'pi <filename>' invokes the type checker on the given 

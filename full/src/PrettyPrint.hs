@@ -12,6 +12,7 @@ import Text.PrettyPrint (Doc, ($$), (<+>))
 import qualified Text.PrettyPrint as PP
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
+import Data.Typeable (Typeable)
 
 import Syntax
 
@@ -76,8 +77,8 @@ instance Disp SourcePos where
       PP.<> PP.int (sourceColumn p)
       PP.<> PP.colon
 
-instance Disp (Unbound.Name Term) where
-  disp = PP.text . Unbound.name2String
+instance Disp (Unbound.Name a) where
+  disp = PP.text . show -- Unbound.name2String
 
 -------------------------------------------------------------------------
 
@@ -112,10 +113,14 @@ instance Disp Epsilon where
   disp (Mode rho lvl) = disp rho <+> disp lvl
 
 instance Disp Level where
-  disp NonDep = mempty
-  disp (Dep 0) = mempty
-  disp (Dep i) = PP.text "@" <+> PP.int i
+  disp (LVar x) = disp x
+  disp (LConst i) = PP.int i
+  disp (LAdd l1 l2) = disp l1 <+> PP.text "+" <+> disp l2
 
+instance Disp LevelConstraint where
+  disp (Lt l1 l2) = disp l1 <+> PP.text "<" <+> disp l2
+  disp (Le l1 l2) = disp l1 <+> PP.text "<=" <+> disp l2
+  disp (Eq l1 l2) = disp l1 <+> PP.text "=" <+> disp l2
 
 instance Disp Module where
   disp m =
@@ -127,9 +132,8 @@ instance Disp ModuleImport where
   disp (ModuleImport i) = PP.text "import" <+> disp i
 
 instance Disp Sig where
-  disp (Sig n (Mode r (Dep k)) ty) = disp n <+> PP.text ":" <+> disp ty 
-    <+> if k /= 0 then PP.text "@" <+> PP.int k else mempty
-  disp (Sig n (Mode r NonDep) ty) = disp n <+> PP.text ":" <+> disp ty 
+  disp (Sig n r (Just l) ty) = disp n <+> PP.text ":" <+> disp ty <+> PP.text "@" <+> disp l 
+  disp (Sig n r Nothing ty) = disp n <+> PP.text ":" <+> disp ty 
 
 instance Disp Decl where
   disp (Def n term)  = disp n <+> PP.text "=" <+> disp term
@@ -142,14 +146,14 @@ instance Disp Decl where
       ( PP.text "data" <+> disp n <+> disp params
           <+> PP.colon
           <+> PP.text "Type"
-          <+> (if i /= 0 then PP.text "@" <+> disp i else mempty)
+          <+> disp i
           <+> PP.text "where"
       )
       2
       (PP.vcat $ map disp constructors)
   disp (DataSig t delta i) =
     PP.text "data" <+> disp t <+> disp delta <+> PP.colon
-      <+> PP.text "Type" <+> (if i /= 0 then PP.text "@" <+> disp i else mempty)
+      <+> PP.text "Type" <+> disp i
 
 instance Disp ConstructorDef where
   disp (ConstructorDef _ c (Telescope [])) = PP.text c
@@ -255,7 +259,7 @@ parens b = if b then PP.parens else id
 brackets :: Bool -> Doc -> Doc
 brackets b = if b then PP.brackets else id
 
-instance Display (Unbound.Name Term) where
+instance (Typeable a) => Display (Unbound.Name a) where
   display = return . disp
 
 instance Display Term where
@@ -270,7 +274,9 @@ instance Display Term where
     df <- withPrec levelApp (display f)
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
-  display (Pi (Mode ep k) a bnd) = do
+  display (Pi (Mode ep mk) a bnd) = do
+    let dispk (Just k) = PP.text "@" <+> disp k
+        dispk Nothing = mempty
     Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
@@ -278,7 +284,7 @@ instance Display Term where
               then do
                 dn <- display n
                 da <- withPrec 0 (display a)
-                return $ mandatoryBindParens ep  (dn <+> PP.colon <+> da <+> disp k)
+                return $ mandatoryBindParens ep  (dn <+> PP.colon <+> da <+> dispk mk)
               else do
                 case ep of 
                   Rel -> withPrec (levelArrow+1) (display a)

@@ -155,7 +155,7 @@ genArgs n = genBoundedList 2 (genArg n)
 instance Arbitrary Rho where
     arbitrary = elements [ Rel, Irr ]
 instance Arbitrary Level where
-    arbitrary = elements [ NonDep, Dep 0, Dep 1, Dep 2, Dep 3]
+    arbitrary = elements [ LConst 0, LConst 1, LConst 2, LConst 3]
 instance Arbitrary Epsilon where
     arbitrary = Mode <$> arbitrary <*> arbitrary
 
