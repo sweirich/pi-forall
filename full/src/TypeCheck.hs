@@ -50,34 +50,7 @@ tcType tm k = Env.withStage Irr $ checkType tm Type k
 
 
 localize :: Level -> Maybe Level -> Level
-localize= fromMaybe
-
-{-
-localizeErr :: Maybe Int -> Level -> TcMonad Int
-localizeErr mk l = 
-  case localize mk l of 
-    Just k -> return k
-    Nothing -> 
-      Env.err 
-        [DS "Must provide level for nondependent arg"]
-
-checkIntLevel :: Int -> Maybe Int -> TcMonad Int
-checkIntLevel j mk = 
-    case mk of 
-      Nothing -> return j
-      Just k -> do
-         unless (j <= k) $ Env.err [DS "level must be less than ", DD k]
-         return k
-
-checkLevel :: Level -> Maybe Int -> TcMonad Int
-checkLevel (Dep j) mk = checkIntLevel j mk
-checkLevel NonDep  mk = checkIntLevel 0 mk  -- TODO: or maybe this should be an error!
-
-levelToMaybe :: Level -> Maybe Int
-levelToMaybe (Dep k) = Just k
-levelToMaybe NonDep = Nothing
-
--}
+localize = fromMaybe
 
 getLevel :: Maybe Level -> TcMonad Level
 getLevel mk = case mk of
@@ -101,7 +74,9 @@ tcTerm t@(Var x) Nothing mk = do
   return (sigType sig)
 
 -- i-type
-tcTerm Type Nothing mk = return Type
+tcTerm Type Nothing mk = do
+  Env.extendLevelConstraint (Le (LConst 0) mk)
+  return Type
 
 -- i-pi
 tcTerm (Pi (Mode ep lvl) tyA bnd) Nothing mk = do
@@ -645,9 +620,11 @@ tcEntry (Def n term) = do
                    `catchError` handler
                 cs <- Env.dumpConstraints
                 let cs' = simplifyConstraints cs
-                Env.warn $ (DS "constraints are ") : map DD cs'
+                Env.warn $ [DS "Checking", DD n]
+                Env.warn $ DS "constraints are " : map DD cs'
                 ss <- liftIO $ solveConstraints cs'
-                Env.warn $ (DS "subst is ") : concatMap (\(x,y) -> [DS (render (disp x) ++ " = " ++ render (disp y))]) ss
+                Env.warn $ (DS "subst is ") : 
+                  concatMap (\(x,y) -> [DS (render (disp x) ++ " = " ++ render (disp y))]) ss
                 if n `elem` Unbound.toListOf Unbound.fv term
                   then return $ AddCtx [TypeSig (Unbound.substs ss sig), RecDef n (Unbound.substs ss term)]
                   else return $ AddCtx [TypeSig (Unbound.substs ss sig), Def n (Unbound.substs ss term)]

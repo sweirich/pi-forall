@@ -11,11 +11,13 @@ z = \x zf sf. zf
 s : nat -> nat
 s = \n. \x zf sf. sf (n x zf sf)
 
+
 one : nat 
 one = s z
 
 two : nat 
 two = s (s z)
+
 
 three : nat @ 1
 three = TRUSTME   -- replace with correct definition of 3
@@ -23,11 +25,13 @@ three = TRUSTME   -- replace with correct definition of 3
 plus : nat^1 -> nat -> nat    -- need to lift first nat for the instantiation
 plus = \x. \y. x nat y s
 
+
 test0 : plus one^1 one = two
 test0 = Refl
 
 test1 : plus one^1 two = three
 test1 = TRUSTME  -- replace with Refl
+
 
 spec0 : (n : nat) -> plus z^1 n = n
 spec0 = \n . Refl
@@ -38,11 +42,13 @@ spec1 = \n m . Refl
 -- The predecessor function is *really* tricky! Don't try this 
 -- first if you have never seen it before.
 
+{-
 pred : nat -> nat @ 1 
 pred = TRUSTME
 
 test_pred : pred two = one 
 test_pred = TRUSTME -- replace with Refl
+-}
 
 {-
 -- Since pi-forall allows recursive definitions, we also have Scott encodings
