@@ -94,6 +94,7 @@ instance Disp Pattern
 
 instance Disp Match
 
+instance Disp Level
 
 
 ------------------------------------------------------------------------
@@ -112,10 +113,13 @@ instance Disp Rho where
 instance Disp Epsilon where
   disp (Mode rho lvl) = disp rho <+> disp lvl
 
-instance Disp Level where
-  disp (LVar x) = disp x
-  disp (LConst i) = PP.int i
-  disp (LAdd l1 l2) = disp l1 <+> PP.text "+" <+> disp l2
+instance Display Level where
+  display (LVar x) = display x
+  display (LConst i) = return $ PP.int i
+  display (LAdd l1 l2) = do
+    d1 <- display l1
+    d2 <- display l2
+    return $ d1 <+> PP.text "+" <+> d2
 
 instance Disp LevelConstraint where
   disp (Lt l1 l2) = disp l1 <+> PP.text "<" <+> disp l2
@@ -418,7 +422,8 @@ instance Display Term where
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
   display (Displace t j) = do
     dt <- display t
-    return $ dt <> PP.text "^" <> PP.int j
+    dj <- display j
+    return $ dt <> PP.text "^" <> dj
 
 
 instance Display Arg where

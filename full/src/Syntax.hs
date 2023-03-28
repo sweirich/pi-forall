@@ -105,7 +105,7 @@ data Term
   | -- | case analysis  `case a of matches`
     Case Term [Match]
     -- | displace a value found in the environment
-  | Displace Term Int 
+  | Displace Term Level 
   
   deriving (Show, Generic, Unbound.Subst Level)
 

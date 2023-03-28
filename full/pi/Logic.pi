@@ -6,19 +6,19 @@ module Logic where
 data And (A : Type) (B : Type) : Type where
   Conj of (_ : A) (_ : B)
 
-proj1 : [A:Type] -> [B : Type] -> And A B -> A @ 1
+proj1 : [A:Type] -> [B : Type] -> And A B -> A 
 proj1 = \ [A] [B] p . case p of
   Conj x y -> x
 
-proj2 : [A:Type] -> [B : Type] -> And A B -> B @ 1
+proj2 : [A:Type] -> [B : Type] -> And A B -> B 
 proj2 = \ [A] [B] p . case p of
   Conj x y -> y
 
-and_comm : [A : Type] -> [B : Type] -> And A B -> And B A @ 1
+and_comm : [A : Type] -> [B : Type] -> And A B -> And B A 
 and_comm = \ [A][B] ab . case ab of 
                  (Conj x y) -> Conj y x
 
-and_assoc : [A : Type] -> [B : Type] -> [C : Type] -> And A (And B C) -> And (And A B) C @ 1
+and_assoc : [A : Type] -> [B : Type] -> [C : Type] -> And A (And B C) -> And (And A B) C 
 and_assoc = \[A][B][C] abc . 
    case abc of 
      Conj a bc -> case bc of 

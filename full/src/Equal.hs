@@ -43,7 +43,7 @@ equate t1 t2 = do
   case (n1, n2) of
     (Type, Type) -> return ()
     (Var x,  Var y) | x == y -> return ()
-    (Displace (Var x) j, Displace (Var y) k) | x == y -> equateLevel (LConst j) (LConst k)
+    (Displace (Var x) j, Displace (Var y) k) | x == y -> equateLevel j k
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       unless (ep1 == ep2) $
@@ -334,10 +334,10 @@ amb _ = False
 
 
 
-displaceArg :: Int -> Arg -> TcMonad Arg
+displaceArg :: Level -> Arg -> TcMonad Arg
 displaceArg j (Arg r t) = Arg r <$> displace j t
 
-displace :: Int -> Term -> TcMonad Term
+displace :: Level -> Term -> TcMonad Term
 displace j t = case t of
     Var x -> Env.lookupTyMaybe Global x >>= \mb -> case mb of
                   Just _ -> return (Displace (Var x) j)
@@ -347,17 +347,13 @@ displace j t = case t of
       a' <- displace j a
       return $ Lam r (Unbound.bind x a')
     App f a -> App <$> displace j f <*> displaceArg j a
-    Pi (Mode ep (Just (LConst k))) tyA bnd -> do
-      (y, tyB) <- Unbound.unbind bnd
-      Pi (Mode ep (Just (LConst (j+k)))) <$> displace j tyA
-                               <*> (Unbound.bind y <$> displace j tyB)
     Pi (Mode ep (Just lexp)) tyA bnd -> do
       x' <- Unbound.fresh (Unbound.string2Name "j")
       let lx = LVar x'
       (y, tyB) <- Unbound.unbind bnd
-      equateLevel lx (LAdd (LConst j) lexp)
+      equateLevel lx (LAdd j lexp)
       Pi (Mode ep (Just lx)) <$> displace j tyA
-                               <*> (Unbound.bind y <$> displace j tyB)
+                             <*> (Unbound.bind y <$> displace j tyB)
     Pi (Mode ep Nothing) tyA bnd -> do
       (y, tyB) <- Unbound.unbind bnd
       Pi (Mode ep Nothing) <$> displace j tyA
@@ -369,6 +365,6 @@ displace j t = case t of
       Let <$> displace j rhs <*> (Unbound.bind x <$> displace j body)
     If a1 a2 a3 ->
       If <$> displace j a1 <*> displace j a2 <*> displace j a3
-    Displace a j0 -> return $ Displace a (j + j0)
+    Displace a j0 -> return $ Displace a (LAdd j j0)
     TyEq a b -> TyEq <$> displace j a <*> displace j b
     _ -> return t

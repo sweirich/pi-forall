@@ -390,7 +390,7 @@ tcTerm (Displace t j) Nothing mk = do
         Just sig -> do
             Env.checkStage (sigRho sig)       -- make sure the variable is accessible
             case sigLevel sig of
-                Just k -> Env.extendLevelConstraint (Le (LAdd (LConst j) k) mk)
+                Just k -> Env.extendLevelConstraint (Le (LAdd j k) mk)
                 Nothing -> Env.err [DS "Displaced vars must have known level", DD x]
             Equal.displace j (sigType sig)    -- displace its type
         Nothing -> Env.err [DS "Can only displace top-level vars", DD x]

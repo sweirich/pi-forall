@@ -301,7 +301,7 @@ telescope = do
 
 -- Omitted levels are unification variables
 levelP :: LParser Level
-levelP = 
+levelP =
   try (LConst <$> (at *> natural)) <|> do
     x <- Unbound.fresh (Unbound.string2Name "l")
     return (LVar x)
@@ -474,7 +474,7 @@ factor = choice [ try displaceTm <?> "displaced term"
                 , bconst     <?> "a constant"
                 , ifExpr     <?> "an if expression"
                 , sigmaTy    <?> "a sigma type"
-               
+
                 , expProdOrAnnotOrParens
                     <?> "an explicit function type or annotated expression"
                 ]
@@ -686,10 +686,11 @@ sigmaTy = do
   reservedOp "}"
   return $ TCon sigmaName [Arg Rel a, Arg Rel (Lam Rel (Unbound.bind x b))]
 
-
 displaceTm :: LParser Term
 displaceTm = do
   x <- variable
   reservedOp "^"
-  k <- natural
-  return $ Displace (Var x) k
+  l <- try (LConst <$> natural) <|> do
+    lv <- Unbound.fresh (Unbound.string2Name "l")
+    return (LVar lv)
+  Displace (Var x) <$> levelP
