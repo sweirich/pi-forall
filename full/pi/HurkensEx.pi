@@ -1,0 +1,79 @@
+-- from Jonathan Chan
+module HurkensEx where
+
+-- Hurkens paradox with explicit level annotations
+
+{-
+-- Racket version
+;; P A = A → ∗
+(define-metafunction StraTT
+  P : A -> A
+  [(P A) (A → ∗)])
+
+;; U : ∗ = Π X : ∗ . ((P (P X)) → X) → (P (P X))
+;; τ : P (P U) → U = λ t X f p . (t (λ x . p (f (x X f))))
+;; σ : U → P (P U) = λ s . s U τ
+;; Δ : P U = λ y . (Π p : P U . σ y p → p (τ (σ y))) → ⊥
+;; Ω : U = τ (λ p . Π x : U . σ x p → p x)
+;; M : Π x : U . σ x Δ → Δ x = λ x two three . three Δ two (λ p . three (λ y (p (τ (σ y)))))
+;;   = (λ x 2 3 . 3 Δ 2 (λ p . 3 (λ y . p (τ (σ y)))))
+(define-term Σ
+  ([U : ∗ @ 1
+      = (Π X 0 ∗ (((P (P X)) → X) → (P (P X))))]
+   [τ : ((P (P (U ^ 0))) → (U ^ 0)) @ 1
+      = (λ* t X f p (t (λ x (p (f ($ x X f))))))]
+   [σ : ((U ^ 1) → (P (P (U ^ 0)))) @ 2
+      = (λ s ($ s (U ^ 0) (τ ^ 0)))]
+   [Δ : (P (U ^ 1)) @ 2
+      = (λ y ((Π p 1 (P (U ^ 0)) (($ (σ ^ 0) y p) → (p ((τ ^ 0) ((σ ^ 0) y))))) → ⊥))]
+   [Ω : (U ^ 0) @ 3
+      = ((τ ^ 0) (λ p (Π x 2 (U ^ 1) (($ (σ ^ 0) x p) → (p x)))))]
+   [M : (Π x 3 (U ^ 2) (($ (σ ^ 1) x (Δ ^ 0)) → ((Δ ^ 1) x))) @ 4
+      = (λ* x two three ($ three (Δ ^ 0) two (λ p (three (λ y (p ((τ ^ 0) ((σ ^ 0) y))))))))]))
+
+(test-judgement-holds (wf Σ))
+(judgement-holds (⇑ Σ () (τ ^ 0) A 1) A)
+(judgement-holds (⇑ Σ () (σ ^ 0) A 2) A)
+(judgement-holds (⇑ Σ () (Δ ^ 0) A 3) A)
+(judgement-holds (⇑ Σ () (Ω ^ 0) A 3) A)
+(judgement-holds (⇑ Σ () (M ^ 0) A 4) A)
+(test-results)
+-}
+
+data Void : Type where {}
+
+neg : Type -> Type 
+neg = \X. X -> Void
+
+P : Type -> Type
+P = \S. S -> Type
+
+U : Type @ 1
+U = (x : Type @ 0) -> ((P (P x)) -> x) -> P (P x)
+
+tau : (P (P U)) -> U @ 1
+tau = \t. \x. \f. \p. t (\s. p (f (s x f)))
+
+sigma : U^1 -> P (P U) @ 2
+sigma = \s. s U (\t. tau t)
+
+Delta : P U^1 
+Delta = \y. neg ((p : P U @ 1) -> sigma y p -> p (tau (sigma y)))
+
+-- warning: parser is not good enough for U^1 @ 2, need to have parens around displaced term
+
+Omega : U @ 3
+Omega = tau (\p. (x : (U^1) @ 2) -> sigma x p -> p (\y. x y))
+
+M : (x : (U^2) @ 3) -> sigma^1 x Delta -> Delta^1 x @ 4
+M = \x. \two. \three. three Delta two (\p. three (\y. p (tau (sigma y))))
+
+
+{-  -- can't type check
+R : (p : P U) -> ((x : U) -> sigma x p -> p x) -> p Omega
+R = \zero. \one. one Omega (\x. one (tau (sigma x)))
+L : neg ((p : P U) -> ((x : U) -> sigma x p -> p x) -> p Omega)
+L = \zero. zero Delta M (\p. zero (\y. p (tau (sigma y))))
+false : Void
+false = L R
+-}

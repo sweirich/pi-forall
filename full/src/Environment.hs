@@ -32,6 +32,7 @@ module Environment
     Locality(..),
     D (..),
     Err (..),
+    SourceLocation(..),
     withStage,
     checkStage 
   )
@@ -87,7 +88,7 @@ data Env = Env
 
 data TcState = TcState {
     -- | constraints about levels
-    constraints :: [LevelConstraint] 
+    constraints :: [(SourceLocation, LevelConstraint)] 
   }
 
 --deriving Show
@@ -108,7 +109,7 @@ instance Disp Env where
   disp e = vcat [disp decl | decl <- ctx e]
 
 instance Disp TcState where
-  disp s = vcat [disp c | c <- constraints s ]
+  disp s = vcat [disp l <> disp c | (SourceLocation p l,c) <- constraints s ]
 
 -- | Find a name's user supplied type signature.
 lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
@@ -392,12 +393,13 @@ extendLevelConstraint (Le l1 l2) | l1 == l2 = return ()
 extendLevelConstraint c@(Lt l1 l2) | l1 == l2 = 
   err [DS "Cannot solve constraint", DD c]
 extendLevelConstraint c = do
+  locs <- asks sourceLocation
   st <- get
   let cs = constraints st
-  if c `elem` cs then return ()
-  else put $ TcState { constraints = c : cs }
+  -- if c `elem` cs then return () else 
+  put $ TcState { constraints = (head locs,c) : cs }
 
-dumpConstraints :: (MonadState TcState m) => m [LevelConstraint]
+dumpConstraints :: (MonadState TcState m) => m [(SourceLocation,LevelConstraint)]
 dumpConstraints = do
   st <- get
   put (TcState [])

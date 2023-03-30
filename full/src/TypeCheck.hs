@@ -400,6 +400,7 @@ tcTerm (Displace t j) Nothing mk = do
 -- c-infer
 tcTerm tm (Just ty) mk = do
   ty' <- inferType tm mk
+  -- Env.warn [DS "equating:", DD ty', DS "and", DD ty]
   Equal.equate ty' ty
   return ty'
 
@@ -604,7 +605,16 @@ tcEntry (Def n term) = do
         Nothing -> do
           kv <- Unbound.fresh (Unbound.string2Name "k")
           ty <- inferType term (LVar kv)
-          return $ AddCtx [TypeSig (Sig n Rel (Just (LVar kv)) ty), Def n term]
+          cs <- Env.dumpConstraints
+          --let cs' = simplifyConstraints cs
+          mss <- liftIO $ solveConstraints (map snd cs)
+          ss <- case mss of 
+                  Nothing -> Env.err [DS "Cannot satisfy level constraints"]
+                  Just ss -> return ss
+          let k' = Unbound.substs ss (LVar kv)
+          let ty' = Unbound.substs ss ty
+          let tm' = Unbound.substs ss term
+          return $ AddCtx [TypeSig (Sig n Rel (Just k') ty'), Def n tm']
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -619,12 +629,14 @@ tcEntry (Def n term) = do
                 Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) (fromMaybe (LConst 0) (sigLevel sig))
                    `catchError` handler
                 cs <- Env.dumpConstraints
-                let cs' = simplifyConstraints cs
-                Env.warn $ [DS "Checking", DD n]
-                Env.warn $ DS "constraints are " : map DD cs'
-                ss <- liftIO $ solveConstraints cs'
-                Env.warn $ (DS "subst is ") : 
-                  concatMap (\(x,y) -> [DS (render (disp x) ++ " = " ++ render (disp y))]) ss
+                -- Env.warn $ [DS "Checking", DD n, DD term, DS "@", DD (sigLevel sig) ]
+                -- Env.warn $ DS "constraints are " : concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
+                mss <- liftIO $ solveConstraints (map snd cs)
+                ss <- case mss of 
+                  Nothing -> Env.err [DS "Cannot satisfy level constraints"]
+                  Just ss -> return ss
+                -- Env.warn $ (DS "subst is ") : 
+                --  concatMap (\(x,y) -> [DS (render (disp x) ++ " = " ++ render (disp y))]) ss
                 if n `elem` Unbound.toListOf Unbound.fv term
                   then return $ AddCtx [TypeSig (Unbound.substs ss sig), RecDef n (Unbound.substs ss term)]
                   else return $ AddCtx [TypeSig (Unbound.substs ss sig), Def n (Unbound.substs ss term)]
@@ -796,7 +808,7 @@ checkSubPats dc (TypeSig _ : tele) patss
 checkSubPats dc t ps =
   Env.err [DS "Internal error in checkSubPats", DD dc, DS (show ps)]
 
-
+{-
 -- Bounds are <= and >= for each variable
 data Bound = Bound { upper :: [Level], lower :: [Level] }
   deriving (Generic, Show, Eq, Ord, Unbound.Alpha, Unbound.Subst Level)
@@ -825,9 +837,9 @@ addConstraint c bs =
         Le t (LVar x) -> let b = findBound x bs in
           ((x, b { lower = t:lower b}) : bs, [])
         _ -> (bs, [c])
+-}
 
-
-
+{-
 
 simplifyConstraints :: [LevelConstraint] -> [LevelConstraint]
 simplifyConstraints (Eq l1 l2 : cs) | l1 == l2 =
@@ -868,3 +880,5 @@ constraints2subst = go where
   go ((Le l (LVar x)):cs) = (x,l): go cs
   go (_:cs) = go cs
   go [] = []
+
+  -}

@@ -1,5 +1,7 @@
 module LevelSolver where
 
+-- Call out to Z3 to solve level constraints gathered during type checking
+
 import Syntax
 
 import Data.Char as Char
@@ -25,16 +27,18 @@ fvs cs = List.nub (concatMap fv cs) where
   fv = Unbound.toListOf Unbound.fv
 
 
-solveConstraints :: [LevelConstraint] -> IO [(LName, Level)]
+-- The solution to a set of constraints is a satisfying substitution
+
+
+solveConstraints :: [LevelConstraint] -> IO (Maybe [(LName, Level)])
 solveConstraints cs = do
   let goal = makeGoal cs
   SatResult result <- sat goal
   if modelExists result then
     let ss1 = Map.toList (getModelDictionary result) in
-    return (modelToSubst ss1)
+    return (Just (modelToSubst ss1))
   else do
-    print "no model!"
-    return []
+    return Nothing
 
 {-
   ss <- case result of
@@ -68,7 +72,7 @@ mkName str = name where
   name = case Read.readMaybe numbers of
             Just i -> Just $ Unbound.makeName letters (i :: Integer)
             Nothing ->
-              if numbers == [] then
+              if null numbers then
                   Just (Unbound.string2Name letters)
               else
                   Nothing
@@ -83,6 +87,7 @@ modelToSubst = concatMap f where
 
 makeGoal :: [LevelConstraint] -> Predicate
 makeGoal cs = do
+  setOption $ ProduceUnsatCores True
   let vs = fvs cs
   varmap <- mapM (\v -> do
                     x <- SBV.sInteger (show v)
@@ -103,12 +108,12 @@ simplify (LAdd l1 l2) =
     (s1,s2) -> LAdd s1 s2
 
 symLevel :: Level -> Vars -> Symbolic SInteger
-symLevel (LConst x) = \vs -> 
+symLevel (LConst x) = \vs ->
   return (fromInteger (toInteger x))
 symLevel (LVar x) = \vars ->
   return $ case lookup x vars of
               Just y -> y
-              Nothing -> error "BUG" 
+              Nothing -> error "BUG"
 symLevel (LAdd l1 l2) = \vs -> do
   sl1 <- symLevel l1 vs
   sl2 <- symLevel l2 vs
