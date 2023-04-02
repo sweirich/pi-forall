@@ -1,7 +1,7 @@
 {- pi-forall language -}
 
 -- | A Pretty Printer.
-module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render) where
+module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render, pp) where
 
 import Control.Monad.Reader (MonadReader (ask, local), asks)
 import Data.Set qualified as S
@@ -19,6 +19,9 @@ import Syntax
 -------------------------------------------------------------------------
 
 -- * Classes and Types for Pretty Printing
+
+pp :: Disp d => d -> String
+pp p = PP.render (disp p)
 
 -------------------------------------------------------------------------
 
@@ -420,6 +423,8 @@ instance Display Term where
     return $
       parens (levelCase < p) $
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
+  display (Displace t (LConst 0)) = do
+    display t
   display (Displace t j) = do
     dt <- display t
     dj <- display j

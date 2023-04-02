@@ -10,6 +10,7 @@ import Syntax
 import Environment ( D(DS, DD), TcMonad, Locality(..) )
 import qualified Environment as Env
 import qualified Unbound.Generics.LocallyNameless as Unbound
+import PrettyPrint (D(..), pp)
 
 import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
 import Debug.Trace
@@ -348,9 +349,9 @@ displace j t = case t of
       return $ Lam r (Unbound.bind x a')
     App f a -> App <$> displace j f <*> displaceArg j a
     Pi (Mode ep (Just lexp)) tyA bnd -> do
-      x' <- Unbound.fresh (Unbound.string2Name "j")
-      let lx = LVar x'
       (y, tyB) <- Unbound.unbind bnd
+      x' <- Unbound.fresh (Unbound.string2Name $ "jD@" ++ pp lexp)
+      let lx = LVar x'
       equateLevel lx (LAdd j lexp)
       Pi (Mode ep (Just lx)) <$> displace j tyA
                              <*> (Unbound.bind y <$> displace j tyB)

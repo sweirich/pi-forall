@@ -46,22 +46,22 @@ neg = \X. X -> Void
 P : Type -> Type
 P = \S. S -> Type
 
-U : Type @ 1
+U : Type
 U = (x : Type @ 0) -> ((P (P x)) -> x) -> P (P x)
 
-tau : (P (P U)) -> U @ 1
+tau : (P (P U)) -> U
 tau = \t. \x. \f. \p. t (\s. p (f (s x f)))
 
-sigma : U^1 -> P (P U) @ 2
+sigma : U -> P (P U)
 sigma = \s. s U (\t. tau t)
 
-Delta : P U^1 
+Delta : P U 
 Delta = \y. neg ((p : P U @ 1) -> sigma y p -> p (tau (sigma y)))
 
-Omega : U @ 3
-Omega = tau (\p. (x : U^1) -> sigma x p -> p (\y. x y))
+Omega : U 
+Omega = tau (\p. (x : U) -> sigma x p -> p (\y. x y))
 
-M : (x : U^2) -> sigma^1 x Delta -> Delta^1 x @ 4
+M : (x : U) -> sigma x Delta -> Delta x
 M = \x. \two. \three. three Delta two (\p. three (\y. p (tau (sigma y))))
 
 {-  -- can't type check

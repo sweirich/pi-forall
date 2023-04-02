@@ -14,7 +14,7 @@ import LevelSolver
 import Environment (D (..), Locality(..), TcMonad)
 import Environment qualified as Env
 import Equal qualified
-import PrettyPrint (Disp (disp))
+import PrettyPrint (Disp (disp), pp)
 import Syntax
 import Debug.Trace
 
@@ -27,23 +27,23 @@ import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 
 -- | Infer/synthesize the type of a term
 -- If we can infer a type of a term, we can always infer its smallest level
-inferType :: Term -> Level -> TcMonad Type
+inferType :: Term -> Level -> TcMonad (Type, Term)
 inferType t = tcTerm t Nothing
 
 -- | Check that the given term has the expected type
 -- Sometimes we can also infer the level of the term, but not always
-checkType :: Term -> Type -> Level -> TcMonad ()
+checkType :: Term -> Type -> Level -> TcMonad (Term)
 checkType tm (Pos _ ty) k = checkType tm ty k  -- ignore source positions/annotations
 checkType tm (Ann ty _) k = checkType tm ty k
 checkType tm ty k = do
   nf <- Equal.whnf ty
-  _ <- tcTerm tm (Just nf) k
-  return ()
+  (_,t) <- tcTerm tm (Just nf) k
+  return (t)
 
 
 -- | Make sure that the term is a "type" (i.e. that it has type 'Type')
 -- | and find out its level, if possible.
-tcType :: Term -> Level -> TcMonad ()
+tcType :: Term -> Level -> TcMonad (Term)
 tcType tm k = Env.withStage Irr $ checkType tm Type k
 
 ---------------------------------------------------------------------
@@ -63,34 +63,47 @@ getLevel mk = case mk of
 -- If the second argument is Nothing`, then the third argument may be `Just k` in order to 
 -- pass through a known level
 -- In either case, this function returns the type of the term and a lower bound of its level
-tcTerm :: Term -> Maybe Type -> Level -> TcMonad Type
+tcTerm :: Term -> Maybe Type -> Level -> TcMonad (Type, Term)
 
 -- i-var
 tcTerm t@(Var x) Nothing mk = do
-  sig <- Env.lookupTy x        -- make sure the variable is accessible
-  l <- getLevel (sigLevel sig) -- make sure that it is annotated with a level
-  Env.checkStage (sigRho sig)
-  Env.extendLevelConstraint (Le l mk)
-  return (sigType sig)
+  ms <- Env.lookupTyMaybe Global x
+  case ms of 
+    Just sig -> do
+      
+      -- global variable, try to displace
+      -- Env.checkStage (sigRho sig)
+      jx <- Unbound.fresh (Unbound.string2Name ("jV" ++ show x))
+      -- let j = LVar jx
+      tcTerm (Displace (Var x) (LVar jx)) Nothing mk
+      -- k <- getLevel (sigLevel sig) -- make sure that it is annotated with a level
+      -- Env.extendLevelConstraint (Le (LAdd j k) mk)
+      -- Equal.displace j (sigType sig) 
+    Nothing -> do
+      sig <- Env.lookupTy x        -- make sure the variable is accessible
+      l <- getLevel (sigLevel sig) -- make sure that it is annotated with a level
+      Env.checkStage (sigRho sig)
+      Env.extendLevelConstraint (Le l mk)
+      return (sigType sig, Var x)
 
 -- i-type
 tcTerm Type Nothing mk = do
   Env.extendLevelConstraint (Le (LConst 0) mk)
-  return Type
+  return (Type, Type)
 
 -- i-pi
 tcTerm (Pi (Mode ep lvl) tyA bnd) Nothing mk = do
   (x, tyB) <- Unbound.unbind bnd
   if x `elem` Unbound.toListOf Unbound.fv tyB then do
     j <- getLevel lvl
-    tcType tyA j
-    Env.extendCtx (TypeSig (Sig x ep (Just j) tyA)) (tcType tyB mk)
+    tyA' <- tcType tyA j
+    tyB' <- Env.extendCtx (TypeSig (Sig x ep (Just j) tyA')) (tcType tyB mk)
     Env.extendLevelConstraint (Lt j mk)
-    return Type
+    return (Type, Pi (Mode ep (Just j)) tyA' (Unbound.bind x tyB'))
   else do
-    tcType tyA mk
-    tcType tyB mk   -- x can't appear in B
-    return Type
+    tyA' <- tcType tyA mk
+    tyB' <- tcType tyB mk   -- x can't appear in B
+    return (Type, Pi (Mode ep Nothing) tyA' (Unbound.bind x tyB'))
 
 -- c-lam: check the type of a function
 tcTerm (Lam ep1  bnd) (Just (Pi (Mode ep2 lvl) tyA bnd2)) mk = do
@@ -101,30 +114,30 @@ tcTerm (Lam ep1  bnd) (Just (Pi (Mode ep2 lvl) tyA bnd2)) mk = do
                                  DS "but found", DD ep1, DS "instead."]
   let lvl' = localize mk lvl
   -- check the type of the body of the lambda expression
-  Env.extendCtx (TypeSig (Sig x ep1 (Just lvl') tyA)) (checkType body tyB mk)
-  return (Pi (Mode ep1 lvl) tyA bnd2)
+  body' <- Env.extendCtx (TypeSig (Sig x ep1 (Just lvl') tyA)) (checkType body tyB mk)
+  return (Pi (Mode ep1 lvl) tyA bnd2, Lam ep1 (Unbound.bind x body'))
 tcTerm (Lam _ _) (Just nf) k =
   Env.err [DS "Lambda expression should have a function type, not", DD nf]
 
 -- i-app
 tcTerm (App t1 t2) Nothing mk = do
-  ty1 <- inferType t1 mk
+  (ty1, t1') <- inferType t1 mk
   (Mode ep1 lvl, tyA, bnd) <- Equal.ensurePi ty1
   unless (ep1 == argEp t2) $ Env.err
     [DS "In application, expected", DD ep1, DS "argument but found",
                                     DD t2, DS "instead." ]
   -- if the argument is Irrelevant, resurrect the context
   -- check the argument against the localized level
-  (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $
+  t2' <- (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $
           checkType (unArg t2) tyA (localize mk lvl)
-  return (Unbound.instantiate bnd [unArg t2])
+  return (Unbound.instantiate bnd [unArg t2], App t1' (Arg ep1 t2'))
 
 
 -- i-ann
 tcTerm (Ann tm ty) Nothing mk = do
-  tcType ty mk
-  checkType tm ty mk
-  return ty
+  ty' <- tcType ty mk
+  tm' <- checkType tm ty' mk
+  return (ty', Ann tm' ty')
 
 -- practicalities
 -- remember the current position in the type checking monad
@@ -133,36 +146,36 @@ tcTerm (Pos p tm) mTy mk =
 
 -- ignore term, just return type annotation
 tcTerm TrustMe (Just ty) mk = do
-  tcType ty mk
-  return ty
+  ty' <- tcType ty mk
+  return (ty', TrustMe)
 
 
 -- i-unit
-tcTerm TyUnit Nothing k = return Type
-tcTerm LitUnit Nothing k = return Type
+tcTerm TyUnit Nothing k = return (Type, TyUnit)
+tcTerm LitUnit Nothing k = return (Type, LitUnit)
 
 -- i-bool
-tcTerm TyBool Nothing k = return Type
+tcTerm TyBool Nothing k = return (Type, TyBool)
 
 
 -- i-true/false
-tcTerm (LitBool b) Nothing k = return TyBool
+tcTerm (LitBool b) Nothing k = return (TyBool, LitBool b)
 
 -- c-if
 tcTerm t@(If t1 t2 t3) mty mk = do
   case mty of
     Just ty -> do
-      checkType t1 TyBool mk
+      t1' <- checkType t1 TyBool mk
       dtrue <- def t1 (LitBool True)
       dfalse <- def t1 (LitBool False)
-      Env.extendCtxs dtrue $ checkType t2 ty mk
-      Env.extendCtxs dfalse $ checkType t3 ty mk
-      return ty
+      t2' <- Env.extendCtxs dtrue $ checkType t2 ty mk
+      t3' <- Env.extendCtxs dfalse $ checkType t3 ty mk
+      return (ty, If t1' t2' t3')
     Nothing -> do
-      checkType t1 TyBool mk
-      ty <- inferType t2 mk
-      checkType t3 ty mk
-      return ty
+      t1' <- checkType t1 TyBool mk
+      (ty, t2') <- inferType t2 mk
+      t3' <-checkType t3 ty mk
+      return (ty, If t1' t2' t3')
 
 
 tcTerm (Let rhs bnd) mty mk = do
@@ -171,13 +184,14 @@ tcTerm (Let rhs bnd) mty mk = do
   -- the level of the expression, if it needs to be
   -- NOTE: check what happens if x escapes in the type?
   lvar <- Unbound.fresh (Unbound.string2Name "l")
-  aty <- inferType rhs (LVar lvar)
+  (aty, rhs') <- inferType rhs (LVar lvar)
   Env.extendLevelConstraint (Le (LVar lvar) mk)
-  ty <- Env.extendCtxs [mkSig x aty (LVar lvar), Def x rhs] $
+  (ty, body') <- Env.extendCtxs [mkSig x aty (LVar lvar), Def x rhs] $
       tcTerm body mty mk
+  let tm' = Let rhs' (Unbound.bind x body')
   case mty of
-    Just _ -> return ty
-    Nothing -> return $ Unbound.subst x rhs ty
+    Just _ -> return (ty, tm')
+    Nothing -> return (Unbound.subst x rhs ty, tm')
 
 -- Type constructor application
 tcTerm (TCon c params) Nothing mk = do
@@ -193,8 +207,8 @@ tcTerm (TCon c params) Nothing mk = do
         DD (length params)
       ]
   -- TODO: do we check the params against mk or j??
-  tcArgTele params delta mk
-  return Type
+  params' <- tcArgTele params delta mk
+  return (Type, TCon c params')
 
 -- Data constructor application
 -- we don't know the expected type, so see if there
@@ -217,8 +231,8 @@ tcTerm t@(DCon c args) Nothing mk = do
             DS "arguments."
           ]
       -- TODO: check whether this should be mk or j
-      tcArgTele args deltai mk
-      return (TCon tname [])
+      args' <- tcArgTele args deltai mk
+      return (TCon tname [], DCon c args)
 
     [_] ->
       Env.err
@@ -250,15 +264,15 @@ tcTerm t@(DCon c args) (Just ty) mk = do
             DS "arguments."
           ]
       newTele <- substTele delta params deltai
-      tcArgTele args newTele mk
-      return ty
+      args' <- tcArgTele args newTele mk
+      return (ty, DCon c args')
     _ ->
       Env.err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
 
 -- Must have an annotation for Case
 tcTerm t@(Case scrut alts) (Just ty) mk = do
-  sty <- inferType scrut mk
-  scrut' <- Equal.whnf scrut
+  (sty, scrut') <- inferType scrut mk
+  scrut'' <- Equal.whnf scrut'
   (c, args) <- Equal.ensureTCon sty
   let checkAlt (Match bnd) = do
         (pat, body) <- Unbound.unbind bnd
@@ -268,25 +282,27 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
         decls <- declarePat pat (Mode Rel Nothing) (TCon c args)
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
-        decls' <- Equal.unify [] scrut' (pat2Term pat)
-        Env.extendCtxs (decls ++ decls') $ checkType body ty mk
+        decls' <- Equal.unify [] scrut'' (pat2Term pat)
+        body' <- Env.extendCtxs (decls ++ decls') $ checkType body ty mk
+        return (Match (Unbound.bind pat body'))
 
   let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts
-  mapM_ checkAlt alts
+  alts' <- mapM checkAlt alts
   exhaustivityCheck scrut' sty pats
-  return ty
+  return (ty, Case scrut' alts')
 
 tcTerm (TyEq a b) Nothing mk = do
-  aTy <- inferType a mk
-  checkType b aTy mk
-  return Type
+  (aTy, a') <- inferType a mk
+  b' <- checkType b aTy mk
+  return (Type, TyEq a' b')
 
 tcTerm Refl (Just ty@(TyEq a b)) mk = do
   Equal.equate a b
-  return ty
+  return (ty, Refl)
 tcTerm Refl (Just ty) k =
   Env.err [DS "Refl annotated with", DD ty]
 
+{-
 tcTerm t@(Subst a b) (Just ty) mk = do
   -- infer the type of the proof 'b'
   tp <- inferType b mk
@@ -321,6 +337,7 @@ tcTerm t@(Contra p) (Just ty) mk = do
           DD b,
           DS "are contradictory"
         ]
+        -}
 
 {-
 tcTerm t@(Sigma tyA (Dep j) bnd) Nothing mk = do
@@ -379,8 +396,8 @@ tcTerm PrintMe (Just ty) mk = do
   gamma <- Env.getLocalCtx
   Env.warn [DS "Unmet obligation.\nContext:", DD gamma,
         DS "\nGoal:", DD ty]
-  tcType ty mk
-  return ty
+  ty' <- tcType ty mk
+  return (ty', PrintMe)
 
 tcTerm (Displace t j) Nothing mk = do
   case t of
@@ -389,20 +406,20 @@ tcTerm (Displace t j) Nothing mk = do
       case msig of
         Just sig -> do
             Env.checkStage (sigRho sig)       -- make sure the variable is accessible
-            case sigLevel sig of
-                Just k -> Env.extendLevelConstraint (Le (LAdd j k) mk)
-                Nothing -> Env.err [DS "Displaced vars must have known level", DD x]
-            Equal.displace j (sigType sig)    -- displace its type
+            k <- getLevel (sigLevel sig)
+            Env.extendLevelConstraint (Le (LAdd j k) mk)
+            ty <- Equal.displace j (sigType sig)    -- displace its type
+            return (ty, Displace (Var x) j)
         Nothing -> Env.err [DS "Can only displace top-level vars", DD x]
     u ->
       Env.err [DS "Found displacement", DD (show t)]
 
 -- c-infer
 tcTerm tm (Just ty) mk = do
-  ty' <- inferType tm mk
+  (ty', tm') <- inferType tm mk
   -- Env.warn [DS "equating:", DD ty', DS "and", DD ty]
   Equal.equate ty' ty
-  return ty'
+  return (ty', tm')
 
 tcTerm tm Nothing k =
   Env.err [DS "Must have a type annotation to check", DD tm]
@@ -426,8 +443,8 @@ def t1 t2 = do
 -- helper functions for datatypes
 
 -- | type check a list of data constructor arguments against a telescope
-tcArgTele :: [Arg] -> [Decl] -> Level -> TcMonad ()
-tcArgTele [] [] mk = return ()
+tcArgTele :: [Arg] -> [Decl] -> Level -> TcMonad [Arg]
+tcArgTele [] [] mk = return []
 tcArgTele args (Def x ty : tele) mk = do
   tele' <- doSubst [(x,ty)] tele
   tcArgTele args tele' mk
@@ -526,17 +543,19 @@ pat2Term (PatCon dc pats) = DCon dc (pats2Terms pats)
 
 
 -- | Check all of the types contained within a telescope
-tcTypeTele :: [Decl] -> Level -> TcMonad ()
-tcTypeTele [] k = return ()
+tcTypeTele :: [Decl] -> Level -> TcMonad [Decl]
+tcTypeTele [] k = return []
 tcTypeTele (Def x tm : tl) mk = do
-  ty1 <- Env.withStage Irr $ inferType (Var x) mk
-  Env.withStage Irr $ checkType tm ty1 mk
+  (ty1, vx) <- Env.withStage Irr $ inferType (Var x) mk
+  tm' <- Env.withStage Irr $ checkType tm ty1 mk
   let decls = [Def x tm]
-  Env.extendCtxs decls $ tcTypeTele tl mk
+  tele' <- Env.extendCtxs decls $ tcTypeTele tl mk
+  return (Def x tm' : tele')
 tcTypeTele (TypeSig sig : tl) mk = do
   let l = localize mk (sigLevel sig)
-  tcType (sigType sig) l
-  Env.extendCtx (TypeSig sig) $ tcTypeTele tl mk
+  ty' <- tcType (sigType sig) l
+  tl' <- Env.extendCtx (TypeSig sig) $ tcTypeTele tl mk
+  return (TypeSig (sig { sigType = ty' }) : tl')
 tcTypeTele tele k =
   Env.err [DS "Invalid telescope: ", DD tele]
 
@@ -593,9 +612,12 @@ data HintOrCtx
   = AddHint Sig
   | AddCtx [Decl]
 
+dcons cs = concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
+
 -- | Check each sort of declaration in a module
 tcEntry :: Decl -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
+  traceM $ "checking def " ++ show n
   oldDef <- Env.lookupDef Any n
   maybe tc die oldDef
   where
@@ -604,16 +626,17 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           kv <- Unbound.fresh (Unbound.string2Name "k")
-          ty <- inferType term (LVar kv)
+          (ty, term') <- inferType term (LVar kv)
           cs <- Env.dumpConstraints
           --let cs' = simplifyConstraints cs
           mss <- liftIO $ solveConstraints (map snd cs)
           ss <- case mss of 
-                  Nothing -> Env.err [DS "Cannot satisfy level constraints"]
+                  Nothing -> Env.err $ [DS "Cannot satisfy level constraints when checking the term", DD term, 
+                     DS "constraints are "] ++ dcons cs
                   Just ss -> return ss
           let k' = Unbound.substs ss (LVar kv)
           let ty' = Unbound.substs ss ty
-          let tm' = Unbound.substs ss term
+          let tm' = Unbound.substs ss term'
           return $ AddCtx [TypeSig (Sig n Rel (Just k') ty'), Def n tm']
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
@@ -626,20 +649,21 @@ tcEntry (Def n term) = do
                     DD sig
                   ]
            in do
-                Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) (fromMaybe (LConst 0) (sigLevel sig))
+                term' <- Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) (fromMaybe (LConst 0) (sigLevel sig))
                    `catchError` handler
                 cs <- Env.dumpConstraints
                 -- Env.warn $ [DS "Checking", DD n, DD term, DS "@", DD (sigLevel sig) ]
                 -- Env.warn $ DS "constraints are " : concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
                 mss <- liftIO $ solveConstraints (map snd cs)
                 ss <- case mss of 
-                  Nothing -> Env.err [DS "Cannot satisfy level constraints"]
+                  Nothing -> Env.err $ [DS "Cannot satisfy level constraints", DD term, 
+                     DS "constraints are "] ++ dcons cs
                   Just ss -> return ss
                 -- Env.warn $ (DS "subst is ") : 
                 --  concatMap (\(x,y) -> [DS (render (disp x) ++ " = " ++ render (disp y))]) ss
                 if n `elem` Unbound.toListOf Unbound.fv term
-                  then return $ AddCtx [TypeSig (Unbound.substs ss sig), RecDef n (Unbound.substs ss term)]
-                  else return $ AddCtx [TypeSig (Unbound.substs ss sig), Def n (Unbound.substs ss term)]
+                  then return $ AddCtx [TypeSig (Unbound.substs ss sig), RecDef n (Unbound.substs ss term')]
+                  else return $ AddCtx [TypeSig (Unbound.substs ss sig), Def n (Unbound.substs ss term')]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -650,9 +674,12 @@ tcEntry (Def n term) = do
           ]
 tcEntry (TypeSig sig) = do
   duplicateTypeBindingCheck sig
-  let l = fromMaybe (LConst 0) (sigLevel sig)
-  tcType (sigType sig) l
-  return $ AddHint sig
+  kv <- Unbound.fresh (Unbound.string2Name "kS")
+  let l = fromMaybe (LVar kv) (sigLevel sig)
+  traceM $ "checking sig " ++ show (sigName sig) ++ " : "
+     ++ pp (sigType sig) ++ " @ " ++ pp l
+  ty' <- tcType (sigType sig) l
+  return $ AddHint (sig { sigType = ty' })
 tcEntry (Demote ep) = return (AddCtx [Demote ep])
 
 
@@ -675,6 +702,7 @@ tcEntry (Data t (Telescope delta) cs k) =
     unless (length cnames == length (nub cnames)) $
       Env.err [DS "Datatype definition", DD t, DS "contains duplicated constructors"]
     -- finally, add the datatype to the env and perform action m
+    -- TODO: solve level constraints
     return $ AddCtx [Data t (Telescope delta) ecs k]
 tcEntry (DataSig _ _ _) = Env.err [DS "internal construct"]
 tcEntry (RecDef _ _) = Env.err [DS "internal construct"]
