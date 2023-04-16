@@ -47,7 +47,7 @@ import Data.List
 import Data.Maybe ( listToMaybe )
 import PrettyPrint ( SourcePos, render, D(..), Disp(..), Doc )
 import Syntax
-import Text.PrettyPrint.HughesPJ ( ($$), nest, sep, text, vcat )
+import Text.PrettyPrint.HughesPJ ( ($$), nest, sep, text, vcat, (<+>) )
 import qualified Unbound.Generics.LocallyNameless as Unbound
 
 -- | The type checking Monad includes a reader (for the
@@ -404,3 +404,6 @@ dumpConstraints = do
   st <- get
   put (TcState [])
   return (constraints st)
+
+instance Disp (SourceLocation, LevelConstraint) where
+  disp (SourceLocation p term, c) = disp p <+> disp c

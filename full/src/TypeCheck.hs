@@ -617,7 +617,7 @@ dcons cs = concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
 -- | Check each sort of declaration in a module
 tcEntry :: Decl -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
-  traceM $ "checking def " ++ show n
+  -- traceM $ "checking def " ++ show n
   oldDef <- Env.lookupDef Any n
   maybe tc die oldDef
   where
@@ -627,16 +627,18 @@ tcEntry (Def n term) = do
         Nothing -> do
           kv <- Unbound.fresh (Unbound.string2Name "k")
           (ty, term') <- inferType term (LVar kv)
+          let vs  = (Unbound.toListOf Unbound.fv term' :: [LName]) ++ (Unbound.toListOf Unbound.fv ty :: [LName])
+          let ss' = zip (nub vs) (repeat (LConst 0))
           cs <- Env.dumpConstraints
-          --let cs' = simplifyConstraints cs
+          Env.warn $ [DS "Constraints are:"]  ++ map DD cs 
           mss <- liftIO $ solveConstraints (map snd cs)
           ss <- case mss of 
                   Nothing -> Env.err $ [DS "Cannot satisfy level constraints when checking the term", DD term, 
                      DS "constraints are "] ++ dcons cs
                   Just ss -> return ss
-          let k' = Unbound.substs ss (LVar kv)
-          let ty' = Unbound.substs ss ty
-          let tm' = Unbound.substs ss term'
+          let k' = Unbound.substs  (ss ++ ss') (LVar kv)
+          let ty' = Unbound.substs (ss ++ ss') ty
+          let tm' = Unbound.substs (ss ++ ss') term'
           return $ AddCtx [TypeSig (Sig n Rel (Just k') ty'), Def n tm']
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
@@ -651,6 +653,8 @@ tcEntry (Def n term) = do
            in do
                 term' <- Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) (fromMaybe (LConst 0) (sigLevel sig))
                    `catchError` handler
+                let vs  = (Unbound.toListOf Unbound.fv term' :: [LName]) ++ (Unbound.toListOf Unbound.fv (sigType sig) :: [LName])
+                let ss' = zip (nub vs) (repeat (LConst 0))
                 cs <- Env.dumpConstraints
                 -- Env.warn $ [DS "Checking", DD n, DD term, DS "@", DD (sigLevel sig) ]
                 -- Env.warn $ DS "constraints are " : concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
@@ -658,7 +662,7 @@ tcEntry (Def n term) = do
                 ss <- case mss of 
                   Nothing -> Env.err $ [DS "Cannot satisfy level constraints", DD term, 
                      DS "constraints are "] ++ dcons cs
-                  Just ss -> return ss
+                  Just ss -> return (ss ++ ss')
                 -- Env.warn $ (DS "subst is ") : 
                 --  concatMap (\(x,y) -> [DS (render (disp x) ++ " = " ++ render (disp y))]) ss
                 if n `elem` Unbound.toListOf Unbound.fv term
@@ -676,8 +680,6 @@ tcEntry (TypeSig sig) = do
   duplicateTypeBindingCheck sig
   kv <- Unbound.fresh (Unbound.string2Name "kS")
   let l = fromMaybe (LVar kv) (sigLevel sig)
-  traceM $ "checking sig " ++ show (sigName sig) ++ " : "
-     ++ pp (sigType sig) ++ " @ " ++ pp l
   ty' <- tcType (sigType sig) l
   return $ AddHint (sig { sigType = ty' })
 tcEntry (Demote ep) = return (AddCtx [Demote ep])

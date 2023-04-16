@@ -65,8 +65,7 @@ goFilename pathToMainFile = do
   d <- runTcMonad emptyEnv (tcModules val)
   (defs, cs) <- d `exitWith` putTypeError
   putStrLn $ render $ disp (last defs)
-  putStrLn "level constraints..."
-  putStrLn $ render $ disp cs
+
 
 
 -- | 'pi <filename>' invokes the type checker on the given 
