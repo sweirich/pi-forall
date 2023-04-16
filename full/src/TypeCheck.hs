@@ -94,16 +94,16 @@ tcTerm Type Nothing mk = do
 -- i-pi
 tcTerm (Pi (Mode ep lvl) tyA bnd) Nothing mk = do
   (x, tyB) <- Unbound.unbind bnd
-  if x `elem` Unbound.toListOf Unbound.fv tyB then do
-    j <- getLevel lvl
-    tyA' <- tcType tyA j
-    tyB' <- Env.extendCtx (TypeSig (Sig x ep (Just j) tyA')) (tcType tyB mk)
-    Env.extendLevelConstraint (Lt j mk)
-    return (Type, Pi (Mode ep (Just j)) tyA' (Unbound.bind x tyB'))
-  else do
-    tyA' <- tcType tyA mk
-    tyB' <- tcType tyB mk   -- x can't appear in B
-    return (Type, Pi (Mode ep Nothing) tyA' (Unbound.bind x tyB'))
+  case lvl of 
+    Just j -> do
+      tyA' <- tcType tyA j
+      tyB' <- Env.extendCtx (TypeSig (Sig x ep (Just j) tyA')) (tcType tyB mk)
+      Env.extendLevelConstraint (Lt j mk)
+      return (Type, Pi (Mode ep (Just j)) tyA' (Unbound.bind x tyB'))
+    Nothing -> do
+      tyA' <- tcType tyA mk
+      tyB' <- tcType tyB mk   -- x can't appear in B
+      return (Type, Pi (Mode ep Nothing) tyA' (Unbound.bind x tyB'))
 
 -- c-lam: check the type of a function
 tcTerm (Lam ep1  bnd) (Just (Pi (Mode ep2 lvl) tyA bnd2)) mk = do
@@ -111,10 +111,10 @@ tcTerm (Lam ep1  bnd) (Just (Pi (Mode ep2 lvl) tyA bnd2)) mk = do
   (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
   -- epsilons should match up
   unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x,
-                                 DS "but found", DD ep1, DS "instead."]
-  let lvl' = localize mk lvl
+                                 DS "but found", DD ep1, DS "instead."] 
+  let j = localize mk lvl
   -- check the type of the body of the lambda expression
-  body' <- Env.extendCtx (TypeSig (Sig x ep1 (Just lvl') tyA)) (checkType body tyB mk)
+  body' <- Env.extendCtx (TypeSig (Sig x ep1 (Just j) tyA)) (checkType body tyB mk)
   return (Pi (Mode ep1 lvl) tyA bnd2, Lam ep1 (Unbound.bind x body'))
 tcTerm (Lam _ _) (Just nf) k =
   Env.err [DS "Lambda expression should have a function type, not", DD nf]

@@ -1,0 +1,7 @@
+module IsProp where
+
+-- NOTE: need to use dependent type rule for this example
+-- to constrain the level of A to be low enough for the 
+-- later 
+isProp : ( x : Type @ 0 ) -> Type
+isProp = \ A . ( x : A ) -> ( y : A ) -> x = y

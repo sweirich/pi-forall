@@ -313,7 +313,7 @@ telebindings = many teleBinding
     -- named variables must have fixed levels. If the level is not present, then 
     -- a unification variable is generated
     annot rho = do
-      (x,ty,lvl) <-    try ((,,) <$> wildcard <*> (colon >> expr) <*> pure Nothing)
+      (x,ty,lvl) <-    try ((,,) <$> wildcard <*> (colon >> expr) <*> (Just <$> levelP))
                 <|>    try ((,,) <$> variable <*> (colon >> expr) <*> (Just <$> levelP))
                 <|>        ((,,) <$> Unbound.fresh wildcardName <*> expr <*> pure Nothing)
       return (TypeSig (Sig x rho lvl ty):)
@@ -329,7 +329,7 @@ telebindings = many teleBinding
     teleBinding =
       (    parens (annot Rel)
        <|> try (brackets equal)
-       <|> (brackets (annot Irr))) <?> "binding"
+       <|> brackets (annot Irr)) <?> "binding"
 
 
 ---
