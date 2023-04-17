@@ -693,4 +693,4 @@ displaceTm = do
   l <- try (LConst <$> natural) <|> do
     lv <- Unbound.fresh (Unbound.string2Name "l")
     return (LVar lv)
-  Displace (Var x) <$> levelP
+  return $ Displace (Var x) l

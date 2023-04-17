@@ -4,9 +4,10 @@ module Logic where
 ---------------------------
 
 data And (A : Type) (B : Type) : Type where
-  Conj of (_ : A) (_ : B)
+  Conj of (A) (B)
 
-proj1 : [A:Type] -> [B : Type] -> And A B -> A 
+
+proj1 : [A:Type @ 0] -> [B : Type @ 0] -> (And A B) -> A
 proj1 = \ [A] [B] p . case p of
   Conj x y -> x
 
@@ -27,7 +28,7 @@ and_assoc = \[A][B][C] abc .
 -- if and only if
 -----------------
 
-iff : (A : Type) -> (B : Type) -> Type @ 1
+iff : Type -> Type -> Type @ 0
 iff = \ A B . And (A -> B) (B -> A)
 
 iff_implies : [A : Type] -> [B : Type] -> iff A B -> A -> B @ 1
@@ -112,7 +113,7 @@ not_both_true_and_false = \[P][Q] andpnp.
   case andpnp of 
     (Conj p np) -> np p
 
-iff_neg_false : [A : Type] -> iff (neg A) (iff A Void) @ 1
+iff_neg_false : [A : Type] -> iff (neg A) (iff A Void)
 iff_neg_false = \ [A] . Conj (\ x . Conj x (\y. false_elim [A] y)) (proj1 [A -> Void][Void -> A])
 
                                   

@@ -6,7 +6,7 @@ not : Bool -> Bool
 not = \ b . if b then False else True
 
 -- to be or not to be, that is the question
-not_not_equal : (b : Bool) -> (b = not b) -> Void @ 1
+not_not_equal : (b : Bool) -> (b = not b) -> Void
 not_not_equal = \b pf. 
   if b then (contra pf) else (contra pf)
 

@@ -140,7 +140,7 @@ instance Disp ModuleImport where
 
 instance Disp Sig where
   disp (Sig n r (Just l) ty) = disp n <+> PP.text ":" <+> disp ty <+> PP.text "@" <+> disp l 
-  disp (Sig n r Nothing ty) = disp n <+> PP.text ":" <+> disp ty 
+  disp (Sig n r Nothing ty) = {- disp n <+> PP.text ":" <+> -} disp ty 
 
 instance Disp Decl where
   disp (Def n term)  = disp n <+> PP.text "=" <+> disp term
@@ -423,8 +423,8 @@ instance Display Term where
     return $
       parens (levelCase < p) $
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
-  display (Displace t (LConst 0)) = do
-    display t
+  --display (Displace t (LConst 0)) = do
+  --  display t
   display (Displace t j) = do
     dt <- display t
     dj <- display j

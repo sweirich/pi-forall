@@ -16,6 +16,28 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp), pp)
 import Syntax
+    ( mkSig,
+      unPosFlaky,
+      Arg(..),
+      ConstructorDef(..),
+      DCName,
+      Decl(..),
+      Epsilon(Mode),
+      LName,
+      Level(..),
+      LevelConstraint(Le, Lt),
+      Match(Match),
+      Module(moduleName, moduleImports, moduleEntries),
+      ModuleImport(ModuleImport),
+      Pattern(..),
+      Rho(..),
+      Sig(..),
+      TName,
+      Telescope(Telescope),
+      Term(Pos, Pi, Lam, App, Ann, TrustMe, TyUnit, LitUnit, LitBool,
+           TyBool, If, Let, TCon, Case, Type, TyEq, Refl, PrintMe, Displace,
+           DCon, Var, Subst, Contra),
+      Type )
 import Debug.Trace
 
 import Text.PrettyPrint.HughesPJ (($$), render)
@@ -38,7 +60,7 @@ checkType tm (Ann ty _) k = checkType tm ty k
 checkType tm ty k = do
   nf <- Equal.whnf ty
   (_,t) <- tcTerm tm (Just nf) k
-  return (t)
+  return t
 
 
 -- | Make sure that the term is a "type" (i.e. that it has type 'Type')
@@ -47,7 +69,6 @@ tcType :: Term -> Level -> TcMonad (Term)
 tcType tm k = Env.withStage Irr $ checkType tm Type k
 
 ---------------------------------------------------------------------
-
 
 localize :: Level -> Maybe Level -> Level
 localize = fromMaybe
@@ -70,18 +91,13 @@ tcTerm t@(Var x) Nothing mk = do
   ms <- Env.lookupTyMaybe Global x
   case ms of 
     Just sig -> do
-      
       -- global variable, try to displace
-      -- Env.checkStage (sigRho sig)
       jx <- Unbound.fresh (Unbound.string2Name ("jV" ++ show x))
-      -- let j = LVar jx
       tcTerm (Displace (Var x) (LVar jx)) Nothing mk
-      -- k <- getLevel (sigLevel sig) -- make sure that it is annotated with a level
-      -- Env.extendLevelConstraint (Le (LAdd j k) mk)
-      -- Equal.displace j (sigType sig) 
     Nothing -> do
       sig <- Env.lookupTy x        -- make sure the variable is accessible
       l <- getLevel (sigLevel sig) -- make sure that it is annotated with a level
+      traceM $ "checking local var " ++ pp x ++ " @ " ++ pp l ++ " <= " ++ pp mk
       Env.checkStage (sigRho sig)
       Env.extendLevelConstraint (Le l mk)
       return (sigType sig, Var x)
@@ -270,16 +286,22 @@ tcTerm t@(DCon c args) (Just ty) mk = do
       Env.err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
 
 -- Must have an annotation for Case
+-- Level of the scrutinee must match the level of the variables in the patterns, 
+-- but may be less than or eq the overall level
+-- What about the level of the RHS of the case? Doing current level now, but could
+-- restrict to scrutinee level
 tcTerm t@(Case scrut alts) (Just ty) mk = do
-  (sty, scrut') <- inferType scrut mk
+  jx <- Unbound.fresh (Unbound.string2Name "jS")
+  Env.extendLevelConstraint (Le (LVar jx) mk)
+  (sty, scrut') <- inferType scrut (LVar jx)
+
   scrut'' <- Equal.whnf scrut'
   (c, args) <- Equal.ensureTCon sty
   let checkAlt (Match bnd) = do
         (pat, body) <- Unbound.unbind bnd
         -- add variables from pattern to context
         -- could fail if branch is in-accessible
-        -- TODO: Nothing vs. ???
-        decls <- declarePat pat (Mode Rel Nothing) (TCon c args)
+        decls <- declarePat pat (Mode Rel (Just (LVar jx))) (TCon c args)
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
         decls' <- Equal.unify [] scrut'' (pat2Term pat)
@@ -291,7 +313,8 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
   exhaustivityCheck scrut' sty pats
   return (ty, Case scrut' alts')
 
-tcTerm (TyEq a b) Nothing mk = do
+tcTerm t@(TyEq a b) Nothing mk = do
+  traceM $ "Checking " ++ pp t ++ " at level " ++ pp mk
   (aTy, a') <- inferType a mk
   b' <- checkType b aTy mk
   return (Type, TyEq a' b')
@@ -302,21 +325,21 @@ tcTerm Refl (Just ty@(TyEq a b)) mk = do
 tcTerm Refl (Just ty) k =
   Env.err [DS "Refl annotated with", DD ty]
 
-{-
+
 tcTerm t@(Subst a b) (Just ty) mk = do
   -- infer the type of the proof 'b'
-  tp <- inferType b mk
+  (tp, b') <- inferType b mk
   -- make sure that it is an equality between m and n
   (m, n) <- Equal.ensureTyEq tp
   -- if either side is a variable, add a definition to the context
   edecl <- def m n
   -- if proof is a variable, add a definition to the context
   pdecl <- def b Refl
-  Env.extendCtxs (edecl ++ pdecl) $ checkType a ty mk
-  return ty
+  a' <- Env.extendCtxs (edecl ++ pdecl) $ checkType a ty mk
+  return (ty, Subst a' b')
 
 tcTerm t@(Contra p) (Just ty) mk = do
-  ty' <- inferType p mk
+  (ty', p') <- inferType p mk
   (a, b) <- Equal.ensureTyEq ty'
   a' <- Equal.whnf a
   b' <- Equal.whnf b
@@ -324,11 +347,11 @@ tcTerm t@(Contra p) (Just ty) mk = do
 
     (DCon da _, DCon db _)
       | da /= db ->
-        return ty
+        return (ty, p')
 
     (LitBool b1, LitBool b2)
       | b1 /= b2 ->
-        return ty
+        return (ty, p')
     (_, _) ->
       Env.err
         [ DS "I can't tell that",
@@ -337,7 +360,7 @@ tcTerm t@(Contra p) (Just ty) mk = do
           DD b,
           DS "are contradictory"
         ]
-        -}
+        
 
 {-
 tcTerm t@(Sigma tyA (Dep j) bnd) Nothing mk = do
@@ -450,9 +473,9 @@ tcArgTele args (Def x ty : tele) mk = do
   tcArgTele args tele' mk
 tcArgTele (Arg ep1 tm : terms) (TypeSig (Sig x ep2 l ty) : tele) mk
   | ep1 == ep2 = do
-      k0 <- Env.withStage ep1 $ checkType tm ty (localize mk l)
+      tm' <- Env.withStage ep1 $ checkType tm ty (localize mk l)
       tele' <- doSubst [(x, tm)] tele
-      tcArgTele terms tele' mk
+      (Arg ep1 tm' :) <$> tcArgTele terms tele' mk
   | otherwise =
   Env.err
     [ DD ep1,
@@ -477,6 +500,12 @@ substTele tele args = doSubst (mkSubst tele (map unArg args))
     mkSubst [] [] = []
     mkSubst (TypeSig (Sig x Rel _ _) : tele') (tm : tms) =
       (x, tm) : mkSubst tele' tms
+    mkSubst (TypeSig (Sig x Irr _ _) : tele') _ = 
+      error $ "Internal error: " <> pp x <> " is irrelevant"
+    mkSubst [] (tm: _) = 
+      error $ "Internal error: " <> pp tm <> " is extra"
+    mkSubst (TypeSig (Sig x _ _ _) : _) [] = 
+      error $ "Internal error: " <> pp x <> " has no arg in mkSubst"
     mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
 
@@ -505,30 +534,33 @@ doSubst _ tele =
 -- TODO check j and k
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad [Decl]
 declarePat (PatVar x)       (Mode rho j) ty = return [TypeSig (Sig x rho j ty)]
-declarePat (PatCon dc pats) (Mode Rel j) ty = do
+declarePat (PatCon dc pats) (Mode Rel (Just j)) ty = do
   (tc,params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai, k) <- Env.lookupDCon dc tc
   tele <- substTele delta params deltai
-  declarePats dc pats tele
+  declarePats dc pats j tele
+declarePat pat (Mode Rel Nothing) _ty = 
+  Env.err [DS "Need a concrete level here"]
 declarePat pat (Mode Irr _) _ty =
   Env.err [DS "Cannot pattern match irrelevant arguments in pattern", DD pat]
 
 -- | Given a list of pattern arguments and a telescope, create a binding for 
 -- each of the variables in the pattern, 
-declarePats :: DCName -> [(Pattern, Rho)] -> [Decl] -> TcMonad [Decl]
-declarePats dc pats (Def x ty : tele) = do
+declarePats :: DCName -> [(Pattern, Rho)] -> Level -> [Decl] -> TcMonad [Decl]
+declarePats dc pats j (Def x ty : tele) = do
   let ds1 = [Def x ty]
-  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats tele
+  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats j tele
   return (ds1 ++ ds2)
-declarePats dc ((pat, _) : pats) (TypeSig (Sig x r l ty) : tele) = do
-  ds1 <- declarePat pat (Mode r l) ty
+declarePats dc ((pat, _) : pats) j (TypeSig (Sig x r l ty) : tele) = do
+  let k = localize j l
+  ds1 <- declarePat pat (Mode r (Just k)) ty
   let tm = pat2Term pat
-  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats (Unbound.subst x tm tele)
+  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats j (Unbound.subst x tm tele)
   return (ds1 ++ ds2)
-declarePats dc []   [] = return []
-declarePats dc []    _ = Env.err [DS "Not enough patterns in match for data constructor", DD dc]
-declarePats dc pats [] = Env.err [DS "Too many patterns in match for data constructor", DD dc]
-declarePats dc _    _ = Env.err [DS "Invalid telescope", DD dc]
+declarePats dc []  j [] = return []
+declarePats dc []  j  _ = Env.err [DS "Not enough patterns in match for data constructor", DD dc]
+declarePats dc pats j [] = Env.err [DS "Too many patterns in match for data constructor", DD dc]
+declarePats dc _    j _ = Env.err [DS "Invalid telescope", DD dc]
 
 -- | Convert a pattern to a term 
 pat2Term :: Pattern ->  Term
@@ -603,7 +635,8 @@ tcModule defs m' = do
       case x of
         AddHint hint -> Env.extendHints hint m
         -- Add decls to the Decls to be returned
-        AddCtx decls -> (decls ++) <$> Env.extendCtxsGlobal decls m
+        AddCtx decls -> do
+          (decls ++) <$> Env.extendCtxsGlobal decls m
     -- Get all of the defs from imported modules (this is the env to check current module in)
     importedModules = filter (\x -> ModuleImport (moduleName x) `elem` moduleImports m') defs
 
@@ -613,6 +646,19 @@ data HintOrCtx
   | AddCtx [Decl]
 
 dcons cs = concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
+
+
+dumpAndSolve :: (Unbound.Alpha a) => a -> TcMonad [(LName, Level)]
+dumpAndSolve term = do
+  let vs  = (Unbound.toListOf Unbound.fv term :: [LName]) 
+  let ss' = zip (nub vs) (repeat (LConst 0))
+  cs <- Env.dumpConstraints
+  mss <- liftIO $ solveConstraints (map snd cs)
+  case mss of 
+           Nothing -> Env.err $ [DS "Cannot satisfy level constraints.", 
+                     DS "Constraints are "] ++ dcons cs
+           Just ss -> return (ss ++ ss')
+
 
 -- | Check each sort of declaration in a module
 tcEntry :: Decl -> TcMonad HintOrCtx
@@ -627,19 +673,9 @@ tcEntry (Def n term) = do
         Nothing -> do
           kv <- Unbound.fresh (Unbound.string2Name "k")
           (ty, term') <- inferType term (LVar kv)
-          let vs  = (Unbound.toListOf Unbound.fv term' :: [LName]) ++ (Unbound.toListOf Unbound.fv ty :: [LName])
-          let ss' = zip (nub vs) (repeat (LConst 0))
-          cs <- Env.dumpConstraints
-          Env.warn $ [DS "Constraints are:"]  ++ map DD cs 
-          mss <- liftIO $ solveConstraints (map snd cs)
-          ss <- case mss of 
-                  Nothing -> Env.err $ [DS "Cannot satisfy level constraints when checking the term", DD term, 
-                     DS "constraints are "] ++ dcons cs
-                  Just ss -> return ss
-          let k' = Unbound.substs  (ss ++ ss') (LVar kv)
-          let ty' = Unbound.substs (ss ++ ss') ty
-          let tm' = Unbound.substs (ss ++ ss') term'
-          return $ AddCtx [TypeSig (Sig n Rel (Just k') ty'), Def n tm']
+          ss <- dumpAndSolve (ty, term)
+          let decls = Unbound.substs ss [TypeSig (Sig n Rel (Just (LVar kv)) ty), Def n term']
+          return $ AddCtx decls
         Just sig ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -651,23 +687,13 @@ tcEntry (Def n term) = do
                     DD sig
                   ]
            in do
-                term' <- Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) (fromMaybe (LConst 0) (sigLevel sig))
+                term' <- Env.extendCtx (TypeSig sig) $ 
+                  checkType term (sigType sig) (fromMaybe (LConst 0) (sigLevel sig))
                    `catchError` handler
-                let vs  = (Unbound.toListOf Unbound.fv term' :: [LName]) ++ (Unbound.toListOf Unbound.fv (sigType sig) :: [LName])
-                let ss' = zip (nub vs) (repeat (LConst 0))
-                cs <- Env.dumpConstraints
-                -- Env.warn $ [DS "Checking", DD n, DD term, DS "@", DD (sigLevel sig) ]
-                -- Env.warn $ DS "constraints are " : concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
-                mss <- liftIO $ solveConstraints (map snd cs)
-                ss <- case mss of 
-                  Nothing -> Env.err $ [DS "Cannot satisfy level constraints", DD term, 
-                     DS "constraints are "] ++ dcons cs
-                  Just ss -> return (ss ++ ss')
-                -- Env.warn $ (DS "subst is ") : 
-                --  concatMap (\(x,y) -> [DS (render (disp x) ++ " = " ++ render (disp y))]) ss
+                ss <- dumpAndSolve (term', sigType sig)
                 if n `elem` Unbound.toListOf Unbound.fv term
-                  then return $ AddCtx [TypeSig (Unbound.substs ss sig), RecDef n (Unbound.substs ss term')]
-                  else return $ AddCtx [TypeSig (Unbound.substs ss sig), Def n (Unbound.substs ss term')]
+                  then return $ AddCtx (Unbound.substs ss [TypeSig sig, RecDef n term'])
+                  else return $ AddCtx (Unbound.substs ss [TypeSig sig, Def n term'])
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -686,7 +712,7 @@ tcEntry (Demote ep) = return (AddCtx [Demote ep])
 
 
 -- rule Decl_data
-tcEntry (Data t (Telescope delta) cs k) =
+tcEntry decl@(Data t (Telescope delta) cs k) =
   do
     -- Check that the telescope for the datatype definition is well-formed
     edelta <- tcTypeTele delta k
@@ -704,8 +730,8 @@ tcEntry (Data t (Telescope delta) cs k) =
     unless (length cnames == length (nub cnames)) $
       Env.err [DS "Datatype definition", DD t, DS "contains duplicated constructors"]
     -- finally, add the datatype to the env and perform action m
-    -- TODO: solve level constraints
-    return $ AddCtx [Data t (Telescope delta) ecs k]
+    ss <- dumpAndSolve decl
+    return $ AddCtx (Unbound.substs ss [Data t (Telescope delta) ecs k])
 tcEntry (DataSig _ _ _) = Env.err [DS "internal construct"]
 tcEntry (RecDef _ _) = Env.err [DS "internal construct"]
 

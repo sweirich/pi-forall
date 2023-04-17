@@ -61,11 +61,11 @@ minus = \n m .
 -- Reasoning about datatypes
 
 
-minus_same_zero : (n : Nat) -> (minus n n = 0)
+minus_same_zero : (n : Nat @0) -> ((minus^0) n n = 0) @ 1
 minus_same_zero = \ n .
     case n of
       Zero -> Refl 
-      Succ p -> (minus_same_zero p : minus p p = 0)
+      Succ p -> (minus_same_zero p : (minus^0) p p = 0)
 
 lemma_minus_zero_id : (n : Nat) -> (minus n 0 = n)
 lemma_minus_zero_id =   \n . case n of 
@@ -78,6 +78,7 @@ lemma_minus_plus_id = \m n .
   case m of
      Zero -> lemma_minus_zero_id n
      Succ m' -> lemma_minus_plus_id m' n
+
 
 plus_associates : (i:Nat) -> (j:Nat) -> (k:Nat) -> plus (plus i j) k = plus i (plus j k)
 plus_associates = \ i j k .

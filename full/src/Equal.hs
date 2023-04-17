@@ -1,6 +1,8 @@
 {- pi-forall language -}
 
 -- | Compare two terms for equality
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use lambda-case" #-}
 
 module Equal (whnf, equate, ensurePi,
               ensureTyEq,
@@ -41,10 +43,15 @@ equate t1 t2 | Unbound.aeq t1 t2 = return ()
 equate t1 t2 = do
   n1 <- whnf t1
   n2 <- whnf t2
+  traceM $ "whnf t1: " <> pp n1
+  traceM $ "whnf t2: " <> pp n2 
   case (n1, n2) of
     (Type, Type) -> return ()
     (Var x,  Var y) | x == y -> return ()
     (Displace (Var x) j, Displace (Var y) k) | x == y -> equateLevel j k
+    (Var x, Displace (Var y) k) | x == y -> equateLevel (LConst 0) k
+    (Displace (Var x) j, Var y) | x == y -> equateLevel j (LConst 0)
+    
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
       unless (ep1 == ep2) $
@@ -202,15 +209,25 @@ whnf (Var x) = do
   case maybeDef of
     (Just d) -> whnf d
     _ -> do
-          maybeRecDef <- Env.lookupRecDef x
+          maybeRecDef <- Env.lookupRecDef Any x
           case maybeRecDef of
             (Just d) -> whnf d
             _ -> return (Var x)
-whnf (Displace (Var x) j) = do
+whnf t@(Displace (Var x) j) = do
+  traceM $ "whnf: " ++ pp t
   maybeDef <- Env.lookupDef Global x
   case maybeDef of
     (Just d) -> displace j d >>= whnf
-    _ -> return (Displace (Var x) j)
+    _ -> do
+      maybeDef2 <- Env.lookupRecDef Global x
+      case maybeDef2 of
+         (Just d) -> do 
+          d' <- displace j d 
+          traceM $ "displaced by " ++ pp j ++ ": " ++ pp d'
+          whnf d'
+         _ -> do
+              traceM $ "whnf: no def "   
+              return (Displace (Var x) j)
 whnf (App t1 t2) = do
   nf <- whnf t1
   case nf of
@@ -338,11 +355,26 @@ amb _ = False
 displaceArg :: Level -> Arg -> TcMonad Arg
 displaceArg j (Arg r t) = Arg r <$> displace j t
 
+displacePat :: Level -> Pattern -> TcMonad Pattern
+displacePat j (PatVar x) = return $ PatVar x
+displacePat j (PatCon dc args) = do
+  args' <- mapM (\(pat, rho) -> displacePat j pat >>= \pat' -> return (pat', rho)) args
+  return $ PatCon dc args'
+
+displaceBr :: Level -> Match -> TcMonad Match
+displaceBr j (Match bnd) = do
+  (pat, body) <- Unbound.unbind bnd
+  p' <- displacePat j pat
+  body' <- displace j body
+  return (Match (Unbound.bind p' body'))
+
 displace :: Level -> Term -> TcMonad Term
 displace j t = case t of
     Var x -> Env.lookupTyMaybe Global x >>= \mb -> case mb of
                   Just _ -> return (Displace (Var x) j)
-                  Nothing -> return $ Var x
+                  Nothing -> do 
+                    traceM $ "not global: " ++ pp x
+                    return $ Var x
     Lam r bnd -> do
       (x, a) <- Unbound.unbind bnd
       a' <- displace j a
@@ -368,4 +400,11 @@ displace j t = case t of
       If <$> displace j a1 <*> displace j a2 <*> displace j a3
     Displace a j0 -> return $ Displace a (LAdd j j0)
     TyEq a b -> TyEq <$> displace j a <*> displace j b
-    _ -> return t
+    TCon tc args -> TCon tc <$> mapM (displaceArg j) args
+    DCon dc args -> DCon dc <$> mapM (displaceArg j) args
+    Case a brs -> 
+      Case <$> displace j a <*> mapM (displaceBr j) brs
+    
+    _ -> do
+      traceM $ "catchall: " ++ pp t
+      return t

@@ -34,7 +34,7 @@ module Environment
     Err (..),
     SourceLocation(..),
     withStage,
-    checkStage 
+    checkStage
   )
 where
 
@@ -43,7 +43,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
     ( MonadReader(local), asks, ReaderT(runReaderT) )
 import Control.Monad.State
-import Data.List 
+import Data.List
 import Data.Maybe ( listToMaybe )
 import PrettyPrint ( SourcePos, render, D(..), Disp(..), Doc )
 import Syntax
@@ -72,12 +72,11 @@ data SourceLocation where
 -- The context 'gamma' is a list
 data Env = Env
   { -- | elaborated term and datatype declarations.
-    ctx :: [Decl],
+    -- ctx :: [Decl],
     -- | How many local variables are stored in the context
-    locals :: Int,
+    locals :: [Decl],
     -- | how long the tail of "global" variables in the context is
-    --    (used to supress printing those in error messages)
-    globals :: Int,
+    globals :: [Decl],
     -- | Type declarations (signatures): it's not safe to
     -- put these in the context until a corresponding term
     -- has been checked.
@@ -88,16 +87,16 @@ data Env = Env
 
 data TcState = TcState {
     -- | constraints about levels
-    constraints :: [(SourceLocation, LevelConstraint)] 
+    constraints :: [(SourceLocation, LevelConstraint)]
   }
 
 --deriving Show
 
 -- | The initial environment.
 emptyEnv :: Env
-emptyEnv = Env {ctx = preludeDataDecls 
-               , globals = length preludeDataDecls 
-               , locals = 0
+emptyEnv = Env {
+                 globals = preludeDataDecls
+               , locals = []
                , hints = []
                , sourceLocation = []
               }
@@ -106,7 +105,7 @@ initState :: TcState
 initState = TcState { constraints = [] }
 
 instance Disp Env where
-  disp e = vcat [disp decl | decl <- ctx e]
+  disp e = vcat $ [disp decl | decl <- locals e] ++ [disp decl | decl <- globals e]
 
 instance Disp TcState where
   disp s = vcat [disp l <> disp c | (SourceLocation p l,c) <- constraints s ]
@@ -121,15 +120,19 @@ data Locality = Local | Global | Any
 
 -- | Find either the local or the global or both
 localizedDecls :: MonadReader Env m => Locality -> m [Decl]
-localizedDecls l = do
-  ctx <- asks ctx
+localizedDecls l =
+  case l of
+    Local -> asks locals
+    Global -> asks globals
+    Any -> (++) <$> asks locals <*> asks globals
+  {- ctx <- asks ctx
   locals <- asks locals
   globals <- asks globals
   let (start, stop) = case l of 
                 Local -> (ctx, locals)
                 Global -> (drop locals ctx, globals)
                 Any -> (ctx, locals + globals)
-  return (take stop start)
+  return (take stop start) -}
 
 -- | Find a name's type in the context.
 lookupTyMaybe ::
@@ -142,15 +145,15 @@ lookupTyMaybe l v = do
   let go [] = Nothing
       go (TypeSig sig : ctx')
         | v == sigName sig = Just sig
-        | otherwise = go ctx' 
+        | otherwise = go ctx'
       go (Demote ep : ctx') = demoteSig ep <$> go ctx'
       go (_ : ctx') = go ctx'
-  return $ go ctx 
-    
-      
+  return $ go ctx
+
+
 
 demoteSig :: Rho -> Sig -> Sig
-demoteSig r s = s { sigRho = min r (sigRho s) } 
+demoteSig r s = s { sigRho = min r (sigRho s) }
 
 
 -- | Find the type of a name specified in the context
@@ -182,23 +185,24 @@ lookupDef l v = do
 
 lookupRecDef ::
   (MonadReader Env m) =>
+  Locality ->
   TName ->
   m (Maybe Term)
-lookupRecDef v = do
-  ctx <- asks ctx
+lookupRecDef l v = do
+  ctx <- localizedDecls l
   return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
--- | Find a type constructor in the context
+-- | Find a type constructor in the (global) context
 lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
   TCName ->
   m (Telescope, Maybe [ConstructorDef], Level)
 lookupTCon v = do
-  g <- asks ctx
+  g <- localizedDecls Any
   scanGamma g
   where
     scanGamma [] = do
-      currentEnv <- asks ctx
+      currentEnv <- asks globals
       err
         [ DS "The type constructor",
           DD v,
@@ -216,14 +220,14 @@ lookupTCon v = do
         else scanGamma g
     scanGamma (_ : g) = scanGamma g
 
--- | Find a data constructor in the context, returns a list of
+-- | Find a data constructor in the (global) context, returns a list of
 -- all potential matches
 lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
   m [(TCName, (Telescope, ConstructorDef, Level))]
 lookupDConAll v = do
-  g <- asks ctx
+  g <- localizedDecls Any
   scanGamma g
   where
     scanGamma [] = return []
@@ -263,38 +267,37 @@ lookupDCon c tname = do
 
 
 
--- | Extend the context with a new binding
+-- | Extend the context with a new local binding
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
 extendCtx d =
-  local (\m@Env{ctx = cs, locals=l} -> m {ctx = d : cs, locals = l+1})
+  local (\m@Env{locals = cs} -> m {locals = d : cs})
 
 -- | Extend the context with a list of bindings
 extendCtxs :: (MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxs ds =
-  local (\m@Env {ctx = cs, locals=l} -> m {ctx = ds ++ cs, locals = l + length ds})
+  local (\m@Env {locals = cs} -> m {locals = ds ++ cs})
 
 -- | Extend the context with a list of bindings, marking them as "global"
 extendCtxsGlobal :: (MonadError Err m, MonadReader Env m) => [Decl] -> m a -> m a
 extendCtxsGlobal ds ma = do
   nl <- asks locals
-  unless (nl == 0) $ err [DS "Global extension of nonempty local context"]
+  unless (null nl) $ err [DS "Global extension of nonempty local context"]
   local
-    ( \m@Env {ctx = cs, globals = l} ->
+    ( \m@Env {globals = cs} ->
         m
-          { ctx = ds ++ cs,
-            globals = length ds + l
+          { globals = ds ++ cs
           }
     ) ma
 
 -- | Extend the context with a telescope
-extendCtxTele :: 
+extendCtxTele ::
   (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m a -> m a
 extendCtxTele [] m = m
 extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
 extendCtxTele (TypeSig sig : tele) m =
   extendCtx (TypeSig sig) $ extendCtxTele tele m
-extendCtxTele ( _ : tele) m = 
+extendCtxTele ( _ : tele) m =
   err [DS "Invalid telescope ", DD tele]
 
 
@@ -310,14 +313,12 @@ extendCtxMods mods k = foldr extendCtxMod k mods
 
 -- | Get the complete current context
 getCtx :: MonadReader Env m => m [Decl]
-getCtx = asks ctx
+getCtx = (++) <$> asks locals <*> asks globals
 
 -- | Get the prefix of the context that corresponds to local variables.
 getLocalCtx :: MonadReader Env m => m [Decl]
-getLocalCtx = do
-  g <- asks ctx
-  glen <- asks globals
-  return $ take (length g - glen) g
+getLocalCtx = asks locals
+  
 
 -- | Push a new source position on the location stack.
 extendSourceLocation :: (MonadReader Env m, Disp t) => SourcePos -> t -> m a -> m a
@@ -386,11 +387,13 @@ withStage ep = id
 
 
 extendLevelConstraint :: (MonadReader Env m, MonadError Err m, MonadState TcState m) => LevelConstraint -> m ()
-extendLevelConstraint c@(Lt (LConst i) (LConst j)) = 
+extendLevelConstraint c@(Lt (LConst i) (LConst j)) =
     if i < j then return () else err [DS "Cannot solve constraint", DD c]
+extendLevelConstraint c@(Le (LConst i) (LConst j)) =
+    if i <= j then return () else err [DS "Cannot solve constraint", DD c]
 extendLevelConstraint (Eq l1 l2) | l1 == l2 = return ()
 extendLevelConstraint (Le l1 l2) | l1 == l2 = return ()
-extendLevelConstraint c@(Lt l1 l2) | l1 == l2 = 
+extendLevelConstraint c@(Lt l1 l2) | l1 == l2 =
   err [DS "Cannot solve constraint", DD c]
 extendLevelConstraint c = do
   locs <- asks sourceLocation
