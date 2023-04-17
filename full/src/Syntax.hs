@@ -88,42 +88,53 @@ data Term
   | -- | introduction form for Sigma-types `( a , b )`
     Prod Term Term
   | -- | elimination form for Sigma-types `let (x,y) = a in b`
-    LetPair Term (Unbound.Bind (TName, TName) Term) 
+    LetPair Term (Unbound.Bind (TName, TName) Term)
   | -- | Equality type  `a = b`
     TyEq Term Term
   | -- | Proof of equality `Refl`
-    Refl 
+    Refl
   | -- | equality type elimination  `subst a by pf`
-    Subst Term Term 
+    Subst Term Term
   | -- | witness to an equality contradiction
     Contra Term
-    
+
   | -- | type constructors (fully applied)
     TCon TCName [Arg]
   | -- | term constructors (fully applied)
-    DCon DCName [Arg] 
+    DCon DCName [Arg]
   | -- | case analysis  `case a of matches`
     Case Term [Match]
     -- | displace a value found in the environment
-  | Displace Term Level 
-  
+  | Displace Term Level
+
   deriving (Show, Generic, Unbound.Subst Level)
 
 -- | An argument to a function
 data Arg = Arg {argEp :: Rho, unArg :: Term}
   deriving (Show, Generic, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
-data Epsilon = 
-    Mode { rho :: Rho, level :: Maybe Level } 
+data Epsilon =
+    Mode { rho :: Rho, level :: Maybe Level }
       deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
-data Level = 
-    LConst Int 
+data Level =
+    LConst Int
   | LVar   LName
   | LAdd   Level Level
   deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term)
 
-data LevelConstraint = 
+instance Semigroup Level where
+  (<>) = levelAdd
+instance Monoid Level where
+  mempty = LConst 0
+
+levelAdd :: Level -> Level -> Level
+levelAdd (LConst 0) l = l
+levelAdd l (LConst 0) = l
+levelAdd (LConst k) (LConst l) = LConst (k + l)
+levelAdd l1 l2 = LAdd l1 l2
+
+data LevelConstraint =
     Lt Level Level
   | Le Level Level
   | Eq Level Level
@@ -170,7 +181,7 @@ data Module = Module
   { moduleName :: MName,
     moduleImports :: [ModuleImport],
     moduleEntries :: [Decl] ,
-    moduleConstructors :: ConstructorNames 
+    moduleConstructors :: ConstructorNames
   }
   deriving (Show, Generic, Typeable)
 
@@ -194,7 +205,7 @@ mkSig n ty l = TypeSig (Sig n Rel (Just l) ty)
 
 
 -- | Declarations are the components of modules
-data Decl 
+data Decl
   = -- | Declaration for the type of a term
     TypeSig Sig
   | -- | The definition of a particular name, must
@@ -202,9 +213,9 @@ data Decl
     Def TName Term
   | -- | A potentially (recursive) definition of
     -- a particular name, must be declared
-    RecDef TName Term 
+    RecDef TName Term
     -- | Adjust the context for relevance checking
-  | Demote Rho  
+  | Demote Rho
   | -- | Declaration for a datatype including all of
     -- its data constructors. Must be toplevel
     Data TCName Telescope [ConstructorDef] Level
@@ -212,7 +223,7 @@ data Decl
     -- not include any information about its data
     -- constructors. Must be toplevel
     DataSig TCName Telescope Level
-  
+
   deriving (Show, Generic, Typeable)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 -- | The names of type/data constructors used in the module
@@ -243,7 +254,7 @@ newtype Telescope = Telescope [Decl]
 
 -- | empty set of constructor names
 emptyConstructorNames :: ConstructorNames
-emptyConstructorNames = ConstructorNames initialTCNames initialDCNames 
+emptyConstructorNames = ConstructorNames initialTCNames initialDCNames
 
 -- | Default name for '_' occurring in patterns
 wildcardName :: TName
@@ -297,7 +308,7 @@ initialDCNames :: Set DCName
 initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
 preludeDataDecls :: [Decl]
-preludeDataDecls = 
+preludeDataDecls =
   [ Data sigmaName  sigmaTele      [prodConstructorDef] (LConst 1)
   , Data tyUnitName (Telescope []) [unitConstructorDef] (LConst 0)
   , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef] (LConst 0)
@@ -307,7 +318,7 @@ preludeDataDecls =
         falseConstructorDef = ConstructorDef internalPos falseName (Telescope [])
 
         -- unit
-        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
+        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope [])
 
         -- Sigma-type
         -- Sigma (A :: Type) (B :: Pi x:A. Type)
@@ -405,11 +416,11 @@ instance Unbound.Subst Level Level where
 
 
 -- '(y : x) -> y'
-pi1 :: Term 
+pi1 :: Term
 pi1 = Pi (Mode Rel (Just (LConst 0))) (Var xName) (Unbound.bind yName (Var yName))
 
 -- '(y : Bool) -> y'
-pi2 :: Term 
+pi2 :: Term
 pi2 = Pi (Mode Rel (Just (LConst 0))) TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
@@ -440,11 +451,57 @@ instance Unbound.Alpha SourcePos where
   acompare' _ _ _ = EQ
 
 -- Substitutions ignore source positions
-instance Unbound.Subst b SourcePos where 
+instance Unbound.Subst b SourcePos where
   subst _ _ = id; substs _ = id; substBvs _ _ = id
 
 
 -- Internally generated source positions
 internalPos :: SourcePos
 internalPos = initialPos "internal"
+
+getFreelyDisplaceable :: Decl -> Maybe TName
+getFreelyDisplaceable (Def na te) 
+  | isFreelyDisplaceable te = Just na 
+getFreelyDisplaceable (RecDef na te) 
+  | isFreelyDisplaceable te = Just na
+getFreelyDisplaceable _ = Nothing
+
+isFreelyDisplaceable :: Term -> Bool
+isFreelyDisplaceable = go where
+  goArg :: Arg -> Bool
+  goArg (Arg r a) = go a
+
+  go :: Term -> Bool
+  go Type = True
+  go (Var na) = True
+  go (Lam rho bnd) = let (_,a) = Unbound.unsafeUnbind bnd in go a
+  go (App te arg) = go te && goArg arg
+  go (Pi (Mode _ Nothing) te bnd) = go te && let (_,a) = Unbound.unsafeUnbind bnd in go a
+  go (Pi (Mode _ (Just k)) _ _) = False
+  go (Ann te te') = go te && go te'
+  go (Pos sp te) = go te
+  go TrustMe = True
+  go PrintMe = True
+  go (Let te bnd) = go te && let (_,a) = Unbound.unsafeUnbind bnd in go a
+  go TyUnit = True
+  go LitUnit = True
+  go TyBool = True
+  go (LitBool b) = True
+  go (If te te' te2) = go te && go te' && go te2
+  go (Sigma te le bi) = error "BUG"
+  go (Prod te te') = error "BUG"
+  go (LetPair te bi) = error "BUG"
+  go (TyEq te te') = go te && go te'
+  go Refl = True
+  go (Subst te te') = go te && go te'
+  go (Contra te) = go te
+  go (TCon s args) = all goArg args
+  go (DCon s args) = all goArg args
+  go (Case te mas) = go te && all goMatch mas
+  go (Displace te le) = False
+
+  goMatch :: Match -> Bool
+  goMatch (Match bi) = go a 
+    where 
+      (_,a) = Unbound.unsafeUnbind bi
 

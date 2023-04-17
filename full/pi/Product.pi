@@ -9,7 +9,7 @@ module Product where
 import Equality
 
 data Sig (A:Type)(B: A -> Type) : Type where
-  Product of (x:A) (B x)
+  Product of (x:A)(B x)
 
 proj1 : [A:Type] -> [B:A -> Type] -> Sig A B -> A 
 proj1 = \[A][B] x . case x of 

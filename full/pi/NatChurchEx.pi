@@ -19,21 +19,33 @@ two : nat @ 1
 two = s (s z)
 
 three : nat @ 1
-three = TRUSTME   -- replace with correct definition of 3
+three = s (s (s z))   -- replace with correct definition of 3
 
-plus : nat^1 -> nat -> nat @ 1   -- need to lift first nat for the instantiation
-plus = \x. \y. x nat y s
+plus : (nat^1) -> (nat^0) -> (nat^0) @ 2   -- need to lift first nat for the instantiation
+plus = \x. \y. x (nat^0) y s
 
-test0 : plus one^1 one = two @ 2
+{- 
+
+x: nat^1 @ 2 == Pi (x:type @ 1) -> x -> (x -> x) -> x : type
+y: nat^0 @ 1 
+
+x nat^0 : (nat^0) -> (nat^0 -> nat^0) -> nat^0
+
+one : nat^0 @ 1
+one : nat^1 @ 2
+
+-}
+
+test0 : (plus^1) one one = two @ 3
 test0 = Refl
 
 test1 : plus one^1 two = three @ 2
-test1 = TRUSTME  -- replace with Refl
+test1 = Refl
 
 spec0 : (n : nat) -> plus z^1 n = n @ 2
 spec0 = \n . Refl
 
-spec1 : (n : nat^1) -> (m : nat) -> plus (s^1 n) m  = s (plus n m) @ 2 
+spec1 : (n : nat^1) -> (m : nat) -> plus (s^1 n) m  = s (plus n m) @ 3 
 spec1 = \n m . Refl
 
 -- The predecessor function is *really* tricky! Don't try this 

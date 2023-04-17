@@ -10,8 +10,8 @@ module Fix where
 
 
 data D (A : Type) : Type where
-   F of (_ : D A -> D A) 
-   V of (_ : A)
+   F of (D A -> D A) 
+   V of (A)
 
 unV : [A:Type] -> D A -> A
 unV = \[A] v.

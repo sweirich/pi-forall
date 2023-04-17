@@ -12,153 +12,205 @@ import Syntax
 import Environment ( D(DS, DD), TcMonad, Locality(..) )
 import qualified Environment as Env
 import qualified Unbound.Generics.LocallyNameless as Unbound
-import PrettyPrint (D(..), pp)
+import PrettyPrint (D(..), pp, Disp(..))
 
-import Control.Monad.Except (unless, catchError, zipWithM, zipWithM_)
+import Control.Monad.Except (unless, throwError, catchError, zipWithM, zipWithM_)
 import Debug.Trace
 
-equateLevel :: Level -> Level -> TcMonad ()
-equateLevel (LConst i) (LConst j) =
-  if i == j then return ()
-  else
-   Env.err [DS "Level mismatch",
-              DS "Expected " , DD i, DS "Found ", DD j]
-equateLevel l1 l2 =
-  Env.extendLevelConstraint (Eq l1 l2)
+type Result = [LevelConstraint]
+success :: Result
+success = []
 
-equateMaybeLevel :: Maybe Level -> Maybe Level -> TcMonad ()
+equateLevel :: Level -> Level -> TcMonad Result
+equateLevel (LConst i) (LConst j) =
+  if i == j then return success
+  else 
+    Env.err [DS "Level mismatch",
+              DS "Expected " , DD i, DS "Found ", DD j]
+equateLevel l1 l2 = return [Eq l1 l2]
+
+equateMaybeLevel :: Maybe Level -> Maybe Level -> TcMonad Result
 equateMaybeLevel (Just i) (Just j) = equateLevel i j
-equateMaybeLevel Nothing Nothing = return ()
-equateMaybeLevel i j =
+equateMaybeLevel Nothing Nothing = return success
+equateMaybeLevel i j = 
    Env.err [DS "Level annotation mismatch",
               DS "Expected " , DD i, DS "Found ", DD j]
+
+
+equate :: Term -> Term -> TcMonad ()
+equate t1 t2 = do
+  cs <- equate' Shallow t1 t2
+  mapM_ Env.extendLevelConstraint cs
+
+-- Shallow: just compares structure
+-- Deep: whnf then 
+data Depth = Shallow | Deep deriving (Eq, Show)
+
+
+tyErr :: (Disp a) => a -> a -> TcMonad b
+tyErr t1 t2 = do
+      gamma <- Env.getLocalCtx
+      Env.err [DS "Expected", DD t1,
+               DS "but found", DD t2,
+               DS "in context:", DD gamma]
 
 
 -- | compare two expressions for equality
 -- first check if they are alpha equivalent then
 -- if not, weak-head normalize and compare
 -- throw an error if they cannot be matched up
-equate :: Term -> Term -> TcMonad ()
-equate t1 t2 | Unbound.aeq t1 t2 = return ()
-equate t1 t2 = do
-  n1 <- whnf t1
-  n2 <- whnf t2
-  traceM $ "whnf t1: " <> pp n1
-  traceM $ "whnf t2: " <> pp n2 
+equate' :: Depth -> Term -> Term -> TcMonad Result
+equate' d (Pos p t1) t2 = equate' d t1 t2
+equate' d t1 (Pos p t2) = equate' d t1 t2
+equate' d (Ann t1 _) t2 = equate' d t1 t2
+equate' d t1 (Ann t2 _) = equate' d t1 t2
+equate' d t1 t2 = do
+  (n1, n2) <- case d of 
+    Deep -> (,) <$> whnf t1 <*> whnf t2
+    Shallow -> return (t1, t2)
+  if d == Deep then do
+       -- traceM $ "whnf " ++ pp n1 ++ " and " ++ pp n2
+       return ()
+     else return ()
   case (n1, n2) of
-    (Type, Type) -> return ()
-    (Var x,  Var y) | x == y -> return ()
-    (Displace (Var x) j, Displace (Var y) k) | x == y -> equateLevel j k
-    (Var x, Displace (Var y) k) | x == y -> equateLevel (LConst 0) k
-    (Displace (Var x) j, Var y) | x == y -> equateLevel j (LConst 0)
-    
+    (Type, Type) -> return success
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
-      unless (ep1 == ep2) $
-          tyErr n1 n2
-      equate b1 b2
-    (App a1 a2, App b1 b2) ->
-      equate a1 b1 >> equateArg a2 b2
+      unless (ep1 == ep2) $ Env.err [DS "Epsilon mismatch: ", DD t2, DD t1]
+      equate' Shallow b1 b2
     (Pi (Mode r1 l1) tyA1 bnd1, Pi (Mode r2 l2) tyA2 bnd2) -> do
       (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2
       unless (r1 == r2) $
-          tyErr n1 n2
-      equateMaybeLevel l1 l2
-      equate tyA1 tyA2
-      equate tyB1 tyB2
-
-    (TrustMe, TrustMe) ->  return ()
-    (PrintMe, PrintMe) ->  return ()
-
-    (TyUnit, TyUnit)   -> return ()
-    (LitUnit, LitUnit) -> return ()
-
-    (TyBool, TyBool)   -> return ()
-
-    (LitBool b1, LitBool b2) | b1 == b2 -> return ()
-
-    (If a1 b1 c1, If a2 b2 c2) ->
-      equate a1 a2 >> equate b1 b2 >> equate c1 c2
-
-    (Let rhs1 bnd1, Let rhs2 bnd2) -> do
-      Just (x, body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
-      equate rhs1 rhs2
-      equate body1 body2
+          tyErr n2 n1
+      cs1 <- equateMaybeLevel l1 l2
+      cs2 <- equate' Shallow tyA1 tyA2
+      cs3 <- equate' Shallow tyB1 tyB2
+      return (cs1 <> cs2 <> cs3)
 
     (Sigma tyA1 l1 bnd1, Sigma tyA2 l2 bnd2) -> do
       Just (x, tyB1, _, tyB2) <- Unbound.unbind2 bnd1 bnd2
-      unless (l1 == l2) $
-          tyErr n1 n2
-      equate tyA1 tyA2
-      equate tyB1 tyB2
+      cs1 <- equateLevel l1 l2
+      cs2 <- equate' Shallow tyA1 tyA2
+      cs3 <- equate' Shallow tyB1 tyB2
+      return (cs1 <> cs2 <> cs3)
 
-    (Prod a1 b1, Prod a2 b2) -> do
-      equate a1 a2
-      equate b1 b2
+    (TrustMe, TrustMe) ->  return success
+    (PrintMe, PrintMe) ->  return success
 
-    (LetPair s1 bnd1, LetPair s2 bnd2) -> do
-      equate s1 s2
-      Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
-      equate body1 body2
-    (TyEq a b, TyEq c d) -> do
-      equate a c
-      equate b d
+    (TyUnit, TyUnit)   -> return success
+    (LitUnit, LitUnit) -> return success
 
-    (Refl,  Refl) -> return ()
+    (TyBool, TyBool)   -> return success
 
-    (Subst at1 pf1, Subst at2 pf2) -> do
-      equate at1 at2
-      equate pf1 pf2
+    (LitBool b1, LitBool b2) ->
+      if b1 == b2 then return success
+      else tyErr b2 b1
 
-    (Contra a1, Contra a2) ->
-      equate a1 a2
+    (TyEq a b, TyEq c d2) -> do
+      cs1 <- equate' Shallow a c
+      cs2 <- equate' Shallow b d2
+      return (cs1 <> cs2)
 
-    (TCon c1 ts1, TCon c2 ts2) | c1 == c2 ->
-      zipWithM_ equateArgs [ts1] [ts2]
+    (Refl,  Refl) -> return success
+
+    (TCon c1 ts1, TCon c2 ts2) ->
+      if c1 == c2 then do
+        rs <- zipWithM (equateArgs d) [ts1] [ts2]
+        return (mconcat rs)
+      else
+        tyErr c2 c1
+
     (DCon d1 a1, DCon d2 a2) | d1 == d2 -> do
-      equateArgs a1 a2
-    (Case s1 brs1, Case s2 brs2)
-      | length brs1 == length brs2 -> do
-      equate s1 s2
-      -- require branches to be in the same order
-      -- on both expressions
-      let matchBr (Match bnd1) (Match bnd2) = do
-            mpb <- Unbound.unbind2 bnd1 bnd2
-            case mpb of
-              Just (p1, a1, p2, a2) | p1 == p2 -> do
-                equate a1 a2
-              _ -> Env.err [DS "Cannot match branches in",
-                              DD n1, DS "and", DD n2]
-      zipWithM_ matchBr brs1 brs2
+      equateArgs d a1 a2
+    (_,_) -> do 
+        -- For terms that do not have matching head forms, 
+        -- first see if they are "shallowly" equal i.e. alpha-equivalent
+        -- if this fails, then try again after calling whnf on both sides
+        let handler err = 
+              case d of
+                Shallow -> do
+                  equate' Deep n1 n2
+                Deep -> throwError err
+        (case (n1, n2) of 
+            (Var x,  Var y) | x == y -> return success
+            (Displace (Var x) j, Displace (Var y) k) | x == y -> do
+              isD <- Env.lookupFreelyDisplaceable x
+              -- traceM $ "equating level " ++ pp j ++ " and " ++ pp k
+              if isD then return success else equateLevel j k
+            (Displace (Var x) j, Var y) | x == y -> return success
+            (Var x, Displace (Var y) j) | x == y -> return success
+            (App a1 a2, App b1 b2) -> do
+              cs1 <- equate' Shallow a1 b1
+              cs2 <- equateArg Shallow a2 b2
+              return (cs1 <> cs2)
+            
+            (If a1 b1 c1, If a2 b2 c2) -> do
+              cs1 <- equate' Shallow a1 a2 
+              cs2 <- equate' Shallow b1 b2 
+              cs3 <- equate' Shallow c1 c2
+              return (cs1 <> cs2 <> cs3)
 
-    (_,_) -> tyErr n1 n2
- where tyErr n1 n2 = do
-          gamma <- Env.getLocalCtx
-          Env.err [DS "Expected", DD n2,
-               DS "but found", DD n1,
-               DS "in context:", DD gamma]
+            (Let rhs1 bnd1, Let rhs2 bnd2) -> do
+              Just (x, body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
+              cs1 <- equate' Shallow rhs1 rhs2
+              cs2 <- equate' Shallow body1 body2
+              return (cs1 <> cs2)
+
+            (Prod a1 b1, Prod a2 b2) -> do
+              cs1 <- equate' Shallow a1 a2
+              cs2 <- equate' Shallow b1 b2
+              return (cs1 <> cs2)
+
+            (LetPair s1 bnd1, LetPair s2 bnd2) -> do
+              cs1 <- equate' Shallow s1 s2
+              Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
+              cs2 <- equate' Shallow body1 body2
+              return (cs1 <> cs2) 
+
+            (Subst at1 pf1, Subst at2 pf2) -> do
+              cs1 <- equate' Shallow at1 at2
+              cs2 <- equate' Shallow pf1 pf2
+              return (cs1 <> cs2)
+
+            (Contra a1, Contra a2) ->
+              equate' Shallow a1 a2
+
+            (Case s1 brs1, Case s2 brs2) ->
+              if length brs1 == length brs2 then do
+                  cs1 <- equate' Shallow s1 s2
+                  -- require branches to be in the same order
+                  -- on both expressions
+                  let matchBr (Match bnd1) (Match bnd2) = do
+                        mpb <- Unbound.unbind2 bnd1 bnd2
+                        case mpb of
+                          Just (p1, a1, p2, a2) | p1 == p2 -> do
+                            equate' Shallow a1 a2
+                          _ -> Env.err [DS "Cannot match branches in",
+                                          DD n1, DS "and", DD n2]
+                  rs <- zipWithM matchBr brs1 brs2
+                  return (mconcat rs)
+              else tyErr n2 n1
+            (_,_) -> do
+              tyErr n2 n1) `catchError` handler
+  
 
 
 -- | Match up args
-equateArgs :: [Arg] -> [Arg] -> TcMonad ()
-equateArgs (a1:t1s) (a2:t2s) = do
-  equateArg a1 a2
-  equateArgs t1s t2s
-equateArgs [] [] = return ()
-equateArgs a1 a2 = do
-          gamma <- Env.getLocalCtx
-          Env.err [DS "Expected", DD (length a2),
-                   DS "but found", DD (length a1),
-                   DS "in context:", DD gamma]
+equateArgs :: Depth -> [Arg] -> [Arg] -> TcMonad Result
+equateArgs d (a1:t1s) (a2:t2s) = do
+  cs <- equateArg d a1 a2
+  ds <- equateArgs d t1s t2s
+  return (cs ++ ds)
+equateArgs d [] [] = return success
+equateArgs d a1 a2 = tyErr (length a2) (length a1)
+         
 
 -- | Ignore irrelevant arguments when comparing 
-equateArg :: Arg -> Arg -> TcMonad ()
-equateArg (Arg Rel t1) (Arg Rel t2) = equate t1 t2
-equateArg (Arg Irr t1) (Arg Irr t2) = return ()
-equateArg a1 a2 =
-  Env.err [DS "Arg stage mismatch",
-              DS "Expected " , DD a2,
-              DS "Found ", DD a1]
+equateArg :: Depth -> Arg -> Arg -> TcMonad Result
+equateArg d (Arg Rel t1) (Arg Rel t2) = equate' d t1 t2
+equateArg d (Arg Irr t1) (Arg Irr t2) = return success
+equateArg d a1 a2 = tyErr a2 a1
+  
 
 
 -------------------------------------------------------
@@ -214,7 +266,7 @@ whnf (Var x) = do
             (Just d) -> whnf d
             _ -> return (Var x)
 whnf t@(Displace (Var x) j) = do
-  traceM $ "whnf: " ++ pp t
+  -- traceM $ "whnf: " ++ pp t
   maybeDef <- Env.lookupDef Global x
   case maybeDef of
     (Just d) -> displace j d >>= whnf
@@ -223,10 +275,10 @@ whnf t@(Displace (Var x) j) = do
       case maybeDef2 of
          (Just d) -> do 
           d' <- displace j d 
-          traceM $ "displaced by " ++ pp j ++ ": " ++ pp d'
+          -- traceM $ "displaced by " ++ pp j ++ ": " ++ pp d'
           whnf d'
          _ -> do
-              traceM $ "whnf: no def "   
+              -- traceM $ "whnf: no def "   
               return (Displace (Var x) j)
 whnf (App t1 t2) = do
   nf <- whnf t1
@@ -320,7 +372,8 @@ unify ns tx ty = do
         unify (x:ns) b1 b2
       (Pi (Mode r1 l1) tyA1 bnd1, Pi (Mode r2 l2) tyA2 bnd2) -> do
         (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2
-        equateMaybeLevel l1 l2
+        cs <- equateMaybeLevel l1 l2
+        mapM_ Env.extendLevelConstraint cs
         unless (r1 == r2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
         ds1 <- unify ns tyA1 tyA2
@@ -350,7 +403,7 @@ amb _ = False
 
 
 
-
+-----------------------------------------------------------------------------
 
 displaceArg :: Level -> Arg -> TcMonad Arg
 displaceArg j (Arg r t) = Arg r <$> displace j t
@@ -373,19 +426,20 @@ displace j t = case t of
     Var x -> Env.lookupTyMaybe Global x >>= \mb -> case mb of
                   Just _ -> return (Displace (Var x) j)
                   Nothing -> do 
-                    traceM $ "not global: " ++ pp x
+                    -- traceM $ "not global: " ++ pp x
                     return $ Var x
     Lam r bnd -> do
       (x, a) <- Unbound.unbind bnd
       a' <- displace j a
       return $ Lam r (Unbound.bind x a')
     App f a -> App <$> displace j f <*> displaceArg j a
-    Pi (Mode ep (Just lexp)) tyA bnd -> do
+    Pi (Mode ep (Just k)) tyA bnd -> do
       (y, tyB) <- Unbound.unbind bnd
-      x' <- Unbound.fresh (Unbound.string2Name $ "jD@" ++ pp lexp)
-      let lx = LVar x'
-      equateLevel lx (LAdd j lexp)
-      Pi (Mode ep (Just lx)) <$> displace j tyA
+      -- x' <- Unbound.fresh (Unbound.string2Name $ "jD@" ++ pp lexp)
+      -- let lx = LVar x'
+      -- cs <- equateLevel lx (j <> lexp)
+      -- mapM_ Env.extendLevelConstraint cs
+      Pi (Mode ep (Just (j <> k))) <$> displace j tyA
                              <*> (Unbound.bind y <$> displace j tyB)
     Pi (Mode ep Nothing) tyA bnd -> do
       (y, tyB) <- Unbound.unbind bnd
@@ -398,13 +452,26 @@ displace j t = case t of
       Let <$> displace j rhs <*> (Unbound.bind x <$> displace j body)
     If a1 a2 a3 ->
       If <$> displace j a1 <*> displace j a2 <*> displace j a3
-    Displace a j0 -> return $ Displace a (LAdd j j0)
+    Displace a j0 -> return $ Displace a (j <> j0)
     TyEq a b -> TyEq <$> displace j a <*> displace j b
     TCon tc args -> TCon tc <$> mapM (displaceArg j) args
     DCon dc args -> DCon dc <$> mapM (displaceArg j) args
     Case a brs -> 
       Case <$> displace j a <*> mapM (displaceBr j) brs
+    Subst a b -> 
+      Subst <$> displace j a <*> displace j b
+    Contra a -> 
+      Contra <$> displace j a
     
+    Type -> return Type
+    PrintMe -> return PrintMe
+    TrustMe -> return TrustMe
+    TyUnit -> return TyUnit
+    LitUnit -> return LitUnit
+    (LitBool b) -> return (LitBool b)
+    TyBool -> return TyBool
+    Refl -> return Refl
     _ -> do
-      traceM $ "catchall: " ++ pp t
+      Env.warn $ "displace: " ++ pp t
       return t
+      

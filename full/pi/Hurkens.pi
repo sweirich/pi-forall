@@ -15,10 +15,10 @@ tau : (P (P U)) -> U
 tau = \t. \x. \f. \p. t (\s. p (f (s x f)))
 
 sigma : U -> P (P U)
-sigma = \s. s U (\t. tau t)
+sigma = \s. s U tau
 
 Delta : P U 
-Delta = \y. neg ((p : P U @ 1) -> sigma y p -> p (tau (sigma y)))
+Delta = \y. neg ((p : P U) -> sigma y p -> p (tau (sigma y)))
 
 Omega : U 
 Omega = tau (\p. (x : U) -> sigma x p -> p (\y. x y))

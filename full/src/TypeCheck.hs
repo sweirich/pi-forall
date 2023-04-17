@@ -97,7 +97,7 @@ tcTerm t@(Var x) Nothing mk = do
     Nothing -> do
       sig <- Env.lookupTy x        -- make sure the variable is accessible
       l <- getLevel (sigLevel sig) -- make sure that it is annotated with a level
-      traceM $ "checking local var " ++ pp x ++ " @ " ++ pp l ++ " <= " ++ pp mk
+      -- traceM $ "checking local var " ++ pp x ++ " @ " ++ pp l ++ " <= " ++ pp mk
       Env.checkStage (sigRho sig)
       Env.extendLevelConstraint (Le l mk)
       return (sigType sig, Var x)
@@ -314,7 +314,7 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
   return (ty, Case scrut' alts')
 
 tcTerm t@(TyEq a b) Nothing mk = do
-  traceM $ "Checking " ++ pp t ++ " at level " ++ pp mk
+  -- traceM $ "Checking " ++ pp t ++ " at level " ++ pp mk
   (aTy, a') <- inferType a mk
   b' <- checkType b aTy mk
   return (Type, TyEq a' b')
@@ -429,8 +429,8 @@ tcTerm (Displace t j) Nothing mk = do
       case msig of
         Just sig -> do
             Env.checkStage (sigRho sig)       -- make sure the variable is accessible
-            k <- getLevel (sigLevel sig)
-            Env.extendLevelConstraint (Le (LAdd j k) mk)
+            k <- getLevel (sigLevel sig)      -- global level of "x"
+            Env.extendLevelConstraint (Le (j <> k) mk)
             ty <- Equal.displace j (sigType sig)    -- displace its type
             return (ty, Displace (Var x) j)
         Nothing -> Env.err [DS "Can only displace top-level vars", DD x]
@@ -655,9 +655,9 @@ dumpAndSolve term = do
   cs <- Env.dumpConstraints
   mss <- liftIO $ solveConstraints (map snd cs)
   case mss of 
-           Nothing -> Env.err $ [DS "Cannot satisfy level constraints.", 
-                     DS "Constraints are "] ++ dcons cs
-           Just ss -> return (ss ++ ss')
+        Nothing -> Env.err $ [DS "Cannot satisfy level constraints.", 
+                     DS "Constraints are "] ++ dcons (Env.simplify cs)
+        Just ss -> return (ss ++ ss')
 
 
 -- | Check each sort of declaration in a module

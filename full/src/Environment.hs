@@ -14,6 +14,7 @@ module Environment
     lookupTCon,
     lookupDCon,
     lookupDConAll,
+    lookupFreelyDisplaceable,
     extendCtxTele  ,
     getCtx,
     getLocalCtx,
@@ -24,6 +25,7 @@ module Environment
     extendHints,
     extendSourceLocation,
     extendLevelConstraint,
+    simplify,
     dumpConstraints,
     getSourceLocation,
     err,
@@ -44,11 +46,14 @@ import Control.Monad.Reader
     ( MonadReader(local), asks, ReaderT(runReaderT) )
 import Control.Monad.State
 import Data.List
-import Data.Maybe ( listToMaybe )
+import qualified Data.Set as Set
+import Data.Maybe ( listToMaybe , mapMaybe )
 import PrettyPrint ( SourcePos, render, D(..), Disp(..), Doc )
 import Syntax
 import Text.PrettyPrint.HughesPJ ( ($$), nest, sep, text, vcat, (<+>) )
 import qualified Unbound.Generics.LocallyNameless as Unbound
+
+import Debug.Trace ( traceM )
 
 -- | The type checking Monad includes a reader (for the
 -- environment), freshness state (for supporting locally-nameless
@@ -77,6 +82,8 @@ data Env = Env
     locals :: [Decl],
     -- | how long the tail of "global" variables in the context is
     globals :: [Decl],
+    -- | Is this expression "freely displaceable" ?
+    freelyDisplaceableGlobals :: Set.Set TName,
     -- | Type declarations (signatures): it's not safe to
     -- put these in the context until a corresponding term
     -- has been checked.
@@ -99,13 +106,14 @@ emptyEnv = Env {
                , locals = []
                , hints = []
                , sourceLocation = []
+               , freelyDisplaceableGlobals = Set.empty
               }
 
 initState :: TcState
 initState = TcState { constraints = [] }
 
 instance Disp Env where
-  disp e = vcat $ [disp decl | decl <- locals e] ++ [disp decl | decl <- globals e]
+  disp e = vcat $ [ disp decl | decl <- locals e] ++ [disp decl | decl <- globals e]
 
 instance Disp TcState where
   disp s = vcat [disp l <> disp c | (SourceLocation p l,c) <- constraints s ]
@@ -265,7 +273,10 @@ lookupDCon c tname = do
             -- ++ map (DD . snd) matches
         )
 
-
+lookupFreelyDisplaceable :: (MonadReader Env m) => TName -> m Bool
+lookupFreelyDisplaceable x = do
+  s <- asks freelyDisplaceableGlobals
+  return $ Set.member x s
 
 -- | Extend the context with a new local binding
 extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
@@ -282,10 +293,14 @@ extendCtxsGlobal :: (MonadError Err m, MonadReader Env m) => [Decl] -> m a -> m 
 extendCtxsGlobal ds ma = do
   nl <- asks locals
   unless (null nl) $ err [DS "Global extension of nonempty local context"]
+  let newfree = mapMaybe getFreelyDisplaceable ds 
+  when (not (null newfree)) $ do
+    traceM $ "Freely displaceable: " ++ show newfree
   local
-    ( \m@Env {globals = cs} ->
+    ( \m@Env {globals = cs, freelyDisplaceableGlobals = free} ->
         m
-          { globals = ds ++ cs
+          { globals = ds ++ cs,
+            freelyDisplaceableGlobals = foldr Set.insert free newfree
           }
     ) ma
 
@@ -399,8 +414,9 @@ extendLevelConstraint c = do
   locs <- asks sourceLocation
   st <- get
   let cs = constraints st
+  if any (\lc -> snd lc == c) cs then return () else
   -- if c `elem` cs then return () else 
-  put $ TcState { constraints = (head locs,c) : cs }
+    put $ TcState { constraints = (head locs,c) : cs }
 
 dumpConstraints :: (MonadState TcState m) => m [(SourceLocation,LevelConstraint)]
 dumpConstraints = do
@@ -410,3 +426,26 @@ dumpConstraints = do
 
 instance Disp (SourceLocation, LevelConstraint) where
   disp (SourceLocation p term, c) = disp p <+> disp c
+
+reduce :: Level -> Level
+reduce (LVar x) = LVar x
+reduce (LConst x) = LConst x
+reduce (LAdd l1 l2) = l1 <> l2
+
+simplify :: [(SourceLocation,LevelConstraint)] -> [(SourceLocation,LevelConstraint)]
+simplify [] = []
+simplify ((p, c@(Eq j k)) : r) =
+  case (reduce j, reduce k) of
+    (LVar x , k') -> (p , Eq (LVar x) k') : simplify (map (\(p,c) -> (p, Unbound.subst x k' c)) r)
+    (k', LVar x)  -> (p , Eq (LVar x) k') : simplify (map (\(p,c) -> (p, (Unbound.subst x k' c))) r)
+    (LConst i1, LConst i2) | i1 == i2 -> simplify r
+    (j', k') -> (p, Eq j' k') : simplify r
+simplify ((p, Lt j k) : r) = 
+  case (reduce j, reduce k) of
+    (LConst i1, LConst i2) | i1 < i2 -> simplify r
+    (j', k') -> (p, Lt j' k') : simplify r
+simplify ((p, Le j k) : r) = 
+  case (reduce j, reduce k) of
+    (LConst i1, LConst i2) | i1 <= i2 -> simplify r
+    (j', k') -> (p, Le j' k') : simplify r
+
