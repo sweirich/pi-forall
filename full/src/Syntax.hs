@@ -140,6 +140,9 @@ data LevelConstraint =
   | Eq Level Level
   deriving (Show, Eq, Ord, Generic, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
+data LevelContext = Fixed | Float 
+  deriving (Eq, Show, Generic, Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
+
 -- | Rho annotates the stage of a variable
 data Rho
   = Rel

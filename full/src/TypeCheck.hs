@@ -16,28 +16,7 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp), pp)
 import Syntax
-    ( mkSig,
-      unPosFlaky,
-      Arg(..),
-      ConstructorDef(..),
-      DCName,
-      Decl(..),
-      Epsilon(Mode),
-      LName,
-      Level(..),
-      LevelConstraint(Le, Lt),
-      Match(Match),
-      Module(moduleName, moduleImports, moduleEntries),
-      ModuleImport(ModuleImport),
-      Pattern(..),
-      Rho(..),
-      Sig(..),
-      TName,
-      Telescope(Telescope),
-      Term(Pos, Pi, Lam, App, Ann, TrustMe, TyUnit, LitUnit, LitBool,
-           TyBool, If, Let, TCon, Case, Type, TyEq, Refl, PrintMe, Displace,
-           DCon, Var, Subst, Contra),
-      Type )
+    
 import Debug.Trace
 
 import Text.PrettyPrint.HughesPJ (($$), render)
@@ -575,20 +554,21 @@ pat2Term (PatCon dc pats) = DCon dc (pats2Terms pats)
 
 
 -- | Check all of the types contained within a telescope
-tcTypeTele :: [Decl] -> Level -> TcMonad [Decl]
-tcTypeTele [] k = return []
-tcTypeTele (Def x tm : tl) mk = do
+-- If the boolean is True, then named arguments are required to have a level
+tcTypeTele :: LevelContext -> [Decl] -> Level -> TcMonad [Decl]
+tcTypeTele b [] k = return []
+tcTypeTele b (Def x tm : tl) mk = do
   (ty1, vx) <- Env.withStage Irr $ inferType (Var x) mk
   tm' <- Env.withStage Irr $ checkType tm ty1 mk
   let decls = [Def x tm]
-  tele' <- Env.extendCtxs decls $ tcTypeTele tl mk
+  tele' <- Env.extendCtxs decls $ tcTypeTele b tl mk
   return (Def x tm' : tele')
-tcTypeTele (TypeSig sig : tl) mk = do
+tcTypeTele b (TypeSig sig : tl) mk = do
   let l = localize mk (sigLevel sig)
   ty' <- tcType (sigType sig) l
-  tl' <- Env.extendCtx (TypeSig sig) $ tcTypeTele tl mk
-  return (TypeSig (sig { sigType = ty' }) : tl')
-tcTypeTele tele k =
+  tl' <- Env.extendCtx (TypeSig sig { sigLevel = Just l}) $ tcTypeTele b tl mk
+  return (TypeSig (sig { sigType = ty'}) : tl')
+tcTypeTele b tele k =
   Env.err [DS "Invalid telescope: ", DD tele]
 
 
@@ -715,15 +695,21 @@ tcEntry (Demote ep) = return (AddCtx [Demote ep])
 tcEntry decl@(Data t (Telescope delta) cs k) =
   do
     -- Check that the telescope for the datatype definition is well-formed
-    edelta <- tcTypeTele delta k
-    ---- check that the telescope provided
-    ---  for each data constructor is wellfomed, and elaborate them
+    -- in this case, the telescope indicates arguments to the data decl.
+    -- named arguments don't require explicit levels (but can have them if they want)
+    edelta <- tcTypeTele Float delta k
+    let ldelta = map (localizeDecl k) delta
+    -- Check that the telescope provided
+    --  for each data constructor is wellfomed, and elaborate them
+    -- In this case, the telescopes are "types" for the datacons, so named
+    -- arguments require explicit levels (and unification variables are generated if they
+    -- are not present). 
     let elabConstructorDef defn@(ConstructorDef pos d (Telescope tele)) =
           Env.extendSourceLocation pos defn $
             Env.extendCtx (DataSig t (Telescope delta) k) $
-              Env.extendCtxTele delta $ do
-                etele <- tcTypeTele tele k
-                return (ConstructorDef pos d (Telescope tele))
+              Env.extendCtxTele ldelta $ do
+                etele <- tcTypeTele Fixed tele k
+                return (ConstructorDef pos d (Telescope etele))
     ecs <- mapM elabConstructorDef cs
     -- Implicitly, we expect the constructors to actually be different...
     let cnames = map (\(ConstructorDef _ c _) -> c) cs
@@ -734,6 +720,10 @@ tcEntry decl@(Data t (Telescope delta) cs k) =
     return $ AddCtx (Unbound.substs ss [Data t (Telescope delta) ecs k])
 tcEntry (DataSig _ _ _) = Env.err [DS "internal construct"]
 tcEntry (RecDef _ _) = Env.err [DS "internal construct"]
+
+localizeDecl :: Level -> Decl -> Decl
+localizeDecl k (TypeSig sig) = TypeSig (sig { sigLevel = Just (localize k (sigLevel sig)) })
+localizeDecl k d = d
 
 
 
@@ -804,7 +794,7 @@ exhaustivityCheck scrut ty pats = do
           this <-
             ( do
                 tele' <- substTele delta tys tele
-                tcTypeTele tele' (LConst 0) --TODO!!
+                tcTypeTele Float tele' (LConst 0) --TODO!!
                 return [dc]
               )
               `catchError` (\_ -> return [])

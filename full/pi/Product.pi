@@ -8,8 +8,11 @@ module Product where
 
 import Equality
 
-data Sig (A:Type)(B: A -> Type) : Type where
-  Product of (x:A)(B x)
+-- Sigma types should behave similarly. BUT: note that B may
+-- be named in the types of the constructors, even though it 
+-- doesn't appear later in the telescope.
+data Sig (A : Type @ 0) (B : A -> Type) : Type @ 1 where
+  Product of (x:A @ 0) (B x)
 
 proj1 : [A:Type] -> [B:A -> Type] -> Sig A B -> A 
 proj1 = \[A][B] x . case x of 
@@ -77,7 +80,7 @@ eproj2 = \[A][B] x . case x of
 -- Irr second component
 
 data Refine (A:Type) (B : A -> Type) : Type where
-  Product of (x:A)[y:B x]
+  Product of (x:A)[B x]
 
 rproj1 : [A:Type] -> [B:A -> Type] -> Refine A B -> A 
 rproj1 = \[A][B] x . case x of 
@@ -86,17 +89,20 @@ rproj1 = \[A][B] x . case x of
 ---------------------------------------------------
 -- Non-dependent version 
 
-Times : Type -> Type -> Type
+
+Times : (A : Type @ 0) -> Type -> Type
 Times = \ A B . Sig A (\x . B)
 
-prod : [A:Type] -> [B:Type] -> A -> B -> Times A B
+{-
+prod : [A:Type @ 0] -> [B:Type] -> A -> B -> Times A B
 prod = \ [A] [B] x y . Product x y
 
 swap : [A:Type] -> [B:Type] -> Times A B -> Times B A
 swap = \ [A][B] p . case p of 
            Product x y -> Product y x
-
+-}
 {-
+-- we don't support the "at" syntaxt
 injectivity2' : [A:Type] -> [B: Type]
 				 -> (x1 : A) -> (y1 : B)
 				 -> (x2 : A) -> (y2 : B) 
@@ -108,7 +114,8 @@ injectivity2' = \[A][B] x1 y1 x2 y2 eq.
              at h. proj2 [A][\x. B] (Prod x1 y1) = proj2 [A][\x. B] h in
 	 let p2 = subst p1 by f1 at h. (h : B) = proj2 [A][\x. B] (Prod x1 y2) in
 	 subst p2 by f2 at h. y1 = h
-
+-}
+{-
 uncurry' :  [A:Type] -> [B:Type] -> [C : Times A B -> Type] -> 
         ((x: A)  -> (y : B) -> C (Prod x y)) ->
         ((p : Times A B) -> C p) 

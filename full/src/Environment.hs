@@ -294,8 +294,8 @@ extendCtxsGlobal ds ma = do
   nl <- asks locals
   unless (null nl) $ err [DS "Global extension of nonempty local context"]
   let newfree = mapMaybe getFreelyDisplaceable ds 
-  when (not (null newfree)) $ do
-    traceM $ "Freely displaceable: " ++ show newfree
+  --when (not (null newfree)) $ do
+  --  traceM $ "Freely displaceable: " ++ show newfree
   local
     ( \m@Env {globals = cs, freelyDisplaceableGlobals = free} ->
         m

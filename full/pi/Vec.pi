@@ -71,8 +71,8 @@ zipWith : [A:Type]->[B:Type]->[C:Type] -> (n:Nat) -> (A -> B -> C)
 zipWith = \[A][B][C] n f v1 v2. 
   zap[B][C][n] (zap [A][B -> C][n] (replicate [A -> B -> C] n f) v1) v2
 
-zip : [A:Type] -> [B:Type] -> (n:Nat) -> Vec A n -> Vec B n -> Vec (Times A B) n
-zip = \[A][B] n . zipWith [A][B][Times A B] n (prod[A][B])
+--zip : [A:Type] -> [B:Type] -> (n:Nat) -> Vec A n -> Vec B n -> Vec (Times A B) n
+--zip = \[A][B] n . zipWith [A][B][Times A B] n (prod[A][B])
 
 -- easiest version of foldr makes m irrelevant
 foldr : [A:Type]-> [B:Nat -> Type] -> [m:Nat] -> 
@@ -161,7 +161,7 @@ snd = \[A][B] x . let (y,z) = x in z
 -- note that in pi-forall, we only have one notion of irrelevance: 
 -- arguments are either erasable and ignorable, or they are relevant.
 
-
+{-
 filter : [A:Type] -> [n:Nat] -> (A -> Bool) -> 
        Vec A n -> { m : Nat | Vec A m } 
 filter = \ [A][n] f v . 
@@ -174,3 +174,4 @@ filter = \ [A][n] f v .
         if f x
            then (Succ m' , Cons [m'] x xs')
            else (m', xs')
+-}

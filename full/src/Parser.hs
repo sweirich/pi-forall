@@ -294,9 +294,9 @@ importDef :: LParser ModuleImport
 importDef = do reserved "import" >>  (ModuleImport <$> importName)
   where importName = identifier
 
-telescope :: LParser Telescope
-telescope = do
-  bindings <- telebindings
+telescope :: LevelContext -> LParser Telescope
+telescope ctx = do
+  bindings <- telebindings ctx
   return $ Telescope (foldr id [] bindings) where
 
 -- Omitted levels are unification variables
@@ -306,16 +306,25 @@ levelP =
     x <- Unbound.fresh (Unbound.string2Name "l")
     return (LVar x)
 
-telebindings :: LParser [[Decl] -> [Decl]]
-telebindings = many teleBinding
+optLevel :: LevelContext -> LParser (Maybe Level)
+optLevel Fixed = Just <$> levelP
+optLevel Float = 
+      try (Just . LConst <$> (at *> natural)) 
+  <|> try (at *> do x <- Unbound.fresh (Unbound.string2Name "l")
+                    return (Just (LVar x)))
+  <|> return Nothing
+
+
+telebindings :: LevelContext -> LParser [[Decl] -> [Decl]]
+telebindings ctx = many teleBinding
   where
     --  `_ : A`   or `x : A @ l`  or `A`
-    -- named variables must have fixed levels. If the level is not present, then 
-    -- a unification variable is generated
+    -- if there is a colon and no level defined, we use the context to determine whether to 
+    -- generate a level variable. If there is no colon, we don't generate a level variable
     annot rho = do
-      (x,ty,lvl) <-    try ((,,) <$> wildcard <*> (colon >> expr) <*> (Just <$> levelP))
-                <|>    try ((,,) <$> variable <*> (colon >> expr) <*> (Just <$> levelP))
-                <|>        ((,,) <$> Unbound.fresh wildcardName <*> expr <*> pure Nothing)
+      (x,ty,lvl) <-    try ((,,) <$> wildcard <*> (colon >> expr) <*> optLevel ctx)
+                <|>    try ((,,) <$> variable <*> (colon >> expr) <*> optLevel ctx)
+                <|>        ((,,) <$> Unbound.fresh wildcardName <*> expr <*> optLevel Float)
       return (TypeSig (Sig x rho lvl ty):)
 
     equal = do
@@ -344,7 +353,7 @@ dataDef :: LParser Decl
 dataDef = do
   reserved "data"
   name <- identifier
-  params <- telescope
+  params <- telescope Float
   colon
   Type <- typen
   lvl  <- levelP
@@ -362,7 +371,7 @@ constructorDef :: LParser ConstructorDef
 constructorDef = do
   pos <- getPosition
   cname <- identifier
-  args <- option (Telescope []) (reserved "of" >> telescope)
+  args <- option (Telescope []) (reserved "of" >> telescope Fixed)
   return $ ConstructorDef pos cname args
   <?> "Constructor"
 
