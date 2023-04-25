@@ -30,7 +30,8 @@ pp p = PP.render (disp p)
 class Disp d where
   disp :: d -> Doc
   default disp :: (Display d) => d -> Doc
-  disp d = display d (DI {showAnnots = False, dispAvoid = S.empty, prec = 0})
+  disp d = display d (DI {showAnnots = False, 
+                          dispAvoid = S.empty, prec = 0, showLevels = True, showLongNames = True})
 
 -- | The 'Display' class is like the 'Disp' class. It qualifies
 --   types that can be turned into 'Doc'.  The difference is that the
@@ -47,7 +48,10 @@ data DispInfo = DI
     -- | names that have been used
     dispAvoid :: S.Set Unbound.AnyName,
     -- | current precedence level
-    prec :: Int
+    prec :: Int,
+    -- 
+    showLevels :: Bool,
+    showLongNames :: Bool
   }
 
 -- | Error message quoting
@@ -59,7 +63,7 @@ data D
 
 -------------------------------------------------------------------------
 
--- * Disp Instances for quoting, errors, source positions, names
+-- * Disp Instances for quoting, errors, source positions, 
 
 -------------------------------------------------------------------------
 
@@ -80,9 +84,6 @@ instance Disp SourcePos where
       PP.<> PP.int (sourceColumn p)
       PP.<> PP.colon
 
-instance Disp (Unbound.Name a) where
-  disp = PP.text . show -- Unbound.name2String
-
 -------------------------------------------------------------------------
 
 -- * Disp Instances for Term syntax (defaults to Display, see below)
@@ -99,22 +100,40 @@ instance Disp Match
 
 instance Disp Level
 
+instance Typeable a => Disp (Unbound.Name a)
+
+instance Disp Decl
+
+instance Disp [Decl]
+
+instance Disp Module
+
+instance Disp Sig
+
+instance Disp ConstructorDef
 
 ------------------------------------------------------------------------
 
--- * Disp Instances for Modules
+-- * Disp/Display Instances for Modules
 
 -------------------------------------------------------------------------
 
-instance Disp [Decl] where
-  disp = PP.vcat . map disp
+instance Display [Decl] where
+  display ds = do 
+    dd <- mapM display ds
+    pure $ PP.vcat dd
 
 instance Disp Rho where
   disp Irr = PP.text "irrelevant"
   disp Rel = PP.text "relevant"
 
-instance Disp Epsilon where
-  disp (Mode rho lvl) = disp rho <+> disp lvl
+instance Display Epsilon where
+  display (Mode rho lvl) = do
+    sl <- asks showLevels
+    if sl then  
+      pure $ disp rho <+> disp lvl
+    else 
+      pure $ disp rho
 
 instance Display Level where
   display (LVar x) = display x
@@ -129,19 +148,67 @@ instance Disp LevelConstraint where
   disp (Le l1 l2) = disp l1 <+> PP.text "<=" <+> disp l2
   disp (Eq l1 l2) = disp l1 <+> PP.text "=" <+> disp l2
 
-instance Disp Module where
-  disp m =
-    PP.text "module" <+> disp (moduleName m) <+> PP.text "where"
-      $$ PP.vcat (map disp (moduleImports m))
-      $$ PP.vcat (map disp (moduleEntries m))
+instance Display Module where
+  display m = do
+    dn <- display (moduleName m)
+    di <- mapM display (moduleImports m)
+    de <- mapM display (moduleEntries m)
+    pure $ PP.text "module" <+> dn <+> PP.text "where"
+      $$ PP.vcat di
+      $$ PP.vcat de 
 
-instance Disp ModuleImport where
-  disp (ModuleImport i) = PP.text "import" <+> disp i
+instance Display ModuleImport where
+  display (ModuleImport i) = pure $ PP.text "import" <+> disp i
 
+instance Display Sig where
+  display (Sig n r (Just l) ty) = do
+    dn <- display n
+    b <- asks showLevels
+    dt <- display ty
+    if b then
+      pure $ dn <+> PP.text ":" <+> dt <+> PP.text "@" <+> disp l
+    else
+      pure $ dn <+> PP.text ":" <+> dt
+  display (Sig n r Nothing ty) = do
+    dn <- display n
+    dt <- display ty
+    pure $ dn <+> PP.text ":" <+> dt
+
+{-
 instance Disp Sig where
   disp (Sig n r (Just l) ty) = disp n <+> PP.text ":" <+> disp ty <+> PP.text "@" <+> disp l 
   disp (Sig n r Nothing ty) = disp n <+> PP.text ":" <+> disp ty 
+-}
 
+instance Display Decl where
+  display (Def n term) = do
+    dn <- display n
+    dt <- display term
+    pure $ dn <+> PP.text "=" <+> dt
+  display (RecDef n f) = display (Def n f)
+  display (TypeSig sig) = display sig
+  display (Demote ep) = return mempty
+  display (Data n params constructors i) = do
+    dn <- display n
+    dp <- display params
+    dc <- mapM display constructors
+    pure $ PP.hang
+      ( PP.text "data" <+> dn <+> dp
+          <+> PP.colon
+          <+> PP.text "Type"
+          <+> disp i
+          <+> PP.text "where"
+      )
+      2
+      (PP.vcat $ dc)
+  display (DataSig t delta i) = do
+    dt <- display t
+    dd <- display delta
+    di <- display i
+    pure $ PP.text "data" <+> dt <+> dd <+> PP.colon
+      <+> PP.text "Type" <+> di
+
+{-
 instance Disp Decl where
   disp (Def n term)  = disp n <+> PP.text "=" <+> disp term
   disp (RecDef n r)  = disp (Def n r)
@@ -161,10 +228,14 @@ instance Disp Decl where
   disp (DataSig t delta i) =
     PP.text "data" <+> disp t <+> disp delta <+> PP.colon
       <+> PP.text "Type" <+> disp i
+-}
 
-instance Disp ConstructorDef where
-  disp (ConstructorDef _ c (Telescope [])) = PP.text c
-  disp (ConstructorDef _ c tele) = PP.text c <+> PP.text "of" <+> disp tele
+instance Display ConstructorDef where
+  display (ConstructorDef _ c (Telescope [])) = pure $ PP.text c
+  display (ConstructorDef _ c tele) = do
+    dc <- display c
+    dt <- display tele
+    pure $ dc <+> PP.text "of" <+> dt
 
 
 
@@ -246,19 +317,18 @@ levelLet     = 0
 levelCase :: Int
 levelCase    = 0
 levelLam :: Int
-levelLam     = 0 
+levelLam     = 0
 levelPi :: Int
 levelPi      = 0
 levelSigma :: Int
 levelSigma   = 0
 levelProd :: Int
-levelProd    = 0  
+levelProd    = 0
 levelArrow :: Int
 levelArrow   = 5
 
 withPrec :: MonadReader DispInfo m => Int -> m a -> m a
-withPrec p t =
-  local (\d -> d { prec = p }) t
+withPrec p = local (\d -> d { prec = p })
 
 parens :: Bool -> Doc -> Doc
 parens b = if b then PP.parens else id
@@ -266,8 +336,17 @@ parens b = if b then PP.parens else id
 brackets :: Bool -> Doc -> Doc
 brackets b = if b then PP.brackets else id
 
+
 instance (Typeable a) => Display (Unbound.Name a) where
-  display = return . disp
+  display n = do
+    b <- asks showLongNames
+    if b then
+        pure $ PP.text (show n)
+      else
+        pure $ PP.text (Unbound.name2String n)
+
+--instance (Typeable a) => Display (Unbound.Name a) where
+--  display = return . disp
 
 instance Display Term where
   display Type = return $ PP.text "Type"
@@ -293,9 +372,9 @@ instance Display Term where
                 da <- withPrec 0 (display a)
                 return $ mandatoryBindParens ep  (dn <+> PP.colon <+> da <+> dispk mk)
               else do
-                case ep of 
+                case ep of
                   Rel -> withPrec (levelArrow+1) (display a)
-                  Irr -> PP.brackets <$> (withPrec 0 (display a)) 
+                  Irr -> PP.brackets <$> (withPrec 0 (display a))
       db <- withPrec levelPi (display b)
       return $ parens (levelArrow < p) $ lhs <+> PP.text "->" <+> db
   display (Ann a b) = do
@@ -352,15 +431,15 @@ instance Display Term where
       dy <- withPrec 0 $ display y
       dbody <- withPrec 0 $ display body
       return $
-        parens (levelLet < p) $ 
-        (PP.text "let" 
+        parens (levelLet < p) $
+        (PP.text "let"
           <+> (PP.text "("
           PP.<> dx
           PP.<> PP.text ","
           PP.<> dy
           PP.<> PP.text ")")
           <+> PP.text "="
-          <+> da 
+          <+> da
           <+> PP.text "in")
         $$ dbody
   display (Let a bnd) = do
@@ -400,26 +479,26 @@ instance Display Term where
     p <- ask prec
     dty <- display ty
     return $ parens (levelPi < p) $ PP.text "contra" <+> dty
-  
+
 
   display (isNumeral -> Just i) = display i
   display (TCon n args) = do
     p <- ask prec
     dn <- display n
     dargs <- withPrec (levelApp+1) $ mapM display args
-    return $ 
+    return $
       parens (levelApp < p && length args > 0) (dn <+> PP.hsep dargs)
   display (DCon n args) = do
     p <- ask prec
     dn <- display n
     dargs <- withPrec (levelApp+1) $ mapM display args
-    return $ 
+    return $
       parens (levelApp < p && length args > 0) (dn <+> PP.hsep dargs)
   display (Case scrut alts) = do
     p <- asks prec
     dscrut <- withPrec 0 $ display scrut
     dalts <- withPrec 0 $ mapM display alts
-    let top = PP.text "case" <+> dscrut <+> PP.text "of" 
+    let top = PP.text "case" <+> dscrut <+> PP.text "of"
     return $
       parens (levelCase < p) $
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
@@ -432,8 +511,8 @@ instance Display Term where
 
 
 instance Display Arg where
-  display arg = 
-    case argEp arg of 
+  display arg =
+    case argEp arg of
       Irr -> PP.brackets <$> withPrec 0 (display (unArg arg))
       Rel -> display (unArg arg)
 
@@ -448,27 +527,28 @@ instance Display Match where
 instance Display Pattern where
   display (PatCon c [])   = display c
   display (PatCon c args) = do
-    dc <- display c 
+    dc <- display c
     dargs <- mapM wrap args
     return $ dc <+> PP.hsep dargs
-      where 
+      where
         wrap (a@(PatVar _),ep)    = bindParens ep <$> display a
-        wrap (a@(PatCon _ []),ep) = bindParens ep <$> display a 
+        wrap (a@(PatCon _ []),ep) = bindParens ep <$> display a
         wrap (a@(PatCon _ _),ep)  = mandatoryBindParens ep <$> display a
-      
+
   display (PatVar x) = display x
 
-instance Disp Telescope where
-  disp (Telescope t) = PP.sep $ map (PP.parens . disp) t
+
+instance Display Telescope where
+  display (Telescope t) = do
+    dt <- mapM display t
+    pure $ PP.sep (map PP.parens dt)
+
+-- instance Disp Telescope where
+--   disp (Telescope t) = PP.sep $ map (PP.parens . disp) t
 
 instance Display a => Display (a, Epsilon) where
   display (t, Mode ep _) = bindParens ep <$> display t
 
-instance Display ConstructorDef where
-  display (ConstructorDef pos dc tele) = do 
-    dn <- display dc 
-    let dt = disp tele 
-    return $ dn PP.<+> PP.text "of" PP.<+> dt
 
 
 
@@ -490,7 +570,7 @@ gatherBinders body = do
   return ([], db)
 
 precBindParens :: Rho -> Bool -> Doc -> Doc
-precBindParens Rel b d = parens b d 
+precBindParens Rel b d = parens b d
 precBindParens Irr b d = PP.brackets d
 
 -- | Add [] for irrelevant arguments, leave other arguments alone

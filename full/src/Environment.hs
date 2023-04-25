@@ -113,7 +113,7 @@ initState :: TcState
 initState = TcState { constraints = [] }
 
 instance Disp Env where
-  disp e = vcat $ [ disp decl | decl <- locals e] ++ [disp decl | decl <- globals e]
+  disp e = disp $ [ decl | decl <- locals e] ++ [ decl | decl <- globals e]
 
 instance Disp TcState where
   disp s = vcat [disp l <> disp c | (SourceLocation p l,c) <- constraints s ]

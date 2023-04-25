@@ -69,7 +69,7 @@ equate' d t1 t2 = do
     Deep -> (,) <$> whnf t1 <*> whnf t2
     Shallow -> return (t1, t2)
   if d == Deep then do
-       -- traceM $ "whnf " ++ pp n1 ++ " and " ++ pp n2
+       traceM $ "whnf DEEP: " ++ pp n1 ++ " and " ++ pp n2
        return ()
      else return ()
   case (n1, n2) of
