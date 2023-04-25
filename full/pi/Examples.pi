@@ -1,0 +1,36 @@
+module Examples where
+
+import Blowup
+import Nat
+import BoolLib
+import Fin
+import Equal
+import Equality
+import Fix
+import Hurkens
+import HurkensEx
+import IsProp
+import Lambda
+import Lambda0
+import Lambda1
+import Lambda2
+import Pi
+
+data Vec (A : Type) (n : Nat) : Type where
+   Nil of [n = 0]
+   Cons of [m:Nat](A)(Vec A m)[n = Succ m]
+
+v0 : Vec Bool 1
+v0 = Cons [0] True Nil
+
+v3 : Vec Bool 3
+v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
+
+loop : Nat
+loop = loop
+
+map : [A : Type] -> [B : Type] -> [n:Nat] -> (f : A -> B) -> Vec A n -> Vec B n
+map = \[A][B][n] f vec .
+          case vec of 
+            Nil -> Nil
+            Cons [m] x xs -> Cons [m] (f x) (map [A][B][m] f xs)

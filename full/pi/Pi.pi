@@ -1,0 +1,25 @@
+module Pi where
+
+-- Example of eta-expanding the Pi type
+-- If we leave off the level annotations, they will get inferred
+Pi : (A : Type) -> (B : (y : A) -> Type @ 1) -> Type 
+Pi = \A B . (x : A) -> B x 
+
+Arrow : Type -> Type -> Type
+Arrow = \ A B . A -> B
+
+t1 : Type
+t1 = (x: Type) -> x -> x 
+
+t2 : Type 
+t2 = Pi Type (\ x . Arrow x x)
+
+t3 : Type
+t3 = (x: Type -> Type) -> ((y:Type) -> x y)
+
+-- NOTE: Cannot infer this level annotation(!)
+g : (x : Type -> Type @ 1) -> Type
+g  = \ x . Pi Type (\ y . x y)
+
+t4 : Type
+t4 = Pi (Arrow Type Type) g

@@ -1,0 +1,26 @@
+module WFU where
+
+data Void : Type @ 0 where {}
+
+data U : Type where 
+   Mk_U of (X : Type) (X -> U)
+
+
+-- A U is well-founded if all its elements are
+-- (No infinite chains of elements)
+data WF (u : U) : Type where
+   Mk_WF of [X : Type] [f : X -> U] ((x : X) -> WF (f x)) [u = Mk_U X f]
+
+
+-- All U are well-founded
+always_WF : (x : U) -> WF x
+always_WF = \ u . case u of 
+   (Mk_U X f) -> Mk_WF [X][f] (\ x . always_WF (f x))
+
+-- But this one is not
+loop : U 
+loop = Mk_U U (\x . x)
+
+not_WF : WF loop -> Void
+not_WF = \ y.  case y of
+   Mk_WF [X] [f] x -> not_WF (x loop)
