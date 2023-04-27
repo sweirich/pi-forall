@@ -14,7 +14,8 @@ import qualified Environment as Env
 import qualified Unbound.Generics.LocallyNameless as Unbound
 import PrettyPrint (D(..), pp, Disp(..))
 
-import Control.Monad.Except (unless, throwError, catchError, zipWithM, zipWithM_)
+
+import Control.Monad.Except (when, unless, throwError, catchError, zipWithM, zipWithM_)
 import Debug.Trace
 
 type Result = [LevelConstraint]
@@ -24,7 +25,7 @@ success = []
 equateLevel :: Level -> Level -> TcMonad Result
 equateLevel (LConst i) (LConst j) =
   if i == j then return success
-  else 
+  else
     Env.err [DS "Level mismatch",
               DS "Expected " , DD i, DS "Found ", DD j]
 equateLevel l1 l2 = return [Eq l1 l2]
@@ -32,7 +33,7 @@ equateLevel l1 l2 = return [Eq l1 l2]
 equateMaybeLevel :: Maybe Level -> Maybe Level -> TcMonad Result
 equateMaybeLevel (Just i) (Just j) = equateLevel i j
 equateMaybeLevel Nothing Nothing = return success
-equateMaybeLevel i j = 
+equateMaybeLevel i j =
    Env.err [DS "Level annotation mismatch",
               DS "Expected " , DD i, DS "Found ", DD j]
 
@@ -65,13 +66,13 @@ equate' d t1 (Pos p t2) = equate' d t1 t2
 equate' d (Ann t1 _) t2 = equate' d t1 t2
 equate' d t1 (Ann t2 _) = equate' d t1 t2
 equate' d t1 t2 = do
-  (n1, n2) <- case d of 
+  (n1, n2) <- case d of
     Deep -> (,) <$> whnf t1 <*> whnf t2
     Shallow -> return (t1, t2)
-  if d == Deep then do
+  when (d == Deep) $ do
+       traceM $ "equate'  : " ++ pp t1 ++ " and " ++ pp t2
        traceM $ "whnf DEEP: " ++ pp n1 ++ " and " ++ pp n2
        return ()
-     else return ()
   case (n1, n2) of
     (Type, Type) -> return success
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
@@ -122,16 +123,16 @@ equate' d t1 t2 = do
 
     (DCon d1 a1, DCon d2 a2) | d1 == d2 -> do
       equateArgs d a1 a2
-    (_,_) -> do 
+    (_,_) -> do
         -- For terms that do not have matching head forms, 
         -- first see if they are "shallowly" equal i.e. alpha-equivalent
         -- if this fails, then try again after calling whnf on both sides
-        let handler err = 
+        let handler err =
               case d of
                 Shallow -> do
                   equate' Deep n1 n2
                 Deep -> throwError err
-        (case (n1, n2) of 
+        (case (n1, n2) of
             (Var x,  Var y) | x == y -> return success
             (Displace (Var x) j, Displace (Var y) k) | x == y -> do
               isD <- Env.lookupFreelyDisplaceable x
@@ -143,10 +144,10 @@ equate' d t1 t2 = do
               cs1 <- equate' Shallow a1 b1
               cs2 <- equateArg Shallow a2 b2
               return (cs1 <> cs2)
-            
+
             (If a1 b1 c1, If a2 b2 c2) -> do
-              cs1 <- equate' Shallow a1 a2 
-              cs2 <- equate' Shallow b1 b2 
+              cs1 <- equate' Shallow a1 a2
+              cs2 <- equate' Shallow b1 b2
               cs3 <- equate' Shallow c1 c2
               return (cs1 <> cs2 <> cs3)
 
@@ -165,7 +166,7 @@ equate' d t1 t2 = do
               cs1 <- equate' Shallow s1 s2
               Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
               cs2 <- equate' Shallow body1 body2
-              return (cs1 <> cs2) 
+              return (cs1 <> cs2)
 
             (Subst at1 pf1, Subst at2 pf2) -> do
               cs1 <- equate' Shallow at1 at2
@@ -192,7 +193,7 @@ equate' d t1 t2 = do
               else tyErr n2 n1
             (_,_) -> do
               tyErr n2 n1) `catchError` handler
-  
+
 
 
 -- | Match up args
@@ -203,14 +204,14 @@ equateArgs d (a1:t1s) (a2:t2s) = do
   return (cs ++ ds)
 equateArgs d [] [] = return success
 equateArgs d a1 a2 = tyErr (length a2) (length a1)
-         
+
 
 -- | Ignore irrelevant arguments when comparing 
 equateArg :: Depth -> Arg -> Arg -> TcMonad Result
 equateArg d (Arg Rel t1) (Arg Rel t2) = equate' d t1 t2
 equateArg d (Arg Irr t1) (Arg Irr t2) = return success
 equateArg d a1 a2 = tyErr a2 a1
-  
+
 
 
 -------------------------------------------------------
@@ -261,10 +262,12 @@ whnf (Var x) = do
   case maybeDef of
     (Just d) -> whnf d
     _ -> do
+          traceM $ "no def for: " ++ pp x
           maybeRecDef <- Env.lookupRecDef Any x
           case maybeRecDef of
             (Just d) -> whnf d
-            _ -> return (Var x)
+            _ -> do
+              return (Var x)
 whnf t@(Displace (Var x) j) = do
   -- traceM $ "whnf: " ++ pp t
   maybeDef <- Env.lookupDef Global x
@@ -273,8 +276,8 @@ whnf t@(Displace (Var x) j) = do
     _ -> do
       maybeDef2 <- Env.lookupRecDef Global x
       case maybeDef2 of
-         (Just d) -> do 
-          d' <- displace j d 
+         (Just d) -> do
+          d' <- displace j d
           -- traceM $ "displaced by " ++ pp j ++ ": " ++ pp d'
           whnf d'
          _ -> do
@@ -425,7 +428,7 @@ displace :: Level -> Term -> TcMonad Term
 displace j t = case t of
     Var x -> Env.lookupTyMaybe Global x >>= \mb -> case mb of
                   Just _ -> return (Displace (Var x) j)
-                  Nothing -> do 
+                  Nothing -> do
                     -- traceM $ "not global: " ++ pp x
                     return $ Var x
     Lam r bnd -> do
@@ -456,13 +459,13 @@ displace j t = case t of
     TyEq a b -> TyEq <$> displace j a <*> displace j b
     TCon tc args -> TCon tc <$> mapM (displaceArg j) args
     DCon dc args -> DCon dc <$> mapM (displaceArg j) args
-    Case a brs -> 
+    Case a brs ->
       Case <$> displace j a <*> mapM (displaceBr j) brs
-    Subst a b -> 
+    Subst a b ->
       Subst <$> displace j a <*> displace j b
-    Contra a -> 
+    Contra a ->
       Contra <$> displace j a
-    
+
     Type -> return Type
     PrintMe -> return PrintMe
     TrustMe -> return TrustMe

@@ -230,6 +230,7 @@ data Decl
 
   deriving (Show, Generic, Typeable)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
+
 -- | The names of type/data constructors used in the module
 data ConstructorNames = ConstructorNames
   { tconNames :: Set String,
@@ -237,8 +238,8 @@ data ConstructorNames = ConstructorNames
   }
   deriving (Show, Eq, Ord, Generic, Typeable)
 
--- | A Data constructor has a name and a telescope of arguments
-data ConstructorDef = ConstructorDef SourcePos DCName Telescope
+-- | A Data constructor has a name, a telescope of arguments and a Level
+data ConstructorDef = ConstructorDef SourcePos DCName Telescope Level
   deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term, Unbound.Subst Level)
 
@@ -318,17 +319,17 @@ preludeDataDecls =
   , Data boolName   (Telescope []) [falseConstructorDef, trueConstructorDef] (LConst 0)
   ]  where
         -- boolean
-        trueConstructorDef = ConstructorDef internalPos trueName (Telescope [])
-        falseConstructorDef = ConstructorDef internalPos falseName (Telescope [])
+        trueConstructorDef = ConstructorDef internalPos trueName (Telescope []) (LConst 0)
+        falseConstructorDef = ConstructorDef internalPos falseName (Telescope []) (LConst 0)
 
         -- unit
-        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope [])
+        unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) (LConst 0)
 
         -- Sigma-type
         -- Sigma (A :: Type) (B :: Pi x:A. Type)
         -- prod :: (x :: A) (y :: B x) -> Sigma A B
         sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
-        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY]) (LConst 1)
         sigA = Sig aName Rel (Just (LConst 0)) Type
         sigB = Sig bName Rel Nothing (Pi (Mode Rel Nothing) (Var aName) (Unbound.bind xName Type))
         sigX = Sig xName Rel (Just (LConst 0)) (Var aName)

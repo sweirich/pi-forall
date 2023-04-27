@@ -1,6 +1,9 @@
 {- pi-forall language -}
 
 -- | Utilities for managing a typechecking context.
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
+{-# HLINT ignore "Redundant <$>" #-}
 module Environment
   ( TcMonad,
     runTcMonad,
@@ -133,14 +136,6 @@ localizedDecls l =
     Local -> asks locals
     Global -> asks globals
     Any -> (++) <$> asks locals <*> asks globals
-  {- ctx <- asks ctx
-  locals <- asks locals
-  globals <- asks globals
-  let (start, stop) = case l of 
-                Local -> (ctx, locals)
-                Global -> (drop locals ctx, globals)
-                Any -> (ctx, locals + globals)
-  return (take stop start) -}
 
 -- | Find a name's type in the context.
 lookupTyMaybe ::
@@ -233,18 +228,18 @@ lookupTCon v = do
 lookupDConAll ::
   (MonadReader Env m) =>
   DCName ->
-  m [(TCName, (Telescope, ConstructorDef, Level))]
+  m [(TCName, (Telescope, ConstructorDef))]
 lookupDConAll v = do
   g <- localizedDecls Any
   scanGamma g
   where
     scanGamma [] = return []
-    scanGamma ((Data v' delta cs k) : g) =
-      case find (\(ConstructorDef _ v'' tele) -> v'' == v) cs of
+    scanGamma ((Data v' delta cs _) : g) =
+      case find (\(ConstructorDef _ v'' tele k) -> v'' == v) cs of
         Nothing -> scanGamma g
         Just c -> do
           more <- scanGamma g
-          return $ (v', (delta, c, k)) :  more
+          return $ (v', (delta, c)) :  more
     scanGamma ((DataSig v' delta _) : g) = scanGamma g
     scanGamma (_ : g) = scanGamma g
 
@@ -259,7 +254,7 @@ lookupDCon ::
 lookupDCon c tname = do
   matches <- lookupDConAll c
   case lookup tname matches of
-    Just (delta, ConstructorDef _ _ deltai, k) ->
+    Just (delta, ConstructorDef _ _ deltai k) ->
       return (delta, deltai, k)
     Nothing ->
       err

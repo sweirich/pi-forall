@@ -24,3 +24,6 @@ loop = Mk_U U (\x . x)
 not_WF : WF loop -> Void
 not_WF = \ y.  case y of
    Mk_WF [X] [f] x -> not_WF (x loop)
+
+false : Void
+false = not_WF (always_WF loop)

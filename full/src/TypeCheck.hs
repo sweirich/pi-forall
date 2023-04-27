@@ -284,7 +284,9 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
         decls' <- Equal.unify [] scrut'' (pat2Term pat)
-        body' <- Env.extendCtxs (decls ++ decls') $ checkType body ty mk
+        body' <- Env.extendCtxs (decls ++ decls') $ do
+          Env.warn $ "checking case: " ++ pp (decls ++ decls')
+          checkType body ty mk
         return (Match (Unbound.bind pat body'))
 
   let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts
@@ -293,7 +295,6 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
   return (ty, Case scrut' alts')
 
 tcTerm t@(TyEq a b) Nothing mk = do
-  -- traceM $ "Checking " ++ pp t ++ " at level " ++ pp mk
   (aTy, a') <- inferType a mk
   b' <- checkType b aTy mk
   return (Type, TyEq a' b')
@@ -516,7 +517,10 @@ declarePat (PatVar x)       (Mode rho j) ty = return [TypeSig (Sig x rho j ty)]
 declarePat (PatCon dc pats) (Mode Rel (Just j)) ty = do
   (tc,params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai, k) <- Env.lookupDCon dc tc
+  -- require equality now, displacement later
+  -- Env.extendLevelConstraint (Eq k j)
   tele <- substTele delta params deltai
+  traceM $ "declarePat: " ++ pp tele
   declarePats dc pats j tele
 declarePat pat (Mode Rel Nothing) _ty = 
   Env.err [DS "Need a concrete level here"]
@@ -534,7 +538,9 @@ declarePats dc ((pat, _) : pats) j (TypeSig (Sig x r l ty) : tele) = do
   let k = localize j l
   ds1 <- declarePat pat (Mode r (Just k)) ty
   let tm = pat2Term pat
-  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats j (Unbound.subst x tm tele)
+  tele' <- doSubst [(x,tm)] tele
+  -- let tele' = map ((Unbound.subst :: TName -> Term -> Decl -> Decl) x tm) tele
+  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats j tele'
   return (ds1 ++ ds2)
 declarePats dc []  j [] = return []
 declarePats dc []  j  _ = Env.err [DS "Not enough patterns in match for data constructor", DD dc]
@@ -695,16 +701,17 @@ tcEntry (Demote ep) = return (AddCtx [Demote ep])
 tcEntry decl@(Data t (Telescope delta) cs k) =
   do
     -- Check that the telescope for the datatype definition is well-formed
-    -- in this case, the telescope indicates arguments to the data decl.
-    -- named arguments don't require explicit levels (but can have them if they want)
+    -- in this case, the telescope indicates arguments to the data decl
+    -- k is the level of the datatype and each of its data constructors
+    -- named arguments in delta don't require explicit levels (but can have them if they want)
     edelta <- tcTypeTele Float delta k
     let ldelta = map (localizeDecl k) delta
     -- Check that the telescope provided
-    --  for each data constructor is wellfomed, and elaborate them
+    -- for each data constructor is wellfomed, and elaborate them
     -- In this case, the telescopes are "types" for the datacons, so named
     -- arguments require explicit levels (and unification variables are generated if they
     -- are not present). 
-    let elabConstructorDef defn@(ConstructorDef pos d (Telescope tele)) =
+    let elabConstructorDef defn@(ConstructorDef pos d (Telescope tele) ck) =
           Env.extendSourceLocation pos defn $
             Env.extendCtx (DataSig t (Telescope delta) k) $
               Env.extendCtxTele ldelta $ do
@@ -712,7 +719,7 @@ tcEntry decl@(Data t (Telescope delta) cs k) =
                 return (ConstructorDef pos d (Telescope etele))
     ecs <- mapM elabConstructorDef cs
     -- Implicitly, we expect the constructors to actually be different...
-    let cnames = map (\(ConstructorDef _ c _) -> c) cs
+    let cnames = map (\(ConstructorDef _ c _ _) -> c) cs
     unless (length cnames == length (nub cnames)) $
       Env.err [DS "Datatype definition", DD t, DS "contains duplicated constructors"]
     -- finally, add the datatype to the env and perform action m

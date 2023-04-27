@@ -1,6 +1,8 @@
 {- pi-forall language -}
 
 -- | A parsec-based parser for the concrete syntax
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <$>" #-}
 module Parser
   (
    parseModuleFile,
@@ -363,7 +365,7 @@ dataDef = do
   reserved "where"
   cs <- layout constructorDef (return ())
   forM_ cs
-    (\(ConstructorDef _ cname _) ->
+    (\(ConstructorDef _ cname _ _) ->
        modify (\cnames -> cnames{ dconNames = S.insert cname (dconNames cnames)}))
   return $ Data name params cs lvl
 
@@ -372,7 +374,8 @@ constructorDef = do
   pos <- getPosition
   cname <- identifier
   args <- option (Telescope []) (reserved "of" >> telescope Fixed)
-  return $ ConstructorDef pos cname args
+  lvl  <- levelP
+  return $ ConstructorDef pos cname args lvl
   <?> "Constructor"
 
 
