@@ -76,7 +76,6 @@ tcTerm t@(Var x) Nothing mk = do
     Nothing -> do
       sig <- Env.lookupTy x        -- make sure the variable is accessible
       l <- getLevel (sigLevel sig) -- make sure that it is annotated with a level
-      -- traceM $ "checking local var " ++ pp x ++ " @ " ++ pp l ++ " <= " ++ pp mk
       Env.checkStage (sigRho sig)
       Env.extendLevelConstraint (Le l mk)
       return (sigType sig, Var x)
@@ -150,28 +149,9 @@ tcTerm TyUnit Nothing k = return (Type, TyUnit)
 tcTerm LitUnit Nothing k = return (Type, LitUnit)
 
 -- i-bool
-tcTerm TyBool Nothing k = return (Type, TyBool)
-
-
--- i-true/false
-tcTerm (LitBool b) Nothing k = return (TyBool, LitBool b)
-
--- c-if
-tcTerm t@(If t1 t2 t3) mty mk = do
-  case mty of
-    Just ty -> do
-      t1' <- checkType t1 TyBool mk
-      dtrue <- def t1 (LitBool True)
-      dfalse <- def t1 (LitBool False)
-      t2' <- Env.extendCtxs dtrue $ checkType t2 ty mk
-      t3' <- Env.extendCtxs dfalse $ checkType t3 ty mk
-      return (ty, If t1' t2' t3')
-    Nothing -> do
-      t1' <- checkType t1 TyBool mk
-      (ty, t2') <- inferType t2 mk
-      t3' <-checkType t3 ty mk
-      return (ty, If t1' t2' t3')
-
+tcTerm TyBool _ k = Env.err [DS "Booleans are datatypes in this version"]
+tcTerm LitBool{} _ k = Env.err [DS "Booleans are datatypes in this version"]
+tcTerm If{} mty mk = Env.err [DS "Booleans are datatypes in this version"]
 
 tcTerm (Let rhs bnd) mty mk = do
   (x, body) <- Unbound.unbind bnd
@@ -212,7 +192,7 @@ tcTerm (TCon c params) Nothing mk = do
 tcTerm t@(DCon c args) Nothing mk = do
   matches <- Env.lookupDConAll c
   case matches of
-    [(tname, (Telescope [], cd@(ConstructorDef _ _ (Telescope deltai)),j))] -> do
+    [(tname, (Telescope [], cd@(ConstructorDef _ _ (Telescope deltai) j)))] -> do
       Env.extendLevelConstraint (Le j mk)
       let numArgs = length deltai
       unless (length args == numArgs) $
@@ -285,7 +265,6 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
         -- could fail if branch is in-accessible
         decls' <- Equal.unify [] scrut'' (pat2Term pat)
         body' <- Env.extendCtxs (decls ++ decls') $ do
-          Env.warn $ "checking case: " ++ pp (decls ++ decls')
           checkType body ty mk
         return (Match (Unbound.bind pat body'))
 
@@ -341,59 +320,9 @@ tcTerm t@(Contra p) (Just ty) mk = do
           DS "are contradictory"
         ]
         
-
-{-
-tcTerm t@(Sigma tyA (Dep j) bnd) Nothing mk = do
-  (x, tyB) <- Unbound.unbind bnd
-  j0 <- tcType tyA (Just j)
-  k0 <- Env.extendCtx (mkSig x tyA (Dep j)) $ tcType tyB mk
-  return (Type, max (j0 + 1) k0)
-tcTerm t@(Sigma tyA NonDep bnd) Nothing mk = do
-  (x, tyB) <- Unbound.unbind bnd
-  k0 <- tcType tyA mk
-  k1 <- tcType tyB mk
-  return (Type, max k0 k1)
-
-
-tcTerm t@(Prod a b) (Just ty) k = do
-  case ty of
-    (Sigma tyA (Dep j) bnd) -> do
-      (x, tyB) <- Unbound.unbind bnd
-      checkType a tyA j
-      Env.extendCtxs [mkSig x tyA (Dep j), Def x a] $ checkType b tyB k
-      return (Sigma tyA (Dep j) (Unbound.bind x tyB))
-    (Sigma tyA NonDep bnd) -> do
-      (x, tyB) <- Unbound.unbind bnd
-      checkType a tyA k
-      checkType b tyB k
-      return (Sigma tyA NonDep (Unbound.bind x tyB))
-    _ ->
-      Env.err
-        [ DS "Products must have Sigma Type",
-          DD ty,
-          DS "found instead"
-        ]
-
-
-tcTerm t@(LetPair p bnd) (Just ty) k = do
-  ((x, y), body) <- Unbound.unbind bnd
-  pty <- inferType p k
-  pty' <- Equal.whnf pty
-  case pty' of
-    Sigma tyA (Dep j) bnd' -> do
-      let tyB = Unbound.instantiate bnd' [Var x]
-      decl <- def p (Prod (Var x) (Var y))
-      Env.extendCtxs ([mkSig x tyA (Dep j), mkSig y tyB (Dep k)] ++ decl) $
-          checkType body ty k
-      return ty
-    Sigma tyA NonDep bnd' -> do
-      let tyB = Unbound.instantiate bnd' [Var x]
-      decl <- def p (Prod (Var x) (Var y))
-      Env.extendCtxs ([mkSig x tyA (Dep k), mkSig y tyB (Dep k)] ++ decl) $
-          checkType body ty k
-      return ty
-    _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
--}
+tcTerm Sigma{} _ mk = Env.err [DS "The parser for 'full' expands Sigmas into datatypes"]
+tcTerm Prod{} _ k = Env.err [DS "The parser for 'full' expands Sigmas into datatypes"]
+tcTerm LetPair{} _ k =  Env.err [DS "The parser for 'full' expands Sigmas into datatypes"]
 
 tcTerm PrintMe (Just ty) mk = do
   gamma <- Env.getLocalCtx
@@ -420,7 +349,6 @@ tcTerm (Displace t j) Nothing mk = do
 -- c-infer
 tcTerm tm (Just ty) mk = do
   (ty', tm') <- inferType tm mk
-  -- Env.warn [DS "equating:", DD ty', DS "and", DD ty]
   Equal.equate ty' ty
   return (ty', tm')
 
@@ -517,10 +445,9 @@ declarePat (PatVar x)       (Mode rho j) ty = return [TypeSig (Sig x rho j ty)]
 declarePat (PatCon dc pats) (Mode Rel (Just j)) ty = do
   (tc,params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai, k) <- Env.lookupDCon dc tc
-  -- require equality now, displacement later
-  -- Env.extendLevelConstraint (Eq k j)
+  -- require equality now, maybe support displacement for data constructors later
+  Env.extendLevelConstraint (Eq j k)
   tele <- substTele delta params deltai
-  traceM $ "declarePat: " ++ pp tele
   declarePats dc pats j tele
 declarePat pat (Mode Rel Nothing) _ty = 
   Env.err [DS "Need a concrete level here"]
@@ -560,21 +487,25 @@ pat2Term (PatCon dc pats) = DCon dc (pats2Terms pats)
 
 
 -- | Check all of the types contained within a telescope
--- If the boolean is True, then named arguments are required to have a level
-tcTypeTele :: LevelContext -> [Decl] -> Level -> TcMonad [Decl]
-tcTypeTele b [] k = return []
-tcTypeTele b (Def x tm : tl) mk = do
+tcTypeTele :: [Decl] -> Level -> TcMonad [Decl]
+tcTypeTele [] k = return []
+tcTypeTele (Def x tm : tl) mk = do
   (ty1, vx) <- Env.withStage Irr $ inferType (Var x) mk
   tm' <- Env.withStage Irr $ checkType tm ty1 mk
   let decls = [Def x tm]
-  tele' <- Env.extendCtxs decls $ tcTypeTele b tl mk
+  tele' <- Env.extendCtxs decls $ tcTypeTele tl mk
   return (Def x tm' : tele')
-tcTypeTele b (TypeSig sig : tl) mk = do
-  let l = localize mk (sigLevel sig)
+tcTypeTele (TypeSig sig : tl) mk = do
+  l <- case sigLevel sig of 
+             Just j -> do
+                Env.extendLevelConstraint (Lt j mk)
+                return j
+             Nothing ->
+                return mk
   ty' <- tcType (sigType sig) l
-  tl' <- Env.extendCtx (TypeSig sig { sigLevel = Just l}) $ tcTypeTele b tl mk
+  tl' <- Env.extendCtx (TypeSig sig { sigLevel = Just l}) $ tcTypeTele tl mk
   return (TypeSig (sig { sigType = ty'}) : tl')
-tcTypeTele b tele k =
+tcTypeTele tele k =
   Env.err [DS "Invalid telescope: ", DD tele]
 
 
@@ -649,7 +580,6 @@ dumpAndSolve term = do
 -- | Check each sort of declaration in a module
 tcEntry :: Decl -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
-  -- traceM $ "checking def " ++ show n
   oldDef <- Env.lookupDef Any n
   maybe tc die oldDef
   where
@@ -701,10 +631,12 @@ tcEntry (Demote ep) = return (AddCtx [Demote ep])
 tcEntry decl@(Data t (Telescope delta) cs k) =
   do
     -- Check that the telescope for the datatype definition is well-formed
-    -- in this case, the telescope indicates arguments to the data decl
-    -- k is the level of the datatype and each of its data constructors
-    -- named arguments in delta don't require explicit levels (but can have them if they want)
-    edelta <- tcTypeTele Float delta k
+    -- in this case, the telescope indicates parameters to the data decl
+    -- all arguments must be named in this telescope, but they may or may not
+    -- have a fixed level
+    -- `k` is the level of the datatype `t` itself
+    edelta <- tcTypeTele delta k
+    -- add the `k` as the level of any parameters that don't have a fixed level.
     let ldelta = map (localizeDecl k) delta
     -- Check that the telescope provided
     -- for each data constructor is wellfomed, and elaborate them
@@ -715,18 +647,18 @@ tcEntry decl@(Data t (Telescope delta) cs k) =
           Env.extendSourceLocation pos defn $
             Env.extendCtx (DataSig t (Telescope delta) k) $
               Env.extendCtxTele ldelta $ do
-                etele <- tcTypeTele Fixed tele k
-                return (ConstructorDef pos d (Telescope etele))
+                etele <- tcTypeTele tele ck
+                return (ConstructorDef pos d (Telescope etele) ck)
     ecs <- mapM elabConstructorDef cs
     -- Implicitly, we expect the constructors to actually be different...
     let cnames = map (\(ConstructorDef _ c _ _) -> c) cs
     unless (length cnames == length (nub cnames)) $
       Env.err [DS "Datatype definition", DD t, DS "contains duplicated constructors"]
-    -- finally, add the datatype to the env and perform action m
+    -- solve the level constraints and add the elaborated decl to the context
     ss <- dumpAndSolve decl
-    return $ AddCtx (Unbound.substs ss [Data t (Telescope delta) ecs k])
-tcEntry (DataSig _ _ _) = Env.err [DS "internal construct"]
-tcEntry (RecDef _ _) = Env.err [DS "internal construct"]
+    return $ AddCtx (Unbound.substs ss [Data t (Telescope edelta) ecs k])
+tcEntry DataSig{} = Env.err [DS "internal construct"]
+tcEntry RecDef{} = Env.err [DS "internal construct"]
 
 localizeDecl :: Level -> Decl -> Decl
 localizeDecl k (TypeSig sig) = TypeSig (sig { sigLevel = Just (localize k (sigLevel sig)) })
@@ -786,7 +718,7 @@ exhaustivityCheck scrut ty pats = do
             else Env.err $ DS "Missing case for" : map DD l
         loop (PatVar x : _) dcons = return ()
         loop (PatCon dc args : pats') dcons = do
-          (ConstructorDef _ _ (Telescope tele), dcons') <- removeDCon dc dcons
+          (ConstructorDef _ _ (Telescope tele) _, dcons') <- removeDCon dc dcons
           tele' <- substTele delta tys tele
           let (aargs, pats'') = relatedPats dc pats'
           -- check the arguments of the data constructor
@@ -797,11 +729,11 @@ exhaustivityCheck scrut ty pats = do
         -- in the current environment
         checkImpossible :: [ConstructorDef] -> TcMonad [DCName]
         checkImpossible [] = return []
-        checkImpossible (ConstructorDef _ dc (Telescope tele) : rest) = do
+        checkImpossible (ConstructorDef _ dc (Telescope tele) ck : rest) = do
           this <-
             ( do
                 tele' <- substTele delta tys tele
-                tcTypeTele Float tele' (LConst 0) --TODO!!
+                _ <- tcTypeTele tele' ck --TODO check this!!
                 return [dc]
               )
               `catchError` (\_ -> return [])
@@ -818,7 +750,7 @@ removeDCon ::
   DCName ->
   [ConstructorDef] ->
   TcMonad (ConstructorDef, [ConstructorDef])
-removeDCon dc (cd@(ConstructorDef _ dc' _) : rest)
+removeDCon dc (cd@(ConstructorDef _ dc' _ _) : rest)
   | dc == dc' =
     return (cd, rest)
 removeDCon dc (cd1 : rest) = do

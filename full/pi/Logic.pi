@@ -7,7 +7,7 @@ data And (A : Type) (B : Type) : Type where
   Conj of (A) (B)
 
 
-proj1 : [A:Type @ 0] -> [B : Type @ 0] -> (And A B) -> A
+proj1 : [A:Type @ 0] -> [B : Type @ 0] -> (And A B) -> A @ 1
 proj1 = \ [A] [B] p . case p of
   Conj x y -> x
 

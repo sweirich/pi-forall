@@ -69,10 +69,10 @@ equate' d t1 t2 = do
   (n1, n2) <- case d of
     Deep -> (,) <$> whnf t1 <*> whnf t2
     Shallow -> return (t1, t2)
-  when (d == Deep) $ do
+  {- when (d == Deep) $ do
        traceM $ "equate'  : " ++ pp t1 ++ " and " ++ pp t2
        traceM $ "whnf DEEP: " ++ pp n1 ++ " and " ++ pp n2
-       return ()
+       return () -}
   case (n1, n2) of
     (Type, Type) -> return success
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
@@ -262,7 +262,7 @@ whnf (Var x) = do
   case maybeDef of
     (Just d) -> whnf d
     _ -> do
-          traceM $ "no def for: " ++ pp x
+          -- traceM $ "no def for: " ++ pp x
           maybeRecDef <- Env.lookupRecDef Any x
           case maybeRecDef of
             (Just d) -> whnf d
