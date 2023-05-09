@@ -16,7 +16,7 @@ import Environment qualified as Env
 import Equal qualified
 import PrettyPrint (Disp (disp), pp)
 import Syntax
-    
+
 import Debug.Trace
 
 import Text.PrettyPrint.HughesPJ (($$), render)
@@ -68,7 +68,7 @@ tcTerm :: Term -> Maybe Type -> Level -> TcMonad (Type, Term)
 -- i-var
 tcTerm t@(Var x) Nothing mk = do
   ms <- Env.lookupTyMaybe Global x
-  case ms of 
+  case ms of
     Just sig -> do
       -- global variable, try to displace
       jx <- Unbound.fresh (Unbound.string2Name ("jV" ++ show x))
@@ -88,7 +88,7 @@ tcTerm Type Nothing mk = do
 -- i-pi
 tcTerm (Pi (Mode ep lvl) tyA bnd) Nothing mk = do
   (x, tyB) <- Unbound.unbind bnd
-  case lvl of 
+  case lvl of
     Just j -> do
       tyA' <- tcType tyA j
       tyB' <- Env.extendCtx (TypeSig (Sig x ep (Just j) tyA')) (tcType tyB mk)
@@ -105,7 +105,7 @@ tcTerm (Lam ep1  bnd) (Just (Pi (Mode ep2 lvl) tyA bnd2)) mk = do
   (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
   -- epsilons should match up
   unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x,
-                                 DS "but found", DD ep1, DS "instead."] 
+                                 DS "but found", DD ep1, DS "instead."]
   let j = localize mk lvl
   -- check the type of the body of the lambda expression
   body' <- Env.extendCtx (TypeSig (Sig x ep1 (Just j) tyA)) (checkType body tyB mk)
@@ -143,7 +143,6 @@ tcTerm TrustMe (Just ty) mk = do
   ty' <- tcType ty mk
   return (ty', TrustMe)
 
-
 -- i-unit
 tcTerm TyUnit Nothing k = return (Type, TyUnit)
 tcTerm LitUnit Nothing k = return (Type, LitUnit)
@@ -168,10 +167,10 @@ tcTerm (Let rhs bnd) mty mk = do
     Just _ -> return (ty, tm')
     Nothing -> return (Unbound.subst x rhs ty, tm')
 
--- Type constructor application
-tcTerm (TCon c params) Nothing mk = do
+-- Type constructor application, j0 is displacement amount
+tcTerm (TCon c j0 params) Nothing mk = do
   (Telescope delta, _, j) <- Env.lookupTCon c
-  Env.extendLevelConstraint (Le j mk)
+  Env.extendLevelConstraint (Le (j0 <> j) mk)
   unless (length params == length delta) $
     Env.err
       [ DS "Datatype constructor",
@@ -182,18 +181,19 @@ tcTerm (TCon c params) Nothing mk = do
         DD (length params)
       ]
   -- TODO: do we check the params against mk or j??
-  params' <- tcArgTele params delta mk
-  return (Type, TCon c params')
+  Telescope delta' <- Equal.displaceTele j0 (Telescope delta)
+  params' <- tcArgTele params delta' mk
+  return (Type, TCon c j0 params')
 
 -- Data constructor application
 -- we don't know the expected type, so see if there
 -- is only one datacon of that name that takes no
 -- parameters
-tcTerm t@(DCon c args) Nothing mk = do
+tcTerm t@(DCon c j0 args) Nothing mk = do
   matches <- Env.lookupDConAll c
   case matches of
     [(tname, (Telescope [], cd@(ConstructorDef _ _ (Telescope deltai) j)))] -> do
-      Env.extendLevelConstraint (Le j mk)
+      Env.extendLevelConstraint (Le (j0 <> j) mk)
       let numArgs = length deltai
       unless (length args == numArgs) $
         Env.err
@@ -206,8 +206,9 @@ tcTerm t@(DCon c args) Nothing mk = do
             DS "arguments."
           ]
       -- TODO: check whether this should be mk or j
-      args' <- tcArgTele args deltai mk
-      return (TCon tname [], DCon c args)
+      Telescope deltai' <- Equal.displaceTele j0 (Telescope deltai)
+      args' <- tcArgTele args deltai' mk
+      return (TCon tname j0 [], DCon c j0 args)
 
     [_] ->
       Env.err
@@ -218,11 +219,11 @@ tcTerm t@(DCon c args) Nothing mk = do
 
 -- we know the expected type of the data constructor
 -- so look up its type in the context
-tcTerm t@(DCon c args) (Just ty) mk = do
+tcTerm t@(DCon c j0 args) (Just ty) mk = do
   case ty of
-    (TCon tname params) -> do
+    (TCon tname _ params) -> do
       (Telescope delta, Telescope deltai, j) <- Env.lookupDCon c tname
-      Env.extendLevelConstraint (Le j mk)
+      Env.extendLevelConstraint (Le (j0 <> j) mk)
       let isTypeSig :: Decl -> Bool
           isTypeSig (TypeSig _) = True
           isTypeSig _ = False
@@ -238,9 +239,11 @@ tcTerm t@(DCon c args) (Just ty) mk = do
             DD (length args),
             DS "arguments."
           ]
-      newTele <- substTele delta params deltai
+      Telescope delta' <- Equal.displaceTele j0 (Telescope delta)
+      Telescope deltai' <- Equal.displaceTele j0 (Telescope deltai)
+      newTele <- substTele delta params deltai'
       args' <- tcArgTele args newTele mk
-      return (ty, DCon c args')
+      return (ty, DCon c j0 args')
     _ ->
       Env.err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
 
@@ -255,12 +258,12 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
   (sty, scrut') <- inferType scrut (LVar jx)
 
   scrut'' <- Equal.whnf scrut'
-  (c, args) <- Equal.ensureTCon sty
+  (c, d0, args) <- Equal.ensureTCon sty
   let checkAlt (Match bnd) = do
         (pat, body) <- Unbound.unbind bnd
         -- add variables from pattern to context
         -- could fail if branch is in-accessible
-        decls <- declarePat pat (Mode Rel (Just (LVar jx))) (TCon c args)
+        decls <- declarePat pat (Mode Rel (Just (LVar jx))) (TCon c d0 args)
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
         decls' <- Equal.unify [] scrut'' (pat2Term pat)
@@ -304,7 +307,7 @@ tcTerm t@(Contra p) (Just ty) mk = do
   b' <- Equal.whnf b
   case (a', b') of
 
-    (DCon da _, DCon db _)
+    (DCon da _ _, DCon db _ _)
       | da /= db ->
         return (ty, p')
 
@@ -319,7 +322,7 @@ tcTerm t@(Contra p) (Just ty) mk = do
           DD b,
           DS "are contradictory"
         ]
-        
+
 tcTerm Sigma{} _ mk = Env.err [DS "The parser for 'full' expands Sigmas into datatypes"]
 tcTerm Prod{} _ k = Env.err [DS "The parser for 'full' expands Sigmas into datatypes"]
 tcTerm LetPair{} _ k =  Env.err [DS "The parser for 'full' expands Sigmas into datatypes"]
@@ -408,11 +411,11 @@ substTele tele args = doSubst (mkSubst tele (map unArg args))
     mkSubst [] [] = []
     mkSubst (TypeSig (Sig x Rel _ _) : tele') (tm : tms) =
       (x, tm) : mkSubst tele' tms
-    mkSubst (TypeSig (Sig x Irr _ _) : tele') _ = 
+    mkSubst (TypeSig (Sig x Irr _ _) : tele') _ =
       error $ "Internal error: " <> pp x <> " is irrelevant"
-    mkSubst [] (tm: _) = 
+    mkSubst [] (tm: _) =
       error $ "Internal error: " <> pp tm <> " is extra"
-    mkSubst (TypeSig (Sig x _ _ _) : _) [] = 
+    mkSubst (TypeSig (Sig x _ _ _) : _) [] =
       error $ "Internal error: " <> pp x <> " has no arg in mkSubst"
     mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
@@ -443,13 +446,13 @@ doSubst _ tele =
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad [Decl]
 declarePat (PatVar x)       (Mode rho j) ty = return [TypeSig (Sig x rho j ty)]
 declarePat (PatCon dc pats) (Mode Rel (Just j)) ty = do
-  (tc,params) <- Equal.ensureTCon ty
+  (tc, j0, params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai, k) <- Env.lookupDCon dc tc
   -- require equality now, maybe support displacement for data constructors later
-  Env.extendLevelConstraint (Eq j k)
+  Env.extendLevelConstraint (Eq j (j0 <> k))
   tele <- substTele delta params deltai
   declarePats dc pats j tele
-declarePat pat (Mode Rel Nothing) _ty = 
+declarePat pat (Mode Rel Nothing) _ty =
   Env.err [DS "Need a concrete level here"]
 declarePat pat (Mode Irr _) _ty =
   Env.err [DS "Cannot pattern match irrelevant arguments in pattern", DD pat]
@@ -477,7 +480,7 @@ declarePats dc _    j _ = Env.err [DS "Invalid telescope", DD dc]
 -- | Convert a pattern to a term 
 pat2Term :: Pattern ->  Term
 pat2Term (PatVar x) = Var x
-pat2Term (PatCon dc pats) = DCon dc (pats2Terms pats)
+pat2Term (PatCon dc pats) = DCon dc (LConst 0) (pats2Terms pats) -- TODO! what displacement level?
   where
     pats2Terms :: [(Pattern, Rho)] -> [Arg]
     pats2Terms [] = []
@@ -496,7 +499,7 @@ tcTypeTele (Def x tm : tl) mk = do
   tele' <- Env.extendCtxs decls $ tcTypeTele tl mk
   return (Def x tm' : tele')
 tcTypeTele (TypeSig sig : tl) mk = do
-  l <- case sigLevel sig of 
+  l <- case sigLevel sig of
              Just j -> do
                 Env.extendLevelConstraint (Lt j mk)
                 return j
@@ -567,12 +570,12 @@ dcons cs = concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
 
 dumpAndSolve :: (Unbound.Alpha a) => a -> TcMonad [(LName, Level)]
 dumpAndSolve term = do
-  let vs  = (Unbound.toListOf Unbound.fv term :: [LName]) 
+  let vs  = (Unbound.toListOf Unbound.fv term :: [LName])
   let ss' = zip (nub vs) (repeat (LConst 0))
   cs <- Env.dumpConstraints
   mss <- liftIO $ solveConstraints (map snd cs)
-  case mss of 
-        Nothing -> Env.err $ [DS "Cannot satisfy level constraints.", 
+  case mss of
+        Nothing -> Env.err $ [DS "Cannot satisfy level constraints.",
                      DS "Constraints are "] ++ dcons (Env.simplify cs)
         Just ss -> return (ss ++ ss')
 
@@ -603,7 +606,7 @@ tcEntry (Def n term) = do
                     DD sig
                   ]
            in do
-                term' <- Env.extendCtx (TypeSig sig) $ 
+                term' <- Env.extendCtx (TypeSig sig) $
                   checkType term (sigType sig) (fromMaybe (LConst 0) (sigLevel sig))
                    `catchError` handler
                 ss <- dumpAndSolve (term', sigType sig)
@@ -704,7 +707,7 @@ duplicateTypeBindingCheck sig = do
 exhaustivityCheck :: Term -> Type -> [Pattern] -> TcMonad ()
 exhaustivityCheck scrut ty (PatVar x : _) = return ()
 exhaustivityCheck scrut ty pats = do
-  (tcon, tys) <- Equal.ensureTCon ty
+  (tcon, j0, tys) <- Equal.ensureTCon ty
   (Telescope delta, mdefs, k) <- Env.lookupTCon tcon
   case mdefs of
     Just datacons -> do

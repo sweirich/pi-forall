@@ -3,18 +3,24 @@ module Examples where
 import Blowup
 import Nat
 import BoolLib
+import Product
 import Fin
 import Equal
 import Equality
 import Fix
+import NatChurch
 import Hurkens
-import HurkensEx
+-- import HurkensEx
 import IsProp
+import List
+import Pi
+-- import Lennart
+import Vec
 import Lambda
 import Lambda0
 import Lambda1
 import Lambda2
-import Pi
+
 
 data Vec (A : Type) (n : Nat) : Type where
    Nil of [n = 0]

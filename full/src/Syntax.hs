@@ -98,10 +98,10 @@ data Term
   | -- | witness to an equality contradiction
     Contra Term
 
-  | -- | type constructors (fully applied)
-    TCon TCName [Arg]
-  | -- | term constructors (fully applied)
-    DCon DCName [Arg]
+  | -- | type constructors (fully applied), potentially displaced
+    TCon TCName Level [Arg]
+  | -- | term constructors (fully applied), potentially displaced
+    DCon DCName Level [Arg]
   | -- | case analysis  `case a of matches`
     Case Term [Match]
     -- | displace a value found in the environment
@@ -277,8 +277,8 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
 -- | Is this the syntax of a literal (natural) number
 isNumeral :: Term -> Maybe Int
 isNumeral (Pos _ t) = isNumeral t
-isNumeral (DCon c []) | c == "Zero" = Just 0
-isNumeral (DCon c [Arg _ t]) | c == "Succ" =
+isNumeral (DCon c _ []) | c == "Zero" = Just 0
+isNumeral (DCon c _ [Arg _ t]) | c == "Succ" =
   do n <- isNumeral t; return (n + 1)
 isNumeral _ = Nothing
 
@@ -514,8 +514,8 @@ isFreelyDisplaceable = go where
   go Refl = True
   go (Subst te te') = go te && go te'
   go (Contra te) = go te
-  go (TCon s args) = all goArg args
-  go (DCon s args) = all goArg args
+  go (TCon s k args) = False
+  go (DCon s k args) = False
   go (Case te mas) = go te && all goMatch mas
   go (Displace te le) = False
 

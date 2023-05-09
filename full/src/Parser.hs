@@ -3,6 +3,7 @@
 -- | A parsec-based parser for the concrete syntax
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <$>" #-}
+{-# HLINT ignore "Redundant bracket" #-}
 module Parser
   (
    parseModuleFile,
@@ -245,9 +246,13 @@ varOrCon :: LParser Term
 varOrCon = do i <- identifier
               cnames <- get
               if  (i `S.member` (dconNames cnames))
-                then return (DCon i [] )
+                then do
+                  j <- Unbound.fresh (Unbound.string2Name "j")
+                  return (DCon i (LVar j) [] )
                 else if  (i `S.member` tconNames cnames)
-                       then return (TCon i [])
+                       then do
+                          j <- Unbound.fresh (Unbound.string2Name "j")
+                          return (TCon i (LVar j) [])
                        else return (Var (Unbound.string2Name i))
 
 
@@ -269,9 +274,11 @@ natural :: LParser Int
 natural = fromInteger <$> Token.natural tokenizer
 
 natenc :: LParser Term
-natenc = encode <$> natural
-   where encode 0 = DCon "Zero" []
-         encode n = DCon "Succ" [Arg Rel (encode (n-1))]
+natenc = do
+     j <- Unbound.fresh (Unbound.string2Name "j")
+     encode j <$> natural
+   where encode j 0 = DCon "Zero" (LVar j) []
+         encode j n = DCon "Succ" (LVar j) [Arg Rel (encode j (n-1))]
 
 
 moduleImports :: LParser Module
@@ -430,8 +437,9 @@ expr = do
                Pi (Mode Rel Nothing) tyA (Unbound.bind n tyB)
         mkTupleType =
           do n <- Unbound.fresh wildcardName
+             j <- Unbound.fresh (Unbound.string2Name "j")
              return $ \tyA tyB ->
-               TCon sigmaName [Arg Rel tyA, Arg Rel $ Lam Rel (Unbound.bind n tyB)]
+               TCon sigmaName (LVar j) [Arg Rel tyA, Arg Rel $ Lam Rel (Unbound.bind n tyB)]
 
 
 -- A "term" is either a function application or a constructor
@@ -447,14 +455,16 @@ arg = try (Arg Irr <$> brackets expr)
 dconapp :: LParser Term
 dconapp = do
   c <- dconstructor
+  j <- Unbound.fresh (Unbound.string2Name "j")
   args <- many arg
-  return $ DCon c args
+  return $ DCon c (LVar j) args
 
 tconapp :: LParser Term
 tconapp = do
   c <- tconstructor
+  j <- Unbound.fresh (Unbound.string2Name "j")
   ts <- many arg
-  return $ TCon c ts
+  return $ TCon c (LVar j) ts
 
 
 funapp :: LParser Term
@@ -514,15 +524,18 @@ lambda = do reservedOp "\\"
     lam (x, ep) m = Lam ep (Unbound.bind x m)
 
 
-
+lj :: LParser Level
+lj = do
+  l <- Unbound.fresh (Unbound.string2Name "j")
+  return (LVar l)
 
 
 bconst  :: LParser Term
-bconst = choice [reserved "Bool"  >> return (TCon boolName []),
-                 reserved "False" >> return (DCon falseName []),
-                 reserved "True"  >> return (DCon trueName []),
-                 reserved "Unit"  >> return (TCon tyUnitName []),
-                 reserved "()"    >> return (DCon litUnitName [])]
+bconst = choice [reserved "Bool"  >> lj >>= \j -> return (TCon boolName j []),
+                 reserved "False" >> lj >>= \j -> return (DCon falseName j []),
+                 reserved "True"  >> lj >>= \j -> return (DCon trueName j []),
+                 reserved "Unit"  >> lj >>= \j -> return (TCon tyUnitName j []),
+                 reserved "()"    >> lj >>= \j -> return (DCon litUnitName j [])]
 
 
 
@@ -614,8 +627,9 @@ expProdOrAnnotOrParens =
                       return $ Pi (Mode Rel (Just l)) a (Unbound.bind x b))
          Colon a b _ -> return $ Ann a b
 
-         Comma a b ->
-           return $ DCon prodName [Arg Rel a, Arg Rel b]
+         Comma a b -> do
+           j <- lj
+           return $ DCon prodName j [Arg Rel a, Arg Rel b]
 
          Nope a    -> return a
 
@@ -647,8 +661,8 @@ pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
                   <|> do t <- varOrCon
                          case t of
                            (Var x) -> return $ PatVar x
-                           (DCon c []) -> return $ PatCon c []
-                           (TCon c []) -> fail "expected a data constructor but a type constructor was found"
+                           (DCon c _ []) -> return $ PatCon c []
+                           (TCon c _ []) -> fail "expected a data constructor but a type constructor was found"
                            _ -> error "internal error in atomic_pattern"
 
 
@@ -696,7 +710,8 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return $ TCon sigmaName [Arg Rel a, Arg Rel (Lam Rel (Unbound.bind x b))]
+  j <- lj
+  return $ TCon sigmaName j [Arg Rel a, Arg Rel (Lam Rel (Unbound.bind x b))]
 
 displaceTm :: LParser Term
 displaceTm = do

@@ -480,13 +480,13 @@ instance Display Term where
 
 
   display (isNumeral -> Just i) = display i
-  display (TCon n args) = do
+  display (TCon n j args) = do
     p <- ask prec
     dn <- display n
     dargs <- withPrec (levelApp+1) $ mapM display args
     return $
       parens (levelApp < p && length args > 0) (dn <+> PP.hsep dargs)
-  display (DCon n args) = do
+  display (DCon n j args) = do
     p <- ask prec
     dn <- display n
     dargs <- withPrec (levelApp+1) $ mapM display args

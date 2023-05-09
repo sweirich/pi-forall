@@ -44,8 +44,8 @@ Delta = \y. neg ((p : (P^0) (U^0) @ 1) -> (sigma^0) y p -> p ((tau^0) ((sigma^0)
 Omega : (U^0) @ 3
 Omega = (tau^0) (\p. (x : (U^1) @ 2) -> (sigma^0) x p -> p (\y. x y))
 
-M : (x : (U^2) @ 3) -> sigma^1 x Delta -> Delta^1 x @ 4
-M = \x. \two. \three. three Delta two (\p. three (\y. p ((tau^0) ((sigma^0) y))))
+M : (x : (U^2) @ 3) -> sigma^1 x Delta^0 -> Delta^1 x @ 4
+M = \x. \two. \three. three Delta^0 two (\p. three (\y. p ((tau^0) ((sigma^0) y))))
 
 
 {-  -- can't type check

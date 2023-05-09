@@ -71,11 +71,11 @@ base :: Gen Term
 base = elements [Type, TrustMe, PrintMe,
                 tyUnit, litUnit, tyBool, 
                 litTrue, litFalse, Refl  ]
-    where tyUnit = TCon "Unit" [] 
-          litUnit = DCon "()" [] 
-          tyBool = TCon "Bool" [] 
-          litTrue = DCon "True" [] 
-          litFalse = DCon "False" [] 
+    where tyUnit = TCon "Unit" (LConst 0) [] 
+          litUnit = DCon "()" (LConst 0) [] 
+          tyBool = TCon "Bool" (LConst 0) [] 
+          litTrue = DCon "True" (LConst 0) [] 
+          litFalse = DCon "False" (LConst 0) [] 
 
 -- Generate a random term
 -- In the inner recursion, the bool prevents the generation of TCon/DCon applications 
@@ -96,12 +96,15 @@ genTerm n
               (1, Subst <$> go True n' <*> go True n'),
               (1, Contra <$> go True n'),
               
-                            (if b then 1 else 0, TCon <$> genTCName <*> genArgs n'),
-              (if b then 1 else 0, DCon <$> genDCName <*> genArgs n'),
+                            (if b then 1 else 0, TCon <$> genTCName <*> genLevel <*> genArgs n'),
+              (if b then 1 else 0, DCon <$> genDCName <*> genLevel <*> genArgs n'),
               (1, Case <$> go True n' <*> genBoundedList 2 (genMatch n')),
               
               (1, base)
             ]
+
+genLevel :: Gen Level
+genLevel = return (LConst 0)
 
 genLam :: Int -> Gen Term
 genLam n = do 
@@ -197,8 +200,8 @@ instance Arbitrary Term where
     shrink (Subst a b) = [a,b] ++ [Subst a' b | a' <- QC.shrink a] ++ [Subst a b' | b' <- QC.shrink b]
     shrink (Contra a) = [a] ++ [Contra a' | a' <- QC.shrink a]
     
-    shrink (TCon n as) = map unArg as ++ [TCon n as' | as' <- QC.shrink as]
-    shrink (DCon n as) = map unArg as ++ [DCon n as' | as' <- QC.shrink as]
+    shrink (TCon n k as) = map unArg as ++ [TCon n k as' | as' <- QC.shrink as]
+    shrink (DCon n k as) = map unArg as ++ [DCon n k as' | as' <- QC.shrink as]
     shrink (Case a ms) = [a] ++ [Case a' ms | a' <- QC.shrink a] ++ [Case a ms' | ms' <- QC.shrink ms]
     
     shrink _ = []

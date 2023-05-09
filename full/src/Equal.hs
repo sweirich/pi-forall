@@ -6,7 +6,7 @@
 
 module Equal (whnf, equate, ensurePi,
               ensureTyEq,
-              ensureTCon, unify, displace, equateLevel ) where
+              ensureTCon, unify, displace, displaceTele, equateLevel ) where
 
 import Syntax
 import Environment ( D(DS, DD), TcMonad, Locality(..) )
@@ -114,14 +114,16 @@ equate' d t1 t2 = do
 
     (Refl,  Refl) -> return success
 
-    (TCon c1 ts1, TCon c2 ts2) ->
+    (TCon c1 j1 ts1, TCon c2 j2 ts2) -> do
+      equateLevel j1 j2
       if c1 == c2 then do
         rs <- zipWithM (equateArgs d) [ts1] [ts2]
         return (mconcat rs)
       else
         tyErr c2 c1
 
-    (DCon d1 a1, DCon d2 a2) | d1 == d2 -> do
+    (DCon d1 j1 a1, DCon d2 j2 a2) | d1 == d2 -> do
+      equateLevel j1 j2
       equateArgs d a1 a2
     (_,_) -> do
         -- For terms that do not have matching head forms, 
@@ -245,11 +247,11 @@ ensureTyEq ty = do
 -- | Ensure that the given type 'ty' is some tycon applied to 
 --  params (or could be normalized to be such)
 -- Throws an error if this is not the case 
-ensureTCon :: Term -> TcMonad (TCName, [Arg])
+ensureTCon :: Term -> TcMonad (TCName, Level, [Arg])
 ensureTCon aty = do
   nf <- whnf aty
   case nf of
-    TCon n params -> return (n, params)
+    TCon n k params -> return (n, k, params)
     _ -> Env.err [DS "Expected a data type but found", DD nf]
 
 
@@ -319,7 +321,7 @@ whnf (Subst tm pf) = do
 whnf (Case scrut mtchs) = do
   nf <- whnf scrut
   case nf of
-    (DCon d args) -> f mtchs where
+    (DCon d _ args) -> f mtchs where
       f (Match bnd : alts) = (do
           (pat, br) <- Unbound.unbind bnd
           ss <- patternMatches (Arg Rel nf) pat
@@ -342,8 +344,8 @@ patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
 patternMatches (Arg Rel t) pat = do
   nf <- whnf t
   case (nf, pat) of
-    (DCon d [], PatCon d' pats)   | d == d' -> return []
-    (DCon d args, PatCon d' pats) | d == d' ->
+    (DCon d j0 [], PatCon d' pats)   | d == d' -> return []
+    (DCon d j0 args, PatCon d' pats) | d == d' ->
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> Env.err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
 patternMatches (Arg Irr _) pat = do
@@ -364,9 +366,9 @@ unify ns tx ty = do
       (yty, Var y) | y `notElem` ns -> return [Def y yty]
       (Prod a1 a2, Prod b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
       (TyEq a1 a2, TyEq b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
-      (TCon s1 tms1, TCon s2 tms2)
+      (TCon s1 j1 tms1, TCon s2 j2 tms2)
         | s1 == s2 -> unifyArgs tms1 tms2
-      (DCon s1 a1s, DCon s2 a2s)
+      (DCon s1 j1 a1s, DCon s2 j2 a2s)
         | s1 == s2 -> unifyArgs a1s a2s
       (Lam ep1 bnd1, Lam ep2 bnd2) -> do
         (x, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
@@ -407,6 +409,20 @@ amb _ = False
 
 
 -----------------------------------------------------------------------------
+
+displaceTele :: Level -> Telescope -> TcMonad Telescope
+displaceTele j (Telescope decls) = do
+  decls' <- mapM (displaceDecl j) decls
+  return (Telescope decls')
+
+displaceDecl :: Level -> Decl -> TcMonad Decl
+displaceDecl j (TypeSig (Sig x ep mk ty)) = do
+  let mk' = case mk of 
+                Just j0 -> Just (j <> j0)
+                Nothing -> Nothing
+  TypeSig <$> (Sig x ep mk' <$> displace j ty)
+displaceDecl j (Def x tm) = Def x <$> displace j tm
+displaceDecl j decl = Env.err [DS "Cannot displace decl: ", DD decl]
 
 displaceArg :: Level -> Arg -> TcMonad Arg
 displaceArg j (Arg r t) = Arg r <$> displace j t
@@ -457,8 +473,8 @@ displace j t = case t of
       If <$> displace j a1 <*> displace j a2 <*> displace j a3
     Displace a j0 -> return $ Displace a (j <> j0)
     TyEq a b -> TyEq <$> displace j a <*> displace j b
-    TCon tc args -> TCon tc <$> mapM (displaceArg j) args
-    DCon dc args -> DCon dc <$> mapM (displaceArg j) args
+    TCon tc j0 args -> TCon tc (j <> j0) <$> mapM (displaceArg j) args
+    DCon dc j0 args -> DCon dc (j <> j0) <$> mapM (displaceArg j) args
     Case a brs ->
       Case <$> displace j a <*> mapM (displaceBr j) brs
     Subst a b ->
