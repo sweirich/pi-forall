@@ -54,10 +54,10 @@ data DispInfo = DI
   }
 
 initDI :: DispInfo
-initDI = DI {showAnnots = False, 
-                          dispAvoid = S.empty, 
-                          prec = 0, 
-                          showLevels = True, 
+initDI = DI {showAnnots = False,
+                          dispAvoid = S.empty,
+                          prec = 0,
+                          showLevels = True,
                           showLongNames = True}
 
 -- | Error message quoting
@@ -94,6 +94,10 @@ instance Disp SourcePos where
 
 -- * Disp Instances for Term syntax (defaults to Display, see below)
 
+instance Disp (Term, Type) where
+   disp (tm, ty) = 
+      PP.vcat [disp ty, disp tm]
+
 -------------------------------------------------------------------------
 
 
@@ -128,7 +132,7 @@ instance Disp LevelConstraint
 -------------------------------------------------------------------------
 
 instance Display [Decl] where
-  display ds = do 
+  display ds = do
     dd <- mapM display ds
     pure $ PP.vcat dd
 
@@ -140,9 +144,9 @@ instance Display Epsilon where
   display (Mode rho (Just lvl)) = do
     sl <- asks showLevels
     dl <- display lvl
-    if sl then  
+    if sl then
       pure $ disp rho <+> dl
-    else 
+    else
       pure $ disp rho
   display (Mode rho Nothing) = pure $ disp rho
 
@@ -175,7 +179,7 @@ instance Display Module where
     de <- mapM display (moduleEntries m)
     pure $ PP.text "module" <+> dn <+> PP.text "where"
       $$ PP.vcat di
-      $$ PP.vcat de 
+      $$ PP.vcat de
 
 instance Display ModuleImport where
   display (ModuleImport i) = pure $ PP.text "import" <+> disp i
@@ -227,7 +231,7 @@ instance Display Decl where
 instance Display ConstructorDef where
   display (ConstructorDef _ c (Telescope []) k) = do
     dk <- display k
-    sk <- asks showLevels 
+    sk <- asks showLevels
     pure $ PP.text c <+> (if sk then PP.text "@" <+> dk else mempty)
   display (ConstructorDef _ c tele k) = do
     dc <- display c
@@ -362,7 +366,7 @@ instance Display Term where
   display (Pi (Mode ep mk) a bnd) = do
     Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
-      lhs <- case mk of 
+      lhs <- case mk of
               Just k -> do
                 dn <- display n
                 da <- withPrec 0 (display a)
@@ -483,15 +487,17 @@ instance Display Term where
   display (TCon n j args) = do
     p <- ask prec
     dn <- display n
+    dj <- displayDisplace j
     dargs <- withPrec (levelApp+1) $ mapM display args
     return $
-      parens (levelApp < p && length args > 0) (dn <+> PP.hsep dargs)
+      parens (levelApp < p && not (null args)) (dn PP.<> dj <+> PP.hsep dargs)
   display (DCon n j args) = do
     p <- ask prec
     dn <- display n
+    dj <- displayDisplace j
     dargs <- withPrec (levelApp+1) $ mapM display args
     return $
-      parens (levelApp < p && length args > 0) (dn <+> PP.hsep dargs)
+      parens (levelApp < p && not (null args)) (dn PP.<> dj <+> PP.hsep dargs)
   display (Case scrut alts) = do
     p <- asks prec
     dscrut <- withPrec 0 $ display scrut
@@ -500,12 +506,20 @@ instance Display Term where
     return $
       parens (levelCase < p) $
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
-  display (Displace t (LConst 0)) = do
-    display t
   display (Displace t j) = do
     dt <- display t
+    dj <- displayDisplace j
+    return $ dt <> dj
+
+displayDisplace :: Level -> DispInfo -> Doc
+displayDisplace (LConst 0) = mempty
+displayDisplace j = do
+  p <- asks showLevels
+  if p then do
     dj <- display j
-    return $ dt <> PP.text "^" <> dj
+    return $ PP.text "^" <> dj
+  else
+    mempty
 
 
 instance Display Arg where

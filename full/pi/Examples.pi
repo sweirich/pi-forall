@@ -21,7 +21,6 @@ import Lambda0
 import Lambda1
 import Lambda2
 
-
 data Vec (A : Type) (n : Nat) : Type where
    Nil of [n = 0]
    Cons of [m:Nat](A)(Vec A m)[n = Succ m]

@@ -568,17 +568,17 @@ data HintOrCtx
 dcons cs = concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
 
 
-dumpAndSolve :: (Unbound.Alpha a) => a -> TcMonad [(LName, Level)]
-dumpAndSolve term = do
-  let vs  = (Unbound.toListOf Unbound.fv term :: [LName])
+dumpAndSolve :: (Unbound.Alpha a, Disp a) => a -> TcMonad [(LName, Level)]
+dumpAndSolve tm = do
+  let vs  = (Unbound.toListOf Unbound.fv tm :: [LName])
   let ss' = zip (nub vs) (repeat (LConst 0))
   cs <- Env.dumpConstraints
   mss <- liftIO $ solveConstraints (map snd cs)
   case mss of
         Nothing -> Env.err $ [DS "Cannot satisfy level constraints.",
+                     DS "Term is:", DD tm,
                      DS "Constraints are "] ++ dcons (Env.simplify cs)
         Just ss -> return (ss ++ ss')
-
 
 -- | Check each sort of declaration in a module
 tcEntry :: Decl -> TcMonad HintOrCtx

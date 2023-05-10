@@ -247,12 +247,12 @@ varOrCon = do i <- identifier
               cnames <- get
               if  (i `S.member` (dconNames cnames))
                 then do
-                  j <- Unbound.fresh (Unbound.string2Name "j")
-                  return (DCon i (LVar j) [] )
+                  j <- displace
+                  return (DCon i j [] )
                 else if  (i `S.member` tconNames cnames)
                        then do
-                          j <- Unbound.fresh (Unbound.string2Name "j")
-                          return (TCon i (LVar j) [])
+                          j <- displace
+                          return (TCon i j [])
                        else return (Var (Unbound.string2Name i))
 
 
@@ -437,9 +437,9 @@ expr = do
                Pi (Mode Rel Nothing) tyA (Unbound.bind n tyB)
         mkTupleType =
           do n <- Unbound.fresh wildcardName
-             j <- Unbound.fresh (Unbound.string2Name "j")
+             j <- displace
              return $ \tyA tyB ->
-               TCon sigmaName (LVar j) [Arg Rel tyA, Arg Rel $ Lam Rel (Unbound.bind n tyB)]
+               TCon sigmaName j [Arg Rel tyA, Arg Rel $ Lam Rel (Unbound.bind n tyB)]
 
 
 -- A "term" is either a function application or a constructor
@@ -455,16 +455,16 @@ arg = try (Arg Irr <$> brackets expr)
 dconapp :: LParser Term
 dconapp = do
   c <- dconstructor
-  j <- Unbound.fresh (Unbound.string2Name "j")
+  j <- displace
   args <- many arg
-  return $ DCon c (LVar j) args
+  return $ DCon c j args
 
 tconapp :: LParser Term
 tconapp = do
   c <- tconstructor
-  j <- Unbound.fresh (Unbound.string2Name "j")
+  j <- displace
   ts <- many arg
-  return $ TCon c (LVar j) ts
+  return $ TCon c j ts
 
 
 funapp :: LParser Term
@@ -524,18 +524,12 @@ lambda = do reservedOp "\\"
     lam (x, ep) m = Lam ep (Unbound.bind x m)
 
 
-lj :: LParser Level
-lj = do
-  l <- Unbound.fresh (Unbound.string2Name "j")
-  return (LVar l)
-
-
 bconst  :: LParser Term
-bconst = choice [reserved "Bool"  >> lj >>= \j -> return (TCon boolName j []),
-                 reserved "False" >> lj >>= \j -> return (DCon falseName j []),
-                 reserved "True"  >> lj >>= \j -> return (DCon trueName j []),
-                 reserved "Unit"  >> lj >>= \j -> return (TCon tyUnitName j []),
-                 reserved "()"    >> lj >>= \j -> return (DCon litUnitName j [])]
+bconst = choice [reserved "Bool"  >> displace >>= \j -> return (TCon boolName j []),
+                 reserved "False" >> displace >>= \j -> return (DCon falseName j []),
+                 reserved "True"  >> displace >>= \j -> return (DCon trueName j []),
+                 reserved "Unit"  >> displace >>= \j -> return (TCon tyUnitName j []),
+                 reserved "()"    >> displace >>= \j -> return (DCon litUnitName j [])]
 
 
 
@@ -628,7 +622,7 @@ expProdOrAnnotOrParens =
          Colon a b _ -> return $ Ann a b
 
          Comma a b -> do
-           j <- lj
+           j <- displace
            return $ DCon prodName j [Arg Rel a, Arg Rel b]
 
          Nope a    -> return a
@@ -710,7 +704,7 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  j <- lj
+  j <- displace
   return $ TCon sigmaName j [Arg Rel a, Arg Rel (Lam Rel (Unbound.bind x b))]
 
 displaceTm :: LParser Term
@@ -721,3 +715,9 @@ displaceTm = do
     lv <- Unbound.fresh (Unbound.string2Name "l")
     return (LVar lv)
   return $ Displace (Var x) l
+
+displace :: LParser Level
+displace = do
+  try (reservedOp "^" *> (LConst <$> natural)) <|> do
+    lv <- Unbound.fresh (Unbound.string2Name "l")
+    return (LVar lv) 
