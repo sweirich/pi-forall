@@ -1,0 +1,21 @@
+module Or where
+
+data Or (A : Type @ 0) (B : Type @ 0) : Type @ 2 where
+  Inl of (A) @ 1
+  Inr of (B) @ 3
+
+-- level is forced to be 3 by Inr's level
+id : [A : Type @ 0] -> [B : Type @ 0] -> Or^0 A B -> Or^0 A B
+id = \[A] [B] or. case or of
+  Inl a -> Inl a
+  Inr b -> Inr b
+
+id2 : [A : Type @ 0] -> [B : Type @ 0] -> Or^0 A B -> Or^0 A B @ 2
+id2 = \[A] [B] or. case or of
+  Inl a -> Inl a
+  -- Impossible case: Inr b -> Inr b
+
+id3 : [A : Type @ 0] -> [B : Type @ 0] -> Or^0 A B -> Or^0 A B @ 3
+id3 = \[A] [B] or. case or of
+  Inl a -> Inl a
+  Inr b -> Inr b
