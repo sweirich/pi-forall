@@ -61,8 +61,8 @@ uncurry = \ [A][B][C] f p . case p of
 ---------------------------------------------------
 -- Irr first component
 
-data Exists (A:Type)(B: A -> Type) : Type where
-  Product of [x:A](B x)
+data Exists (A:Type @ 0) (B: A -> Type) : Type where
+  Product of [x:A] (B x)
 
 -- can't define the first projections for this type
 
@@ -79,7 +79,7 @@ eproj2 = \[A][B] x . case x of
 ---------------------------------------------------
 -- Irr second component
 
-data Refine (A:Type) (B : A -> Type) : Type where
+data Refine (A:Type @ 0) (B : A -> Type) : Type where
   Product of (x:A)[B x]
 
 rproj1 : [A:Type] -> [B:A -> Type] -> Refine A B -> A 

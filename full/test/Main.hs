@@ -28,4 +28,4 @@ testFile name = name ~: TestCase $ do
   val <- v `exitWith` (\b -> assertFailure $ "Parse error: " ++ render (disp b))
   d <- runTcMonad emptyEnv (tcModules val)
   defs <- d `exitWith` (\s -> assertFailure $ "Type error:" ++ render (disp s))
-  putStrLn $ render $ disp (last defs)
+  putStrLn $ render $ disp (last (fst defs))

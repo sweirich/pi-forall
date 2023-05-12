@@ -650,6 +650,7 @@ tcEntry decl@(Data t (Telescope delta) cs k) =
           Env.extendSourceLocation pos defn $
             Env.extendCtx (DataSig t (Telescope delta) k) $
               Env.extendCtxTele ldelta $ do
+                _ <- Env.extendLevelConstraint (Eq k ck)
                 etele <- tcTypeTele tele ck
                 return (ConstructorDef pos d (Telescope etele) ck)
     ecs <- mapM elabConstructorDef cs
