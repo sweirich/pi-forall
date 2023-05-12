@@ -122,3 +122,28 @@ uncurry' :  [A:Type] -> [B:Type] -> [C : Times A B -> Type] ->
 uncurry' = \[A][B]. uncurry [A][\x.B] 
 -}
 
+---------------------------------------------------
+-- Extra dependent pairs
+
+data Pair (A : Type @ 0) (B : (x : A @ 0) -> Type) : Type @ 1 where
+  MkPair of (x : A @ 0) (B x)
+
+fst : [A : Type @ 0] -> [B : (x : A @ 0) -> Type @ 1] -> Pair A B -> A @ 2
+fst = \[A] [B] p. case p of
+	MkPair a b -> a
+
+-- This won't type check because fst is too big, and lifting B doesn't lift its domain level
+-- snd : [A : Type @ 0] -> [B : (x : A @ 0) -> Type @ 1] -> (p : Pair A B @ 1) -> B (fst [A] [B] p) @ 2
+
+-- However, this allows us to define pairs where B uses the element of A dependently
+Prop : Type @ 1
+Prop = Pair Type (\A. (x : A @ 0) -> (y : A @ 0) -> x = y)
+
+-- On the other hand, Prop can't be defined using Sig,
+-- since the level of B will always end up being strictly larger than that of A
+-- Prop' : Type @ 1
+-- Prop' = Sig Type (\A. (x : A @ 0) -> (y : A @ 0) -> x = y)
+
+-- These are the tradeoffs between the two different kinds of dependent pairs:
+-- * Pair doesn't have second projections, but lets B use the first projection dependently
+-- * Sig doesn't allow fixing the level of the first projection, which enables second projections

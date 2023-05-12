@@ -154,27 +154,18 @@ foldl = \[A] [m] [B] f z v .
 	    let n' = f [0] z x in
        foldl [A][m'][\ n'. B (Succ n')] (\[n] b a . f [Succ n] b a) n' xs
 
-
-fst : [A:Type] -> [B:A -> Type] -> { x : A | B x } -> A
-fst = \[A][B] x . let (y,z) = x in y 
-
-snd : [A:Type] -> [B:A -> Type] -> (p : { x:A | B x}) -> B (fst[A][B] p)
-snd = \[A][B] x . let (y,z) = x in z
-
 -- note that in pi-forall, we only have one notion of irrelevance: 
 -- arguments are either erasable and ignorable, or they are relevant.
-
-{-
+-- we can't use fst/snd here because the level of snd is greater than the returned pair,
+-- so we can't construct a new pair that fits in the return level.
 filter : [A:Type] -> [n:Nat] -> (A -> Bool) -> 
-       Vec A n -> { m : Nat | Vec A m } 
+       Vec A n -> { m : Nat | Vec A m }
 filter = \ [A][n] f v . 
    case v of 
      Nil -> ( 0 , Nil )
      Cons [n'] x xs -> 
-        let p = filter [A][n'] f xs in 
-        let m' = fst [Nat] [\n. Vec A n] p in
-        let xs' = snd [Nat] [\n. Vec A n] p in
+        let p = filter [A][n'] f xs in
+        let (m', xs') = p in
         if f x
-           then (Succ m' , Cons [m'] x xs')
+           then (Succ m', Cons [m'] x xs')
            else (m', xs')
--}
