@@ -263,7 +263,7 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
         -- so that motive remains well typed
         jx <- Unbound.fresh (Unbound.string2Name "jS")
         Env.extendLevelConstraint (Le (LVar jx) mk)
-        decls <- declarePat pat (Mode Rel (Just (LVar jx))) (TCon c mk args)
+        decls <- declarePat pat (Mode Rel (Just (LVar jx))) (TCon c d0 args)
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
         decls' <- Equal.unify [] scrut'' (pat2Term pat)
@@ -443,18 +443,13 @@ doSubst _ tele =
 
 -- | Create a binding for each of the variables in the pattern
 -- TODO: check j and k
--- TODO: Are we guaranteed that the pattern level is within the type level?
---       If so,  we can skip adding j <= j0 in the PatCon case;
---       If not, we should add a constraint j <= levelOf ty in the PatVar case.
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad [Decl]
 declarePat (PatVar x)       (Mode rho j) ty = return [TypeSig (Sig x rho j ty)]
 declarePat (PatCon dc pats) (Mode Rel (Just j)) ty = do
   (tc, j0, params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai, k) <- Env.lookupDCon dc tc
-  -- float level of constructor arguments should be same as constructor level
-  -- constructor level should be constrained by level of inductive
-  Env.extendLevelConstraint (Eq j k)
-  Env.extendLevelConstraint (Le k j0)
+  -- require equality now, maybe support displacement for data constructors later
+  Env.extendLevelConstraint (Eq j (j0 <> k))
   tele <- substTele delta params deltai
   declarePats dc pats j tele
 declarePat pat (Mode Rel Nothing) _ty =
