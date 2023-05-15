@@ -1,0 +1,18 @@
+module Case where
+
+data TT : Type @ 0 where
+  tt @ 1
+
+-- This should fail (regardless of the TRUSTME),
+-- since the pattern tt has level 1 while the scrutinee has level 0.
+f : [P : (t : TT^0 @ 0) -> Type @ 1] -> (t : TT^0 @ 0) -> P t @ 2
+f = \[P] t. case t of
+  tt -> TRUSTME
+
+data X : Type @ 0 where
+  c of (Unit) @ 0
+
+-- This should fail, since it normalizes to \P u. P u, which is ill typed.
+Pu : (P : (x : Unit @ 0) -> Type) -> (u : Unit @ 1) -> Type
+Pu = \P u. case c u of
+  c x -> P x

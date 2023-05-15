@@ -2,8 +2,10 @@ module Examples where
 
 import Blowup
 import Nat
+import Logic
 import BoolLib
 import Product
+import Or
 import Fin
 import Equal
 import Equality
@@ -27,9 +29,6 @@ data Vec (A : Type) (n : Nat) : Type where
 
 v0 : Vec Bool 1
 v0 = Cons [0] True Nil
-
-v3 : Vec Bool 3
-v3 = Cons [2] True (Cons [1] False (Cons [0] False Nil))
 
 loop : Nat
 loop = loop
