@@ -257,9 +257,6 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
         (pat, body) <- Unbound.unbind bnd
         -- add variables from pattern to context
         -- could fail if branch is in-accessible
-        -- levels of constructors of each branch can be different,
-        -- but must at least fit in the level of the scrutinee
-        -- so that motive remains well typed
         decls <- declarePat pat (Mode Rel (Just j)) (TCon c d0 args)
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
