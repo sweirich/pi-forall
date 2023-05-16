@@ -171,14 +171,16 @@ tcTerm (Let rhs bnd) mty mk = do
 tcTerm (TCon c j0 params) Nothing mk = do
   (Telescope delta, _, j) <- Env.lookupTCon c
   Env.extendLevelConstraint (Le (j0 <> j) mk)
-  unless (length params == length delta) $
+  let numParams = length (filter isTypeSig delta)
+  unless (length params == numParams) $
     Env.err
       [ DS "Datatype constructor",
         DD c,
-        DS $
-          "should have " ++ show (length delta)
-            ++ "parameters, but was given",
-        DD (length params)
+        DS "should have",
+        DD (length delta),
+        DS "parameters, but was given",
+        DD (length params),
+        DS "parameters."
       ]
   -- TODO: do we check the params against mk or j??
   Telescope delta' <- Equal.displaceTele j0 (Telescope delta)
@@ -194,7 +196,7 @@ tcTerm t@(DCon c j0 args) Nothing mk = do
   case matches of
     [(tname, (Telescope [], cd@(ConstructorDef _ _ (Telescope deltai) j)))] -> do
       Env.extendLevelConstraint (Le (j0 <> j) mk)
-      let numArgs = length deltai
+      let numArgs = length (filter isTypeSig deltai)
       unless (length args == numArgs) $
         Env.err
           [ DS "Constructor",
@@ -223,9 +225,6 @@ tcTerm t@(DCon c j0 args) (Just ty) mk = do
     (TCon tname _ params) -> do
       (Telescope delta, Telescope deltai, j) <- Env.lookupDCon c tname
       Env.extendLevelConstraint (Le (j0 <> j) mk)
-      let isTypeSig :: Decl -> Bool
-          isTypeSig (TypeSig _) = True
-          isTypeSig _ = False
       let numArgs = length (filter isTypeSig deltai)
       unless (length args == numArgs) $
         Env.err

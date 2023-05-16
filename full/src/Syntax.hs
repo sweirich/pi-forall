@@ -287,6 +287,11 @@ isPatVar :: Pattern -> Bool
 isPatVar (PatVar _) = True
 isPatVar _ = False
 
+-- | Is this declaration a type signature
+isTypeSig :: Decl -> Bool
+isTypeSig (TypeSig _) = True
+isTypeSig _ = False
+
 -------------------------------------------------------------------
 -- Prelude declarations for datatypes
 
