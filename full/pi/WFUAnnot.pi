@@ -2,7 +2,7 @@ module WFUAnnot where
 
 data Void : Type @ 0 where {}
 
-data U : Type @ 0 where
+data U : Type @ 1 where
    Mk_U of (X : Type @ 0) (X -> U) @ 1
 
 -- A U is well-founded if all its elements are
@@ -15,10 +15,10 @@ always_WF = \u. case u of
    (Mk_U X f) -> Mk_WF^0 [X] [f] (\x. always_WF (f x))
 
 -- But this one is not
-loop : U^0 @ 1
-loop = Mk_U^0 U^0 (\x. x)
+loop : U^1 @ 2
+loop = Mk_U U^0 (\x. x)
 
-not_WF : WF^0 loop^0 -> Void^0 @ 2
+not_WF : WF^1 loop^0 -> Void^0 @ 3
 not_WF = \y. case y of
    Mk_WF [X] [f] x -> not_WF (x loop^0)
 
