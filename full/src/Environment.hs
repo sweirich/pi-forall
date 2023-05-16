@@ -357,7 +357,6 @@ instance Semigroup Err where
 
 instance Monoid Err where
   mempty = Err [] mempty
-  mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
 
 instance Disp Err where
   disp (Err [] msg) = msg
@@ -394,8 +393,6 @@ withStage :: (MonadReader Env m) => Rho -> m a -> m a
 withStage Irr = extendCtx (Demote Rel)
 withStage ep = id
 
-
-
 extendLevelConstraint :: (MonadReader Env m, MonadError Err m, MonadState TcState m) => LevelConstraint -> m ()
 extendLevelConstraint c@(Lt (LConst i) (LConst j)) =
     if i < j then return () else err [DS "Cannot solve constraint", DD c]
@@ -431,8 +428,8 @@ simplify :: [(SourceLocation,LevelConstraint)] -> [(SourceLocation,LevelConstrai
 simplify [] = []
 simplify ((p, c@(Eq j k)) : r) =
   case (reduce j, reduce k) of
-    (LVar x , k') -> (p , Eq (LVar x) k') : simplify (map (\(p,c) -> (p, Unbound.subst x k' c)) r)
-    (k', LVar x)  -> (p , Eq (LVar x) k') : simplify (map (\(p,c) -> (p, (Unbound.subst x k' c))) r)
+    (LVar x , k') -> (p , Eq (LVar x) k') : simplify (map (\(p', c') -> (p', Unbound.subst x k' c')) r)
+    (k', LVar x)  -> (p , Eq (LVar x) k') : simplify (map (\(p', c') -> (p', Unbound.subst x k' c')) r)
     (LConst i1, LConst i2) | i1 == i2 -> simplify r
     (j', k') -> (p, Eq j' k') : simplify r
 simplify ((p, Lt j k) : r) = 

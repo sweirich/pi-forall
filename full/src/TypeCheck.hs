@@ -558,8 +558,8 @@ data HintOrCtx
   = AddHint Sig
   | AddCtx [Decl]
 
-dcons cs = concatMap (\(Env.SourceLocation p _, c)-> [DD p, DD c]) cs
-
+displayConstraints :: [(Env.SourceLocation, LevelConstraint)] -> [D]
+displayConstraints = concatMap (\(Env.SourceLocation p _, c) -> [DD p, DD c])
 
 dumpAndSolve :: (Unbound.Alpha a, Disp a) => a -> TcMonad [(LName, Level)]
 dumpAndSolve tm = do
@@ -570,7 +570,7 @@ dumpAndSolve tm = do
   case mss of
         Nothing -> Env.err $ [DS "Cannot satisfy level constraints.",
                      DS "Term is:", DD tm,
-                     DS "Constraints are "] ++ dcons (Env.simplify cs)
+                     DS "Constraints are "] ++ displayConstraints (Env.simplify cs)
         Just ss -> return (ss ++ ss')
 
 -- | Check each sort of declaration in a module
@@ -683,7 +683,7 @@ duplicateTypeBindingCheck sig = do
               DS "Previous was",
               DD sig'
             ]
-       in Env.extendSourceLocation p sig $ Env.err msg
+      in Env.extendSourceLocation p sig $ Env.err msg
 
 -----------------------------------------------------------
 -- Checking that pattern matching is exhaustive
