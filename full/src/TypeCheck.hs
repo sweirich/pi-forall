@@ -732,7 +732,7 @@ exhaustivityCheck scrut ty j pats = do
             ( do
                 Env.extendLevelConstraint (Le ck j)
                 tele' <- substTele delta tys tele
-                _ <- tcTypeTele tele' ck --TODO check this!!
+                _ <- tcTypeTele tele' ck
                 return [dc]
               )
               `catchError` (\_ -> return [])
