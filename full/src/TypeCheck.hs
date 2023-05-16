@@ -182,7 +182,6 @@ tcTerm (TCon c j0 params) Nothing mk = do
         DD (length params),
         DS "parameters."
       ]
-  -- TODO: do we check the params against mk or j??
   Telescope delta' <- Equal.displaceTele j0 (Telescope delta)
   params' <- tcArgTele params delta' mk
   return (Type, TCon c j0 params')
@@ -208,7 +207,7 @@ tcTerm t@(DCon c j0 args) Nothing mk = do
             DS "arguments."
           ]
       Telescope deltai' <- Equal.displaceTele j0 (Telescope deltai)
-      args' <- tcArgTele args deltai' j
+      args' <- tcArgTele args deltai' mk
       return (TCon tname j0 [], DCon c j0 args)
 
     [_] ->
@@ -240,7 +239,7 @@ tcTerm t@(DCon c j0 args) (Just ty) mk = do
       Telescope delta' <- Equal.displaceTele j0 (Telescope delta)
       Telescope deltai' <- Equal.displaceTele j0 (Telescope deltai)
       newTele <- substTele delta params deltai'
-      args' <- tcArgTele args newTele j
+      args' <- tcArgTele args newTele mk
       return (ty, DCon c j0 args')
     _ ->
       Env.err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
@@ -249,7 +248,9 @@ tcTerm t@(DCon c j0 args) (Just ty) mk = do
 -- What about the level of the RHS of the case? Doing current level now, but could
 -- restrict to scrutinee level
 tcTerm t@(Case scrut alts) (Just ty) mk = do
-  (sty, scrut') <- inferType scrut mk
+  j <- LVar <$> Unbound.fresh (Unbound.string2Name "jS")
+  Env.extendLevelConstraint (Le j mk)
+  (sty, scrut') <- inferType scrut j
   scrut'' <- Equal.whnf scrut'
   (c, d0, args) <- Equal.ensureTCon sty
   let checkAlt (Match bnd) = do
@@ -259,9 +260,7 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
         -- levels of constructors of each branch can be different,
         -- but must at least fit in the level of the scrutinee
         -- so that motive remains well typed
-        jx <- Unbound.fresh (Unbound.string2Name "jS")
-        Env.extendLevelConstraint (Le (LVar jx) mk)
-        decls <- declarePat pat (Mode Rel (Just (LVar jx))) (TCon c d0 args)
+        decls <- declarePat pat (Mode Rel (Just j)) (TCon c d0 args)
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
         decls' <- Equal.unify [] scrut'' (pat2Term pat)
@@ -446,8 +445,7 @@ declarePat (PatVar x)       (Mode rho j) ty = return [TypeSig (Sig x rho j ty)]
 declarePat (PatCon dc pats) (Mode Rel (Just j)) ty = do
   (tc, j0, params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai, k) <- Env.lookupDCon dc tc
-  -- require equality now, maybe support displacement for data constructors later
-  Env.extendLevelConstraint (Eq j (j0 <> k))
+  Env.extendLevelConstraint (Le (j0 <> k) j)
   tele <- substTele delta params deltai
   declarePats dc pats j tele
 declarePat pat (Mode Rel Nothing) _ty =
