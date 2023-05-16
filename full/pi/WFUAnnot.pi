@@ -14,9 +14,13 @@ always_WF : (x : U^0 @ 1) -> WF^0 x @ 2
 always_WF = \u. case u of 
    (Mk_U X f) -> Mk_WF^0 [X] [f] (\x. always_WF (f x))
 
+liftU : U^0 -> U^1
+liftU = \u. case u of
+   Mk_U X f -> Mk_U^1 X (\x. liftU (f x))
+
 -- But this one is not
 loop : U^1 @ 2
-loop = Mk_U U^0 (\x. x)
+loop = Mk_U^1 U^0 liftU^0
 
 not_WF : WF^1 loop^0 -> Void^0 @ 3
 not_WF = \y. case y of

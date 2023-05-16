@@ -115,16 +115,17 @@ equate' d t1 t2 = do
     (Refl,  Refl) -> return success
 
     (TCon c1 j1 ts1, TCon c2 j2 ts2) -> do
-      equateLevel j1 j2
+      crs <- equateLevel j1 j2
       if c1 == c2 then do
         rs <- zipWithM (equateArgs d) [ts1] [ts2]
-        return (mconcat rs)
+        return (crs ++ mconcat rs)
       else
         tyErr c2 c1
 
     (DCon d1 j1 a1, DCon d2 j2 a2) | d1 == d2 -> do
-      equateLevel j1 j2
-      equateArgs d a1 a2
+      drs <- equateLevel j1 j2
+      ars <- equateArgs d a1 a2
+      return (drs ++ ars)
     (_,_) -> do
         -- For terms that do not have matching head forms, 
         -- first see if they are "shallowly" equal i.e. alpha-equivalent
