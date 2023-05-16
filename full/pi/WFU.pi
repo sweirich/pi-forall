@@ -9,7 +9,7 @@ data U : Type where
 -- A U is well-founded if all its elements are
 -- (No infinite chains of elements)
 data WF (u : U) : Type where
-   Mk_WF of [X : Type] [f : X -> U] ((x : X) -> WF (f x)) [u = Mk_U X f]
+   Mk_WF of [X : Type] [f : X -> U @ 1] ((x : X @ 1) -> WF (f x)) [u = Mk_U X f]
 
 
 -- All U are well-founded
