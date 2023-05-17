@@ -712,12 +712,12 @@ displaceTm = do
   x <- variable
   reservedOp "^"
   l <- try (LConst <$> natural) <|> do
-    lv <- Unbound.fresh (Unbound.string2Name "l")
+    lv <- Unbound.fresh (Unbound.string2Name "d")
     return (LVar lv)
   return $ Displace (Var x) l
 
 displace :: LParser Level
 displace = do
   try (reservedOp "^" *> (LConst <$> natural)) <|> do
-    lv <- Unbound.fresh (Unbound.string2Name "l")
+    lv <- Unbound.fresh (Unbound.string2Name "d")
     return (LVar lv) 

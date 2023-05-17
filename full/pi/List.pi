@@ -14,7 +14,6 @@ map = \[a] [b] f xs . case xs of
 id : [a:Type] -> a -> a
 id = \[a] x . x  
   
-
 f_cong2 : [a : Type]->[b : Type] -> (f : a -> b) -> (a1 : a) -> (a2 : a) -> (a1 = a2) -> f a1 = f a2
 f_cong2 = \[a][b] f a1 a2 pf . subst Refl by pf
 
@@ -25,8 +24,6 @@ map_id = \[a] xs. case xs of
        Cons y ys -> 
          let ih = map_id [a] ys in 
          f_cong2 [List a][List a] (\ys. Cons y ys) (map[a][a](id[a])ys) (id [List a]ys) ih
-
-
 
 append : [a:Type] -> List a -> List a -> List a
 append = \[a] xs ys. case xs of 
@@ -48,4 +45,17 @@ head : [a : Type] -> List a -> a
 head = \[a] xs . case xs of 
   Nil -> TRUSTME  -- cannot remove b/c of exhaustivity check
   Cons y ys -> y
-  
+
+-- Example using lists containing higher-level elements by floating
+-- Displacements explicitly 0 to show they're not needed
+
+data Pack : Type where
+  Packed of [A : Type @ 0] (A)
+
+zapListId : List^0 ([A : Type @ 0] -> A -> A) -> List^0 Pack^0 -> List^0 Pack^0
+zapListId = \fs ps. case fs of
+  Nil -> ps
+  Cons f fs -> case ps of
+    Nil -> Nil^0
+    Cons p ps -> case p of
+      Packed [A] a -> Cons^0 (Packed^0 [A] (f [A] a)) (zapListId fs ps)
