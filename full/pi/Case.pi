@@ -1,13 +1,16 @@
 module Case where
 
 data TT : Type @ 0 where
-  tt @ 1
+  tt @ 0
 
--- This should fail (regardless of the TRUSTME),
--- since the pattern tt has level 1 while the scrutinee has level 0.
-f : [P : (t : TT^0 @ 0) -> Type @ 1] -> (t : TT^0 @ 0) -> P t @ 2
-f = \[P] t. case t of
-  tt -> TRUSTME
+data Box : Type @ 1 where
+  box of (TT^1) @ 1
+
+-- This shouldn't fail, and should match on tt as a displaced constructor
+h : (P : Box^0 -> Type) -> P (box^0 tt^1) -> (b : Box^0) -> P b
+h = \P Pb b. case b of
+  box t -> case t of
+    tt -> Pb
 
 data X : Type @ 0 where
   c of (Unit) @ 0
