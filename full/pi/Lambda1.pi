@@ -23,7 +23,7 @@ data Val : Type where
 
 -- Safely access a vector using an index that is known 
 -- to be in bounds.
-nth : [a:Type] -> [n:Nat] -> Vec a n -> Fin n -> a
+nth : [a:Type @ 1] -> [n:Nat] -> Vec a n -> Fin n -> a
 nth = \[a][n] v f. case f of 
    Zero [m] -> case v of 
            Cons [m'] x xs -> x 

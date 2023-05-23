@@ -6,12 +6,13 @@ import Logic
 import BoolLib
 import Product
 import Or
+import Case
 import Fin
 import Equal
 import Equality
 import Fix
 import NatChurch
-import Hurkens
+-- import Hurkens
 -- import HurkensEx
 import IsProp
 import List

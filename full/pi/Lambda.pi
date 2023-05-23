@@ -2,10 +2,10 @@ module Lambda where
 
 import Nat
 import Fin
-import Vec 
+import Vec
 
-lookup : [a:Type] -> [n:Nat] -> Fin n -> Vec a n -> a @ 1
-lookup = \[a][n] f v. case f of 
+lookup : [a:Type @ 1] -> [n:Nat] -> Fin n -> Vec a n -> a @ 2
+lookup = \[a][n] f v. case f of
    Zero [m] -> case v of 
            Cons [m'] x xs -> x 
    Succ [m] f' -> case v of 
