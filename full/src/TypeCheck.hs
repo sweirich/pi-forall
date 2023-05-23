@@ -275,7 +275,7 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
 
   let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts
   alts' <- mapM checkAlt alts
-  exhaustivityCheck scrut' sty mk pats
+  exhaustivityCheck scrut' sty pats
   return (ty, Case scrut' alts')
 
 tcTerm t@(TyEq a b) Nothing mk = do
@@ -713,11 +713,9 @@ duplicateTypeBindingCheck sig = do
 -- Otherwise, the scrutinee type must be a type constructor, so the
 -- code looks up the data constructors for that type and makes sure that
 -- there are patterns for each one.
--- Constructors at a level higher than the ambient level
--- are considered to be impossible.
-exhaustivityCheck :: Term -> Type -> Level -> [Pattern] -> TcMonad ()
-exhaustivityCheck scrut ty j (PatVar x : _) = return ()
-exhaustivityCheck scrut ty j pats = do
+exhaustivityCheck :: Term -> Type -> [Pattern] -> TcMonad ()
+exhaustivityCheck scrut ty (PatVar x : _) = return ()
+exhaustivityCheck scrut ty pats = do
   (tcon, j0, tys) <- Equal.ensureTCon ty
   (Telescope delta, mdefs, k) <- Env.lookupTCon tcon
   case mdefs of
@@ -746,7 +744,6 @@ exhaustivityCheck scrut ty j pats = do
         checkImpossible (ConstructorDef _ dc (Telescope tele) ck : rest) = do
           this <-
             ( do
-                Env.extendLevelConstraint (Le ck j)
                 tele' <- substTele delta tys tele
                 _ <- tcTypeTele tele' ck
                 return [dc]
