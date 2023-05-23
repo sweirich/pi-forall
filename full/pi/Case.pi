@@ -3,6 +3,18 @@ module Case where
 data TT : Type @ 0 where
   tt @ 0
 
+elimTT : [P : TT^0 -> Type] -> P tt^0 -> (t : TT^0) -> P t
+elimTT = \[P] Ptt t. case t of
+  tt -> Ptt
+
+elimFunTT : [P : TT^0 -> Type] -> [A : Type] -> (f : A -> TT^0) -> (x : A) -> P tt^0 -> P (f x)
+elimFunTT = \[P] [A] f x Ptt.
+  let g = (\y q. case y of tt -> q
+    : (y : TT^0) -> y = f x -> tt^0 = f x) in
+  let h = (\[y] q py. subst py by q
+    : [y : TT^0] -> y = f x -> P y -> P (f x)) in
+  h [tt^0] (g (f x) Refl) Ptt
+
 data Box : Type @ 1 where
   box of (TT^1) @ 1
 
@@ -15,7 +27,9 @@ h = \P Pb b. case b of
 data X : Type @ 0 where
   c of (Unit) @ 0
 
+{-
 -- This should fail, since it normalizes to \P u. P u, which is ill typed.
 Pu : (P : (x : Unit @ 0) -> Type) -> (u : Unit @ 1) -> Type
 Pu = \P u. case c u of
   c x -> P x
+-}

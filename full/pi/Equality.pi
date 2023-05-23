@@ -76,6 +76,11 @@ sig_equal : [A : Type] -> [B : A -> Type]
           -> ( ( x , b ) : { x : A | B x } ) = (y , subst b by p )
 sig_equal = \[A][B] x y p b . subst Refl by p
 
+-- coercion
+
+coe : [A : Type] -> [B : Type] -> A = B -> A -> B
+coe = \[A] [B] p a. subst a by p
+
 -- not equal is symmetric
 
 neg_eq_sym :  [A:Type] -> [x:A] -> [y:A] -> neg (x = y) -> neg (y = x)

@@ -190,11 +190,14 @@ tcTerm (TCon c j0 params) Nothing mk = do
 -- we don't know the expected type, so see if there
 -- is only one datacon of that name that takes no
 -- parameters
+-- TODO: check level of TCon + displacement <= mk
 tcTerm t@(DCon c j0 args) Nothing mk = do
   matches <- Env.lookupDConAll c
   case matches of
-    [(tname, (Telescope [], cd@(ConstructorDef _ _ (Telescope deltai) j)))] -> do
-      Env.extendLevelConstraint (Le (j0 <> j) mk)
+    [(tname, (Telescope [], cd@(ConstructorDef _ _ (Telescope deltai) _)))] -> do
+      (_, _, k) <- Env.lookupTCon tname
+      -- we know j <= k, so we check k + j0 <= mk
+      Env.extendLevelConstraint (Le (j0 <> k) mk)
       let numArgs = length (filter isTypeSig deltai)
       unless (length args == numArgs) $
         Env.err
@@ -221,9 +224,12 @@ tcTerm t@(DCon c j0 args) Nothing mk = do
 -- so look up its type in the context
 tcTerm t@(DCon c j0 args) (Just ty) mk = do
   case ty of
-    (TCon tname _ params) -> do
-      (Telescope delta, Telescope deltai, j) <- Env.lookupDCon c tname
-      Env.extendLevelConstraint (Le (j0 <> j) mk)
+    (TCon tname k0 params) -> do
+      Env.extendLevelConstraint (Eq j0 k0)
+      (Telescope delta, Telescope deltai, _) <- Env.lookupDCon c tname
+      (_, _, k) <- Env.lookupTCon tname
+      -- we know j <= k, so we check k + k0 <= mk
+      Env.extendLevelConstraint (Le (k0 <> k) mk)
       let numArgs = length (filter isTypeSig deltai)
       unless (length args == numArgs) $
         Env.err
@@ -257,10 +263,12 @@ tcTerm t@(Case scrut alts) (Just ty) mk = do
         (pat, body) <- Unbound.unbind bnd
         -- add variables from pattern to context
         -- could fail if branch is in-accessible
-        decls <- declarePat pat (Mode Rel (Just j)) (TCon c d0 args)
+        decls <- declarePat pat (Mode Rel (Just j)) sty
         -- add defs to the contents from scrut = pat
         -- could fail if branch is in-accessible
-        decls' <- Equal.unify [] scrut'' (pat2Term pat)
+        patTm <- pat2Term pat
+        patTm' <- Env.extendCtxs decls $ checkType patTm sty j
+        decls' <- Equal.unify [] scrut'' patTm'
         body' <- Env.extendCtxs (decls ++ decls') $ do
           checkType body ty mk
         return (Match (Unbound.bind pat body'))
@@ -323,8 +331,11 @@ tcTerm LetPair{} _ k =  Env.err [DS "The parser for 'full' expands Sigmas into d
 
 tcTerm PrintMe (Just ty) mk = do
   gamma <- Env.getLocalCtx
-  Env.warn [DS "Unmet obligation.\nContext:", DD gamma,
-        DS "\nGoal:", DD ty]
+  cs <- Env.dumpConstraints
+  let dcs = displayConstraints (Env.simplify cs)
+  Env.warn $ [DS "Unmet obligation.\nContext:", DD gamma,
+        DS "\nGoal:", DD ty,
+        DS "\nConstraints:"] ++ dcs
   ty' <- tcType ty mk
   return (ty', PrintMe)
 
@@ -460,8 +471,8 @@ declarePats dc pats j (Def x ty : tele) = do
 declarePats dc ((pat, _) : pats) j (TypeSig (Sig x r l ty) : tele) = do
   let k = localize j l
   ds1 <- declarePat pat (Mode r (Just k)) ty
-  let tm = pat2Term pat
-  tele' <- doSubst [(x,tm)] tele
+  tm <- pat2Term pat
+  tele' <- doSubst [(x, tm)] tele
   -- let tele' = map ((Unbound.subst :: TName -> Term -> Decl -> Decl) x tm) tele
   ds2 <- Env.extendCtxs ds1 $ declarePats dc pats j tele'
   return (ds1 ++ ds2)
@@ -471,15 +482,19 @@ declarePats dc pats j [] = Env.err [DS "Too many patterns in match for data cons
 declarePats dc _    j _ = Env.err [DS "Invalid telescope", DD dc]
 
 -- | Convert a pattern to a term 
-pat2Term :: Pattern ->  Term
-pat2Term (PatVar x) = Var x
-pat2Term (PatCon dc pats) = DCon dc (LConst 0) (pats2Terms pats) -- TODO! what displacement level?
+pat2Term :: Pattern -> TcMonad Term
+pat2Term (PatVar x) = return $ Var x
+pat2Term (PatCon dc pats) = do
+  d <- LVar <$> Unbound.fresh (Unbound.string2Name "d")
+  args <- pats2Terms pats
+  return $ DCon dc d args
   where
-    pats2Terms :: [(Pattern, Rho)] -> [Arg]
-    pats2Terms [] = []
-    pats2Terms ((p, ep) : ps) = Arg ep t : ts where
-      t = pat2Term p
-      ts = pats2Terms ps
+    pats2Terms :: [(Pattern, Rho)] -> TcMonad [Arg]
+    pats2Terms [] = return []
+    pats2Terms ((p, ep) : ps) = do
+      t <- pat2Term p
+      ts <- pats2Terms ps
+      return $ Arg ep t : ts
 
 
 -- | Check all of the types contained within a telescope

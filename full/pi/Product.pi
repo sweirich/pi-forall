@@ -84,7 +84,7 @@ data Refine (A:Type @ 0) (B : A -> Type) : Type where
 
 rproj1 : [A:Type] -> [B:A -> Type] -> Refine A B -> A 
 rproj1 = \[A][B] x . case x of 
-  Product x y -> x
+  Product x [y] -> x
 
 ---------------------------------------------------
 -- Non-dependent version 

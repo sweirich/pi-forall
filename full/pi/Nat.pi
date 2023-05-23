@@ -7,6 +7,8 @@
 
 module Nat where
 
+import Equality
+
 data Nat : Type where
   Zero
   Succ of (Nat)
@@ -20,11 +22,6 @@ pred : Nat -> Nat
 pred = \n . case n of
   Zero -> Zero
   Succ n' -> n'
-
-
-m_eq_n_Sm_eq_Sn : (m:Nat) -> (n:Nat) -> m = n -> ((Succ m : Nat) = Succ n)
-m_eq_n_Sm_eq_Sn = \m n pf . 
-  subst Refl by pf 
 
 nat_eq : Nat -> Nat -> Bool
 nat_eq = \ x y .
@@ -58,8 +55,27 @@ minus = \n m .
                     Succ mpred -> minus pred mpred
 
 -------------------------------------------------------
--- Reasoning about datatypes
+-- Properties of naturals:
+-- * successor is monotone
+-- * successor is injective
+-- * constructors are discriminable
 
+m_eq_n_Sm_eq_Sn : [m:Nat] -> [n:Nat] -> m = n -> (Succ m = Succ n)
+m_eq_n_Sm_eq_Sn = \[m] [n] pf.
+  subst Refl by pf
+
+Sm_eq_Sn_m_eq_n : [m : Nat] -> [n : Nat] -> Succ m = Succ n -> m = n
+Sm_eq_Sn_m_eq_n = \[m] [n] p.
+  f_equal [Nat] [Nat] [pred] [Succ m] [Succ n] p
+
+Z_neq_S : [n : Nat] -> Zero = Succ n -> ((A : Type) -> A)
+Z_neq_S = \[n] p.
+  let split = (\n. case n of Zero -> Unit; Succ m -> (A : Type) -> A : Nat -> Type)
+  in coe [Unit] [(A : Type) -> A] (f_equal [Nat] [Type] [split] [Zero] [Succ n] p) ()
+-- Z_neq_S = \[n] p. contra p
+
+-------------------------------------------------------
+-- Reasoning about datatypes
 
 minus_same_zero : (n : Nat @0) -> ((minus^0) n n = 0) @ 1
 minus_same_zero = \ n .
@@ -89,5 +105,4 @@ plus_associates = \ i j k .
     -- S ((i'+j)+k) = S (i'+(j+k))
     Succ i' -> 
       let ih = (plus_associates i' j k) in
-		m_eq_n_Sm_eq_Sn (plus (plus i' j) k) (plus i' (plus j k)) ih
-
+		m_eq_n_Sm_eq_Sn [plus (plus i' j) k] [plus i' (plus j k)] ih
