@@ -1,0 +1,66 @@
+module Ord where
+
+import Logic
+import List
+
+data Void : Type where {}
+
+-- Ordinals and their order
+
+data Ord : Type where
+  Succ of (Ord)
+  Lim of [X : Type] (X -> Ord)
+
+data Leq (o1 : Ord) (o2 : Ord) : Type where
+  Mono     of (o1' : Ord) (o2' : Ord) (Leq o1' o2') [o1 = Succ o1'] [o2 = Succ o2']
+  Cocone   of [A : Type] (f : A -> Ord)  (a : A)   (Leq o1 (f a)) [o2 = Lim [A] f]
+  Limiting of [A : Type] (f : A -> Ord) ((a : A) -> Leq (f a) o2) [o1 = Lim [A] f]
+
+lt : Ord -> Ord -> Type
+lt = \o1 o2. Leq (Succ o1) o2
+
+zero : Ord
+zero = Lim [Void] (\v. case v of {})
+
+-- Properties of the order
+
+zeroLeq : [o : Ord] -> Leq zero o
+zeroLeq = \[o]. Limiting [Void] (\v. case v of {}) (\v. case v of {})
+
+reflLeq : (o : Ord) -> Leq o o
+reflLeq = \o. case o of
+  Succ o -> Mono o o (reflLeq o)
+  Lim [X] f -> Limiting [X] f (\x. Cocone [X] f x (reflLeq (f x)))
+
+transLeq : [o1 : Ord] -> [o2 : Ord] -> [o3 : Ord] -> Leq o1 o2 -> Leq o2 o3 -> Leq o1 o3
+transLeq = \[o1] [o2] [o3] leq1 leq2. case leq1 of
+  Mono o1' o2' leq1' -> case leq2 of
+    Mono o2' o3' leq2' -> Mono o1' o3' (transLeq [o1'] [o2'] [o3'] leq1' leq2')
+    Cocone [A] f a leq2' -> Cocone [A] f a (transLeq [o1] [o2] [f a] leq1 leq2')
+  Cocone [A] f a leq1' -> case leq2 of
+    Cocone [A] f a leq2' -> Cocone [A] f a (transLeq [o1] [o2] [f a] leq1 leq2')
+    Limiting [A] f h -> transLeq [o1] [f a] [o3] leq1' (h a)
+  Limiting [A] f h -> Limiting [A] f (\a. transLeq [f a] [o2] [o3] (h a) leq2)
+
+succLeq : (o : Ord) -> Leq o (Succ o)
+succLeq = \o. case o of
+  Succ o -> Mono o (Succ o) (succLeq o)
+  Lim [X] f -> Limiting [X] f
+    (\x. transLeq [f x] [Succ (f x)] [Succ (Lim [X] f)]
+      (succLeq (f x))
+      (Mono (f x) (Lim [X] f)
+        (Cocone [X] f x (reflLeq (f x)))))
+
+-- Ordinal addition?
+
+add : Ord -> Ord -> Ord
+add = \o1 o2. case o1 of
+  Succ o -> Succ (add o o2)
+  Lim [X] f -> case o2 of
+    Succ o -> Succ (add o1 o)
+    Lim [Y] g -> Lim [Either X Y] (\xy. case xy of Inl x -> f x; Inr y -> g y)
+
+sumOrds : List Ord -> Ord
+sumOrds = \l. case l of
+  Nil -> zero
+  Cons o os -> add o (sumOrds os)

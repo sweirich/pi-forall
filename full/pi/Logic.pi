@@ -113,9 +113,8 @@ not_both_true_and_false = \[P][Q] andpnp.
   case andpnp of 
     (Conj p np) -> np p
 
-{-
 iff_neg_false : [A : Type] -> iff (neg A) (iff A Void)
 iff_neg_false = \ [A] . Conj (\ x . Conj x (\y. false_elim [A] y)) (proj1 [A -> Void][Void -> A])
--}
-                                  
 
+em_irrefutable : [A : Type] -> neg (neg (Either A (neg A)))
+em_irrefutable = \[A] f. f (Inr (\a. f (Inl a)))
