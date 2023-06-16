@@ -80,7 +80,7 @@ data Env = Env
     sourceLocation :: [SourceLocation] 
   }
 
---deriving Show
+
 
 -- | The initial environment.
 emptyEnv :: Env

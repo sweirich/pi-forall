@@ -424,7 +424,8 @@ declarePats dc pats (Def x ty : tele) = do
 declarePats dc ((pat, _) : pats) (TypeSig (Sig x ep ty) : tele) = do
   ds1 <- declarePat pat ep ty
   let tm = pat2Term pat
-  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats (Unbound.subst x tm tele)
+  tele' <- doSubst [(x,tm)] tele
+  ds2 <- Env.extendCtxs ds1 $ declarePats dc pats tele'
   return (ds1 ++ ds2)
 declarePats dc []   [] = return []
 declarePats dc []    _ = Env.err [DS "Not enough patterns in match for data constructor", DD dc]
@@ -590,7 +591,7 @@ duplicateTypeBindingCheck sig = do
     [] -> return ()
     -- We already have a type in the environment so fail.
     sig' : _ ->
-      let (Pos p _) = sigType sig
+      let p = unPosFlaky $ sigType sig
           msg =
             [ DS "Duplicate type signature",
               DD sig,

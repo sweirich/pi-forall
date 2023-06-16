@@ -52,8 +52,8 @@
 These lecture notes describe the design of a minimal dependently-typed
 language called ``\pif'' and walk through the implementation of its type
 checker. They are based on lectures given at the \emph{Oregon Programming
-  Languages Summer School} during June 2022 and derived from earlier lectures
-from summer schools during 2014 and 2013.
+  Languages Summer School} during July 2023 and derived from earlier lectures
+from summer schools during 2022, 2014 and 2013.
 
 \paragraph{What do I expect from you, dear reader?} This discussion assumes a
 familiarity with the basics of the lambda calculus, including its standard
@@ -64,14 +64,14 @@ background on this material, I recommend the textbooks~\cite{tapl, pfpl}.
 Furthermore, these notes also refer to an implementation of a demo type
 checker and assume basic knowledge of the Haskell programming language. This
 implementation is available at \url{https://github.com/sweirich/pi-forall} on
-branch \texttt{2022}. As you study these notes, I encourage you to download
+branch \texttt{2023}. As you study these notes, I encourage you to download
 this repository, read through its source code, and experiment with
-it. Detailed installation instructions are available with the repository.
+it. Installation instructions are available with the repository.
 
 \paragraph{What do these notes cover?}
 These notes are broken into several sections that incrementally build up the
 design and implementation of a type checker for a dependently-typed
-programming language.
+programming language. 
 
 \begin{figure}[ht]
 \begin{center}
@@ -84,7 +84,7 @@ Irrelevance & \texttt{version3} & Section ~\ref{sec:irrelevance} \\
 Datatypes   & \texttt{full}     & Sections~\ref{sec:examples} and ~\ref{sec:datatypes} \\
 \end{tabular}
 \end{center}
-\caption{Connection between sections and \pif versions}
+\caption{Connection between sections of the lecture notes and \pif versions}
 \label{fig:impls}
 \end{figure}
 
@@ -181,7 +181,7 @@ approaches.  The key differences are summarized below:
   during type checking.  \pif uses an alternative approach based on
   weak-head-normalization, defined using substitution. This approach is closer
   to $\lambda$-calculus theory but can be less efficient in practice.
-\item Also for simplicity, \pif does not attempt to infer missing arguments using
+\item For simplicity, \pif does not attempt to infer missing arguments using
   unification or other means. As a result, example programs in \pif are
   significantly more verbose than in other languages.
 \item This implementation relies on the \unbound library for variable binding,
@@ -189,7 +189,7 @@ approaches.  The key differences are summarized below:
   automatically derived. A more common approach is to use de Bruijn indices.
 \item Recent work on cubical type theory, higher-inductive types, and
   univalence is not covered here. Indeed, the rules for dependent pattern matching
-  that we present will be incompatible with such extensions.
+  that we present are incompatible with such extensions.
 \end{itemize}
 
 \paragraph{What do I want you to get out of all of this?}
@@ -239,7 +239,7 @@ the length of lists.
 
 In \pif, we can define a datatype for length-indexed lists (often called
 vectors) as follows.\footnote{In the \texttt{full} implementation, you can find these
-definitions in the file \texttt{Vec.pi}.}
+definitions in the file \texttt{pi/Vec.pi}.}
 \begin{piforall}
 data Vec (A : Type) (n : Nat) : Type where
   Nil of  [n = Zero]
@@ -326,7 +326,7 @@ case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
 You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality. (When arguments are marked in this way, the type checker must ensure that this erasure is sound and the argument is never actually used in a meaningful way.)
 Similarly, the constraints that are part of datatype definitions, such as \cd{n = Succ m} above, are enclosed in 
-square brackets because there is no runtime witness stored with the data constructor.
+square brackets because there is no runtime proof of the equality stored with the data constructor.
 
 \subsection{Homework: Check out \pif}
 
@@ -379,17 +379,20 @@ contain? At the bare minimum we start with the following five forms:
      [[a]],[[b]],[[A]],[[B]] & ::=& [[x]]  &\mbox{ variables  }\\
          &&[[\x. a]]          &\mbox{ lambda expressions (anonymous functions)} \\
          &&[[a b]]            &\mbox{ function applications }\\
-         &&[[(x:A) -> B]]     &\mbox{ dependent function type, aka $\Pi$ }\\
+         &&[[(x:A) -> B]]     &\mbox{ dependent function type, aka $\Pi$-types }\\
          &&[[Type]]           &\mbox{ the `type' of types}\\
 \end{array}
 \]
 
 As in many dependently-typed languages, we have the \emph{same} syntax for
-both expressions and types. For clarity, I will use lowercase letters $a$ for
-expressions and uppercase letters for their types $A$.
+both expressions and types. For clarity, the convention is to use lowercase
+letters ($a$,$b$) for expressions and uppercase letters ($A$,$B$) for types.
 
 Note that $\lambda$ and $\Pi$ above are \emph{binding forms}. They bind the
-variable $x$ in $a$ and $B$ respectively.
+variable $x$ in $a$ and $B$ respectively. In dependent function types 
+$[[(x:A) -> B]]$, if $x$ does not appear free in $B$, it is also convention 
+to write the type as $[[A -> B]]$.
+
 
 \subsection{When do expressions in this language type check?}
 

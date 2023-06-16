@@ -216,7 +216,7 @@ duplicateTypeBindingCheck sig = do
     [] -> return ()
     -- We already have a type in the environment so fail.
     sig' : _ ->
-      let (Pos p _) = sigType sig
+      let p = unPosFlaky $ sigType sig
           msg =
             [ DS "Duplicate type signature",
               DD sig,
