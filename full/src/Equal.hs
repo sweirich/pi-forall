@@ -296,7 +296,7 @@ unify ns tx ty = do
 -- solutions.
 amb :: Term -> Bool
 amb (App t1 t2) = True
-amb (If _ _ _) = True
+amb If {} = True
 amb (LetPair _ _) = True
 amb (Case _ _) = True
 amb _ = False
