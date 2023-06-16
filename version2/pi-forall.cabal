@@ -1,9 +1,9 @@
 cabal-Version: 2.2
 name: pi-forall
 version: 0.2
-license: BSD-3-Clause
+license: MIT
 license-file: LICENSE
-copyright: (c) 2013-2022 University of Pennsylvania
+copyright: (c) 2013-2023 University of Pennsylvania
 description: An implementation of a simple dependently typed language for OPLSS 2022
 author: Stephanie Weirich <sweirich@seas.upenn.edu>, based on code by Trellys Team <trellys@...>
 maintainer: Stephanie Weirich <sweirich@seas.upenn.edu>
@@ -19,32 +19,14 @@ source-repository head
 
 common shared-properties
   default-language:
-    Haskell2010
+    GHC2021
   ghc-options:
     -Wall -fno-warn-unused-matches -fno-warn-orphans -fno-warn-unused-top-binds -fno-warn-unused-imports
   default-extensions: 
-    EmptyDataDecls
     DefaultSignatures
     DeriveAnyClass
-    DeriveDataTypeable
-    DeriveGeneric
-    DerivingStrategies
-    FlexibleContexts 
-    FlexibleInstances 
-    GADTs
-    GeneralizedNewtypeDeriving
-    ImportQualifiedPost
-    KindSignatures
-    MultiParamTypeClasses
-    NamedFieldPuns
-    ParallelListComp
-    PatternGuards
-    RankNTypes
-    ScopedTypeVariables
-    TupleSections
-    TypeSynonymInstances
-    UndecidableInstances 
-    ViewPatterns
+    DerivingStrategies 
+     
   build-depends:  
     base >= 4 && < 5,
     parsec >= 3.1.8 && < 3.2,
@@ -59,7 +41,7 @@ common shared-properties
     HUnit,
     QuickCheck
   if !impl(ghc >= 8.0)
-    build-depends: semigroups == 0.18.*      
+    build-depends: semigroups       
  
 
 library

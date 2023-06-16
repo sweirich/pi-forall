@@ -388,7 +388,8 @@ instance Display Term where
   {- STUBWITH -}
 
 {- SOLN DATA -}
-  display (isNumeral -> Just i) = display i
+  display t
+    | Just i <- isNumeral t = display i
   display (TCon n args) = do
     p <- ask prec
     dn <- display n

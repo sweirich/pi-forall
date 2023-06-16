@@ -2,11 +2,12 @@ pi-forall
 =========
 
 A demo implementation of a simple dependently-typed language for OPLSS
-(Used in 2022, 2014 and 2013)
+(Used in 2023, 2022, 2014 and 2013)
 
 The goal of this project is to bring up the design issues that occur in the
-implementation of the type checkers of languages like Agda, Coq, Epigram, Idris, etc. Of course, it
-can't cover everything, but this code is a starting point for discussion.
+implementation of the type checkers of languages like Agda, Coq, Epigram, 
+Idris, etc. Of course, it can't cover everything, but this code is a 
+starting point for discussion.
 
 As its main purpose is didactic, the code itself has been written for
 clarity, not for speed. The point of this implementation is an introduction to
@@ -31,20 +32,24 @@ Contents
 --------
 
 There are several versions of `pi-forall` in the repository. See the 
-[documentation](https://github.com/sweirich/pi-forall/blob/2022/doc/oplss.pdf) for an extended description of what parts of the language
-are covered by each version. 
+[documentation](https://github.com/sweirich/pi-forall/blob/2023/doc/oplss.pdf) for an extended 
+description of what parts of the language are covered by each version. 
+
+When you open the project in vscode, you should open the folder for the implementation that
+you want to work with (i.e. `version1`/`version2`/`full`), so that the Haskell language server
+can find the project metadata. 
 
 Each implementation has the following structure:
 
 ```
 <version>/
-  pi/*.pi            example pi-forall files
-  src/*.hs           source code
-  app/Main.hs        entry point
-  README.md (this file)
-  LICENSE
-  pi-forall.cabal
-  stack.yaml         
+  pi/*.pi                example pi-forall files and exercises
+  src/*.hs               source code
+  app/Main.hs            entry point for command line app
+  README.md              this file
+  LICENSE                license file
+  pi-forall.cabal        project metadata
+  stack.yaml             project metadata
 
 ```
 
@@ -59,6 +64,12 @@ and to typecheck a source file:
 ```
 stack exec -- pi-forall <sourcefile>
 ```
+
+Versioning
+----------
+
+This repository has been tested with the current ghcup recommended tool versions for June 2023, including GHC 9.2.7 and stack lts-20.24.
+
 
 
 Acknowledgement

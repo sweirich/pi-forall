@@ -220,7 +220,7 @@ instance Semigroup Err where
 
 instance Monoid Err where
   mempty = Err [] mempty
-  mappend (Err src1 d1) (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
+
 
 instance Disp Err where
   disp (Err [] msg) = msg

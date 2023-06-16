@@ -29,6 +29,7 @@ where
 
 import Control.Monad.Identity
 import Data.Char (digitToInt, isAlpha, isSpace, toLower, toUpper)
+import Data.Kind (Type)
 import Data.List (nub, sort)
 import Text.Parsec (Column, setSourceColumn, sourceColumn)
 import Text.Parsec.Char
@@ -687,7 +688,7 @@ makeTokenParser languageDef open sep close =
 
     --whiteSpace
     -- MOD: this function renamed from whiteSpace to ws, and changed to return the matched string.
-    ws :: forall (m :: * -> *). (Monad m) => ParsecT String [Column] m [String]
+    ws :: forall (m :: Type -> Type). (Monad m) => ParsecT String [Column] m [String]
     ws
       | noLine && noMulti = many (simpleSpace <?> "")
       | noLine = many (simpleSpace <|> multiLineComment <?> "")
@@ -807,7 +808,7 @@ makeTokenParser languageDef open sep close =
           (cs, p : ps, _, GT) -> return ()
 
 getInfo ::
-  forall (m :: * -> *) t t1.
+  forall (m :: Type -> Type) t t1.
   Monad m =>
   ParsecT t1 t m (Column, t, t1)
 getInfo =
@@ -818,7 +819,7 @@ getInfo =
     return (sourceColumn pos, tabs, tokens)
 
 setInfo ::
-  forall (m :: * -> *).
+  forall (m :: Type -> Type).
   Monad m =>
   (Column, [Column], String) ->
   ParsecT String [Column] m ()
@@ -830,7 +831,7 @@ setInfo (col, tabs, tokens) =
     setInput tokens
 
 indent ::
-  forall (m :: * -> *).
+  forall (m :: Type -> Type).
   Monad m =>
   ParsecT String [Column] m ()
 indent =
@@ -839,14 +840,14 @@ indent =
     tabs <- getState
     setState (sourceColumn pos : tabs)
 
-undent :: forall (m :: * -> *) t. Monad m => ParsecT String [t] m ()
+undent :: forall (m :: Type -> Type) t. Monad m => ParsecT String [t] m ()
 undent =
   do
     (p : ps) <- getState
     setState ps
 
 _eoln ::
-  forall (m :: * -> *) a.
+  forall (m :: Type -> Type) a.
   Monad m =>
   ParsecT [Char] [Column] m a ->
   ParsecT [Char] [Column] m Char
