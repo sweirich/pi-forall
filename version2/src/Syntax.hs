@@ -1,7 +1,6 @@
-{- pi-forall language -}
 
 -- | The abstract syntax of the simple dependently typed language
--- See comment at the top of 'Parser' for the concrete syntax of this language
+-- See the comment at the top of 'Parser' for the concrete syntax of this language
 module Syntax where
 
 import Data.Maybe (fromMaybe)
@@ -19,37 +18,40 @@ import Data.Function (on)
 
 -----------------------------------------
 
--- | For variable names, we use the Unbound library to
+-- | For variable names, we use the `Unbound` library to
 -- automatically generate free variable, substitution,
--- and alpha-equality function.
+-- and alpha-equality function. The abstract type `Name` from 
+-- this library is indexed by the AST type that this variable 
+-- is a name for. 
 type TName = Unbound.Name Term
 
 -- | module names
-type MName = String
+type ModuleName = String
 
 
 -----------------------------------------
 
--- * Core language
+-- * Core language of pi-forall (Combined syntax for types and terms)
 
 -----------------------------------------
 
--- | Combined syntax for types and terms
--- (type synonym for documentation)
+-- | Because types and terms use the same AST, we define the following
+-- type synonym so that we can hint whether a piece of syntax is being used
+-- as a type or as a term.
 type Type = Term
 
 -- | basic language
 data Term
-  = -- | type of types  `Type`
-    Type
-  | -- | variables  `x`
+  = -- | type of types, concretely `Type`
+    TyType
+  | -- | variable `x`
     Var TName
   | -- | abstraction  `\x. a`
     Lam  (Unbound.Bind TName Term)
   | -- | application `a b`
     App Term Term
   | -- | function type   `(x : A) -> B`
-    Pi  Type (Unbound.Bind TName Type)
+    TyPi  Type (Unbound.Bind TName Type)
   | -- | annotated terms `( a : A )`
     Ann Term Type
   | -- | marked source position, for error messages
@@ -72,7 +74,7 @@ data Term
   | -- | `if a then b1 else b2` expression for eliminating booleans
     If Term Term Term
   | -- | Sigma-type (homework), written `{ x : A | B }`  
-    Sigma Term (Unbound.Bind TName Term)
+    TySigma Term (Unbound.Bind TName Term)
   | -- | introduction form for Sigma-types `( a , b )`
     Prod Term Term
   | -- | elimination form for Sigma-types `let (x,y) = a in b`
@@ -101,14 +103,14 @@ data Term
 -- | A Module has a name, a list of imports, a list of declarations,
 --   and a set of constructor names (which affect parsing).
 data Module = Module
-  { moduleName :: MName,
+  { moduleName :: ModuleName,
     moduleImports :: [ModuleImport],
     moduleEntries :: [Decl] 
   }
   deriving (Show, Generic, Typeable)
 
 -- | References to other modules (brings declarations and definitions into scope)
-newtype ModuleImport = ModuleImport MName
+newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
 
 -- | A type declaration (or type signature)
@@ -232,11 +234,11 @@ instance Unbound.Subst Term Term where
 
 -- '(y : x) -> y'
 pi1 :: Term 
-pi1 = Pi (Var xName) (Unbound.bind yName (Var yName))
+pi1 = TyPi (Var xName) (Unbound.bind yName (Var yName))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi TyBool (Unbound.bind yName (Var yName))
+pi2 = TyPi TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
 -- True

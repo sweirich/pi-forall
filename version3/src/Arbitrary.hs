@@ -6,7 +6,7 @@ module Arbitrary where
 
 import qualified Data.Set as Set
 import Test.QuickCheck
-    ( elements, frequency, sized, Arbitrary(arbitrary), Gen ) 
+    ( elements, frequency, sized, Arbitrary(arbitrary), Gen )
 import qualified Test.QuickCheck as QC
 import qualified Unbound.Generics.LocallyNameless as Unbound
 import Text.Parsec.Error ( ParseError )
@@ -18,18 +18,18 @@ import Parser ( testParser, expr )
 
 -- | Round trip property: a given term prints then parses to the same term.
 prop_roundtrip :: Term -> QC.Property
-prop_roundtrip tm = 
+prop_roundtrip tm =
     let str = render (disp tm) in
     case test_parseExpr str  of
         Left _ -> QC.counterexample ("*** Could not parse:\n" ++ str) False
         Right tm' -> QC.counterexample ("*** Round trip failure! Parsing:\n" ++ str ++ "\n*** results in\n" ++ show tm') (Unbound.aeq tm tm')
-           
+
 test_parseExpr :: String -> Either Text.Parsec.Error.ParseError Term
 test_parseExpr = testParser  expr
 
 -- View random terms
 sampleTerms :: IO ()
-sampleTerms = QC.sample' (arbitrary :: Gen Term) >>= 
+sampleTerms = QC.sample' (arbitrary :: Gen Term) >>=
     mapM_ (putStrLn . render . disp)
 
 ---------------------------------------------------------------------------------------------------
@@ -55,8 +55,8 @@ instance Arbitrary (Unbound.Name a) where
 
 -- Terms with no subterms
 base :: Gen Term
-base = elements [Type, TrustMe, PrintMe,
-                tyUnit, litUnit, tyBool, 
+base = elements [TyType, TrustMe, PrintMe,
+                tyUnit, litUnit, tyBool,
                 litTrue, litFalse, Refl  ]
     where tyUnit = TyUnit
           litUnit = LitUnit
@@ -65,13 +65,13 @@ base = elements [Type, TrustMe, PrintMe,
           litFalse = LitBool False
 
 -- Generate a random term
--- In the inner recursion, the bool prevents the generation of TCon/DCon applications 
+-- In the inner recursion, the bool prevents the generation of TyCon/DataCon applications 
 -- inside Apps --- we want these terms to be fully saturated.
 genTerm :: Int -> Gen Term
 genTerm n
     | n <= 1 = base
     | otherwise = go True n where
-        go b n0 = 
+        go b n0 =
             let n' = n0 `div` 2 in
             frequency [
               (1, Var <$> genName),
@@ -91,7 +91,7 @@ genTerm n
             ]
 
 genLam :: Int -> Gen Term
-genLam n = do 
+genLam n = do
     p <- genName
     ep <- arbitrary 
     b <- genTerm n
@@ -99,37 +99,37 @@ genLam n = do
 
 
 genPi :: Int -> Gen Term
-genPi n = do 
+genPi n = do
     p <- genName
     ep <- arbitrary 
     tyA <- genTerm n
     tyB <- genTerm n
-    return $ Pi ep tyA (Unbound.bind p tyB)
+    return $ TyPi ep tyA (Unbound.bind p tyB)
 
 genSigma :: Int -> Gen Term
 genSigma n = do
-    p <- genName 
+    p <- genName
     tyA <- genTerm n
     tyB <- genTerm n
-    return $ Sigma tyA (Unbound.bind p tyB)
+    return $ TySigma tyA (Unbound.bind p tyB)
 
-genLet :: Int -> Gen Term 
+genLet :: Int -> Gen Term
 genLet n = do
-    p <- genName 
+    p <- genName
     rhs <- genTerm n
     b <- genTerm n
     return $ Let rhs (Unbound.bind p b)
 
-genLetPair :: Int -> Gen Term 
+genLetPair :: Int -> Gen Term
 genLetPair n = do
-    p <- (,) <$> genName <*> genName 
+    p <- (,) <$> genName <*> genName
     a <- genTerm n
     b <- genTerm n
     return $ LetPair a (Unbound.bind p b)
 
 instance Arbitrary Arg where
     arbitrary = sized genArg
-    shrink (Arg ep tm) = 
+    shrink (Arg ep tm) =
         [ Arg ep tm' | tm' <- QC.shrink tm]
 
 genArg :: Int -> Gen Arg
@@ -137,7 +137,7 @@ genArg n = Arg <$> arbitrary <*> genTerm (n `div` 2)
 
 genArgs :: Int -> Gen [Arg]
 genArgs n = genBoundedList 2 (genArg n)
-        
+
 instance Arbitrary Epsilon where
     arbitrary = elements [ Rel, Irr ]
 
@@ -149,21 +149,21 @@ instance Arbitrary Term where
     arbitrary = sized genTerm
 
     -- when QC finds a counterexample, it tries to shrink it to find a smaller one
-    shrink (App tm arg) = 
-        [tm, unArg arg] ++ [App tm' arg | tm' <- QC.shrink tm] 
+    shrink (App tm arg) =
+        [tm, unArg arg] ++ [App tm' arg | tm' <- QC.shrink tm]
                         ++ [App tm arg' | arg' <- QC.shrink arg]
 
     shrink (Lam ep bnd) = []
-    shrink (Pi ep tyA bnd) = [tyA]
+    shrink (TyPi ep tyA bnd) = [tyA]
     shrink (Let rhs bnd) = [rhs]
-    shrink (Sigma tyA bnd) = [tyA]
+    shrink (TySigma tyA bnd) = [tyA]
     shrink (TyEq a b) = [a,b] ++ [TyEq a' b | a' <- QC.shrink a] ++ [TyEq a b' | b' <- QC.shrink b]
     shrink (Subst a b) = [a,b] ++ [Subst a' b | a' <- QC.shrink a] ++ [Subst a b' | b' <- QC.shrink b]
-    shrink (Contra a) = [a] ++ [Contra a' | a' <- QC.shrink a]
+    shrink (Contra a) = a : [Contra a' | a' <- QC.shrink a]
     
 
     shrink _ = []
-       
+
 -------------------------------------------------------
 -- * General quickcheck utilities
 

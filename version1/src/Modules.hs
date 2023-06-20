@@ -25,7 +25,7 @@ getModules prefixes top = do
   mapM reparse toParse
 
 data ModuleInfo = ModuleInfo
-  { modInfoName :: MName,
+  { modInfoName :: ModuleName,
     modInfoFilename :: String,
     modInfoImports :: [ModuleImport]
   }
@@ -64,7 +64,7 @@ topSort ms = reverse sorted
 getModuleFileName ::
   (MonadIO m) =>
   [FilePath] ->
-  MName ->
+  ModuleName ->
   m FilePath
 getModuleFileName prefixes modul = do
   let makeFileName prefix = prefix </> mDotPi

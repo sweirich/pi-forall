@@ -232,13 +232,13 @@ levelLet     = 0
 levelCase :: Int
 levelCase    = 0
 levelLam :: Int
-levelLam     = 0 
+levelLam     = 0
 levelPi :: Int
 levelPi      = 0
 levelSigma :: Int
 levelSigma   = 0
 levelProd :: Int
-levelProd    = 0  
+levelProd    = 0
 levelArrow :: Int
 levelArrow   = 5
 
@@ -256,7 +256,7 @@ instance Display (Unbound.Name Term) where
   display = return . disp
 
 instance Display Term where
-  display Type = return $ PP.text "Type"
+  display TyType = return $ PP.text "Type"
   display (Var n) = display n
   display a@(Lam {- SOLN EP -} _ {- STUBWITH -}b) = do
     n <- ask prec
@@ -267,7 +267,7 @@ instance Display Term where
     df <- withPrec levelApp (display f)
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
-  display (Pi {- SOLN EP -} ep {- STUBWITH -}a bnd) = do
+  display (TyPi {- SOLN EP -} ep {- STUBWITH -}a bnd) = do
     Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
@@ -277,7 +277,7 @@ instance Display Term where
                 da <- withPrec 0 (display a)
                 return $ {- SOLN EP -} mandatoryBindParens ep {- STUBWITH PP.parens -} (dn <+> PP.colon <+> da)
               else {- SOLN EP -} do
-                case ep of 
+                case ep of
                   Rel -> withPrec (levelArrow+1) (display a)
                   Irr -> PP.brackets <$> (withPrec 0 (display a)) {- STUBWITH withPrec (levelArrow+1) (display a) -}
       db <- withPrec levelPi (display b)
@@ -307,7 +307,7 @@ instance Display Term where
       PP.text "if" <+> da <+> PP.text "then" <+> db
         <+> PP.text "else"
         <+> dc
-  display (Sigma tyA bnd) =
+  display (TySigma tyA bnd) =
     Unbound.lunbind bnd $ \(x, tyB) -> do
       if x `elem` toListOf Unbound.fv tyB then do
         dx <- display x
@@ -336,15 +336,15 @@ instance Display Term where
       dy <- withPrec 0 $ display y
       dbody <- withPrec 0 $ display body
       return $
-        parens (levelLet < p) $ 
-        (PP.text "let" 
+        parens (levelLet < p) $
+        (PP.text "let"
           <+> (PP.text "("
           PP.<> dx
           PP.<> PP.text ","
           PP.<> dy
           PP.<> PP.text ")")
           <+> PP.text "="
-          <+> da 
+          <+> da
           <+> PP.text "in")
         $$ dbody
   display (Let a bnd) = do
@@ -390,23 +390,23 @@ instance Display Term where
 {- SOLN DATA -}
   display t
     | Just i <- isNumeral t = display i
-  display (TCon n args) = do
+  display (TyCon n args) = do
     p <- ask prec
     dn <- display n
     dargs <- withPrec (levelApp+1) $ mapM display args
-    return $ 
-      parens (levelApp < p && length args > 0) (dn <+> PP.hsep dargs)
-  display (DCon n args) = do
+    return $
+      parens (levelApp < p && not (null args)) (dn <+> PP.hsep dargs)
+  display (DataCon n args) = do
     p <- ask prec
     dn <- display n
     dargs <- withPrec (levelApp+1) $ mapM display args
-    return $ 
-      parens (levelApp < p && length args > 0) (dn <+> PP.hsep dargs)
+    return $
+      parens (levelApp < p && not (null args)) (dn <+> PP.hsep dargs)
   display (Case scrut alts) = do
     p <- asks prec
     dscrut <- withPrec 0 $ display scrut
     dalts <- withPrec 0 $ mapM display alts
-    let top = PP.text "case" <+> dscrut <+> PP.text "of" 
+    let top = PP.text "case" <+> dscrut <+> PP.text "of"
     return $
       parens (levelCase < p) $
         if null dalts then top <+> PP.text "{ }" else top $$ PP.nest 2 (PP.vcat dalts)
@@ -415,8 +415,8 @@ instance Display Term where
 
 {- SOLN EP -}
 instance Display Arg where
-  display arg = 
-    case argEp arg of 
+  display arg =
+    case argEp arg of
       Irr -> PP.brackets <$> withPrec 0 (display (unArg arg))
       Rel -> display (unArg arg)
 {- STUBWITH -}
@@ -432,14 +432,14 @@ instance Display Match where
 instance Display Pattern where
   display (PatCon c [])   = display c
   display (PatCon c args) = do
-    dc <- display c 
+    dc <- display c
     dargs <- mapM wrap args
     return $ dc <+> PP.hsep dargs
-      where 
+      where
         wrap (a@(PatVar _),ep)    = bindParens ep <$> display a
-        wrap (a@(PatCon _ []),ep) = bindParens ep <$> display a 
+        wrap (a@(PatCon _ []),ep) = bindParens ep <$> display a
         wrap (a@(PatCon _ _),ep)  = mandatoryBindParens ep <$> display a
-      
+
   display (PatVar x) = display x
 
 instance Disp Telescope where
@@ -449,9 +449,9 @@ instance Display a => Display (a, Epsilon) where
   display (t, ep) = bindParens ep <$> display t
 
 instance Display ConstructorDef where
-  display (ConstructorDef pos dc tele) = do 
-    dn <- display dc 
-    let dt = disp tele 
+  display (ConstructorDef pos dc tele) = do
+    dn <- display dc
+    let dt = disp tele
     return $ dn PP.<+> PP.text "of" PP.<+> dt
 
 {- STUBWITH -}
@@ -476,7 +476,7 @@ gatherBinders body = do
 {- SOLN EP -}
 
 precBindParens :: Epsilon -> Bool -> Doc -> Doc
-precBindParens Rel b d = parens b d 
+precBindParens Rel b d = parens b d
 precBindParens Irr b d = PP.brackets d
 
 -- | Add [] for irrelevant arguments, leave other arguments alone

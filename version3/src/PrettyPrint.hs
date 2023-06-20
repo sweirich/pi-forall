@@ -205,13 +205,13 @@ levelLet     = 0
 levelCase :: Int
 levelCase    = 0
 levelLam :: Int
-levelLam     = 0 
+levelLam     = 0
 levelPi :: Int
 levelPi      = 0
 levelSigma :: Int
 levelSigma   = 0
 levelProd :: Int
-levelProd    = 0  
+levelProd    = 0
 levelArrow :: Int
 levelArrow   = 5
 
@@ -229,7 +229,7 @@ instance Display (Unbound.Name Term) where
   display = return . disp
 
 instance Display Term where
-  display Type = return $ PP.text "Type"
+  display TyType = return $ PP.text "Type"
   display (Var n) = display n
   display a@(Lam _ b) = do
     n <- ask prec
@@ -240,7 +240,7 @@ instance Display Term where
     df <- withPrec levelApp (display f)
     dx <- withPrec (levelApp+1) (display x)
     return $ parens (levelApp < n) $ df <+> dx
-  display (Pi ep a bnd) = do
+  display (TyPi ep a bnd) = do
     Unbound.lunbind bnd $ \(n, b) -> do
       p <- ask prec
       lhs <-
@@ -250,7 +250,7 @@ instance Display Term where
                 da <- withPrec 0 (display a)
                 return $ mandatoryBindParens ep  (dn <+> PP.colon <+> da)
               else do
-                case ep of 
+                case ep of
                   Rel -> withPrec (levelArrow+1) (display a)
                   Irr -> PP.brackets <$> (withPrec 0 (display a)) 
       db <- withPrec levelPi (display b)
@@ -280,7 +280,7 @@ instance Display Term where
       PP.text "if" <+> da <+> PP.text "then" <+> db
         <+> PP.text "else"
         <+> dc
-  display (Sigma tyA bnd) =
+  display (TySigma tyA bnd) =
     Unbound.lunbind bnd $ \(x, tyB) -> do
       if x `elem` toListOf Unbound.fv tyB then do
         dx <- display x
@@ -309,15 +309,15 @@ instance Display Term where
       dy <- withPrec 0 $ display y
       dbody <- withPrec 0 $ display body
       return $
-        parens (levelLet < p) $ 
-        (PP.text "let" 
+        parens (levelLet < p) $
+        (PP.text "let"
           <+> (PP.text "("
           PP.<> dx
           PP.<> PP.text ","
           PP.<> dy
           PP.<> PP.text ")")
           <+> PP.text "="
-          <+> da 
+          <+> da
           <+> PP.text "in")
         $$ dbody
   display (Let a bnd) = do
@@ -362,8 +362,8 @@ instance Display Term where
 
 
 instance Display Arg where
-  display arg = 
-    case argEp arg of 
+  display arg =
+    case argEp arg of
       Irr -> PP.brackets <$> withPrec 0 (display (unArg arg))
       Rel -> display (unArg arg)
 
@@ -388,7 +388,7 @@ gatherBinders body = do
   return ([], db)
 
 precBindParens :: Epsilon -> Bool -> Doc -> Doc
-precBindParens Rel b d = parens b d 
+precBindParens Rel b d = parens b d
 precBindParens Irr b d = PP.brackets d
 
 -- | Add [] for irrelevant arguments, leave other arguments alone

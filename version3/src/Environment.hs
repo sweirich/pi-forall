@@ -86,6 +86,7 @@ emptyEnv = Env {ctx = []
               }
 
 instance Disp Env where
+  disp :: Env -> Doc
   disp e = vcat [disp decl | decl <- ctx e]
 
 -- | Find a name's user supplied type signature.
@@ -216,13 +217,16 @@ extendErr ma msg' =
     throwError $ Err ps (msg $$ msg')
 
 instance Semigroup Err where
+  (<>) :: Err -> Err -> Err
   (Err src1 d1) <> (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
 
 instance Monoid Err where
+  mempty :: Err
   mempty = Err [] mempty
 
 
 instance Disp Err where
+  disp :: Err -> Doc
   disp (Err [] msg) = msg
   disp (Err ((SourceLocation p term) : _) msg) =
     disp p

@@ -37,7 +37,7 @@ checkType tm ty = do
 
 -- | Make sure that the term is a "type" (i.e. that it has type 'Type')
 tcType :: Term -> TcMonad ()
-tcType tm = void $ Env.withStage Irr $ checkType tm Type
+tcType tm = void $ Env.withStage Irr $ checkType tm TyType
 
 ---------------------------------------------------------------------
 
@@ -51,15 +51,15 @@ tcTerm t@(Var x) Nothing = do
   Env.checkStage (sigEp sig) 
   return (sigType sig)
 -- i-type
-tcTerm Type Nothing = return Type
+tcTerm TyType Nothing = return TyType
 -- i-pi
-tcTerm (Pi ep tyA bnd) Nothing = do
+tcTerm (TyPi ep tyA bnd) Nothing = do
   (x, tyB) <- Unbound.unbind bnd
   tcType tyA
   Env.extendCtx (TypeSig (Sig x ep tyA)) (tcType tyB)
-  return Type
+  return TyType
 -- c-lam: check the type of a function
-tcTerm (Lam ep1  bnd) (Just (Pi ep2 tyA bnd2)) = do
+tcTerm (Lam ep1  bnd) (Just (TyPi ep2 tyA bnd2)) = do
   -- unbind the variables in the lambda expression and pi type
   (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
 -- epsilons should match up
@@ -67,7 +67,7 @@ tcTerm (Lam ep1  bnd) (Just (Pi ep2 tyA bnd2)) = do
                                  DS "but found", DD ep1, DS "instead."] 
   -- check the type of the body of the lambda expression
   Env.extendCtx (TypeSig (Sig x ep1 tyA)) (checkType body tyB)
-  return (Pi ep1 tyA bnd2)
+  return (TyPi ep1 tyA bnd2)
 tcTerm (Lam _ _) (Just nf) =
   Env.err [DS "Lambda expression should have a function type, not", DD nf]
 -- i-app
@@ -99,11 +99,11 @@ tcTerm (Pos p tm) mTy =
 tcTerm TrustMe (Just ty) = return ty
   
 -- i-unit
-tcTerm TyUnit Nothing = return Type
+tcTerm TyUnit Nothing = return TyType
 tcTerm LitUnit Nothing = return TyUnit
 
 -- i-bool
-tcTerm TyBool Nothing = return Type
+tcTerm TyBool Nothing = return TyType
 
 
 -- i-true/false
@@ -142,7 +142,7 @@ tcTerm (Let rhs bnd) mty = do
 tcTerm (TyEq a b) Nothing = do
   aTy <- inferType a
   checkType b aTy
-  return Type
+  return TyType
 tcTerm Refl (Just ty@(TyEq a b)) = do
   Equal.equate a b
   return ty
@@ -180,20 +180,20 @@ tcTerm t@(Contra p) (Just ty) = do
         ]
 
 
-tcTerm t@(Sigma tyA bnd) Nothing = do
+tcTerm t@(TySigma tyA bnd) Nothing = do
   (x, tyB) <- Unbound.unbind bnd
   tcType tyA
   Env.extendCtx (mkSig x tyA) $ tcType tyB
-  return Type
+  return TyType
 
 
 tcTerm t@(Prod a b) (Just ty) = do
   case ty of
-    (Sigma tyA bnd) -> do
+    (TySigma tyA bnd) -> do
       (x, tyB) <- Unbound.unbind bnd
       checkType a tyA
       Env.extendCtxs [mkSig x tyA, Def x a] $ checkType b tyB
-      return (Sigma tyA (Unbound.bind x tyB))
+      return (TySigma tyA (Unbound.bind x tyB))
     _ ->
       Env.err
         [ DS "Products must have Sigma Type",
@@ -207,7 +207,7 @@ tcTerm t@(LetPair p bnd) (Just ty) = do
   pty <- inferType p
   pty' <- Equal.whnf pty
   case pty' of
-    Sigma tyA bnd' -> do
+    TySigma tyA bnd' -> do
       let tyB = Unbound.instantiate bnd' [Var x]
       decl <- def p (Prod (Var x) (Var y))
       Env.extendCtxs ([mkSig x tyA, mkSig y tyB] ++ decl) $

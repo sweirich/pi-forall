@@ -27,7 +27,7 @@ getModules prefixes top = do
      
 
 data ModuleInfo = ModuleInfo {
-                    modInfoName     :: MName, 
+                    modInfoName     :: ModuleName, 
                     modInfoFilename :: String,
                     modInfoImports  :: [ModuleImport]
                   }
@@ -57,7 +57,7 @@ topSort ms = reverse sorted
 
 -- | Find the file associated with a module.
 getModuleFileName :: (MonadIO m)
-                  => [FilePath] -> MName -> m FilePath
+                  => [FilePath] -> ModuleName -> m FilePath
 getModuleFileName prefixes modul = do
   let makeFileName prefix = prefix </> mDotPi
       -- get M.pi from M or M.pi

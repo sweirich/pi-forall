@@ -33,8 +33,8 @@ Optional components in this BNF are marked with < >
 
   terms:
     a,b,A,B ::=
-      Type                     Universes
-    | x                        Variables   (start with lowercase)
+      Type                     Universe
+    | x                        Variables   (must start with lowercase)
     | \ x . a                  Function definition
     | a b                      Application
     | (x : A) -> B             Pi type
@@ -54,9 +54,9 @@ Optional components in this BNF are marked with < >
     | if a then b else c       If 
 
     | { x : A | B }            Dependent pair type
-    | A * B                    Nondependent pair syntactic sugar
-    | (a, b)                   Prod introduction
-    | let (x,y) = a in b       Prod elimination
+    | A * B                    Nondependent pair type (syntactic sugar)
+    | (a, b)                   Pair introduction
+    | let (x,y) = a in b       Pair elimination
 
     | a = b                    Equality type
     | Refl                     Equality proof
@@ -68,18 +68,36 @@ Optional components in this BNF are marked with < >
 
   declarations:
 
-      foo : A
-      foo = a
+      foo : A                  Type declaration
+      foo = a                  Definition
 
 
 
   Syntax sugar:
+
+   - Nondependent function types, like:
+
+         A -> B
+        
+      Get parsed as (x:A) -> B, with an internal name for x
+
+   - Nondependent product types, like:
+
+         A * B
+        
+      Get parsed as { x:A | B }, with an internal name for x
 
    - You can collapse lambdas, like:
 
          \ x [y] z . a
 
      This gets parsed as \ x . \ [y] . \ z . a
+
+   - Natural numbers, like:
+
+          3
+        
+      Get parsed as peano numbers (Succ (Succ (Succ Zero)))
 
 -}
 
@@ -276,11 +294,11 @@ expr = do
         mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi tyA (Unbound.bind n tyB)
+               TyPi tyA (Unbound.bind n tyB)
         mkTupleType = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-              Sigma tyA (Unbound.bind n tyB)
+              TySigma tyA (Unbound.bind n tyB)
                
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
@@ -323,7 +341,7 @@ factor = choice [ Var <$> variable <?> "a variable"
 typen :: LParser Term
 typen =
   do reserved "Type"
-     return Type
+     return TyType
 
 
 
@@ -421,7 +439,7 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi a (Unbound.bind x b))
+                      return $ TyPi a (Unbound.bind x b))
          Colon a b -> return $ Ann a b
       
          Comma a b -> 
@@ -456,6 +474,6 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return (Sigma a (Unbound.bind x b))
+  return (TySigma a (Unbound.bind x b))
   
   

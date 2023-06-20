@@ -22,7 +22,7 @@ equate t1 t2 = do
   n1 <- whnf t1  
   n2 <- whnf t2
   case (n1, n2) of 
-    (Type, Type) -> return ()
+    (TyType, TyType) -> return ()
     (Var x,  Var y) | x == y -> return ()
     (Lam {- SOLN EP -} ep1 {- STUBWITH -}bnd1, Lam {- SOLN EP -} ep2 {- STUBWITH -}bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
@@ -32,7 +32,7 @@ equate t1 t2 = do
       equate b1 b2
     (App a1 a2, App b1 b2) ->
       equate a1 b1 >> {- SOLN EP -} equateArg{- STUBWITH equate -} a2 b2
-    (Pi {- SOLN EP -} ep1 {- STUBWITH -}tyA1 bnd1, Pi {- SOLN EP -} ep2 {- STUBWITH -}tyA2 bnd2) -> do 
+    (TyPi {- SOLN EP -} ep1 {- STUBWITH -}tyA1 bnd1, TyPi {- SOLN EP -} ep2 {- STUBWITH -}tyA2 bnd2) -> do 
       (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
 {- SOLN EP -} 
       unless (ep1 == ep2) $
@@ -58,7 +58,7 @@ equate t1 t2 = do
       equate rhs1 rhs2
       equate body1 body2
             
-    (Sigma tyA1 bnd1, Sigma tyA2 bnd2) -> do 
+    (TySigma tyA1 bnd1, TySigma tyA2 bnd2) -> do 
       Just (x, tyB1, _, tyB2) <- Unbound.unbind2 bnd1 bnd2
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
@@ -86,9 +86,9 @@ equate t1 t2 = do
       equate a1 a2
 {- STUBWITH -}      
 {- SOLN DATA -}      
-    (TCon c1 ts1, TCon c2 ts2) | c1 == c2 -> 
+    (TyCon c1 ts1, TyCon c2 ts2) | c1 == c2 -> 
       zipWithM_ equateArgs [ts1] [ts2]
-    (DCon d1 a1, DCon d2 a2) | d1 == d2 -> do
+    (DataCon d1 a1, DataCon d2 a2) | d1 == d2 -> do
       equateArgs a1 a2
     (Case s1 brs1, Case s2 brs2) 
       | length brs1 == length brs2 -> do
@@ -137,7 +137,7 @@ equateArg a1 a2 =
 
 -------------------------------------------------------
 
--- | Ensure that the given type 'ty' is a 'Pi' type
+-- | Ensure that the given type 'ty' is a 'TyPi' type
 -- (or could be normalized to be such) and return the components of 
 -- the type.
 -- Throws an error if this is not the case.
@@ -146,7 +146,7 @@ ensurePi :: Type ->
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
-    (Pi {- SOLN EP -} ep {- STUBWITH -} tyA bnd) -> do 
+    (TyPi {- SOLN EP -} ep {- STUBWITH -} tyA bnd) -> do 
       return ({- SOLN EP -} ep,{- STUBWITH -} tyA, bnd)
     _ -> Env.err [DS "Expected a function type, instead found", DD nf]
     
@@ -169,11 +169,11 @@ ensureTyEq ty = do
 -- | Ensure that the given type 'ty' is some tycon applied to 
 --  params (or could be normalized to be such)
 -- Throws an error if this is not the case 
-ensureTCon :: Term -> TcMonad (TCName, [Arg])
+ensureTCon :: Term -> TcMonad (TyConName, [Arg])
 ensureTCon aty = do
   nf <- whnf aty
   case nf of 
-    TCon n params -> return (n, params)    
+    TyCon n params -> return (n, params)    
     _ -> Env.err [DS "Expected a data type but found", DD nf]
 {- STUBWITH -}
     
@@ -230,7 +230,7 @@ whnf (Subst tm pf) = do
 whnf (Case scrut mtchs) = do
   nf <- whnf scrut        
   case nf of 
-    (DCon d args) -> f mtchs where
+    (DataCon d args) -> f mtchs where
       f (Match bnd : alts) = (do
           (pat, br) <- Unbound.unbind bnd
           ss <- patternMatches (Arg Rel nf) pat 
@@ -253,8 +253,8 @@ patternMatches (Arg _ t) (PatVar x) = return [(x, t)]
 patternMatches (Arg Rel t) pat = do
   nf <- whnf t
   case (nf, pat) of 
-    (DCon d [], PatCon d' pats)   | d == d' -> return []
-    (DCon d args, PatCon d' pats) | d == d' -> 
+    (DataCon d [], PatCon d' pats)   | d == d' -> return []
+    (DataCon d args, PatCon d' pats) | d == d' -> 
        concat <$> zipWithM patternMatches args (map fst pats)
     _ -> Env.err [DS "arg", DD nf, DS "doesn't match pattern", DD pat]
 patternMatches (Arg Irr _) pat = do
@@ -275,16 +275,16 @@ unify ns tx ty = do
       (yty, Var y) | y `notElem` ns -> return [Def y yty]
       (Prod a1 a2, Prod b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
       (TyEq a1 a2, TyEq b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
-      (TCon s1 tms1, TCon s2 tms2)
+      (TyCon s1 tms1, TyCon s2 tms2)
         | s1 == s2 -> unifyArgs tms1 tms2
-      (DCon s1 a1s, DCon s2 a2s)
+      (DataCon s1 a1s, DataCon s2 a2s)
         | s1 == s2 -> unifyArgs a1s a2s
       (Lam ep1 bnd1, Lam ep2 bnd2) -> do
         (x, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
         unless (ep1 == ep2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
         unify (x:ns) b1 b2
-      (Pi ep1 tyA1 bnd1, Pi ep2 tyA2 bnd2) -> do
+      (TyPi ep1 tyA1 bnd1, TyPi ep2 tyA2 bnd2) -> do
         (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
         unless (ep1 == ep2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]

@@ -90,6 +90,7 @@ emptyEnv = Env {ctx = preludeDataDecls
               }
 
 instance Disp Env where
+  disp :: Env -> Doc
   disp e = vcat [disp decl | decl <- ctx e]
 
 -- | Find a name's user supplied type signature.
@@ -155,7 +156,7 @@ lookupRecDef v = do
 -- | Find a type constructor in the context
 lookupTCon ::
   (MonadReader Env m, MonadError Err m) =>
-  TCName ->
+  TyConName ->
   m (Telescope, Maybe [ConstructorDef])
 lookupTCon v = do
   g <- asks ctx
@@ -184,8 +185,8 @@ lookupTCon v = do
 -- all potential matches
 lookupDConAll ::
   (MonadReader Env m) =>
-  DCName ->
-  m [(TCName, (Telescope, ConstructorDef))]
+  DataConName ->
+  m [(TyConName, (Telescope, ConstructorDef))]
 lookupDConAll v = do
   g <- asks ctx
   scanGamma g
@@ -205,8 +206,8 @@ lookupDConAll v = do
 -- Throws an error if the data constructor cannot be found for that type.
 lookupDCon ::
   (MonadReader Env m, MonadError Err m) =>
-  DCName ->
-  TCName ->
+  DataConName ->
+  TyConName ->
   m (Telescope, Telescope)
 lookupDCon c tname = do
   matches <- lookupDConAll c
@@ -303,13 +304,16 @@ extendErr ma msg' =
     throwError $ Err ps (msg $$ msg')
 
 instance Semigroup Err where
+  (<>) :: Err -> Err -> Err
   (Err src1 d1) <> (Err src2 d2) = Err (src1 ++ src2) (d1 `mappend` d2)
 
 instance Monoid Err where
+  mempty :: Err
   mempty = Err [] mempty
 
 
 instance Disp Err where
+  disp :: Err -> Doc
   disp (Err [] msg) = msg
   disp (Err ((SourceLocation p term) : _) msg) =
     disp p

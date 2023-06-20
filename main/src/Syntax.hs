@@ -1,7 +1,6 @@
-{- pi-forall language -}
 
 -- | The abstract syntax of the simple dependently typed language
--- See comment at the top of 'Parser' for the concrete syntax of this language
+-- See the comment at the top of 'Parser' for the concrete syntax of this language
 module Syntax where
 
 import Data.Maybe (fromMaybe)
@@ -19,43 +18,46 @@ import Data.Function (on)
 
 -----------------------------------------
 
--- | For variable names, we use the Unbound library to
+-- | For variable names, we use the `Unbound` library to
 -- automatically generate free variable, substitution,
--- and alpha-equality function.
+-- and alpha-equality function. The abstract type `Name` from 
+-- this library is indexed by the AST type that this variable 
+-- is a name for. 
 type TName = Unbound.Name Term
 
 -- | module names
-type MName = String
+type ModuleName = String
 
 {- SOLN DATA -}
 -- | type constructor names
-type TCName = String
+type TyConName = String
 
 -- | data constructor names
-type DCName = String
+type DataConName = String
 {- STUBWITH -}
 -----------------------------------------
 
--- * Core language
+-- * Core language of pi-forall (Combined syntax for types and terms)
 
 -----------------------------------------
 
--- | Combined syntax for types and terms
--- (type synonym for documentation)
+-- | Because types and terms use the same AST, we define the following
+-- type synonym so that we can hint whether a piece of syntax is being used
+-- as a type or as a term.
 type Type = Term
 
 -- | basic language
 data Term
-  = -- | type of types  `Type`
-    Type
-  | -- | variables  `x`
+  = -- | type of types, concretely `Type`
+    TyType
+  | -- | variable `x`
     Var TName
   | -- | abstraction  `\x. a`
     Lam {- SOLN EP -} Epsilon{- STUBWITH -} (Unbound.Bind TName Term)
   | -- | application `a b`
     App Term {- SOLN EP -} Arg{- STUBWITH Term -}
   | -- | function type   `(x : A) -> B`
-    Pi {- SOLN EP -} Epsilon{- STUBWITH -} Type (Unbound.Bind TName Type)
+    TyPi {- SOLN EP -} Epsilon{- STUBWITH -} Type (Unbound.Bind TName Type)
   | -- | annotated terms `( a : A )`
     Ann Term Type
   | -- | marked source position, for error messages
@@ -78,7 +80,7 @@ data Term
   | -- | `if a then b1 else b2` expression for eliminating booleans
     If Term Term Term
   | -- | Sigma-type (homework), written `{ x : A | B }`  
-    Sigma Term (Unbound.Bind TName Term)
+    TySigma Term (Unbound.Bind TName Term)
   | -- | introduction form for Sigma-types `( a , b )`
     Prod Term Term
   | -- | elimination form for Sigma-types `let (x,y) = a in b`
@@ -95,9 +97,9 @@ data Term
     {- STUBWITH -}
 {- SOLN DATA -}
   | -- | type constructors (fully applied)
-    TCon TCName [Arg]
+    TyCon TyConName [Arg]
   | -- | term constructors (fully applied)
-    DCon DCName [Arg] 
+    DataCon DataConName [Arg] 
   | -- | case analysis  `case a of matches`
     Case Term [Match]
   {- STUBWITH -}
@@ -134,7 +136,7 @@ newtype Match = Match (Unbound.Bind Pattern Term)
 -- | The patterns of case expressions bind all variables
 -- in their respective branches.
 data Pattern
-  = PatCon DCName [(Pattern, Epsilon)]
+  = PatCon DataConName [(Pattern, Epsilon)]
   | PatVar TName
   deriving (Show, Eq, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 {- STUBWITH -}
@@ -148,7 +150,7 @@ data Pattern
 -- | A Module has a name, a list of imports, a list of declarations,
 --   and a set of constructor names (which affect parsing).
 data Module = Module
-  { moduleName :: MName,
+  { moduleName :: ModuleName,
     moduleImports :: [ModuleImport],
     moduleEntries :: [Decl] {- SOLN DATA -} ,
     moduleConstructors :: ConstructorNames {- STUBWITH -}
@@ -156,7 +158,7 @@ data Module = Module
   deriving (Show, Generic, Typeable)
 
 -- | References to other modules (brings declarations and definitions into scope)
-newtype ModuleImport = ModuleImport MName
+newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
 
 -- | A type declaration (or type signature)
@@ -183,11 +185,11 @@ data Decl
 {- SOLN DATA -}
   | -- | Declaration for a datatype including all of
     -- its data constructors
-    Data TCName Telescope [ConstructorDef]
+    Data TyConName Telescope [ConstructorDef]
   | -- | An abstract view of a datatype. Does
     -- not include any information about its data
     -- constructors
-    DataSig TCName Telescope
+    DataSig TyConName Telescope
   {- STUBWITH -}
   deriving (Show, Generic, Typeable)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
@@ -202,7 +204,7 @@ data ConstructorNames = ConstructorNames
   deriving (Show, Eq, Ord, Generic, Typeable)
 
 -- | A Data constructor has a name and a telescope of arguments
-data ConstructorDef = ConstructorDef SourcePos DCName Telescope
+data ConstructorDef = ConstructorDef SourcePos DataConName Telescope
   deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
@@ -243,8 +245,8 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
 -- | Is this the syntax of a literal (natural) number
 isNumeral :: Term -> Maybe Int
 isNumeral (Pos _ t) = isNumeral t
-isNumeral (DCon c []) | c == "Zero" = Just 0
-isNumeral (DCon c [Arg _ t]) | c == "Succ" =
+isNumeral (DataCon c []) | c == "Zero" = Just 0
+isNumeral (DataCon c [Arg _ t]) | c == "Succ" =
   do n <- isNumeral t; return (n + 1)
 isNumeral _ = Nothing
 
@@ -258,24 +260,24 @@ isPatVar _ = False
 
 
 -- | prelude names for built-in datatypes
-sigmaName :: TCName
+sigmaName :: TyConName
 sigmaName = "Sigma"
-prodName :: DCName
+prodName :: DataConName
 prodName = "Prod"
-boolName :: TCName
+boolName :: TyConName
 boolName = "Bool"
-trueName :: DCName
+trueName :: DataConName
 trueName = "True"
-falseName :: DCName
+falseName :: DataConName
 falseName = "False"
-tyUnitName :: TCName
+tyUnitName :: TyConName
 tyUnitName = "Unit"
-litUnitName :: DCName
+litUnitName :: DataConName
 litUnitName = "()"
 
-initialTCNames :: Set TCName
+initialTCNames :: Set TyConName
 initialTCNames = Set.fromList [sigmaName, boolName, tyUnitName]
-initialDCNames :: Set DCName
+initialDCNames :: Set DataConName
 initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
 preludeDataDecls :: [Decl]
@@ -294,8 +296,8 @@ preludeDataDecls =
         -- Sigma-type
         sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
         prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
-        sigA = Sig aName Rel Type
-        sigB = Sig bName Rel (Pi Rel (Var aName) (Unbound.bind xName Type))
+        sigA = Sig aName Rel TyType
+        sigB = Sig bName Rel (TyPi Rel (Var aName) (Unbound.bind xName TyType))
         sigX = Sig xName Rel (Var aName)
         sigY = Sig yName Rel (App (Var bName) (Arg Rel (Var xName)))
         aName = Unbound.string2Name "a"
@@ -381,11 +383,11 @@ instance Unbound.Subst Term Term where
 
 -- '(y : x) -> y'
 pi1 :: Term 
-pi1 = Pi {- SOLN EP -} Rel {- STUBWITH -}(Var xName) (Unbound.bind yName (Var yName))
+pi1 = TyPi {- SOLN EP -} Rel {- STUBWITH -}(Var xName) (Unbound.bind yName (Var yName))
 
 -- '(y : Bool) -> y'
 pi2 :: Term 
-pi2 = Pi {- SOLN EP -} Rel {- STUBWITH -}TyBool (Unbound.bind yName (Var yName))
+pi2 = TyPi {- SOLN EP -} Rel {- STUBWITH -}TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
 -- True

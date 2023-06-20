@@ -57,7 +57,7 @@ instance Arbitrary (Unbound.Name a) where
 base :: Gen Term
 base =
   elements
-    [ Type,
+    [ TyType,
       TrustMe,
       PrintMe,
       tyUnit,
@@ -74,7 +74,7 @@ base =
     litFalse = LitBool False
 
 -- Generate a random term
--- In the inner recursion, the bool prevents the generation of TCon/DCon applications
+-- In the inner recursion, the bool prevents the generation of TyCon/DataCon applications
 -- inside Apps --- we want these terms to be fully saturated.
 genTerm :: Int -> Gen Term
 genTerm n
@@ -109,14 +109,14 @@ genPi n = do
 
   tyA <- genTerm n
   tyB <- genTerm n
-  return $ Pi tyA (Unbound.bind p tyB)
+  return $ TyPi tyA (Unbound.bind p tyB)
 
 genSigma :: Int -> Gen Term
 genSigma n = do
   p <- genName
   tyA <- genTerm n
   tyB <- genTerm n
-  return $ Sigma tyA (Unbound.bind p tyB)
+  return $ TySigma tyA (Unbound.bind p tyB)
 
 genLet :: Int -> Gen Term
 genLet n = do
@@ -140,9 +140,9 @@ instance Arbitrary Term where
     [tm, arg] ++ [App tm' arg | tm' <- QC.shrink tm]
       ++ [App tm arg' | arg' <- QC.shrink arg]
   shrink (Lam bnd) = []
-  shrink (Pi tyA bnd) = [tyA]
+  shrink (TyPi tyA bnd) = [tyA]
   shrink (Let rhs bnd) = [rhs]
-  shrink (Sigma tyA bnd) = [tyA]
+  shrink (TySigma tyA bnd) = [tyA]
   shrink _ = []
 
 -------------------------------------------------------

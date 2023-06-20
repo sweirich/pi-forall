@@ -22,7 +22,7 @@ equate t1 t2 = do
   n1 <- whnf t1  
   n2 <- whnf t2
   case (n1, n2) of 
-    (Type, Type) -> return ()
+    (TyType, TyType) -> return ()
     (Var x,  Var y) | x == y -> return ()
     (Lam ep1 bnd1, Lam ep2 bnd2) -> do
       (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
@@ -31,7 +31,7 @@ equate t1 t2 = do
       equate b1 b2
     (App a1 a2, App b1 b2) ->
       equate a1 b1 >> equateArg a2 b2
-    (Pi ep1 tyA1 bnd1, Pi ep2 tyA2 bnd2) -> do 
+    (TyPi ep1 tyA1 bnd1, TyPi ep2 tyA2 bnd2) -> do 
       (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
       unless (ep1 == ep2) $
           tyErr n1 n2 
@@ -56,7 +56,7 @@ equate t1 t2 = do
       equate rhs1 rhs2
       equate body1 body2
             
-    (Sigma tyA1 bnd1, Sigma tyA2 bnd2) -> do 
+    (TySigma tyA1 bnd1, TySigma tyA2 bnd2) -> do 
       Just (x, tyB1, _, tyB2) <- Unbound.unbind2 bnd1 bnd2
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
@@ -115,7 +115,7 @@ equateArg a1 a2 =
 
 -------------------------------------------------------
 
--- | Ensure that the given type 'ty' is a 'Pi' type
+-- | Ensure that the given type 'ty' is a 'TyPi' type
 -- (or could be normalized to be such) and return the components of 
 -- the type.
 -- Throws an error if this is not the case.
@@ -124,7 +124,7 @@ ensurePi :: Type ->
 ensurePi ty = do
   nf <- whnf ty
   case nf of 
-    (Pi ep  tyA bnd) -> do 
+    (TyPi ep  tyA bnd) -> do 
       return (ep, tyA, bnd)
     _ -> Env.err [DS "Expected a function type, instead found", DD nf]
     

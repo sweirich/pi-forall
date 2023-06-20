@@ -34,8 +34,8 @@ Optional components in this BNF are marked with < >
 
   terms:
     a,b,A,B ::=
-      Type                     Universes
-    | x                        Variables   (start with lowercase)
+      Type                     Universe
+    | x                        Variables   (must start with lowercase)
     | \ x . a                  Function definition
     | a b                      Application
     | (x : A) -> B             Pi type
@@ -55,9 +55,9 @@ Optional components in this BNF are marked with < >
     | if a then b else c       If 
 
     | { x : A | B }            Dependent pair type
-    | A * B                    Nondependent pair syntactic sugar
-    | (a, b)                   Prod introduction
-    | let (x,y) = a in b       Prod elimination
+    | A * B                    Nondependent pair type (syntactic sugar)
+    | (a, b)                   Pair introduction
+    | let (x,y) = a in b       Pair elimination
 
     | a = b                    Equality type
     | Refl                     Equality proof
@@ -69,37 +69,55 @@ Optional components in this BNF are marked with < >
         C1 [x] y z -> b1
         C2 x [y]   -> b2
 
-    | \ [x <:A> ] . a          Irr lambda
-    | a [b]                    Irr application
-    | [x : A] -> B             Irr pi    
+    | \ [x <:A> ] . a          Irrelevant lambda
+    | a [b]                    Irrelevant application
+    | [x : A] -> B             Irrelevant function type    
 
 
   declarations:
 
-      foo : A
-      foo = a
+      foo : A                  Type declaration
+      foo = a                  Definition
 
-      data T D : Type where
-         C1 of D1
+      data T D : Type where    Type constructor, with telescope
+         C1 of D1              Data constructor, with telescope
          ...
          Cn of Dn
 
   telescopes:
     D ::=
                                Empty
-     | (x : A) D               runtime cons
-     | (A) D                   runtime cons
-     | [x : A] D               irrelevant cons
-     | [A = B] D               equality constraint
+     | (x : A) D               Relevant, dependent argument
+     | (A) D                   Relevent, nondependent argument
+     | [x : A] D               Irrelevant, dependent argument
+     | [A = B] D               Equality constraint
 
 
   Syntax sugar:
+
+   - Nondependent function types, like:
+
+         A -> B
+        
+      Get parsed as (x:A) -> B, with an internal name for x
+
+   - Nondependent product types, like:
+
+         A * B
+        
+      Get parsed as { x:A | B }, with an internal name for x
 
    - You can collapse lambdas, like:
 
          \ x [y] z . a
 
      This gets parsed as \ x . \ [y] . \ z . a
+
+   - Natural numbers, like:
+
+          3
+        
+      Get parsed as peano numbers (Succ (Succ (Succ Zero)))
 
 -}
 
@@ -213,7 +231,7 @@ wildcard = reservedOp "_" >> return wildcardName
 varOrWildcard :: LParser TName
 varOrWildcard = try wildcard <|> variable
 
-dconstructor :: LParser DCName
+dconstructor :: LParser DataConName
 dconstructor =
   do i <- identifier 
      cnames <- get
@@ -223,7 +241,7 @@ dconstructor =
              then fail "Expected a data constructor, but a type constructor was found."
              else fail "Expected a constructor, but a variable was found"
                   
-tconstructor :: LParser TCName
+tconstructor :: LParser TyConName
 tconstructor =
   do i <- identifier
      cnames <- get
@@ -239,9 +257,9 @@ varOrCon :: LParser Term
 varOrCon = do i <- identifier
               cnames <- get
               if  (i `S.member` (dconNames cnames))
-                then return (DCon i [] )
+                then return (DataCon i [] )
                 else if  (i `S.member` tconNames cnames)
-                       then return (TCon i [])
+                       then return (TyCon i [])
                        else return (Var (Unbound.string2Name i))
 
 
@@ -264,8 +282,8 @@ natural = fromInteger <$> Token.natural tokenizer
 
 natenc :: LParser Term
 natenc = encode <$> natural 
-   where encode 0 = DCon "Zero" []
-         encode n = DCon "Succ" [Arg Rel (encode (n-1))]
+   where encode 0 = DataCon "Zero" []
+         encode n = DataCon "Succ" [Arg Rel (encode (n-1))]
 
 
 moduleImports :: LParser Module
@@ -336,7 +354,7 @@ dataDef = do
   name <- identifier
   params <- telescope
   colon
-  Type <- typen
+  TyType <- typen
   modify (\cnames -> 
            cnames{ tconNames = S.insert name 
                                (tconNames cnames) })
@@ -403,11 +421,11 @@ expr = do
         mkArrowType  = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               Pi Rel tyA (Unbound.bind n tyB)
+               TyPi Rel tyA (Unbound.bind n tyB)
         mkTupleType = 
           do n <- Unbound.fresh wildcardName
              return $ \tyA tyB -> 
-               TCon sigmaName [Arg Rel tyA, Arg Rel $ Lam Rel (Unbound.bind n tyB)]
+               TyCon sigmaName [Arg Rel tyA, Arg Rel $ Lam Rel (Unbound.bind n tyB)]
 
                
 -- A "term" is either a function application or a constructor
@@ -424,13 +442,13 @@ dconapp :: LParser Term
 dconapp = do 
   c <- dconstructor
   args <- many arg
-  return $ DCon c args 
+  return $ DataCon c args 
   
 tconapp :: LParser Term  
 tconapp = do
   c <- tconstructor
   ts <- many arg
-  return $ TCon c ts
+  return $ TyCon c ts
 
   
 funapp :: LParser Term
@@ -475,7 +493,7 @@ impOrExpVar = try ((,Irr) <$> (brackets variable))
 typen :: LParser Term
 typen =
   do reserved "Type"
-     return Type
+     return TyType
 
 
 
@@ -494,11 +512,11 @@ lambda = do reservedOp "\\"
 
 
 bconst  :: LParser Term
-bconst = choice [reserved "Bool"  >> return (TCon boolName []),
-                 reserved "False" >> return (DCon falseName []),
-                 reserved "True"  >> return (DCon trueName []),
-                 reserved "Unit"  >> return (TCon tyUnitName []),
-                 reserved "()"    >> return (DCon litUnitName [])]
+bconst = choice [reserved "Bool"  >> return (TyCon boolName []),
+                 reserved "False" >> return (DataCon falseName []),
+                 reserved "True"  >> return (DataCon trueName []),
+                 reserved "Unit"  >> return (TyCon tyUnitName []),
+                 reserved "()"    >> return (DataCon litUnitName [])]
 
 
 
@@ -552,7 +570,7 @@ impProd =
         <|> ((,) <$> Unbound.fresh wildcardName <*> expr))
      reservedOp "->" 
      tyB <- expr
-     return $ Pi Irr tyA (Unbound.bind x tyB)
+     return $ TyPi Irr tyA (Unbound.bind x tyB)
 
 
 -- Function types have the syntax '(x:A) -> B'.  This production deals
@@ -589,11 +607,11 @@ expProdOrAnnotOrParens =
          Colon (Var x) a ->
            option (Ann (Var x) a)
                   (do b <- afterBinder
-                      return $ Pi Rel a (Unbound.bind x b))
+                      return $ TyPi Rel a (Unbound.bind x b))
          Colon a b -> return $ Ann a b
       
          Comma a b -> 
-           return $ DCon prodName [Arg Rel a, Arg Rel b] 
+           return $ DataCon prodName [Arg Rel a, Arg Rel b] 
 
          Nope a    -> return a
 
@@ -626,8 +644,8 @@ pattern =  try (PatCon <$> dconstructor <*> many arg_pattern)
                   <|> do t <- varOrCon
                          case t of
                            (Var x) -> return $ PatVar x
-                           (DCon c []) -> return $ PatCon c []
-                           (TCon c []) -> fail "expected a data constructor but a type constructor was found"
+                           (DataCon c []) -> return $ PatCon c []
+                           (TyCon c []) -> fail "expected a data constructor but a type constructor was found"
                            _ -> error "internal error in atomic_pattern"
 
 
@@ -675,7 +693,7 @@ sigmaTy = do
   reservedOp "|"
   b <- expr
   reservedOp "}"
-  return $ TCon sigmaName [Arg Rel a, Arg Rel (Lam Rel (Unbound.bind x b))]
+  return $ TyCon sigmaName [Arg Rel a, Arg Rel (Lam Rel (Unbound.bind x b))]
 
   
   

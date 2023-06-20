@@ -55,7 +55,7 @@ checker. They are based on lectures given at the \emph{Oregon Programming
   Languages Summer School} during July 2023 and derived from earlier lectures
 from summer schools during 2022, 2014 and 2013.
 
-\paragraph{What do I expect from you, dear reader?} This discussion assumes a
+\paragraph{What do I expect from you?} This discussion assumes a
 familiarity with the basics of the lambda calculus, including its standard
 operations (alpha-equivalence, substitution, evaluation) and the basics of
 type systems (especially their specification using inference rules). For
@@ -71,12 +71,13 @@ it. Installation instructions are available with the repository.
 \paragraph{What do these notes cover?}
 These notes are broken into several sections that incrementally build up the
 design and implementation of a type checker for a dependently-typed
-programming language. 
+programming language. This implementation itself is available in separate
+versions, each found in separate subdirectories of the repository.
 
 \begin{figure}[ht]
 \begin{center}
 \begin{tabular}{llll}
-Key feature & \pif version      & Section\\
+Key feature & \pif subdirectory & Section\\
 \hline
 Core system & \texttt{version1} & Sections~\ref{sec:simple}, \ref{sec:bidirectional}, and \ref{sec:implementation} \\
 Equality    & \texttt{version2} & Sections~\ref{sec:equality} and ~\ref{sec:pattern-matching}\\
@@ -84,18 +85,16 @@ Irrelevance & \texttt{version3} & Section ~\ref{sec:irrelevance} \\
 Datatypes   & \texttt{full}     & Sections~\ref{sec:examples} and ~\ref{sec:datatypes} \\
 \end{tabular}
 \end{center}
-\caption{Connection between sections of the lecture notes and \pif versions}
+\caption{Connection between sections and \pif versions}
 \label{fig:impls}
 \end{figure}
 
-If you are looking at the repository, you will see that it includes several
-incrementally more expressive implementations of \pif in separate
-subdirectories. These implementations build on each other (each is an
-extension of the previous version) and are summarized in
-Figure~\ref{fig:impls}.  As you read each chapter, refer to its corresponding
-implementation to see how the features described in that chapter can be
-implemented. The directory \texttt{main} is the source of all of these
-implementations and contains the markup needed to generate the four versions.
+These implementations build on each other (each is an extension of the
+previous version) and are summarized in Figure~\ref{fig:impls}.  As you read
+each chapter, refer to its corresponding implementation to see how the
+features described in that chapter can be implemented. The directory
+\texttt{main} is the source of all of these implementations and contains the
+markup needed to generate the four versions.
 
 
 \begin{itemize}
@@ -642,9 +641,9 @@ Likewise, the case of the typing function for the $[[Type]]$ term is also
 straightforward. When we see the term $[[Type]]$, we know immediately that it
 is its own type.
 
-\begin{haskell}
-inferType Type ctx = Just Type
-\end{haskell}
+% \begin{haskell}
+% inferType TyType ctx = Just TyType
+% \end{haskell}
 
 The only stumbling block for the algorithm is \rref{t-lambda}. To type check a
 function, we need to type check its body when the context has been extended
@@ -910,7 +909,7 @@ language above, using the following datatype.
 data Term
 
   = -- | type of types  `Type`
-    Type
+    TyType
 
   | -- | variables  `x`
     Var TName
@@ -922,7 +921,7 @@ data Term
     App Term Term
 
   | -- | function types   `(x : A) -> B`
-    Pi Type (Unbound.Bind TName Type)
+    TyPi Type (Unbound.Bind TName Type)
 
   | -- | Annotated terms `( a : A )`
     Ann Term Type
@@ -933,8 +932,8 @@ data Term
 
 As you can see, variables are represented by names. \unbound's \cd{Bind}
 type constructor declares the scope of the bound variables. Both \cd{Lam}
-and \cd{Pi} bind a single variable in a \cd{Term}.  However, in a
-\cd{Pi} term, we also want to store the type $[[A]]$, the type of the bound
+and \cd{TyPi} bind a single variable in a \cd{Term}.  However, in a
+\cd{TyPi} term, we also want to store the type $[[A]]$, the type of the bound
 variable $[[x]]$.
 
 Because the syntax is all shared, a \cd{Type} is just another name for a
@@ -1090,9 +1089,9 @@ for the various syntactic forms in inference mode:
 \begin{verbatim}
 tcTerm (Var x) Nothing = ...
 
-tcTerm Type Nothing = ...
+tcTerm TyType Nothing = ...
 
-tcTerm (Pi tyA bnd) Nothing = ...
+tcTerm (TyPi tyA bnd) Nothing = ...
 
 tcTerm (App t1 t2) Nothing = ...
 
@@ -1102,7 +1101,7 @@ Mixed in here, we also have a pattern for lambda expressions in checking
 mode:
 
 \begin{verbatim}
-tcTerm (Lam bnd) (Just (Pi tyA bnd2)) = ...
+tcTerm (Lam bnd) (Just (TyPi tyA bnd2)) = ...
    -- pass in the Pi type for the lambda expression
 
 tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
@@ -2168,10 +2167,10 @@ declaration to the syntax.\footnote{Some parts of this implementation have
 
 \begin{verbatim}
 -- | type constructor names
-type TCName = String
+type TyConName = String
 
 -- | data constructor names
-type DCName = String
+type DataConName = String
 
 -- | Declarations stored in the context
 data Decl =
@@ -2182,10 +2181,10 @@ data Decl =
     ...
 
   | -- | Datatype definition  `data T = ...`
-    Data TCName [ConstructorDef]
+    Data TyConName [ConstructorDef]
 
 -- | A Data constructor has a name and a telescope of arguments
-data ConstructorDef = ConstructorDef DCName Telescope
+data ConstructorDef = ConstructorDef DataConName Telescope
 
 -- | A telescope is a list of type declarations and definitions
 newtype Telescope = Telescope [Decl]
@@ -2324,7 +2323,7 @@ is as follows:
   Infer type of the scrutinee $[[a]]$ (\texttt{inferType})
 \item
   Make sure that the inferred type is some type constructor $[[T]]$
-  (\texttt{ensureTCon})
+  (\texttt{ensureTyCon})
 \item
   For each case alternative $[[pi]][[->]][[ai]]$:
 \begin{itemize}
@@ -2364,7 +2363,7 @@ can be referred to later in the telescope. For example, with parameters, we
 can implement $\Sigma$-types as a datatype, instead of making them primitive.
 
 \begin{piforall}
-data Sigma (A: Type) (B : A -> Type) : Type
+data TySigma (A: Type) (B : A -> Type) : Type
     Prod of (x:A) (B)
 \end{piforall}
 
