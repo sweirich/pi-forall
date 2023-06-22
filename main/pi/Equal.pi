@@ -5,6 +5,8 @@ module Equality where
 data Eq (A : Type) (a : A) (b : A) : Type where
   EqRefl of [a = b]
 
+-- The dependent elimination form "J" is derivable
+-- from pattern matching.
 j : [A : Type] -> [a1 : A] -> [a2 : A] 
   -> (a : Eq A a1 a2) 
   -> [B : ((x:A) -> (Eq A x a2) -> Type)] 

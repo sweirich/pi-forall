@@ -1,3 +1,4 @@
+-- Standard Library of boolean functions
 module BoolLib where
 
 import Logic
@@ -36,7 +37,9 @@ andb_prop = \a b p .
    else (contra p)
 
 andb_true_intro : (b1 : Bool) -> (b2 : Bool) -> And (b1 = True) (b2 = True) -> andb b1 b2 = True
-andb_true_intro = TRUSTME
+andb_true_intro = \b1 b2 p . 
+   case p of 
+      Conj p1 p2 -> subst (subst Refl by p1) by p2
 
 eq_bool : Bool -> Bool -> Bool
 eq_bool =  \ x y . if x then y else not y

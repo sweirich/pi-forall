@@ -118,8 +118,8 @@ tcTerm t@(If t1 t2 t3) mty = do
   case mty of 
     Just ty -> do
       checkType t1 TyBool
-      dtrue <- def t1 (LitBool True)
-      dfalse <- def t1 (LitBool False)
+      dtrue <- Equal.unify [] t1 (LitBool True)
+      dfalse <- Equal.unify [] t1 (LitBool False)
       Env.extendCtxs dtrue $ checkType t2 ty
       Env.extendCtxs dfalse $ checkType t3 ty
       return ty
@@ -245,9 +245,9 @@ tcTerm t@(Subst a b) (Just ty) = do
   -- make sure that it is an equality between m and n
   (m, n) <- Equal.ensureTyEq tp
   -- if either side is a variable, add a definition to the context
-  edecl <- def m n
+  edecl <- Equal.unify [] m n
   -- if proof is a variable, add a definition to the context
-  pdecl <- def b Refl
+  pdecl <- Equal.unify [] b Refl
   _ <- Env.extendCtxs (edecl ++ pdecl) $ checkType a ty
   return ty
 tcTerm t@(Contra p) (Just ty) = do
@@ -303,7 +303,7 @@ tcTerm t@(LetPair p bnd) (Just ty) = do
   case pty' of
     TySigma tyA bnd' -> do
       let tyB = Unbound.instantiate bnd' [Var x]
-      decl <- def p (Prod (Var x) (Var y))
+      decl <- Equal.unify [] p (Prod (Var x) (Var y))
       Env.extendCtxs ([mkSig x tyA, mkSig y tyB] ++ decl) $
           checkType body ty
       return ty

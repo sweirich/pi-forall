@@ -38,18 +38,17 @@ fix = \ [A] g.
 
 -- Example use case
 
-{-
+
 data Nat : Type where
    Zero 
    Succ of ( _ : Nat)
 
-add : Nat -> Nat -> Nat
-add = fix [Nat -> Nat -> Nat] 
+fix_add : Nat -> Nat -> Nat
+fix_add = fix [Nat -> Nat -> Nat] 
         \radd. \x. \y. 
             case x of 
               Zero   -> y
               Succ n -> Succ (radd n y)
 
-test : add 5 2 = 7
+test : fix_add 5 2 = 7
 test = Refl
--}

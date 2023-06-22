@@ -1,8 +1,8 @@
 {- pi-forall language -}
 
 -- | Compare two terms for equality
-module Equal (whnf, equate, ensurePi, 
-              ensureTyEq,  
+module Equal (whnf, equate, ensurePi, unify
+              {- SOLN EQUAL -},ensureTyEq {- STUBWITH -} 
                ) where
 
 import Syntax
@@ -195,6 +195,58 @@ whnf (Subst tm pf) = do
 -- don't do anything special for them
 whnf tm = return tm
 
+-- | 'Unify' the two terms, producing a list of Defs
+-- If there is an obvious mismatch, this function produces an error
+-- If either term is "ambiguous" just ignore.
+unify :: [TName] -> Term -> Term -> TcMonad [Decl]
+unify ns tx ty = do
+  txnf <- whnf tx
+  tynf <- whnf ty
+  if Unbound.aeq txnf tynf
+    then return []
+    else case (txnf, tynf) of
+      (Var x, Var y) | x == y -> return []
+      (Var y, yty) | y `notElem` ns -> return [Def y yty]
+      (yty, Var y) | y `notElem` ns -> return [Def y yty]
+      (Prod a1 a2, Prod b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]  
+      
+      (TyEq a1 a2, TyEq b1 b2) -> (++) <$> unify ns a1 b1 <*> unify ns a2 b2 
+
+      (Lam ep1  bnd1, Lam ep2  bnd2) -> do
+        (x, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
+        unless (ep1 == ep2) $ do
+          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] 
+        unify (x:ns) b1 b2
+      (TyPi ep1  tyA1 bnd1, TyPi ep2  tyA2 bnd2) -> do
+        (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+        unless (ep1 == ep2) $ do
+          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] 
+        ds1 <- unify ns tyA1 tyA2
+        ds2 <- unify (x:ns) tyB1 tyB2
+        return (ds1 ++ ds2)
+      _ ->
+        if amb txnf || amb tynf
+          then return []
+          else Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] 
+  where
+    unifyArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
+      ds <- unify ns t1 t2
+      ds' <- unifyArgs a1s a2s
+      return $ ds ++ ds'
+    unifyArgs [] [] = return []
+    unifyArgs _ _ = Env.err [DS "internal error (unify)"] 
+
+
+-- | Is a term "ambiguous" when it comes to unification?
+-- In general, elimination forms are ambiguous because there are multiple 
+-- solutions.
+amb :: Term -> Bool
+amb (App t1 t2) = True
+amb If {} = True
+amb (LetPair _ _) = True 
+ 
+amb (Subst _ _) = True 
+amb _ = False
 
 
 

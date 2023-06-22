@@ -1,5 +1,9 @@
 module Equality where
 
+-- This file demonstrates properties of pi-forall's equality type (and indirectly, pattern matching).
+-- In particular, it shows that dependent pattern matching can derive
+-- uniqueness of equality proofs and axiom K.
+
 import Logic
 
 -- Some of this file is inspired by:
@@ -31,9 +35,6 @@ g3 = \[A][x][y][z] p q . subst (subst Refl by q) by p
 
 g4 : [A:Type] -> [x:A] -> [y:A] -> (p : x = y) -> trans[A][x][x][y] Refl p = p
 g4 = \[A][x][y] p. subst Refl by p
-
-g4' : [A:Type] -> [x:A] -> [y:A] -> (p : x = y) -> p = trans[A][x][x][y] Refl p
-g4' = \[A][x][y] p. subst Refl by p
 
 g5 : [A:Type] -> [x:A] -> [y:A] -> [z:A] -> [w:A] -> (p: x = y) -> (q : y = z) -> (r : z = w) ->
        ((trans[A][x][y][w] p (trans[A][y][z][w] q r))
@@ -96,19 +97,21 @@ k = \ [A][x] p .
 
 -- another version of the above
 -- From: https://ncatlab.org/nlab/show/axiom+K+%28type+theory%29
+
 k2 : [A:Type] -> [x:A] -> [P : (x = x) -> Type] -> P Refl -> (h:x = x) -> P h
 k2 = \ [A][x][P] d h . subst d by h
 
 -- here's j
 -- https://ncatlab.org/nlab/show/identity+type#ExplicitDefinition
 
-j : [A:Type]
-  -> [C : (x:A) -> (y:A) -> (x = y) -> Type] 
-  -> ((x:A) -> C x x Refl) 
-  -> (x:A) -> (y:A) -> (p : x = y) -> C x y p
-j = \[A][C] t x y p . subst (t x) by p
+j : [A:Type] -> (x:A) -> (y:A) 
+  -> (p : x = y) 
+  -> [B : (x:A) -> (y:A) -> (x = y) -> Type] 
+  -> ((x:A) -> B x x Refl) 
+  -> B x y p
+j = \[A] x y p [B] t . subst (t x) by p
 
--- Can't derive k from j 
+-- Note: we can't derive k from j 
 
 {- -- Doesn't type check
 k' : [A:Type] -> (x:A) -> (p : x = x) -> (p = Refl)

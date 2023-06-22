@@ -1,9 +1,9 @@
 {- pi-forall language -}
 
 -- | Compare two terms for equality
-module Equal (whnf, equate, ensurePi, 
-              {- SOLN EQUAL -} ensureTyEq, {- STUBWITH -} 
-              {- SOLN DATA -} ensureTCon, unify{- STUBWITH -} ) where
+module Equal (whnf, equate, ensurePi, unify
+              {- SOLN EQUAL -},ensureTyEq {- STUBWITH -} 
+              {- SOLN DATA -},ensureTCon{- STUBWITH -} ) where
 
 import Syntax
 import Environment ( D(DS, DD), TcMonad )
@@ -243,6 +243,68 @@ whnf (Case scrut mtchs) = do
 -- don't do anything special for them
 whnf tm = return tm
 
+-- | 'Unify' the two terms, producing a list of Defs
+-- If there is an obvious mismatch, this function produces an error
+-- If either term is "ambiguous" just ignore.
+unify :: [TName] -> Term -> Term -> TcMonad [Decl]
+unify ns tx ty = do
+  txnf <- whnf tx
+  tynf <- whnf ty
+  if Unbound.aeq txnf tynf
+    then return []
+    else case (txnf, tynf) of
+      (Var x, Var y) | x == y -> return []
+      (Var y, yty) | y `notElem` ns -> return [Def y yty]
+      (yty, Var y) | y `notElem` ns -> return [Def y yty]
+      (Prod a1 a2, Prod b1 b2) -> {- SOLN EP -} unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2] {- STUBWITH (++) <$> unify ns a1 b1 <*> unify ns a2 b2 -} 
+      
+{- SOLN EQUAL -}
+      (TyEq a1 a2, TyEq b1 b2) -> (++) <$> unify ns a1 b1 <*> unify ns a2 b2 {- STUBWITH -}
+{- SOLN DATA -}
+      (TyCon s1 tms1, TyCon s2 tms2)
+        | s1 == s2 -> unifyArgs tms1 tms2
+      (DataCon s1 a1s, DataCon s2 a2s)
+        | s1 == s2 -> unifyArgs a1s a2s {- STUBWITH -}
+      (Lam {- SOLN EP -} ep1 {- STUBWITH -} bnd1, Lam {- SOLN EP -} ep2 {- STUBWITH -} bnd2) -> do
+        (x, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
+{- SOLN EP -}
+        unless (ep1 == ep2) $ do
+          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] {- STUBWITH -}
+        unify (x:ns) b1 b2
+      (TyPi {- SOLN EP -} ep1 {- STUBWITH -} tyA1 bnd1, TyPi {- SOLN EP -} ep2 {- STUBWITH -} tyA2 bnd2) -> do
+        (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+{- SOLN EP -}
+        unless (ep1 == ep2) $ do
+          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] {- STUBWITH -}
+        ds1 <- unify ns tyA1 tyA2
+        ds2 <- unify (x:ns) tyB1 tyB2
+        return (ds1 ++ ds2)
+      _ ->
+        if amb txnf || amb tynf
+          then return []
+          else Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] 
+{- SOLN EP -}
+  where
+    unifyArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
+      ds <- unify ns t1 t2
+      ds' <- unifyArgs a1s a2s
+      return $ ds ++ ds'
+    unifyArgs [] [] = return []
+    unifyArgs _ _ = Env.err [DS "internal error (unify)"] {- STUBWITH -}
+
+
+-- | Is a term "ambiguous" when it comes to unification?
+-- In general, elimination forms are ambiguous because there are multiple 
+-- solutions.
+amb :: Term -> Bool
+amb (App t1 t2) = True
+amb If {} = True
+amb (LetPair _ _) = True 
+{- SOLN DATA -}
+amb (Case _ _) = True  {- STUBWITH -} 
+{- SOLN EQUAL -}
+amb (Subst _ _) = True {- STUBWITH -}
+amb _ = False
 
 {- SOLN DATA -}
 -- | Determine whether the pattern matches the argument
@@ -260,57 +322,5 @@ patternMatches (Arg Rel t) pat = do
 patternMatches (Arg Irr _) pat = do
   Env.err [DS "Cannot match against irrelevant args"]
 
-
--- | 'Unify' the two terms, producing a list of Defs
--- If there is an obvious mismatch, this function produces an error
--- If either term is "ambiguous" just fail instead.
-unify :: [TName] -> Term -> Term -> TcMonad [Decl]
-unify ns tx ty = do
-  txnf <- whnf tx
-  tynf <- whnf ty
-  if Unbound.aeq txnf tynf
-    then return []
-    else case (txnf, tynf) of
-      (Var y, yty) | y `notElem` ns -> return [Def y yty]
-      (yty, Var y) | y `notElem` ns -> return [Def y yty]
-      (Prod a1 a2, Prod b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
-      (TyEq a1 a2, TyEq b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]
-      (TyCon s1 tms1, TyCon s2 tms2)
-        | s1 == s2 -> unifyArgs tms1 tms2
-      (DataCon s1 a1s, DataCon s2 a2s)
-        | s1 == s2 -> unifyArgs a1s a2s
-      (Lam ep1 bnd1, Lam ep2 bnd2) -> do
-        (x, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
-        unless (ep1 == ep2) $ do
-          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
-        unify (x:ns) b1 b2
-      (TyPi ep1 tyA1 bnd1, TyPi ep2 tyA2 bnd2) -> do
-        (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
-        unless (ep1 == ep2) $ do
-          Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf]
-        ds1 <- unify ns tyA1 tyA2
-        ds2 <- unify (x:ns) tyB1 tyB2
-        return (ds1 ++ ds2)
-      _ ->
-        if amb txnf || amb tynf
-          then return []
-          else Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] 
-  where
-    unifyArgs (Arg _ t1 : a1s) (Arg _ t2 : a2s) = do
-      ds <- unify ns t1 t2
-      ds' <- unifyArgs a1s a2s
-      return $ ds ++ ds'
-    unifyArgs [] [] = return []
-    unifyArgs _ _ = Env.err [DS "internal error (unify)"]
-
--- | Is a term "ambiguous" when it comes to unification?
--- In general, elimination forms are ambiguous because there are multiple 
--- solutions.
-amb :: Term -> Bool
-amb (App t1 t2) = True
-amb If {} = True
-amb (LetPair _ _) = True
-amb (Case _ _) = True
-amb _ = False
 {- STUBWITH -}
 
