@@ -21,7 +21,7 @@ common shared-properties
   default-language:
     GHC2021
   ghc-options:
-    -Wall -fno-warn-unused-matches -fno-warn-orphans -fno-warn-unused-top-binds -fno-warn-unused-imports
+    -Wall -fno-warn-unused-matches -fno-warn-orphans -fno-warn-unused-top-binds -fno-warn-unused-imports -fno-warn-name-shadowing
   default-extensions: 
     DefaultSignatures
     DeriveAnyClass

@@ -149,11 +149,12 @@ data Module = Module
     moduleEntries :: [Decl] ,
     moduleConstructors :: ConstructorNames 
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Typeable, Unbound.Alpha)
 
 -- | References to other modules (brings declarations and definitions into scope)
 newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
+  deriving anyclass (Unbound.Alpha)
 
 -- | A type declaration (or type signature)
 data Sig = Sig {sigName :: TName , sigEp :: Epsilon  , sigType :: Type}
@@ -408,3 +409,21 @@ instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substBvs
 -- Internally generated source positions
 internalPos :: SourcePos
 internalPos = initialPos "internal"
+
+
+-- * Constructor Names
+
+instance Unbound.Alpha ConstructorNames where
+  aeq' _ a1 a2 = a1 == a2
+  fvAny' _ _ = pure
+  open _ _ = id
+  close _ _ = id
+  isPat _ = mempty
+  isTerm _ = mempty
+  nthPatFind _ = mempty
+  namePatFind _ = mempty
+  swaps' _ _ = id
+  freshen' _ x = return (x, mempty)
+  lfreshen' _ x cont = cont x mempty
+  acompare' _ _ _ = EQ
+

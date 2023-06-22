@@ -1,0 +1,33 @@
+module Maybe where
+
+data Maybe (A : Type) : Type where
+  Just of (A)
+  Nothing
+
+fmap : [A : Type] -> [B : Type] -> (A -> B) -> Maybe A -> Maybe B
+fmap = \ [A] [B] f m .
+  case m of 
+    Nothing -> Nothing
+    (Just a) -> Just (f a)
+
+zap : [A : Type] -> [B : Type] -> Maybe (A -> B) -> Maybe A -> Maybe B
+zap = \ [A] [B] mf ma . 
+   case mf of 
+      Just f -> case ma of 
+                  Just a -> Just (f a)
+                  Nothing -> Nothing
+      Nothing -> Nothing
+
+join : [A : Type] -> Maybe (Maybe A) -> Maybe A
+join = \ [A] mma . 
+  case mma of 
+    Just ma -> case ma of 
+                 (Just a) -> Just a
+                 Nothing  -> Nothing
+    Nothing -> Nothing
+
+bind : [A : Type] -> [B: Type] -> Maybe A -> (A -> Maybe B) -> Maybe B
+bind = \ [A] [B] m k . 
+  case m of 
+    Just a -> k a 
+    Nothing -> Nothing

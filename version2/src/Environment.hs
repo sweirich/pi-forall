@@ -86,6 +86,8 @@ emptyEnv = Env {ctx = []
 instance Disp Env where
   disp :: Env -> Doc
   disp e = vcat [disp decl | decl <- ctx e]
+  debugDisp :: Env -> Doc
+  debugDisp e = vcat [debugDisp decl | decl <- ctx e]
 
 -- | Find a name's user supplied type signature.
 lookupHint :: (MonadReader Env m) => TName -> m (Maybe Sig)
@@ -219,14 +221,17 @@ instance Monoid Err where
   mempty :: Err
   mempty = Err [] mempty
 
-
-instance Disp Err where
-  disp :: Err -> Doc
-  disp (Err [] msg) = msg
-  disp (Err ((SourceLocation p term) : _) msg) =
+dispErr :: (forall a. Disp a => a -> Doc) -> Err -> Doc
+dispErr disp (Err [] msg) = msg
+dispErr disp (Err ((SourceLocation p term) : _) msg) =
     disp p
       $$ nest 2 msg
       $$ nest 2 (text "In the expression" $$ nest 2 (disp term))
+
+instance Disp Err where
+  disp :: Err -> Doc
+  disp = dispErr disp
+  debugDisp = dispErr debugDisp
 
 -- | Throw an error
 err :: (Disp a, MonadError Err m, MonadReader Env m) => [a] -> m b

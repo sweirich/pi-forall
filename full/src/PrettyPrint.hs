@@ -1,7 +1,7 @@
 {- pi-forall language -}
 
 -- | A Pretty Printer.
-module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render) where
+module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render, pp) where
 
 import Control.Monad.Reader (MonadReader (ask, local), asks)
 import Data.Set qualified as S
@@ -22,28 +22,42 @@ import Syntax
 -------------------------------------------------------------------------
 
 -- | The 'Disp' class governs all types which can be turned into 'Doc's
--- The `disp` function is the entry point for the pretty printer
+-- The `disp` function is the main entry point for the pretty printer
 class Disp d where
   disp :: d -> Doc
+  debugDisp :: d -> Doc
+  
   default disp :: (Display d) => d -> Doc
-  disp d = display d (DI {showAnnots = False, dispAvoid = S.empty, prec = 0})
+  disp d = display d initDI
+
+  default debugDisp :: (Display d) => d -> Doc
+  debugDisp d = display d initDI{showLongNames = True, showAnnots=True}
+
+-- | Convenience entry point for the pretty printer
+pp :: Disp d => d -> String
+pp p = PP.render (disp p)
+
+debug :: Disp d => d -> String
+debug p = PP.render (debugDisp p)
 
 -- | The 'Display' class is like the 'Disp' class. It qualifies
---   types that can be turned into 'Doc'.  The difference is that the
---   this uses the 'DispInfo' parameter and the Unbound library
---   to generate fresh names.
+--   types that can be turned into 'Doc'.  The difference is that 
+--   this class uses the 'DispInfo' parameter and the Unbound library
+--   to generate fresh names during printing.
 class (Unbound.Alpha t) => Display t where
   -- | Convert a value to a 'Doc'.
   display :: t -> DispInfo -> Doc
 
 -- | The data structure for information about the display
 data DispInfo = DI
-  { -- | should we show the annotations?
+  { -- | should we show type annotations?
     showAnnots :: Bool,
     -- | names that have been used
     dispAvoid :: S.Set Unbound.AnyName,
     -- | current precedence level
-    prec :: Int
+    prec :: Int,
+    -- | should we print internally-generated names, or user-friendly versions
+    showLongNames :: Bool
   }
 
 -- | Error message quoting
@@ -52,6 +66,13 @@ data D
     DS String
   | -- | Displayable value
     forall a. Disp a => DD a
+
+initDI :: DispInfo
+initDI = DI {showAnnots = False,
+                          dispAvoid = S.empty,
+                          prec = 0,
+                          showLongNames = True}
+
 
 -------------------------------------------------------------------------
 
@@ -63,11 +84,16 @@ instance Disp D where
   disp (DS s) = PP.text s
   disp (DD d) = PP.nest 2 $ disp d
 
+  debugDisp d@(DS s) = disp d
+  debugDisp (DD d) = PP.nest 2 $ debugDisp d
+
 instance Disp [D] where
   disp dl = PP.sep $ map disp dl
+  debugDisp dl = PP.sep $ map disp dl
 
 instance Disp ParseError where
   disp = PP.text . show
+  debugDisp = disp
 
 instance Disp SourcePos where
   disp p =
@@ -75,9 +101,11 @@ instance Disp SourcePos where
       PP.<> PP.colon
       PP.<> PP.int (sourceColumn p)
       PP.<> PP.colon
+  debugDisp = disp
 
 instance Disp (Unbound.Name Term) where
   disp = PP.text . Unbound.name2String
+  debugDisp = PP.text . show
 
 -------------------------------------------------------------------------
 
@@ -87,6 +115,17 @@ instance Disp (Unbound.Name Term) where
 
 instance Disp Term
 
+instance Disp Module
+
+instance Disp ModuleImport
+
+instance Disp Decl
+
+instance Disp [Decl]
+
+instance Disp Sig
+
+
 instance Disp Arg
 
 
@@ -94,57 +133,86 @@ instance Disp Pattern
 
 instance Disp Match
 
+instance Disp Telescope
+
+instance Disp ConstructorDef
+
 
 
 ------------------------------------------------------------------------
 
--- * Disp Instances for Modules
+-- * Display Instances for Modules
 
 -------------------------------------------------------------------------
 
-instance Disp [Decl] where
-  disp = PP.vcat . map disp
+instance Display Module where
+  display m = do
+    dn <- display (moduleName m)
+    di <- mapM display (moduleImports m)
+    de <- mapM display (moduleEntries m)
+    pure $ PP.text "module" <+> dn <+> PP.text "where"
+      $$ PP.vcat di
+      $$ PP.vcat de
 
-instance Disp Epsilon where
-  disp Irr = PP.text "irrelevant"
-  disp Rel = PP.text "relevant"
+instance Display ModuleImport where
+  display (ModuleImport i) = pure $ PP.text "import" <+> disp i
 
+instance Display [Decl] where
+  display ds = do
+    dd <- mapM display ds
+    pure $ PP.vcat dd
 
+instance Display Sig where
+  display sig = do
+    dn <- display (sigName sig)
+    dt <- display (sigType sig)
+    pure $ dn <+> PP.text ":" <+> dt
 
-instance Disp Module where
-  disp m =
-    PP.text "module" <+> disp (moduleName m) <+> PP.text "where"
-      $$ PP.vcat (map disp (moduleImports m))
-      $$ PP.vcat (map disp (moduleEntries m))
-
-instance Disp ModuleImport where
-  disp (ModuleImport i) = PP.text "import" <+> disp i
-
-instance Disp Sig where
-  disp (Sig n ep  ty) = disp n <+> PP.text ":" <+> disp ty
-
-instance Disp Decl where
-  disp (Def n term)  = disp n <+> PP.text "=" <+> disp term
-  disp (RecDef n r)  = disp (Def n r)
-  disp (TypeSig sig) = disp sig
-  disp (Demote ep)   = mempty
-
-  disp (Data n params constructors) =
-    PP.hang
-      ( PP.text "data" <+> disp n <+> disp params
+instance Display Decl where
+  display (Def n term) = do
+    dn <- display n
+    dt <- display term
+    pure $ dn <+> PP.text "=" <+> dt
+  display (RecDef n f) = display (Def n f)
+  display (TypeSig sig) = display sig
+  display (Demote ep) = return mempty 
+  display (Data n params constructors) = do
+    dn <- display n
+    dp <- display params
+    dc <- mapM display constructors
+    pure $ PP.hang
+      ( PP.text "data" <+> dn <+> dp
           <+> PP.colon
           <+> PP.text "Type"
           <+> PP.text "where"
       )
       2
-      (PP.vcat $ map disp constructors)
-  disp (DataSig t delta) =
-    PP.text "data" <+> disp t <+> disp delta <+> PP.colon
-      <+> PP.text "Type"
+      (PP.vcat dc)
+  display (DataSig t delta) = do
+    dt <- display t
+    dd <- display delta
 
-instance Disp ConstructorDef where
-  disp (ConstructorDef _ c (Telescope [])) = PP.text c
-  disp (ConstructorDef _ c tele) = PP.text c <+> PP.text "of" <+> disp tele
+    pure $ PP.text "data" <+> dt <+> dd <+> PP.colon
+      <+> PP.text "Type" 
+  
+
+instance Display ConstructorDef where
+  display (ConstructorDef _ c (Telescope [])) = do
+    pure $ PP.text c 
+  display (ConstructorDef _ c tele) = do
+    dc <- display c
+    dt <- display tele
+    pure $ dc <+> PP.text "of" <+> dt 
+
+
+instance Disp Epsilon where
+  disp Irr = PP.text "irrelevant"
+  disp Rel = PP.text "relevant"
+
+  debugDisp = disp
+
+
+
 
 
 
@@ -156,32 +224,51 @@ instance Disp ConstructorDef where
 
 instance Disp String where
   disp = PP.text
+  debugDisp = disp
 
 instance Disp Int where
   disp = PP.text . show
+  debugDisp = disp
 
 instance Disp Integer where
   disp = PP.text . show
+  debugDisp = disp
 
 instance Disp Double where
   disp = PP.text . show
+  debugDisp = disp
 
 instance Disp Float where
   disp = PP.text . show
+  debugDisp = disp
 
 instance Disp Char where
   disp = PP.text . show
+  debugDisp = disp
 
 instance Disp Bool where
   disp = PP.text . show
+  debugDisp = disp
 
+dispMaybe :: (t -> Doc) -> Maybe t -> Doc
+dispMaybe disp m = case m of 
+  (Just a) -> PP.text "Just" <+> disp a
+  Nothing -> PP.text "Nothing" 
+  
 instance Disp a => Disp (Maybe a) where
-  disp (Just a) = PP.text "Just" <+> disp a
-  disp Nothing = PP.text "Nothing"
+  disp = dispMaybe disp
+  debugDisp = dispMaybe debugDisp
+
+
+dispEither :: (Disp a, Disp b) => (forall a. Disp a => a -> Doc) -> Either a b -> Doc
+dispEither disp e = case e of 
+     (Left a) -> PP.text "Left" <+> disp a
+     (Right a) -> PP.text "Right" <+> disp a
 
 instance (Disp a, Disp b) => Disp (Either a b) where
-  disp (Left a) = PP.text "Left" <+> disp a
-  disp (Right a) = PP.text "Right" <+> disp a
+  disp = dispEither disp
+  debugDisp = dispEither debugDisp
+
 
 -------------------------------------------------------------------------
 
@@ -212,7 +299,7 @@ instance Display Bool where
 
 -------------------------------------------------------------------------
 
--- * Display class instances for Terms
+-- * Display instances for Terms
 
 -------------------------------------------------------------------------
 
@@ -432,17 +519,15 @@ instance Display Pattern where
 
   display (PatVar x) = display x
 
-instance Disp Telescope where
-  disp (Telescope t) = PP.sep $ map (PP.parens . disp) t
+
+instance Display Telescope where
+  display (Telescope t) = do
+    dt <- mapM display t
+    pure $ PP.sep (map PP.parens dt)
 
 instance Display a => Display (a, Epsilon) where
   display (t, ep) = bindParens ep <$> display t
 
-instance Display ConstructorDef where
-  display (ConstructorDef pos dc tele) = do
-    dn <- display dc
-    let dt = disp tele
-    return $ dn PP.<+> PP.text "of" PP.<+> dt
 
 
 

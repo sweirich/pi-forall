@@ -107,11 +107,12 @@ data Module = Module
     moduleImports :: [ModuleImport],
     moduleEntries :: [Decl] 
   }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Typeable, Unbound.Alpha)
 
 -- | References to other modules (brings declarations and definitions into scope)
 newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
+  deriving anyclass (Unbound.Alpha)
 
 -- | A type declaration (or type signature)
 data Sig = Sig {sigName :: TName  , sigType :: Type}
@@ -273,3 +274,5 @@ instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substBvs
 -- Internally generated source positions
 internalPos :: SourcePos
 internalPos = initialPos "internal"
+
+
