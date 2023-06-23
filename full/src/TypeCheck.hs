@@ -1,6 +1,8 @@
 {- pi-forall -}
 
 -- | The main routines for type-checking
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use forM_" #-}
 module TypeCheck (tcModules, inferType, checkType) where
 
 import Control.Monad.Except
@@ -348,8 +350,9 @@ def t1 t2 = do
 tcArgTele :: [Arg] -> [Decl] -> TcMonad ()
 tcArgTele [] [] = return ()
 tcArgTele args (Def x ty : tele) = do
-  tele' <- doSubst [(x,ty)] tele
-  tcArgTele args tele'
+  -- ensure that the equality is provable at this point
+  Equal.equate (Var x) ty
+  tcArgTele args tele
 tcArgTele (Arg ep1 tm : terms) (TypeSig (Sig x ep2 ty) : tele) 
   | ep1 == ep2 = do
       Env.withStage ep1 $ checkType tm ty

@@ -1,6 +1,8 @@
 {- pi-forall -}
 
 -- | The main routines for type-checking
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use forM_" #-}
 module TypeCheck (tcModules, inferType, checkType) where
 
 import Control.Monad.Except

@@ -1,4 +1,7 @@
 {- pi-forall -}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use forM_" #-}
 
 -- | The main routines for type-checking
 module TypeCheck (tcModules, inferType, checkType) where

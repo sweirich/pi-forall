@@ -206,8 +206,8 @@ unify ns tx ty = do
     then return []
     else case (txnf, tynf) of
       (Var x, Var y) | x == y -> return []
-      (Var y, yty) | y `notElem` ns && y `notElem` fv yty -> return [Def y yty]
-      (yty, Var y) | y `notElem` ns && y `notElem` fv yty -> return [Def y yty]
+      (Var y, yty) | y `notElem` ns -> return [Def y yty]
+      (yty, Var y) | y `notElem` ns -> return [Def y yty]
       (Prod a1 a2, Prod b1 b2) -> unifyArgs [Arg Rel a1, Arg Rel a2] [Arg Rel b1, Arg Rel b2]  
       
       (TyEq a1 a2, TyEq b1 b2) -> (++) <$> unify ns a1 b1 <*> unify ns a2 b2 
