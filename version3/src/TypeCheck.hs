@@ -11,7 +11,7 @@ import Data.Maybe ( catMaybes )
 import Environment (D (..), TcMonad)
 import Environment qualified as Env
 import Equal qualified
-import PrettyPrint (Disp (disp))
+import PrettyPrint (Disp (disp), pp, debug)
 import Syntax
 import Debug.Trace
 
@@ -324,7 +324,7 @@ tcEntry (Def n term) = do
                   ]
            in do
                 Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) `catchError` handler
-                if n `elem` Unbound.toListOf Unbound.fv term
+                if n `elem` fv term
                   then return $ AddCtx [TypeSig sig, RecDef n term]
                   else return $ AddCtx [TypeSig sig, Def n term]
     die term' =

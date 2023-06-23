@@ -1,7 +1,7 @@
 {- pi-forall language -}
 
 -- | A Pretty Printer.
-module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render, pp) where
+module PrettyPrint (Disp (..), D (..), SourcePos, PP.Doc, PP.render, pp, debug) where
 
 import Control.Monad.Reader (MonadReader (ask, local), asks)
 import Data.Set qualified as S
@@ -71,7 +71,8 @@ initDI :: DispInfo
 initDI = DI {showAnnots = False,
                           dispAvoid = S.empty,
                           prec = 0,
-                          showLongNames = True}
+                          showLongNames = False
+                          }
 
 
 -------------------------------------------------------------------------
@@ -127,6 +128,8 @@ instance Disp Sig
 
 
 instance Disp Arg
+
+instance Disp [Arg]
 
 
 
@@ -301,7 +304,13 @@ brackets :: Bool -> Doc -> Doc
 brackets b = if b then PP.brackets else id
 
 instance Display (Unbound.Name Term) where
-  display = return . disp
+  display n = do
+    b <- ask showLongNames
+    return (if b then debugDisp n else disp n)
+
+instance Display [Arg] where
+   display a = PP.sep <$> mapM display a
+
 
 instance Display Term where
   display TyType = return $ PP.text "Type"

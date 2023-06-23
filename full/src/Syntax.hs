@@ -10,6 +10,8 @@ import Data.Typeable (Typeable)
 import GHC.Generics (Generic,from)
 import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, newPos)
 import Unbound.Generics.LocallyNameless qualified as Unbound
+import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
+
 import Data.Function (on)
 
 -----------------------------------------
@@ -380,7 +382,11 @@ pi2 = TyPi Rel TyBool (Unbound.bind yName (Var yName))
 -- True
 -- 
 
+---------------
+-- | Bridge function to calculate the free variables of a term
 
+fv :: Term -> [Unbound.Name Term]
+fv = Unbound.toListOf Unbound.fv
 
 -----------------
 
