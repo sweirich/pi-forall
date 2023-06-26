@@ -25,7 +25,7 @@ getModules
 getModules prefixes top = do
   toParse <- gatherModules prefixes [ModuleImport top]
 {- SOLN DATA -}
-  flip evalStateT emptyConstructorNames $ mapM reparse toParse
+  flip evalStateT initialConstructorNames $ mapM reparse toParse
 {- STUBWITH   mapM reparse toParse -}     
 
 data ModuleInfo = ModuleInfo {

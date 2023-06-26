@@ -120,9 +120,9 @@ instance Disp Module
 
 instance Disp ModuleImport
 
-instance Disp Decl
+instance Disp Entry
 
-instance Disp [Decl]
+instance Disp [Entry]
 
 instance Disp Sig
 
@@ -163,7 +163,7 @@ instance Display Module where
 instance Display ModuleImport where
   display (ModuleImport i) = pure $ PP.text "import" <+> disp i
 
-instance Display [Decl] where
+instance Display [Entry] where
   display ds = do
     dd <- mapM display ds
     pure $ PP.vcat dd
@@ -174,12 +174,11 @@ instance Display Sig where
     dt <- display (sigType sig)
     pure $ dn <+> PP.text ":" <+> dt
 
-instance Display Decl where
+instance Display Entry where
   display (Def n term) = do
     dn <- display n
     dt <- display term
     pure $ dn <+> PP.text "=" <+> dt
-  display (RecDef n f) = display (Def n f)
   display (TypeSig sig) = display sig
 {- SOLN EP -}
   display (Demote ep) = return mempty {- STUBWITH -}

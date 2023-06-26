@@ -207,7 +207,7 @@ tcTerm t@(DataCon c args) (Just ty) = do
   case ty of
     (TyCon tname params) -> do
       (Telescope delta, Telescope deltai) <- Env.lookupDCon c tname
-      let isTypeSig :: Decl -> Bool
+      let isTypeSig :: Entry -> Bool
           isTypeSig (TypeSig _) = True
           isTypeSig _ = False
       let numArgs = length (filter isTypeSig deltai)
@@ -354,7 +354,7 @@ tcTerm tm Nothing =
 -- helper functions for type checking
 
 -- | Create a Def if either side normalizes to a single variable
-def :: Term -> Term -> TcMonad [Decl]
+def :: Term -> Term -> TcMonad [Entry]
 def t1 t2 = do
     nf1 <- Equal.whnf t1
     nf2 <- Equal.whnf t2
@@ -370,7 +370,7 @@ def t1 t2 = do
 -- helper functions for datatypes
 
 -- | type check a list of data constructor arguments against a telescope
-tcArgTele :: [Arg] -> [Decl] -> TcMonad ()
+tcArgTele :: [Arg] -> [Entry] -> TcMonad ()
 tcArgTele [] [] = return ()
 tcArgTele args (Def x ty : tele) = do
   -- ensure that the equality is provable at this point
@@ -399,7 +399,7 @@ tcArgTele _  tele =
 -- This is used to instantiate the parameters of a data constructor
 -- to find the types of its arguments.
 -- The first argument should only contain 'Rel' type declarations.
-substTele :: [Decl] -> [Arg] -> [Decl] -> TcMonad [Decl]
+substTele :: [Entry] -> [Arg] -> [Entry] -> TcMonad [Entry]
 substTele tele args = doSubst (mkSubst tele (map unArg args))
   where
     mkSubst [] [] = []
@@ -411,7 +411,7 @@ substTele tele args = doSubst (mkSubst tele (map unArg args))
 
 -- Propagate the given substitution through the telescope, potentially
 -- reworking the constraints
-doSubst :: [(TName, Term)] -> [Decl] -> TcMonad [Decl]
+doSubst :: [(TName, Term)] -> [Entry] -> TcMonad [Entry]
 doSubst ss [] = return []
 doSubst ss (Def x ty : tele') = do
   let tx' = Unbound.substs ss (Var x)
@@ -430,7 +430,7 @@ doSubst _ tele =
 -----------------------------------------------------------
 
 -- | Create a binding for each of the variables in the pattern
-declarePat :: Pattern -> Epsilon -> Type -> TcMonad [Decl]
+declarePat :: Pattern -> Epsilon -> Type -> TcMonad [Entry]
 declarePat (PatVar x)       ep ty  = return [TypeSig (Sig x ep ty)]
 declarePat (PatCon dc pats) Rel ty = do 
   (tc,params) <- Equal.ensureTCon ty
@@ -442,7 +442,7 @@ declarePat pat Irr _ty =
 
 -- | Given a list of pattern arguments and a telescope, create a binding for 
 -- each of the variables in the pattern, 
-declarePats :: DataConName -> [(Pattern, Epsilon)] -> [Decl] -> TcMonad [Decl]
+declarePats :: DataConName -> [(Pattern, Epsilon)] -> [Entry] -> TcMonad [Entry]
 declarePats dc pats (Def x ty : tele) = do
   let ds1 = [Def x ty]
   ds2 <- Env.extendCtxs ds1 $ declarePats dc pats tele
@@ -471,7 +471,7 @@ pat2Term (PatCon dc pats) = DataCon dc (pats2Terms pats)
        
 
 -- | Check all of the types contained within a telescope
-tcTypeTele :: [Decl] -> TcMonad ()
+tcTypeTele :: [Entry] -> TcMonad ()
 tcTypeTele [] = return ()
 tcTypeTele (Def x tm : tl) = do
   ty1 <- Env.withStage Irr $ inferType (Var x)
@@ -506,11 +506,11 @@ tcModules = foldM tcM []
 
 -- | Typecheck an entire module.
 tcModule ::
-  -- | List of already checked modules (including their Decls).
+  -- | List of already checked modules (including their entries).
   [Module] ->
   -- | Module to check.
   Module ->
-  -- | The same module with all Decls checked and elaborated.
+  -- | The same module with all entries checked and elaborated.
   TcMonad Module
 tcModule defs m' = do
   checkedEntries <-
@@ -522,23 +522,23 @@ tcModule defs m' = do
   return $ m' {moduleEntries = checkedEntries}
   where
     d `tcE` m = do
-      -- Extend the Env per the current Decl before checking
-      -- subsequent Decls.
+      -- Extend the Env per the current Entry before checking
+      -- subsequent entries.
       x <- tcEntry d
       case x of
         AddHint hint -> Env.extendHints hint m
-        -- Add decls to the Decls to be returned
+        -- Add decls to the entries to be returned
         AddCtx decls -> (decls ++) <$> Env.extendCtxsGlobal decls m
     -- Get all of the defs from imported modules (this is the env to check current module in)
     importedModules = filter (\x -> ModuleImport (moduleName x) `elem` moduleImports m') defs
 
--- | The Env-delta returned when type-checking a top-level Decl.
+-- | The Env-delta returned when type-checking a top-level Entry.
 data HintOrCtx
   = AddHint Sig
-  | AddCtx [Decl]
+  | AddCtx [Entry]
 
 -- | Check each sort of declaration in a module
-tcEntry :: Decl -> TcMonad HintOrCtx
+tcEntry :: Entry -> TcMonad HintOrCtx
 tcEntry (Def n term) = do
   oldDef <- Env.lookupDef n
   maybe tc die oldDef
@@ -561,9 +561,7 @@ tcEntry (Def n term) = do
                   ]
            in do
                 Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) `catchError` handler
-                if n `elem` fv term
-                  then return $ AddCtx [TypeSig sig, RecDef n term]
-                  else return $ AddCtx [TypeSig sig, Def n term]
+                return $ AddCtx [TypeSig sig, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -581,7 +579,7 @@ tcEntry (Demote ep) = return (AddCtx [Demote ep])
 {- STUBWITH -}
 
 {- SOLN DATA -}
--- rule Decl_data
+-- rule Entry_data
 tcEntry (Data t (Telescope delta) cs) =
   do
     -- Check that the telescope for the datatype definition is well-formed
@@ -602,7 +600,7 @@ tcEntry (Data t (Telescope delta) cs) =
     -- finally, add the datatype to the env and perform action m
     return $ AddCtx [Data t (Telescope delta) ecs]
 tcEntry (DataSig _ _) = Env.err [DS "internal construct"]
-tcEntry (RecDef _ _) = Env.err [DS "internal construct"]
+
 
 {- STUBWITH tcEntry _ = Env.err "unimplemented" -}
 
@@ -721,7 +719,7 @@ relatedPats dc (pc : pats) =
 
 -- for simplicity, this function requires that all subpatterns
 -- are pattern variables.
-checkSubPats :: DataConName -> [Decl] -> [[(Pattern, Epsilon)]] -> TcMonad ()
+checkSubPats :: DataConName -> [Entry] -> [[(Pattern, Epsilon)]] -> TcMonad ()
 checkSubPats dc [] _ = return ()
 checkSubPats dc (Def _ _ : tele) patss = checkSubPats dc tele patss
 checkSubPats dc (TypeSig _ : tele) patss

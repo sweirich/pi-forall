@@ -9,7 +9,6 @@ module Environment
     lookupTy,
     lookupTyMaybe,
     lookupDef,
-    lookupRecDef,
     lookupHint {- SOLN DATA -} ,
     lookupTCon,
     lookupDCon,
@@ -67,12 +66,12 @@ data SourceLocation where
 -- | Environment manipulation and accessing functions
 -- The context 'gamma' is a list
 data Env = Env
-  { -- | elaborated term and datatype declarations.
-    ctx :: [Decl],
+  { -- | elaborated term and datatype declarations
+    ctx :: [Entry],
     -- | how long the tail of "global" variables in the context is
     --    (used to supress printing those in error messages)
     globals :: Int,
-    -- | Type declarations (signatures): it's not safe to
+    -- | Type declarations: it's not safe to
     -- put these in the context until a corresponding term
     -- has been checked.
     hints :: [Sig],
@@ -149,14 +148,6 @@ lookupDef ::
 lookupDef v = do
   ctx <- asks ctx
   return $ listToMaybe [a | Def v' a <- ctx, v == v']
-
-lookupRecDef ::
-  (MonadReader Env m) =>
-  TName ->
-  m (Maybe Term)
-lookupRecDef v = do
-  ctx <- asks ctx
-  return $ listToMaybe [a | RecDef v' a <- ctx, v == v']
 
 {- SOLN DATA -}
 
@@ -238,17 +229,17 @@ lookupDCon c tname = do
 {- STUBWITH -}
 
 -- | Extend the context with a new binding
-extendCtx :: (MonadReader Env m) => Decl -> m a -> m a
+extendCtx :: (MonadReader Env m) => Entry -> m a -> m a
 extendCtx d =
   local (\m@Env{ctx = cs} -> m {ctx = d : cs})
 
 -- | Extend the context with a list of bindings
-extendCtxs :: (MonadReader Env m) => [Decl] -> m a -> m a
+extendCtxs :: (MonadReader Env m) => [Entry] -> m a -> m a
 extendCtxs ds =
   local (\m@Env {ctx = cs} -> m {ctx = ds ++ cs})
 
 -- | Extend the context with a list of bindings, marking them as "global"
-extendCtxsGlobal :: (MonadReader Env m) => [Decl] -> m a -> m a
+extendCtxsGlobal :: (MonadReader Env m) => [Entry] -> m a -> m a
 extendCtxsGlobal ds =
   local
     ( \m@Env {ctx = cs} ->
@@ -261,7 +252,7 @@ extendCtxsGlobal ds =
 {- SOLN DATA -}
 
 -- | Extend the context with a telescope
-extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Decl] -> m a -> m a
+extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Entry] -> m a -> m a
 extendCtxTele [] m = m
 extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
@@ -282,11 +273,11 @@ extendCtxMods :: (MonadReader Env m) => [Module] -> m a -> m a
 extendCtxMods mods k = foldr extendCtxMod k mods
 
 -- | Get the complete current context
-getCtx :: MonadReader Env m => m [Decl]
+getCtx :: MonadReader Env m => m [Entry]
 getCtx = asks ctx
 
 -- | Get the prefix of the context that corresponds to local variables.
-getLocalCtx :: MonadReader Env m => m [Decl]
+getLocalCtx :: MonadReader Env m => m [Entry]
 getLocalCtx = do
   g <- asks ctx
   glen <- asks globals
