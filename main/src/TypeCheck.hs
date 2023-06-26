@@ -47,7 +47,7 @@ inferType t = case t of
   (TyPi {- SOLN EP -} ep {- STUBWITH -}tyA bnd) -> do
     (x, tyB) <- Unbound.unbind bnd
     tcType tyA
-    Env.extendCtx {- SOLN EP -} (TypeDecl (Decl x ep tyA)){- STUBWITH (mkDecl x tyA) -} (tcType tyB)
+    Env.extendCtx {- SOLN EP -} (Decl (TypeDecl x ep tyA)){- STUBWITH (mkDecl x tyA) -} (tcType tyB)
     return TyType
 
   -- i-app
@@ -190,7 +190,7 @@ checkType tm ty' = do
         unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
                                       DS "but found", DD ep1, DS "instead."] {- STUBWITH -}
         -- check the type of the body of the lambda expression
-        Env.extendCtx {- SOLN EP -} (TypeDecl (Decl x ep1 tyA)){- STUBWITH (mkDecl x tyA) -} (checkType body tyB)
+        Env.extendCtx {- SOLN EP -} (Decl (TypeDecl x ep1 tyA)){- STUBWITH (mkDecl x tyA) -} (checkType body tyB)
       _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty]
 
     -- Practicalities
@@ -227,10 +227,10 @@ checkType tm ty' = do
       case ty of
         (TyCon tname params) -> do
           (Telescope delta, Telescope deltai) <- Env.lookupDCon c tname
-          let isTypeDecl :: Entry -> Bool
-              isTypeDecl (TypeDecl _) = True
-              isTypeDecl _ = False
-          let numArgs = length (filter isTypeDecl deltai)
+          let isDecl :: Entry -> Bool
+              isDecl (Decl _) = True
+              isDecl _ = False
+          let numArgs = length (filter isDecl deltai)
           unless (length args == numArgs) $
             Env.err
               [ DS "Constructor",
@@ -344,23 +344,6 @@ checkType tm ty' = do
       Equal.equate ty' ty
     {- STUBWITH       unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
 
-
-{- SOLN HW -}
----------------------------------------------------------------------
--- helper functions for type checking
-
--- | Create a Def if either side normalizes to a single variable
-def :: Term -> Term -> TcMonad [Entry]
-def t1 t2 = do
-    nf1 <- Equal.whnf t1
-    nf2 <- Equal.whnf t2
-    case (nf1, nf2) of
-      (Var x, Var y) | x == y -> return []
-      (Var x, _) -> return [Def x nf2]
-      (_, Var x) -> return [Def x nf1]
-      _ -> return []
-{- STUBWITH -}
-
 {- SOLN DATA -}
 ---------------------------------------------------------------------
 -- helper functions for datatypes
@@ -372,7 +355,7 @@ tcArgTele args (Def x ty : tele) = do
   -- ensure that the equality is provable at this point
   Equal.equate (Var x) ty
   tcArgTele args tele
-tcArgTele (Arg ep1 tm : terms) (TypeDecl (Decl x ep2 ty) : tele) 
+tcArgTele (Arg ep1 tm : terms) (Decl (TypeDecl x ep2 ty) : tele) 
   | ep1 == ep2 = do
       Env.withStage ep1 $ checkType tm ty
       tele' <- doSubst [(x, tm)] tele
@@ -399,7 +382,7 @@ substTele :: [Entry] -> [Arg] -> [Entry] -> TcMonad [Entry]
 substTele tele args = doSubst (mkSubst tele (map unArg args))
   where
     mkSubst [] [] = []
-    mkSubst (TypeDecl (Decl x Rel _) : tele') (tm : tms) =
+    mkSubst (Decl (TypeDecl x Rel _) : tele') (tm : tms) =
       (x, tm) : mkSubst tele' tms
     mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
@@ -415,11 +398,11 @@ doSubst ss (Def x ty : tele') = do
   decls1 <- Equal.unify [] tx' ty'
   decls2 <- Env.extendCtxs decls1 (doSubst ss tele')
   return $ decls1 ++ decls2
-doSubst ss (TypeDecl decl : tele') = do
+doSubst ss (Decl decl : tele') = do
   tynf <- Equal.whnf (Unbound.substs ss (declType decl))
   let decl' = decl{declType = tynf}
   tele'' <- doSubst ss tele'
-  return $ TypeDecl decl' : tele''
+  return $ Decl decl' : tele''
 doSubst _ tele = 
   Env.err [DS "Invalid telescope", DD tele]
 
@@ -427,7 +410,7 @@ doSubst _ tele =
 
 -- | Create a binding for each of the variables in the pattern
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad [Entry]
-declarePat (PatVar x)       ep ty  = return [TypeDecl (Decl x ep ty)]
+declarePat (PatVar x)       ep ty  = return [Decl (TypeDecl x ep ty)]
 declarePat (PatCon dc pats) Rel ty = do 
   (tc,params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai) <- Env.lookupDCon dc tc
@@ -443,7 +426,7 @@ declarePats dc pats (Def x ty : tele) = do
   let ds1 = [Def x ty]
   ds2 <- Env.extendCtxs ds1 $ declarePats dc pats tele
   return (ds1 ++ ds2)
-declarePats dc ((pat, _) : pats) (TypeDecl (Decl x ep ty) : tele) = do
+declarePats dc ((pat, _) : pats) (Decl (TypeDecl x ep ty) : tele) = do
   ds1 <- declarePat pat ep ty
   let tm = pat2Term pat
   tele' <- doSubst [(x,tm)] tele
@@ -474,9 +457,9 @@ tcTypeTele (Def x tm : tl) = do
   Env.withStage Irr $ checkType tm ty1
   let decls = [Def x tm] 
   Env.extendCtxs decls $ tcTypeTele tl
-tcTypeTele (TypeDecl decl : tl) = do
+tcTypeTele (Decl decl : tl) = do
   tcType (declType decl)
-  Env.extendCtx (TypeDecl decl) $ tcTypeTele tl
+  Env.extendCtx (Decl decl) $ tcTypeTele tl
 tcTypeTele tele = 
   Env.err [DS "Invalid telescope: ", DD tele]
 
@@ -530,7 +513,7 @@ tcModule defs m' = do
 
 -- | The Env-delta returned when type-checking a top-level Entry.
 data HintOrCtx
-  = AddHint Decl
+  = AddHint TypeDecl
   | AddCtx [Entry]
 
 -- | Check each sort of declaration in a module
@@ -544,7 +527,7 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [TypeDecl (Decl n {- SOLN EP -} Rel{- STUBWITH -} ty), Def n term]
+          return $ AddCtx [Decl (TypeDecl n {- SOLN EP -} Rel{- STUBWITH -} ty), Def n term]
         Just decl ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -556,8 +539,8 @@ tcEntry (Def n term) = do
                     DD decl
                   ]
            in do
-                Env.extendCtx (TypeDecl decl) $ checkType term (declType decl) `catchError` handler
-                return $ AddCtx [TypeDecl decl, Def n term]
+                Env.extendCtx (Decl decl) $ checkType term (declType decl) `catchError` handler
+                return $ AddCtx [Decl decl, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -566,7 +549,7 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (TypeDecl decl) = do
+tcEntry (Decl decl) = do
   duplicateTypeBindingCheck decl
   tcType (declType decl)
   return $ AddHint decl
@@ -599,7 +582,7 @@ tcEntry (Data t (Telescope delta) cs) =
 
 -- | Make sure that we don't have the same name twice in the
 -- environment. (We don't rename top-level module definitions.)
-duplicateTypeBindingCheck :: Decl -> TcMonad ()
+duplicateTypeBindingCheck :: TypeDecl -> TcMonad ()
 duplicateTypeBindingCheck decl = do
   -- Look for existing type bindings ...
   let n = declName decl
@@ -715,7 +698,7 @@ relatedPats dc (pc : pats) =
 checkSubPats :: DataConName -> [Entry] -> [[(Pattern, Epsilon)]] -> TcMonad ()
 checkSubPats dc [] _ = return ()
 checkSubPats dc (Def _ _ : tele) patss = checkSubPats dc tele patss
-checkSubPats dc (TypeDecl _ : tele) patss
+checkSubPats dc (Decl _ : tele) patss
   | (not . null) patss && not (any null patss) = do
     let hds = map (fst . head) patss
     let tls = map tail patss

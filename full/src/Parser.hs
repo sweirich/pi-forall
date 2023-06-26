@@ -327,13 +327,13 @@ telebindings = many teleBinding
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (Unbound.fresh wildcardName) <*> expr)
-      return (TypeDecl (Decl x Rel ty):)
+      return (Decl (TypeDecl x Rel ty):)
 
     imp = do
         v <- varOrWildcard
         colon
         t <- expr
-        return (TypeDecl (Decl v Irr t):)
+        return (Decl (TypeDecl v Irr t):)
 
     equal = do
         v <- variable

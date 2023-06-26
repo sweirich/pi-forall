@@ -42,7 +42,7 @@ inferType t = case t of
   (TyPi ep tyA bnd) -> do
     (x, tyB) <- Unbound.unbind bnd
     tcType tyA
-    Env.extendCtx (TypeDecl (Decl x ep tyA)) (tcType tyB)
+    Env.extendCtx (Decl (TypeDecl x ep tyA)) (tcType tyB)
     return TyType
 
   -- i-app
@@ -129,7 +129,7 @@ checkType tm ty' = do
         unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
                                       DS "but found", DD ep1, DS "instead."] 
         -- check the type of the body of the lambda expression
-        Env.extendCtx (TypeDecl (Decl x ep1 tyA)) (checkType body tyB)
+        Env.extendCtx (Decl (TypeDecl x ep1 tyA)) (checkType body tyB)
       _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty]
 
     -- Practicalities
@@ -232,22 +232,6 @@ checkType tm ty' = do
     
 
 
----------------------------------------------------------------------
--- helper functions for type checking
-
--- | Create a Def if either side normalizes to a single variable
-def :: Term -> Term -> TcMonad [Entry]
-def t1 t2 = do
-    nf1 <- Equal.whnf t1
-    nf2 <- Equal.whnf t2
-    case (nf1, nf2) of
-      (Var x, Var y) | x == y -> return []
-      (Var x, _) -> return [Def x nf2]
-      (_, Var x) -> return [Def x nf1]
-      _ -> return []
-
-
-
 
 --------------------------------------------------------
 -- Using the typechecker for decls and modules and stuff
@@ -297,7 +281,7 @@ tcModule defs m' = do
 
 -- | The Env-delta returned when type-checking a top-level Entry.
 data HintOrCtx
-  = AddHint Decl
+  = AddHint TypeDecl
   | AddCtx [Entry]
 
 -- | Check each sort of declaration in a module
@@ -311,7 +295,7 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [TypeDecl (Decl n Rel ty), Def n term]
+          return $ AddCtx [Decl (TypeDecl n Rel ty), Def n term]
         Just decl ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -323,8 +307,8 @@ tcEntry (Def n term) = do
                     DD decl
                   ]
            in do
-                Env.extendCtx (TypeDecl decl) $ checkType term (declType decl) `catchError` handler
-                return $ AddCtx [TypeDecl decl, Def n term]
+                Env.extendCtx (Decl decl) $ checkType term (declType decl) `catchError` handler
+                return $ AddCtx [Decl decl, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -333,7 +317,7 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (TypeDecl decl) = do
+tcEntry (Decl decl) = do
   duplicateTypeBindingCheck decl
   tcType (declType decl)
   return $ AddHint decl
@@ -344,7 +328,7 @@ tcEntry (Demote ep) = return (AddCtx [Demote ep])
 
 -- | Make sure that we don't have the same name twice in the
 -- environment. (We don't rename top-level module definitions.)
-duplicateTypeBindingCheck :: Decl -> TcMonad ()
+duplicateTypeBindingCheck :: TypeDecl -> TcMonad ()
 duplicateTypeBindingCheck decl = do
   -- Look for existing type bindings ...
   let n = declName decl

@@ -124,7 +124,7 @@ instance Disp Entry
 
 instance Disp [Entry]
 
-instance Disp Decl
+instance Disp TypeDecl
 
 
 
@@ -154,7 +154,7 @@ instance Display [Entry] where
     dd <- mapM display ds
     pure $ PP.vcat dd
 
-instance Display Decl where
+instance Display TypeDecl where
   display decl = do
     dn <- display (declName decl)
     dt <- display (declType decl)
@@ -165,7 +165,7 @@ instance Display Entry where
     dn <- display n
     dt <- display term
     pure $ dn <+> PP.text "=" <+> dt
-  display (TypeDecl decl) = display decl
+  display (Decl decl) = display decl
 
 
 

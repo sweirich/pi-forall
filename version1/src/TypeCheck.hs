@@ -171,7 +171,7 @@ tcModule defs m' = do
 
 -- | The Env-delta returned when type-checking a top-level Entry.
 data HintOrCtx
-  = AddHint Decl
+  = AddHint TypeDecl
   | AddCtx [Entry]
 
 -- | Check each sort of declaration in a module
@@ -185,7 +185,7 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [TypeDecl (Decl n ty), Def n term]
+          return $ AddCtx [Decl (TypeDecl n ty), Def n term]
         Just decl ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
@@ -196,8 +196,8 @@ tcEntry (Def n term) = do
                     DD decl
                   ]
            in do
-                Env.extendCtx (TypeDecl decl) $ checkType term (declType decl) `catchError` handler
-                return $ AddCtx [TypeDecl decl, Def n term]
+                Env.extendCtx (Decl decl) $ checkType term (declType decl) `catchError` handler
+                return $ AddCtx [Decl decl, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -206,14 +206,14 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (TypeDecl decl) = do
+tcEntry (Decl decl) = do
   duplicateTypeBindingCheck decl
   tcType (declType decl)
   return $ AddHint decl
 
 -- | Make sure that we don't have the same name twice in the
 -- environment. (We don't rename top-level module definitions.)
-duplicateTypeBindingCheck :: Decl -> TcMonad ()
+duplicateTypeBindingCheck :: TypeDecl -> TcMonad ()
 duplicateTypeBindingCheck decl = do
   -- Look for existing type bindings ...
   let n = declName decl

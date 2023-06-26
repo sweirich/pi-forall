@@ -116,18 +116,18 @@ newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
   deriving anyclass (Unbound.Alpha)
 
--- | A type declaration (or type declnature)
-data Decl = Decl {declName :: TName  , declType :: Type}
+-- | A type declaration 
+data TypeDecl = TypeDecl {declName :: TName  , declType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 -- | Declare the type of a term
 mkDecl :: TName -> Type -> Entry
-mkDecl n ty = TypeDecl (Decl n  ty)
+mkDecl n ty = Decl (TypeDecl n  ty)
 
 -- | Entries are the components of modules
 data Entry
   = -- | Declaration for the type of a term  'x : A'
-    TypeDecl Decl
+    Decl TypeDecl
   | -- | The definition of a particular name, must  'x = a'
     -- already have a type declaration in scope
     Def TName Term

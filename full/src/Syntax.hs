@@ -153,18 +153,18 @@ newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
   deriving anyclass (Unbound.Alpha)
 
--- | A type declaration (or type declnature)
-data Decl = Decl {declName :: TName , declEp :: Epsilon  , declType :: Type}
+-- | A type declaration 
+data TypeDecl = TypeDecl {declName :: TName , declEp :: Epsilon  , declType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 -- | Declare the type of a term
 mkDecl :: TName -> Type -> Entry
-mkDecl n ty = TypeDecl (Decl n Rel  ty)
+mkDecl n ty = Decl (TypeDecl n Rel  ty)
 
 -- | Entries are the components of modules
 data Entry
   = -- | Declaration for the type of a term  'x : A'
-    TypeDecl Decl
+    Decl TypeDecl
   | -- | The definition of a particular name, must  'x = a'
     -- already have a type declaration in scope
     Def TName Term
@@ -266,12 +266,12 @@ preludeDataDecls =
         unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
 
         -- Sigma-type
-        sigmaTele = Telescope [TypeDecl declA, TypeDecl declB]
-        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeDecl declX, TypeDecl declY])
-        declA = Decl aName Rel TyType
-        declB = Decl bName Rel (TyPi Rel (Var aName) (Unbound.bind xName TyType))
-        declX = Decl xName Rel (Var aName)
-        declY = Decl yName Rel (App (Var bName) (Arg Rel (Var xName)))
+        sigmaTele = Telescope [declA, declB]
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [declX, declY])
+        declA = mkDecl aName TyType
+        declB = mkDecl bName (TyPi Rel (Var aName) (Unbound.bind xName TyType))
+        declX = mkDecl xName (Var aName)
+        declY = mkDecl yName (App (Var bName) (Arg Rel (Var xName)))
         aName = Unbound.string2Name "a"
         bName = Unbound.string2Name "b"
 

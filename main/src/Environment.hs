@@ -74,7 +74,7 @@ data Env = Env
     -- | Type declarations: it's not safe to
     -- put these in the context until a corresponding term
     -- has been checked.
-    hints :: [Decl],
+    hints :: [TypeDecl],
     -- | what part of the file we are in (for errors/warnings)
     sourceLocation :: [SourceLocation] 
   }
@@ -96,7 +96,7 @@ instance Disp Env where
   debugDisp e = vcat [debugDisp decl | decl <- ctx e]
 
 -- | Find a name's user supplied type signature.
-lookupHint :: (MonadReader Env m) => TName -> m (Maybe Decl)
+lookupHint :: (MonadReader Env m) => TName -> m (Maybe TypeDecl)
 lookupHint v = do
   hints <- asks hints
   return $ listToMaybe [ sig | sig <- hints, v == declName sig]
@@ -105,12 +105,12 @@ lookupHint v = do
 lookupTyMaybe ::
   (MonadReader Env m) =>
   TName ->
-  m (Maybe Decl)
+  m (Maybe TypeDecl)
 lookupTyMaybe v = do
   ctx <- asks ctx
   return $ go ctx where
     go [] = Nothing
-    go (TypeDecl sig : ctx)
+    go (Decl sig : ctx)
       | v == declName sig = Just sig
       | otherwise = go ctx 
 {- SOLN EP -}
@@ -119,14 +119,14 @@ lookupTyMaybe v = do
     go (_ : ctx) = go ctx
 
 {- SOLN EP -}
-demoteDecl :: Epsilon -> Decl -> Decl
+demoteDecl :: Epsilon -> TypeDecl -> TypeDecl
 demoteDecl ep s = s { declEp = min ep (declEp s) }
 {- STUBWITH -}
 
 -- | Find the type of a name specified in the context
 -- throwing an error if the name doesn't exist
 lookupTy ::
-  TName -> TcMonad Decl
+  TName -> TcMonad TypeDecl
 lookupTy v =
   do
     x <- lookupTyMaybe v
@@ -223,7 +223,7 @@ lookupDCon c tname = do
 
 {- STUBWITH -}
 
--- | Extend the context with a new binding
+-- | Extend the context with a new entry
 extendCtx :: (MonadReader Env m) => Entry -> m a -> m a
 extendCtx d =
   local (\m@Env{ctx = cs} -> m {ctx = d : cs})
@@ -251,8 +251,8 @@ extendCtxTele :: (MonadReader Env m, MonadIO m, MonadError Err m) => [Entry] -> 
 extendCtxTele [] m = m
 extendCtxTele (Def x t2 : tele) m =
   extendCtx (Def x t2) $ extendCtxTele tele m
-extendCtxTele (TypeDecl sig : tele) m =
-  extendCtx (TypeDecl sig) $ extendCtxTele tele m
+extendCtxTele (Decl decl : tele) m =
+  extendCtx (Decl decl) $ extendCtxTele tele m
 extendCtxTele ( _ : tele) m = 
   err [DS "Invalid telescope ", DD tele]
 
@@ -288,7 +288,7 @@ getSourceLocation :: MonadReader Env m => m [SourceLocation]
 getSourceLocation = asks sourceLocation
 
 -- | Add a type hint
-extendHints :: (MonadReader Env m) => Decl -> m a -> m a
+extendHints :: (MonadReader Env m) => TypeDecl -> m a -> m a
 extendHints h = local (\m@Env {hints = hs} -> m {hints = h : hs})
 
 -- | An error that should be reported to the user
