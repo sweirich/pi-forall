@@ -158,32 +158,27 @@ newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
   deriving anyclass (Unbound.Alpha)
 
--- | A type declaration (or type signature)
-data Sig = Sig {sigName :: TName {- SOLN EP -} , sigEp :: Epsilon {- STUBWITH -} , sigType :: Type}
+-- | A type declaration (or type declnature)
+data Decl = Decl {declName :: TName {- SOLN EP -} , declEp :: Epsilon {- STUBWITH -} , declType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 -- | Declare the type of a term
-mkSig :: TName -> Type -> Entry
-mkSig n ty = TypeSig (Sig n {- SOLN EP -} Rel {- STUBWITH -} ty)
+mkDecl :: TName -> Type -> Entry
+mkDecl n ty = TypeDecl (Decl n {- SOLN EP -} Rel {- STUBWITH -} ty)
 
 -- | Entries are the components of modules
 data Entry
-  = -- | Declaration for the type of a term
-    TypeSig Sig
-  | -- | The definition of a particular name, must
+  = -- | Declaration for the type of a term  'x : A'
+    TypeDecl Decl
+  | -- | The definition of a particular name, must  'x = a'
     -- already have a type declaration in scope
     Def TName Term
 {- SOLN EP -}
     -- | Adjust the context for relevance checking
   | Demote Epsilon {- STUBWITH -} 
 {- SOLN DATA -}
-  | -- | Declaration for a datatype including all of
-    -- its data constructors
+  | -- | Datatype definition (must be at the module level)
     Data TyConName Telescope [ConstructorDef]
-  | -- | An abstract view of a datatype. Does
-    -- not include any information about its data
-    -- constructors
-    DataSig TyConName Telescope
   {- STUBWITH -}
   deriving (Show, Generic, Typeable)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
@@ -279,12 +274,12 @@ preludeDataDecls =
         unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
 
         -- Sigma-type
-        sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
-        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
-        sigA = Sig aName Rel TyType
-        sigB = Sig bName Rel (TyPi Rel (Var aName) (Unbound.bind xName TyType))
-        sigX = Sig xName Rel (Var aName)
-        sigY = Sig yName Rel (App (Var bName) (Arg Rel (Var xName)))
+        sigmaTele = Telescope [TypeDecl declA, TypeDecl declB]
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeDecl declX, TypeDecl declY])
+        declA = Decl aName Rel TyType
+        declB = Decl bName Rel (TyPi Rel (Var aName) (Unbound.bind xName TyType))
+        declX = Decl xName Rel (Var aName)
+        declY = Decl yName Rel (App (Var bName) (Arg Rel (Var xName)))
         aName = Unbound.string2Name "a"
         bName = Unbound.string2Name "b"
 
@@ -297,9 +292,12 @@ preludeDataDecls =
 -- * Auxiliary functions on syntax
 -----------------------------------------
 
--- | Default name (for parsing 'A -> B' as '(_:A) -> B') 
-wildcardName :: TName
-wildcardName = Unbound.string2Name "_"
+
+-- | Remove source positions and type annotations from the top level of a term
+strip :: Term -> Term
+strip (Pos _ tm) = strip tm
+strip (Ann tm _) = strip tm
+strip tm = tm
 
 -- | Partial inverse of Pos
 unPos :: Term -> Maybe SourcePos
@@ -309,6 +307,7 @@ unPos _ = Nothing
 -- | Tries to find a Pos inside a term, otherwise just gives up.
 unPosFlaky :: Term -> SourcePos
 unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
+
 
 
 -----------------------------------------
@@ -354,24 +353,22 @@ unbind = Unbound.unbind
 --    unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 
 -- For Terms, we'd like Alpha equivalence to ignore 
--- source positions and type annotations.
--- We can add these special cases to the definition of `aeq'` 
--- and then defer all other cases to the generic version of 
--- the function (Unbound.gaeq).
+-- source positions and type annotations. So we make sure to 
+-- remove them before calling the generic operation.
 
 instance Unbound.Alpha Term where
   aeq' :: Unbound.AlphaCtx -> Term -> Term -> Bool
-  aeq' ctx (Ann a _) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
-  aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
-  aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
+  aeq' ctx a b = (Unbound.gaeq ctx `on` from) (strip a) (strip b)
+
 
 -- For example, all occurrences of annotations and source positions
 -- are ignored by this definition.
 
--- '(Bool : Type)' is alpha-equivalent to 'Type'
--- >>> aeq (Pos internalPos (Ann TyBool Type)) TyBool
+-- '(Bool : Type)' is alpha-equivalent to 'Bool'
+-- >>> aeq (Ann TyBool TyType) TyBool
+
+-- '(Bool, Bool:Type)' is alpha-equivalent to (Bool, Bool)
+-- >>> aeq (Prod TyBool (Ann TyBool TyType)) (Prod TyBool TyBool)
 
 
 -- At the same time, the generic operation equates terms that differ only 

@@ -1059,68 +1059,57 @@ that we can print warning messages.
 {[}Typecheck.hs{]}}
 
 Now that we have the type checking monad available, we can start our
-implementation. For flexibility \texttt{inferType} and \texttt{checkType} will
-\emph{both} be implemented by the same function, called \cd{tcTerm}.
+implementation. 
+
+The general structure of the \cd{inferType} function starts with a pattern
+match for the various syntactic forms. There are also several cases for
+practical reasons (annotations, source code positions, etc.) and a few cases
+for homework.  If the form of the term does not match any of the forms of the
+terms that we can synthesize types for, then the type checker produces an
+error.
 
 \begin{verbatim}
-inferType :: Term -> TcMonad Type
-inferType t = tcTerm t Nothing
+inferType tm = case tm of 
+   (Var x) -> ...
 
-checkType :: Term -> Type -> TcMonad ()
-checkType tm ty = void $ tcTerm tm (Just ty)
+   TyType -> ...
+
+   (TyPi tyA bnd) -> ...
+
+   (App t1 t2) -> ...
+
+   (Ann tm ty) -> ...
+
+   ...
+
+   _ -> Env.err [DS "Must have a type for", DD tm] 
 \end{verbatim}
 
-The \texttt{tcTerm} function checks a term, producing its type. The
-second argument is \texttt{Nothing} in inference mode and an expected
-type in checking mode.
-
-\begin{verbatim}
-tcTerm :: Term -> Maybe Type -> TcMonad Type
-\end{verbatim}
-
-We combine these two functions into a single definition so that we can share
-code between checking and inference modes. While none of the expression forms
-of the core language can take advantage of this functionality, it is useful
-for some extensions to the language.
-
-The general structure of the \cd{tcTerm} function starts with a pattern match
-for the various syntactic forms in inference mode:
-
-\begin{verbatim}
-tcTerm (Var x) Nothing = ...
-
-tcTerm TyType Nothing = ...
-
-tcTerm (TyPi tyA bnd) Nothing = ...
-
-tcTerm (App t1 t2) Nothing = ...
-
-\end{verbatim}
+For checking, the general form of the function also 
 
 Mixed in here, we also have a pattern for lambda expressions in checking
 mode:
 
 \begin{verbatim}
-tcTerm (Lam bnd) (Just (TyPi tyA bnd2)) = ...
-   -- pass in the Pi type for the lambda expression
-
-tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
-   err [DS "Lambda expression has a function type, not ", DD nf]
+checkType tm ty = case tm of 
+  (Lam bnd) -> case ty of 
+     TyPi tyA bnd2 = ...
+        -- pass in the Pi type for the lambda expression
+     _ -> 
+       Env.err [DS "Lambda expression has a function type, not ", DD ty]
 \end{verbatim}
 
-There are also several cases for practical reasons (annotations, source code
-positions, etc.) and a few cases for homework.
-
-Finally, the last case covers all other forms of checking mode, by
-calling inference mode and making sure that the inferred type is equal
-to the checked type. This case is the implementation of \rref{c-infer}.
+Again there are several cases for practical reasons, plus cases for homework.
+Finally, the last case covers all other forms of checking mode, by calling
+inference mode and making sure that the inferred type is equal to the checked
+type. This case is the implementation of \rref{c-infer}.
 
 \begin{verbatim}
-tcTerm tm (Just ty) = do
- ty' <- inferType tm
- unless (Unbound.aeq ty' ty) $
-   err [DS "Types don't match", DD ty, DS "and", DD ty']
- return ty
+ -- c-infer
+ tm -> do
+      ty' <- inferType tm
+      unless (Unbound.aeq ty' ty) $ 
+         Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
 \end{verbatim}
 
 The function \texttt{aeq} ensures that the two types are alpha-equivalent. If
@@ -1419,12 +1408,12 @@ whnf :: Term -> TcMonad Term
 In \texttt{version2} of the \href{version2/src/TypeCheck.hs}{implementation},
 these functions are called in a few places:
 \begin{itemize}
-\item \texttt{equate} is called at the
-end of \texttt{tcTerm}
+\item \texttt{equate} is called at the end of \texttt{checkType} to make sure 
+that the annotate type matches the inferred type.
 \item \texttt{ensurePi} is called in the \texttt{App} case
-of \texttt{tcTerm}
-\item \texttt{whnf} is called in \texttt{checkType}, before the call to
-  \texttt{tcTerm}, to make sure that we are using the head form in checking
+of \texttt{inferType}
+\item \texttt{whnf} is called in \texttt{checkType}
+  to make sure that we are using the head form of the type in checking
   mode.
 \end{itemize}
 
@@ -1533,8 +1522,6 @@ For example, we can only type check the example below using the first (checking)
 \[ [[ |- \y. if y then (\x.x) else (\x. not x) <= Bool -> Bool -> Bool]] \]
 and we can only type check this next example using the second (inference) rule:
 \[ [[ x:Bool,y:Bool->Bool |- (if x then y else not) true => Bool ]] \]
-Fortunately, it is not difficult to implement our type checking function so that it implements both rules. Indeed, because \cd{tcTerm} combines both judgments into a single Haskell function in the implementation, it is possible to implement both 
-rules with the same code.
 
 However, note that we can strengthen the specification of the type checking
 rule for \cd{if} by making the result type \texttt{A} depend on whether the

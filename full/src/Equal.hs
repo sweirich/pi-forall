@@ -177,11 +177,7 @@ whnf (Var x) = do
   maybeDef <- Env.lookupDef x
   case maybeDef of 
     (Just d) -> whnf d 
-    _ -> do
-          maybeRecDef <- Env.lookupRecDef x 
-          case maybeRecDef of 
-            (Just d) -> whnf d
-            _ -> return (Var x)
+    _ -> return (Var x)
         
 whnf (App t1 t2) = do
   nf <- whnf t1 
@@ -235,7 +231,7 @@ whnf tm = return tm
 -- | 'Unify' the two terms, producing a list of Defs
 -- If there is an obvious mismatch, this function produces an error
 -- If either term is "ambiguous" just ignore.
-unify :: [TName] -> Term -> Term -> TcMonad [Decl]
+unify :: [TName] -> Term -> Term -> TcMonad [Entry]
 unify ns tx ty = do
   txnf <- whnf tx
   tynf <- whnf ty

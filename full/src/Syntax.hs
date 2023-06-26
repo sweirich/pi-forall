@@ -25,16 +25,8 @@ import Data.Function (on)
 -- and alpha-equality function. The abstract type `Name` from 
 -- this library is indexed by the AST type that this variable 
 -- is a name for. 
+
 type TName = Unbound.Name Term
-
--- | module names
-type ModuleName = String
-
--- | type constructor names
-type TyConName = String
-
--- | data constructor names
-type DataConName = String
 
 -----------------------------------------
 
@@ -143,12 +135,15 @@ data Pattern
 
 -----------------------------------------
 
+-- | module names
+type ModuleName = String
+
 -- | A Module has a name, a list of imports, a list of declarations,
 --   and a set of constructor names (which affect parsing).
 data Module = Module
   { moduleName :: ModuleName,
     moduleImports :: [ModuleImport],
-    moduleEntries :: [Decl] ,
+    moduleEntries :: [Entry] ,
     moduleConstructors :: ConstructorNames 
   }
   deriving (Show, Generic, Typeable, Unbound.Alpha)
@@ -158,36 +153,40 @@ newtype ModuleImport = ModuleImport ModuleName
   deriving (Show, Eq, Generic, Typeable)
   deriving anyclass (Unbound.Alpha)
 
--- | A type declaration (or type signature)
-data Sig = Sig {sigName :: TName , sigEp :: Epsilon  , sigType :: Type}
+-- | A type declaration (or type declnature)
+data Decl = Decl {declName :: TName , declEp :: Epsilon  , declType :: Type}
   deriving (Show, Generic, Typeable, Unbound.Alpha, Unbound.Subst Term)
 
 -- | Declare the type of a term
-mkSig :: TName -> Type -> Decl
-mkSig n ty = TypeSig (Sig n Rel  ty)
+mkDecl :: TName -> Type -> Entry
+mkDecl n ty = TypeDecl (Decl n Rel  ty)
 
--- | Declarations are the components of modules
-data Decl
-  = -- | Declaration for the type of a term
-    TypeSig Sig
-  | -- | The definition of a particular name, must
+-- | Entries are the components of modules
+data Entry
+  = -- | Declaration for the type of a term  'x : A'
+    TypeDecl Decl
+  | -- | The definition of a particular name, must  'x = a'
     -- already have a type declaration in scope
     Def TName Term
-  | -- | A potentially (recursive) definition of
-    -- a particular name, must be declared
-    RecDef TName Term 
     -- | Adjust the context for relevance checking
   | Demote Epsilon  
-  | -- | Declaration for a datatype including all of
-    -- its data constructors
+  | -- | Datatype definition (must be at the module level)
     Data TyConName Telescope [ConstructorDef]
-  | -- | An abstract view of a datatype. Does
-    -- not include any information about its data
-    -- constructors
-    DataSig TyConName Telescope
   
   deriving (Show, Generic, Typeable)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
+
+-----------------------------------------
+
+-- * Datatypes
+
+-----------------------------------------
+-- | type constructor names
+type TyConName = String
+
+-- | data constructor names
+type DataConName = String
+
 -- | The names of type/data constructors used in the module
 data ConstructorNames = ConstructorNames
   { tconNames :: Set String,
@@ -200,36 +199,19 @@ data ConstructorDef = ConstructorDef SourcePos DataConName Telescope
   deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
--- * Telescopes
+-- ** Telescopes
 
 -- | A telescope is like a first class context. It is a list of 
 -- assumptions, binding each variable in terms that appear
 -- later in the list. 
 -- For example
 --     Delta = [ x:Type , y:x, y = w ]
-newtype Telescope = Telescope [Decl]
+newtype Telescope = Telescope [Entry]
   deriving (Show, Generic)
   deriving anyclass (Unbound.Alpha, Unbound.Subst Term)
 
-
--- * Auxiliary functions on syntax
-
--- | empty set of constructor names
-emptyConstructorNames :: ConstructorNames
-emptyConstructorNames = ConstructorNames initialTCNames initialDCNames 
-
--- | Default name for '_' occurring in patterns
-wildcardName :: TName
-wildcardName = Unbound.string2Name "_"
-
--- | Partial inverse of Pos
-unPos :: Term -> Maybe SourcePos
-unPos (Pos p _) = Just p
-unPos _ = Nothing
-
--- | Tries to find a Pos inside a term, otherwise just gives up.
-unPosFlaky :: Term -> SourcePos
-unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
+-----------------------------------------
+-- Definitions related to datatypes
 
 -- | Is this the syntax of a literal (natural) number
 isNumeral :: Term -> Maybe Int
@@ -244,9 +226,9 @@ isPatVar :: Pattern -> Bool
 isPatVar (PatVar _) = True
 isPatVar _ = False
 
--------------------------------------------------------------------
--- Prelude declarations for datatypes
-
+-- | built-in set of constructor names
+initialConstructorNames :: ConstructorNames
+initialConstructorNames = ConstructorNames initialTCNames initialDCNames
 
 -- | prelude names for built-in datatypes
 sigmaName :: TyConName
@@ -269,7 +251,8 @@ initialTCNames = Set.fromList [sigmaName, boolName, tyUnitName]
 initialDCNames :: Set DataConName
 initialDCNames = Set.fromList [prodName, trueName, falseName, litUnitName]
 
-preludeDataDecls :: [Decl]
+
+preludeDataDecls :: [Entry]
 preludeDataDecls = 
   [ Data sigmaName  sigmaTele      [prodConstructorDef]
   , Data tyUnitName (Telescope []) [unitConstructorDef]
@@ -283,27 +266,76 @@ preludeDataDecls =
         unitConstructorDef = ConstructorDef internalPos litUnitName (Telescope []) 
 
         -- Sigma-type
-        sigmaTele = Telescope [TypeSig sigA, TypeSig sigB]
-        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeSig sigX, TypeSig sigY])
-        sigA = Sig aName Rel TyType
-        sigB = Sig bName Rel (TyPi Rel (Var aName) (Unbound.bind xName TyType))
-        sigX = Sig xName Rel (Var aName)
-        sigY = Sig yName Rel (App (Var bName) (Arg Rel (Var xName)))
+        sigmaTele = Telescope [TypeDecl declA, TypeDecl declB]
+        prodConstructorDef = ConstructorDef internalPos prodName (Telescope [TypeDecl declX, TypeDecl declY])
+        declA = Decl aName Rel TyType
+        declB = Decl bName Rel (TyPi Rel (Var aName) (Unbound.bind xName TyType))
+        declX = Decl xName Rel (Var aName)
+        declY = Decl yName Rel (App (Var bName) (Arg Rel (Var xName)))
         aName = Unbound.string2Name "a"
         bName = Unbound.string2Name "b"
 
------------------
+        internalPos :: SourcePos
+        internalPos = initialPos "prelude"
+
+
+
+-----------------------------------------
+-- * Auxiliary functions on syntax
+-----------------------------------------
+
+
+-- | Remove source positions and type annotations from the top level of a term
+strip :: Term -> Term
+strip (Pos _ tm) = strip tm
+strip (Ann tm _) = strip tm
+strip tm = tm
+
+-- | Partial inverse of Pos
+unPos :: Term -> Maybe SourcePos
+unPos (Pos p _) = Just p
+unPos _ = Nothing
+
+-- | Tries to find a Pos inside a term, otherwise just gives up.
+unPosFlaky :: Term -> SourcePos
+unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
+
+
+
+-----------------------------------------
+-- * Unbound library
+-----------------------------------------
 
 -- We use the unbound-generics library to mark the binding occurrences of
 -- variables in the syntax. That allows us to automatically derive
 -- functions for alpha-equivalence, free variables and substitution
 -- using generic programming. 
 
+-- | Determine when two terms are alpha-equivalent (see below)
+aeq :: Term -> Term -> Bool
+aeq = Unbound.aeq
+
+-- | Calculate the free variables of a term 
+fv :: Term -> [Unbound.Name Term]
+fv = Unbound.toListOf Unbound.fv
+
+-- | subst x b a means to replace x with b in a
+-- i.e.  a [ b / x ]
+subst :: TName -> Term -> Term -> Term
+subst = Unbound.subst
+
+-- | in a binder "x.a" replace x with b 
+instantiate :: Unbound.Bind TName Term -> Term -> Term
+instantiate bnd a = Unbound.instantiate bnd [a]
+
+-- | in a binder "x.a" replace x with a fresh name
+unbind :: (Unbound.Fresh m) => Unbound.Bind TName Term -> m (TName, Term)
+unbind = Unbound.unbind
 ------------------
 
 -- * Alpha equivalence and free variables
 
--- Among other things, the Alpha class enables the following
+-- The Unbound library's Alpha class enables the following
 -- functions:
 --    -- Compare terms for alpha equivalence
 --    aeq :: Alpha a => a -> a -> Bool
@@ -313,23 +345,23 @@ preludeDataDecls =
 --    unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 
 -- For Terms, we'd like Alpha equivalence to ignore 
--- source positions and type annotations.
--- We can add these special cases to the definition of `aeq'` 
--- and then defer all other cases to the generic version of 
--- the function (Unbound.gaeq).
+-- source positions and type annotations. So we make sure to 
+-- remove them before calling the generic operation.
 
 instance Unbound.Alpha Term where
-  aeq' ctx (Ann a _) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Ann b _) = Unbound.aeq' ctx a b
-  aeq' ctx (Pos _ a) b = Unbound.aeq' ctx a b
-  aeq' ctx a (Pos _ b) = Unbound.aeq' ctx a b
-  aeq' ctx a b = (Unbound.gaeq ctx `on` from) a b
+  aeq' :: Unbound.AlphaCtx -> Term -> Term -> Bool
+  aeq' ctx a b = (Unbound.gaeq ctx `on` from) (strip a) (strip b)
+
 
 -- For example, all occurrences of annotations and source positions
 -- are ignored by this definition.
 
--- >>> Unbound.aeq (Pos internalPos (Ann TyBool Type)) TyBool
--- True
+-- '(Bool : Type)' is alpha-equivalent to 'Bool'
+-- >>> aeq (Ann TyBool TyType) TyBool
+
+-- '(Bool, Bool:Type)' is alpha-equivalent to (Bool, Bool)
+-- >>> aeq (Prod TyBool (Ann TyBool TyType)) (Prod TyBool TyBool)
+
 
 -- At the same time, the generic operation equates terms that differ only 
 -- in the names of bound variables.
@@ -350,7 +382,7 @@ idx = Lam Rel (Unbound.bind xName (Var xName))
 idy :: Term
 idy = Lam Rel (Unbound.bind yName (Var yName))
 
--- >>> Unbound.aeq idx idy
+-- >>> aeq idx idy
 -- True
 
 
@@ -379,14 +411,6 @@ pi2 :: Term
 pi2 = TyPi Rel TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
--- True
--- 
-
----------------
--- | Bridge function to calculate the free variables of a term
-
-fv :: Term -> [Unbound.Name Term]
-fv = Unbound.toListOf Unbound.fv
 
 -----------------
 
@@ -410,15 +434,18 @@ instance Unbound.Alpha SourcePos where
   acompare' _ _ _ = EQ
 
 -- Substitutions ignore source positions
-instance Unbound.Subst b SourcePos where subst _ _ = id; substs _ = id; substBvs _ _ = id
+instance Unbound.Subst b SourcePos where 
+    subst _ _ = id
+    substs _ = id
+    substBvs _ _ = id
 
--- Internally generated source positions
-internalPos :: SourcePos
-internalPos = initialPos "internal"
 
 
 -- * Constructor Names
 
+-- ConstructorNames are sets, so they also do not have an instance of the 
+-- Generic class available so we cannot automatically define their 
+-- Alpha and Subst instances.
 instance Unbound.Alpha ConstructorNames where
   aeq' _ a1 a2 = a1 == a2
   fvAny' _ _ = pure

@@ -104,13 +104,13 @@ Optional components in this BNF are marked with < >
 
          A -> B
         
-      Get parsed as (x:A) -> B, with an internal name for x
+      Get parsed as (_:A) -> B, with a wildcard name for the binder
 
    - Nondependent product types, like:
 
          A * B
         
-      Get parsed as { x:A | B }, with an internal name for x
+      Get parsed as { _:A | B }, with a wildcard name for the binder
 
    - You can collapse lambdas, like:
 
@@ -125,6 +125,12 @@ Optional components in this BNF are marked with < >
       Get parsed as peano numbers (Succ (Succ (Succ Zero)))
 
 -}
+
+
+-- | Default name (for parsing 'A -> B' as '(_:A) -> B') 
+wildcardName :: TName
+wildcardName = Unbound.string2Name "_"
+
 
 liftError :: (MonadError e m) => Either e a -> m a
 liftError (Left e) = throwError e
@@ -351,13 +357,13 @@ telebindings = many teleBinding
     annot = do
       (x,ty) <-    try ((,) <$> varOrWildcard        <*> (colon >> expr))
                 <|>    ((,) <$> (Unbound.fresh wildcardName) <*> expr)
-      return (TypeSig (Sig x Rel ty):)
+      return (TypeDecl (Decl x Rel ty):)
 
     imp = do
         v <- varOrWildcard
         colon
         t <- expr
-        return (TypeSig (Sig v Irr t):)
+        return (TypeDecl (Decl v Irr t):)
 
     equal = do
         v <- variable
@@ -376,8 +382,8 @@ telebindings = many teleBinding
 --- Top level declarations
 ---
 
-decl,sigDef,valDef :: LParser Entry
-decl = {- SOLN DATA -} try dataDef <|> {- STUBWITH -} sigDef <|> valDef
+decl,declDef,valDef :: LParser Entry
+decl = {- SOLN DATA -} try dataDef <|> {- STUBWITH -} declDef <|> valDef
 
 {- SOLN DATA -}
 -- datatype declarations.
@@ -407,10 +413,10 @@ constructorDef = do
   <?> "Constructor"
 {- STUBWITH -}
 
-sigDef = do
+declDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return (mkSig n ty)
+  return (mkDecl n ty)
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})

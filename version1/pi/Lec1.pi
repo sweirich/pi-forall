@@ -2,13 +2,10 @@
 
 module Lec1 where
 
-ida : Type -> Type
-ida = \y . y
-
-id : (x:Type) -> ((y : x) -> x)
+id : (x:Type) -> x -> x
 id = \x y . y 
 
-idid : ((x:Type) ->  x -> x) 
+idid : ((x:Type) -> (y : x) -> x) 
 idid = id ((x:Type) -> (y : x) -> x) id
 
 compose : (A : Type) -> (B : Type) -> (C:Type) ->

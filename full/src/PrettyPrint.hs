@@ -120,11 +120,11 @@ instance Disp Module
 
 instance Disp ModuleImport
 
+instance Disp Entry
+
+instance Disp [Entry]
+
 instance Disp Decl
-
-instance Disp [Decl]
-
-instance Disp Sig
 
 
 instance Disp Arg
@@ -160,24 +160,23 @@ instance Display Module where
 instance Display ModuleImport where
   display (ModuleImport i) = pure $ PP.text "import" <+> disp i
 
-instance Display [Decl] where
+instance Display [Entry] where
   display ds = do
     dd <- mapM display ds
     pure $ PP.vcat dd
 
-instance Display Sig where
-  display sig = do
-    dn <- display (sigName sig)
-    dt <- display (sigType sig)
+instance Display Decl where
+  display decl = do
+    dn <- display (declName decl)
+    dt <- display (declType decl)
     pure $ dn <+> PP.text ":" <+> dt
 
-instance Display Decl where
+instance Display Entry where
   display (Def n term) = do
     dn <- display n
     dt <- display term
     pure $ dn <+> PP.text "=" <+> dt
-  display (RecDef n f) = display (Def n f)
-  display (TypeSig sig) = display sig
+  display (TypeDecl decl) = display decl
   display (Demote ep) = return mempty 
   display (Data n params constructors) = do
     dn <- display n
@@ -191,12 +190,6 @@ instance Display Decl where
       )
       2
       (PP.vcat dc)
-  display (DataSig t delta) = do
-    dt <- display t
-    dd <- display delta
-
-    pure $ PP.text "data" <+> dt <+> dd <+> PP.colon
-      <+> PP.text "Type" 
   
 
 instance Display ConstructorDef where

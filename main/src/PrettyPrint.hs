@@ -124,7 +124,7 @@ instance Disp Entry
 
 instance Disp [Entry]
 
-instance Disp Sig
+instance Disp Decl
 
 
 {- SOLN EP -}
@@ -168,10 +168,10 @@ instance Display [Entry] where
     dd <- mapM display ds
     pure $ PP.vcat dd
 
-instance Display Sig where
-  display sig = do
-    dn <- display (sigName sig)
-    dt <- display (sigType sig)
+instance Display Decl where
+  display decl = do
+    dn <- display (declName decl)
+    dt <- display (declType decl)
     pure $ dn <+> PP.text ":" <+> dt
 
 instance Display Entry where
@@ -179,7 +179,7 @@ instance Display Entry where
     dn <- display n
     dt <- display term
     pure $ dn <+> PP.text "=" <+> dt
-  display (TypeSig sig) = display sig
+  display (TypeDecl decl) = display decl
 {- SOLN EP -}
   display (Demote ep) = return mempty {- STUBWITH -}
 {- SOLN DATA -}
@@ -195,12 +195,6 @@ instance Display Entry where
       )
       2
       (PP.vcat dc)
-  display (DataSig t delta) = do
-    dt <- display t
-    dd <- display delta
-
-    pure $ PP.text "data" <+> dt <+> dd <+> PP.colon
-      <+> PP.text "Type" 
   {- STUBWITH -}
 
 {- SOLN DATA -}

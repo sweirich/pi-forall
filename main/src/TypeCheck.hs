@@ -1,7 +1,6 @@
 {- pi-forall -}
 
 -- | The main routines for type-checking
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use forM_" #-}
 module TypeCheck (tcModules, inferType, checkType) where
 
@@ -27,327 +26,324 @@ import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 {- STUBWITH -}
 
--- | Infer/synthesize the type of a term
-inferType :: Term -> TcMonad Type
-inferType t = tcTerm t Nothing
 
--- | Check that the given term has the expected type
-checkType :: Term -> Type -> TcMonad ()
-checkType tm (Pos _ ty) = checkType tm ty  -- ignore source positions/annotations
-checkType tm (Ann ty _) = checkType tm ty
-checkType tm ty = {- SOLN EQUAL -} do
-  nf <- Equal.whnf ty
-  void $ tcTerm tm (Just nf)
-{- STUBWITH void $ tcTerm tm (Just ty) -}
-
-
--- | Make sure that the term is a "type" (i.e. that it has type 'Type')
-tcType :: Term -> TcMonad ()
-tcType tm = void $ {- SOLN EP -} Env.withStage Irr $ {- STUBWITH -}checkType tm TyType
 
 ---------------------------------------------------------------------
 
--- | Combined type checking/inference function
--- The second argument is 'Just expectedType' in checking mode and 'Nothing' in inference mode
--- In either case, this function returns the type of the term
-tcTerm :: Term -> Maybe Type -> TcMonad Type
--- i-var
-tcTerm t@(Var x) Nothing = do
-  sig <- Env.lookupTy x {- SOLN EP -}
-  -- make sure the variable is accessible
-  Env.checkStage (sigEp sig) {- STUBWITH -}
-  return (sigType sig)
--- i-type
-tcTerm TyType Nothing = return TyType
--- i-pi
-tcTerm (TyPi {- SOLN EP -} ep {- STUBWITH -}tyA bnd) Nothing = do
-  (x, tyB) <- Unbound.unbind bnd
-  tcType tyA
-  Env.extendCtx {- SOLN EP -} (TypeSig (Sig x ep tyA)){- STUBWITH (mkSig x tyA) -} (tcType tyB)
-  return TyType
--- c-lam: check the type of a function
-tcTerm (Lam {- SOLN EP -} ep1 {- STUBWITH -} bnd) (Just (TyPi {- SOLN EP -} ep2 {- STUBWITH -}tyA bnd2)) = do
-  -- unbind the variables in the lambda expression and pi type
-  (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
-{- SOLN EP -} -- epsilons should match up
-  unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
-                                 DS "but found", DD ep1, DS "instead."] {- STUBWITH -}
-  -- check the type of the body of the lambda expression
-  Env.extendCtx {- SOLN EP -} (TypeSig (Sig x ep1 tyA)){- STUBWITH (mkSig x tyA) -} (checkType body tyB)
-  return (TyPi {- SOLN EP -} ep1{- STUBWITH -} tyA bnd2)
-tcTerm (Lam {- SOLN EP -} _ {- STUBWITH -}_) (Just nf) =
-  Env.err [DS "Lambda expression should have a function type, not", DD nf]
--- i-app
-tcTerm (App t1 t2) Nothing = do
-  ty1 <- inferType t1 
+-- | Infer/synthesize the type of a term
+inferType :: Term -> TcMonad Type
+inferType t = case t of
+  -- i-var
+  (Var x) -> do
+    decl <- Env.lookupTy x {- SOLN EP -}
+    -- make sure the variable is accessible
+    Env.checkStage (declEp decl) {- STUBWITH -}
+    return (declType decl)
+
+  -- i-type
+  TyType -> return TyType
+
+  -- i-pi
+  (TyPi {- SOLN EP -} ep {- STUBWITH -}tyA bnd) -> do
+    (x, tyB) <- Unbound.unbind bnd
+    tcType tyA
+    Env.extendCtx {- SOLN EP -} (TypeDecl (Decl x ep tyA)){- STUBWITH (mkDecl x tyA) -} (tcType tyB)
+    return TyType
+
+  -- i-app
+  (App t1 t2) -> do
+    ty1 <- inferType t1 
 {- SOLN EQUAL -}
-  let ensurePi = Equal.ensurePi 
-  {- STUBWITH
+    let ensurePi = Equal.ensurePi 
+    {- STUBWITH
 
-  let ensurePi :: Type -> TcMonad (Type, Unbound.Bind TName Type) 
-      ensurePi (Ann a _) = ensurePi a 
-      ensurePi (Pos _ a) = ensurePi a
-      ensurePi (TyPi tyA bnd) = return (tyA,bnd)
-      ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty] -}
+    let ensurePi :: Type -> TcMonad (Type, Unbound.Bind TName Type)
+        ensurePi (Pos _ ty) = ensurePi ty
+        ensurePi (Ann tm _) = ensurePi tm 
+        ensurePi (TyPi tyA bnd) = return (tyA,bnd)
+        ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty] -}
 {- SOLN EP -}
-  (ep1, tyA, bnd) <- ensurePi ty1
-  unless (ep1 == argEp t2) $ Env.err 
-    [DS "In application, expected", DD ep1, DS "argument but found", 
-                                    DD t2, DS "instead." ]
-  -- if the argument is Irrelevant, resurrect the context
-  (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ 
-    checkType (unArg t2) tyA
-  return (Unbound.instantiate bnd [unArg t2])
-  {- STUBWITH 
+    (ep1, tyA, bnd) <- ensurePi ty1
+    unless (ep1 == argEp t2) $ Env.err 
+      [DS "In application, expected", DD ep1, DS "argument but found", 
+                                      DD t2, DS "instead." ]
+    -- if the argument is Irrelevant, resurrect the context
+    (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ 
+      checkType (unArg t2) tyA
+    return (Unbound.instantiate bnd [unArg t2])
+    {- STUBWITH 
 
-  (tyA,bnd) <- ensurePi ty1
-  checkType t2 tyA
-  return (Unbound.instantiate bnd [t2]) -}
+    (tyA,bnd) <- ensurePi ty1
+    checkType t2 tyA
+    return (Unbound.instantiate bnd [t2]) -}
 
--- i-ann
-tcTerm (Ann tm ty) Nothing = do
-  tcType ty
-  checkType tm ty
-  return ty
+  -- i-ann
+  (Ann tm ty) -> do
+    tcType ty
+    checkType tm ty
+    return ty
   
--- practicalities
--- remember the current position in the type checking monad
-tcTerm (Pos p tm) mTy =
-  Env.extendSourceLocation p tm $ tcTerm tm mTy
--- ignore term, just return type annotation
-tcTerm TrustMe (Just ty) = return ty
+  -- Practicalities
+  -- remember the current position in the type checking monad
+  (Pos p tm) ->
+    Env.extendSourceLocation p tm $ inferType tm
   
--- i-unit
-tcTerm TyUnit Nothing = return TyType
-tcTerm LitUnit Nothing = return TyUnit
+  -- Extensions to the core language
+  -- i-unit
+  TyUnit -> return TyType
+  LitUnit -> return TyUnit
 
--- i-bool
-tcTerm TyBool Nothing = {- SOLN HW -} return TyType
-{- STUBWITH Env.err [DS "unimplemented"] -}
+  -- i-bool
+  TyBool -> {- SOLN HW -} return TyType {- STUBWITH Env.err [DS "unimplemented"] -}
 
--- i-true/false
-tcTerm (LitBool b) Nothing = {- SOLN HW -} do
-  return TyBool
-{- STUBWITH Env.err [DS "unimplemented"] -}
+  -- i-true/false
+  (LitBool b) -> {- SOLN HW -} return TyBool {- STUBWITH Env.err [DS "unimplemented"] -}
 
--- c-if
-tcTerm t@(If t1 t2 t3) mty = {- SOLN HW -} do
-  case mty of 
-    Just ty -> do
+  -- i-if
+  (If t1 t2 t3) -> {- SOLN HW -} do
+      checkType t1 TyBool
+      ty <- inferType t2
+      checkType t3 ty
+      return ty {- STUBWITH Env.err [DS "unimplemented"] -}
+{- SOLN EQUAL -}
+  -- i-eq
+  (TyEq a b) -> do
+    aTy <- inferType a
+    checkType b aTy
+    return TyType {- STUBWITH -}
+
+  -- i-sigma
+  (TySigma tyA bnd) -> {- SOLN EQUAL -} do
+    (x, tyB) <- Unbound.unbind bnd
+    tcType tyA
+    Env.extendCtx (mkDecl x tyA) $ tcType tyB
+    return TyType {- STUBWITH Env.err [DS "unimplemented"] -}
+
+{- SOLN DATA -}
+  -- Type constructor application
+  (TyCon c params) -> do
+    (Telescope delta, _) <- Env.lookupTCon c
+    unless (length params == length delta) $
+      Env.err
+        [ DS "Datatype constructor",
+          DD c,
+          DS $
+            "should have " ++ show (length delta)
+              ++ "parameters, but was given",
+          DD (length params)
+        ]
+    tcArgTele params delta
+    return TyType
+
+  -- Data constructor application
+  -- we don't know the expected type, so see if there
+  -- is only one datacon of that name that takes no
+  -- parameters
+  (DataCon c args) -> do
+    matches <- Env.lookupDConAll c
+    case matches of
+      [(tname, (Telescope [], ConstructorDef _ _ (Telescope deltai)))] -> do
+        let numArgs = length deltai
+        unless (length args == numArgs) $
+          Env.err
+            [ DS "Constructor",
+              DS c,
+              DS "should have",
+              DD numArgs,
+              DS "data arguments, but was given",
+              DD (length args),
+              DS "arguments."
+            ]
+        tcArgTele args deltai
+        return $ TyCon tname []
+      [_] ->
+        Env.err
+          [ DS "Cannot infer the parameters to data constructors.",
+            DS "Add an annotation."
+          ]
+      _ -> Env.err [DS "Ambiguous data constructor", DS c] {- STUBWITH -}
+
+  -- cannot synthesize the type of the term
+  tm -> 
+    Env.err [DS "Must have a type for", DD tm] 
+
+
+-------------------------------------------------------------------------
+
+-- | Make sure that the term is a "type" (i.e. that it has type 'Type')
+tcType :: Term -> TcMonad ()
+tcType tm = {- SOLN EP -} Env.withStage Irr $ {- STUBWITH -} checkType tm TyType
+
+-------------------------------------------------------------------------
+-- | Check that the given term has the expected type
+checkType :: Term -> Type -> TcMonad ()
+checkType tm ty' = do
+{- SOLN EQUAL -} 
+  ty <- Equal.whnf ty' {- STUBWITH   let ty = strip ty'  -- ignore source positions/annotations -}
+  case tm of 
+    -- c-lam: check the type of a function
+    (Lam {- SOLN EP -} ep1 {- STUBWITH -} bnd) -> case ty of
+      (TyPi {- SOLN EP -} ep2 {- STUBWITH -}tyA bnd2) -> do
+        -- unbind the variables in the lambda expression and pi type
+        (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
+{- SOLN EP -} -- epsilons should match up
+        unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
+                                      DS "but found", DD ep1, DS "instead."] {- STUBWITH -}
+        -- check the type of the body of the lambda expression
+        Env.extendCtx {- SOLN EP -} (TypeDecl (Decl x ep1 tyA)){- STUBWITH (mkDecl x tyA) -} (checkType body tyB)
+      _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty]
+
+    -- Practicalities
+    (Pos p tm) -> 
+      Env.extendSourceLocation p tm $ checkType tm ty
+
+    TrustMe -> return ()
+
+    PrintMe -> do
+      gamma <- Env.getLocalCtx
+      Env.warn [DS "Unmet obligation.\nContext:", DD gamma,
+            DS "\nGoal:", DD ty]  
+
+    -- Extensions to the core language
+    -- c-if
+    (If t1 t2 t3) -> {- SOLN HW -} do
       checkType t1 TyBool
       dtrue <- Equal.unify [] t1 (LitBool True)
       dfalse <- Equal.unify [] t1 (LitBool False)
       Env.extendCtxs dtrue $ checkType t2 ty
-      Env.extendCtxs dfalse $ checkType t3 ty
-      return ty
-    Nothing -> do
-      checkType t1 TyBool
-      ty <- inferType t2
-      checkType t3 ty
-      return ty
-{- STUBWITH Env.err [DS "unimplemented"] -}
+      Env.extendCtxs dfalse $ checkType t3 ty {- STUBWITH Env.err [DS "unimplemented"] -}
 
-tcTerm (Let rhs bnd) mty = {- SOLN HW -} do
-  (x, body) <- Unbound.unbind bnd
-  aty <- inferType rhs 
-  ty <- Env.extendCtxs [mkSig x aty, Def x rhs] $
-      tcTerm body mty
-  case mty of 
-    Just _ -> return ty
-    Nothing -> return $ Unbound.subst x rhs ty
-{- STUBWITH   Env.err [DS "unimplemented"] -}
+    -- c-let
+    (Let rhs bnd) -> {- SOLN HW -} do
+      (x, body) <- Unbound.unbind bnd
+      aty <- inferType rhs 
+      Env.extendCtxs [mkDecl x aty, Def x rhs] $
+          checkType body ty {- STUBWITH   Env.err [DS "unimplemented"] -}
 {- SOLN DATA -}
--- TyType constructor application
-tcTerm (TyCon c params) Nothing = do
-  (Telescope delta, _) <- Env.lookupTCon c
-  unless (length params == length delta) $
-    Env.err
-      [ DS "Datatype constructor",
-        DD c,
-        DS $
-          "should have " ++ show (length delta)
-            ++ "parameters, but was given",
-        DD (length params)
-      ]
-  tcArgTele params delta
-  return TyType
+    -- c-data
+    -- we know the expected type of the data constructor
+    -- so look up its type in the context
+    (DataCon c args) -> do
+      case ty of
+        (TyCon tname params) -> do
+          (Telescope delta, Telescope deltai) <- Env.lookupDCon c tname
+          let isTypeDecl :: Entry -> Bool
+              isTypeDecl (TypeDecl _) = True
+              isTypeDecl _ = False
+          let numArgs = length (filter isTypeDecl deltai)
+          unless (length args == numArgs) $
+            Env.err
+              [ DS "Constructor",
+                DS c,
+                DS "should have",
+                DD numArgs,
+                DS "data arguments, but was given",
+                DD (length args),
+                DS "arguments."
+              ]
+          newTele <- substTele delta params deltai
+          tcArgTele args newTele
+        _ ->
+          Env.err [DS "Unexpected type", DD ty, DS "for data constructor", DD tm]
 
--- Data constructor application
--- we don't know the expected type, so see if there
--- is only one datacon of that name that takes no
--- parameters
-tcTerm t@(DataCon c args) Nothing = do
-  matches <- Env.lookupDConAll c
-  case matches of
-    [(tname, (Telescope [], ConstructorDef _ _ (Telescope deltai)))] -> do
-      let numArgs = length deltai
-      unless (length args == numArgs) $
-        Env.err
-          [ DS "Constructor",
-            DS c,
-            DS "should have",
-            DD numArgs,
-            DS "data arguments, but was given",
-            DD (length args),
-            DS "arguments."
-          ]
-      tcArgTele args deltai
-      return $ TyCon tname []
-      
-    [_] ->
-      Env.err
-        [ DS "Cannot infer the parameters to data constructors.",
-          DS "Add an annotation."
-        ]
-    _ -> Env.err [DS "Ambiguous data constructor", DS c]
+    (Case scrut alts) -> do
+      sty <- inferType scrut
+      scrut' <- Equal.whnf scrut
+      (c, args) <- Equal.ensureTCon sty
+      let checkAlt (Match bnd) = do
+            (pat, body) <- Unbound.unbind bnd
+            -- add variables from pattern to context
+            -- could fail if branch is in-accessible
+            decls <- declarePat pat Rel (TyCon c args)
+            -- add defs to the contents from scrut = pat
+            -- could fail if branch is in-accessible
+            decls' <- Equal.unify [] scrut' (pat2Term pat)
+            Env.extendCtxs (decls ++ decls') $ checkType body ty
 
--- we know the expected type of the data constructor
--- so look up its type in the context
-tcTerm t@(DataCon c args) (Just ty) = do
-  case ty of
-    (TyCon tname params) -> do
-      (Telescope delta, Telescope deltai) <- Env.lookupDCon c tname
-      let isTypeSig :: Entry -> Bool
-          isTypeSig (TypeSig _) = True
-          isTypeSig _ = False
-      let numArgs = length (filter isTypeSig deltai)
-      unless (length args == numArgs) $
-        Env.err
-          [ DS "Constructor",
-            DS c,
-            DS "should have",
-            DD numArgs,
-            DS "data arguments, but was given",
-            DD (length args),
-            DS "arguments."
-          ]
-      newTele <- substTele delta params deltai
-      tcArgTele args newTele
-      return ty
-    _ ->
-      Env.err [DS "Unexpected type", DD ty, DS "for data constructor", DD t]
-
--- Must have an annotation for Case
-tcTerm t@(Case scrut alts) (Just ty) = do
-  sty <- inferType scrut
-  scrut' <- Equal.whnf scrut
-  (c, args) <- Equal.ensureTCon sty
-  let checkAlt (Match bnd) = do
-        (pat, body) <- Unbound.unbind bnd
-        -- add variables from pattern to context
-        -- could fail if branch is in-accessible
-        decls <- declarePat pat Rel (TyCon c args)
-        -- add defs to the contents from scrut = pat
-        -- could fail if branch is in-accessible
-        decls' <- Equal.unify [] scrut' (pat2Term pat)
-        Env.extendCtxs (decls ++ decls') $ checkType body ty
+            return ()
+      let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts
+      mapM_ checkAlt alts
+      exhaustivityCheck scrut' sty pats
+    {- STUBWITH -}
+{- SOLN EQUAL -}
+    -- c-refl
+    Refl -> case ty of 
+            (TyEq a b) -> Equal.equate a b
+            _ -> Env.err [DS "Refl annotated with", DD ty]
+    -- c-subst
+    (Subst a b) -> do
+      -- infer the type of the proof 'b'
+      tp <- inferType b
+      -- make sure that it is an equality between m and n
+      (m, n) <- Equal.ensureTyEq tp
+      -- if either side is a variable, add a definition to the context
+      edecl <- Equal.unify [] m n
+      -- if proof is a variable, add a definition to the context
+      pdecl <- Equal.unify [] b Refl
+      Env.extendCtxs (edecl ++ pdecl) $ checkType a ty
+    -- c-contra 
+    (Contra p) -> do
+      ty' <- inferType p
+      (a, b) <- Equal.ensureTyEq ty'
+      a' <- Equal.whnf a
+      b' <- Equal.whnf b
+      case (a', b') of
         {- STUBWITH -}
 {- SOLN DATA -}
-        return ()
-  let pats = map (\(Match bnd) -> fst (unsafeUnbind bnd)) alts
-  mapM_ checkAlt alts
-  exhaustivityCheck scrut' sty pats
-  return ty
-{- STUBWITH -}
+        (DataCon da _, DataCon db _)
+          | da /= db ->
+            return ()
+        {- STUBWITH -}
 {- SOLN EQUAL -}
-tcTerm (TyEq a b) Nothing = do
-  aTy <- inferType a
-  checkType b aTy
-  return TyType
-tcTerm Refl (Just ty@(TyEq a b)) = do
-  Equal.equate a b
-  return ty
-tcTerm Refl (Just ty) = 
-  Env.err [DS "Refl annotated with", DD ty]
-tcTerm t@(Subst a b) (Just ty) = do
-  -- infer the type of the proof 'b'
-  tp <- inferType b
-  -- make sure that it is an equality between m and n
-  (m, n) <- Equal.ensureTyEq tp
-  -- if either side is a variable, add a definition to the context
-  edecl <- Equal.unify [] m n
-  -- if proof is a variable, add a definition to the context
-  pdecl <- Equal.unify [] b Refl
-  _ <- Env.extendCtxs (edecl ++ pdecl) $ checkType a ty
-  return ty
-tcTerm t@(Contra p) (Just ty) = do
-  ty' <- inferType p
-  (a, b) <- Equal.ensureTyEq ty'
-  a' <- Equal.whnf a
-  b' <- Equal.whnf b
-  case (a', b') of
+        (LitBool b1, LitBool b2)
+          | b1 /= b2 ->
+            return ()
+        (_, _) ->
+          Env.err
+            [ DS "I can't tell that",
+              DD a,
+              DS "and",
+              DD b,
+              DS "are contradictory"
+            ]
     {- STUBWITH -}
-{- SOLN DATA -}
-    (DataCon da _, DataCon db _)
-      | da /= db ->
-        return ty
-    {- STUBWITH -}
+    -- c-prod
+    (Prod a b) -> {- SOLN EQUAL -} do
+      case ty of
+        (TySigma tyA bnd) -> do
+          (x, tyB) <- Unbound.unbind bnd
+          checkType a tyA
+          Env.extendCtxs [mkDecl x tyA, Def x a] $ checkType b tyB
+        _ ->
+          Env.err
+            [ DS "Products must have Sigma Type",
+              DD ty,
+              DS "found instead"
+            ]
+    {- STUBWITH Env.err [DS "unimplemented"] -}
+
+    -- c-letpair
+    (LetPair p bnd) -> {- SOLN EQUAL -} do
+      ((x, y), body) <- Unbound.unbind bnd
+      pty <- inferType p
+      pty' <- Equal.whnf pty
+      case pty' of
+        TySigma tyA bnd' -> do
+          let tyB = Unbound.instantiate bnd' [Var x]
+          decl <- Equal.unify [] p (Prod (Var x) (Var y))
+          Env.extendCtxs ([mkDecl x tyA, mkDecl y tyB] ++ decl) $
+              checkType body ty
+        _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
+    {- STUBWITH Env.err [DS "unimplemented"] -}
+
+
+    -- c-infer
+    tm -> do
+      ty' <- inferType tm
 {- SOLN EQUAL -}
-    (LitBool b1, LitBool b2)
-      | b1 /= b2 ->
-        return ty
-    (_, _) ->
-      Env.err
-        [ DS "I can't tell that",
-          DD a,
-          DS "and",
-          DD b,
-          DS "are contradictory"
-        ]
-{- STUBWITH -}
+      Equal.equate ty' ty
+    {- STUBWITH       unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
 
-tcTerm t@(TySigma tyA bnd) Nothing = {- SOLN EQUAL -} do
-  (x, tyB) <- Unbound.unbind bnd
-  tcType tyA
-  Env.extendCtx (mkSig x tyA) $ tcType tyB
-  return TyType
-{- STUBWITH Env.err [DS "unimplemented"] -}
-
-tcTerm t@(Prod a b) (Just ty) = {- SOLN EQUAL -} do
-  case ty of
-    (TySigma tyA bnd) -> do
-      (x, tyB) <- Unbound.unbind bnd
-      checkType a tyA
-      Env.extendCtxs [mkSig x tyA, Def x a] $ checkType b tyB
-      return (TySigma tyA (Unbound.bind x tyB))
-    _ ->
-      Env.err
-        [ DS "Products must have Sigma Type",
-          DD ty,
-          DS "found instead"
-        ]
-{- STUBWITH Env.err [DS "unimplemented"] -}
-
-tcTerm t@(LetPair p bnd) (Just ty) = {- SOLN EQUAL -} do
-  ((x, y), body) <- Unbound.unbind bnd
-  pty <- inferType p
-  pty' <- Equal.whnf pty
-  case pty' of
-    TySigma tyA bnd' -> do
-      let tyB = Unbound.instantiate bnd' [Var x]
-      decl <- Equal.unify [] p (Prod (Var x) (Var y))
-      Env.extendCtxs ([mkSig x tyA, mkSig y tyB] ++ decl) $
-          checkType body ty
-      return ty
-    _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
-{- STUBWITH Env.err [DS "unimplemented"] -}
-
-tcTerm PrintMe (Just ty) = do
-  gamma <- Env.getLocalCtx
-  Env.warn [DS "Unmet obligation.\nContext:", DD gamma,
-        DS "\nGoal:", DD ty]
-  return ty
-
--- c-infer
-tcTerm tm (Just ty) = do
-  ty' <- inferType tm
-{- SOLN EQUAL -}
-  Equal.equate ty' ty
-{- STUBWITH   unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
-  return ty'
-
-tcTerm tm Nothing = 
-  Env.err [DS "Must have a type annotation to check", DD tm]
 
 {- SOLN HW -}
 ---------------------------------------------------------------------
@@ -376,7 +372,7 @@ tcArgTele args (Def x ty : tele) = do
   -- ensure that the equality is provable at this point
   Equal.equate (Var x) ty
   tcArgTele args tele
-tcArgTele (Arg ep1 tm : terms) (TypeSig (Sig x ep2 ty) : tele) 
+tcArgTele (Arg ep1 tm : terms) (TypeDecl (Decl x ep2 ty) : tele) 
   | ep1 == ep2 = do
       Env.withStage ep1 $ checkType tm ty
       tele' <- doSubst [(x, tm)] tele
@@ -403,7 +399,7 @@ substTele :: [Entry] -> [Arg] -> [Entry] -> TcMonad [Entry]
 substTele tele args = doSubst (mkSubst tele (map unArg args))
   where
     mkSubst [] [] = []
-    mkSubst (TypeSig (Sig x Rel _) : tele') (tm : tms) =
+    mkSubst (TypeDecl (Decl x Rel _) : tele') (tm : tms) =
       (x, tm) : mkSubst tele' tms
     mkSubst _ _ = error "Internal error: substTele given illegal arguments"
 
@@ -419,11 +415,11 @@ doSubst ss (Def x ty : tele') = do
   decls1 <- Equal.unify [] tx' ty'
   decls2 <- Env.extendCtxs decls1 (doSubst ss tele')
   return $ decls1 ++ decls2
-doSubst ss (TypeSig sig : tele') = do
-  tynf <- Equal.whnf (Unbound.substs ss (sigType sig))
-  let sig' = sig{sigType = tynf}
+doSubst ss (TypeDecl decl : tele') = do
+  tynf <- Equal.whnf (Unbound.substs ss (declType decl))
+  let decl' = decl{declType = tynf}
   tele'' <- doSubst ss tele'
-  return $ TypeSig sig' : tele''
+  return $ TypeDecl decl' : tele''
 doSubst _ tele = 
   Env.err [DS "Invalid telescope", DD tele]
 
@@ -431,7 +427,7 @@ doSubst _ tele =
 
 -- | Create a binding for each of the variables in the pattern
 declarePat :: Pattern -> Epsilon -> Type -> TcMonad [Entry]
-declarePat (PatVar x)       ep ty  = return [TypeSig (Sig x ep ty)]
+declarePat (PatVar x)       ep ty  = return [TypeDecl (Decl x ep ty)]
 declarePat (PatCon dc pats) Rel ty = do 
   (tc,params) <- Equal.ensureTCon ty
   (Telescope delta, Telescope deltai) <- Env.lookupDCon dc tc
@@ -447,7 +443,7 @@ declarePats dc pats (Def x ty : tele) = do
   let ds1 = [Def x ty]
   ds2 <- Env.extendCtxs ds1 $ declarePats dc pats tele
   return (ds1 ++ ds2)
-declarePats dc ((pat, _) : pats) (TypeSig (Sig x ep ty) : tele) = do
+declarePats dc ((pat, _) : pats) (TypeDecl (Decl x ep ty) : tele) = do
   ds1 <- declarePat pat ep ty
   let tm = pat2Term pat
   tele' <- doSubst [(x,tm)] tele
@@ -478,9 +474,9 @@ tcTypeTele (Def x tm : tl) = do
   Env.withStage Irr $ checkType tm ty1
   let decls = [Def x tm] 
   Env.extendCtxs decls $ tcTypeTele tl
-tcTypeTele (TypeSig sig : tl) = do
-  tcType (sigType sig)
-  Env.extendCtx (TypeSig sig) $ tcTypeTele tl
+tcTypeTele (TypeDecl decl : tl) = do
+  tcType (declType decl)
+  Env.extendCtx (TypeDecl decl) $ tcTypeTele tl
 tcTypeTele tele = 
   Env.err [DS "Invalid telescope: ", DD tele]
 
@@ -534,7 +530,7 @@ tcModule defs m' = do
 
 -- | The Env-delta returned when type-checking a top-level Entry.
 data HintOrCtx
-  = AddHint Sig
+  = AddHint Decl
   | AddCtx [Entry]
 
 -- | Check each sort of declaration in a module
@@ -548,20 +544,20 @@ tcEntry (Def n term) = do
       case lkup of
         Nothing -> do
           ty <- inferType term
-          return $ AddCtx [TypeSig (Sig n {- SOLN EP -} Rel{- STUBWITH -} ty), Def n term]
-        Just sig ->
+          return $ AddCtx [TypeDecl (Decl n {- SOLN EP -} Rel{- STUBWITH -} ty), Def n term]
+        Just decl ->
           let handler (Env.Err ps msg) = throwError $ Env.Err ps (msg $$ msg')
               msg' =
                 disp
                   [ 
                     DS "When checking the term",
                     DD term,
-                    DS "against the signature",
-                    DD sig
+                    DS "against the type",
+                    DD decl
                   ]
            in do
-                Env.extendCtx (TypeSig sig) $ checkType term (sigType sig) `catchError` handler
-                return $ AddCtx [TypeSig sig, Def n term]
+                Env.extendCtx (TypeDecl decl) $ checkType term (declType decl) `catchError` handler
+                return $ AddCtx [TypeDecl decl, Def n term]
     die term' =
       Env.extendSourceLocation (unPosFlaky term) term $
         Env.err
@@ -570,10 +566,10 @@ tcEntry (Def n term) = do
             DS "Previous definition was",
             DD term'
           ]
-tcEntry (TypeSig sig) = do
-  duplicateTypeBindingCheck sig
-  tcType (sigType sig)
-  return $ AddHint sig
+tcEntry (TypeDecl decl) = do
+  duplicateTypeBindingCheck decl
+  tcType (declType decl)
+  return $ AddHint decl
 {- SOLN EP -}
 tcEntry (Demote ep) = return (AddCtx [Demote ep])
 {- STUBWITH -}
@@ -588,7 +584,7 @@ tcEntry (Data t (Telescope delta) cs) =
     ---  for each data constructor is wellfomed, and elaborate them
     let elabConstructorDef defn@(ConstructorDef pos d (Telescope tele)) =
           Env.extendSourceLocation pos defn $
-            Env.extendCtx (DataSig t (Telescope delta)) $
+            Env.extendCtx (Data t (Telescope delta) []) $
               Env.extendCtxTele delta $ do
                 etele <- tcTypeTele tele
                 return (ConstructorDef pos d (Telescope tele))
@@ -599,32 +595,29 @@ tcEntry (Data t (Telescope delta) cs) =
       Env.err [DS "Datatype definition", DD t, DS "contains duplicated constructors"]
     -- finally, add the datatype to the env and perform action m
     return $ AddCtx [Data t (Telescope delta) ecs]
-tcEntry (DataSig _ _) = Env.err [DS "internal construct"]
-
-
-{- STUBWITH tcEntry _ = Env.err "unimplemented" -}
+{- STUBWITH -}
 
 -- | Make sure that we don't have the same name twice in the
 -- environment. (We don't rename top-level module definitions.)
-duplicateTypeBindingCheck :: Sig -> TcMonad ()
-duplicateTypeBindingCheck sig = do
+duplicateTypeBindingCheck :: Decl -> TcMonad ()
+duplicateTypeBindingCheck decl = do
   -- Look for existing type bindings ...
-  let n = sigName sig
+  let n = declName decl
   l <- Env.lookupTyMaybe n
   l' <- Env.lookupHint n
   -- ... we don't care which, if either are Just.
   case catMaybes [l, l'] of
     [] -> return ()
     -- We already have a type in the environment so fail.
-    sig' : _ ->
-      let p = unPosFlaky $ sigType sig
+    decl' : _ ->
+      let p = unPosFlaky $ declType decl
           msg =
-            [ DS "Duplicate type signature",
-              DD sig,
+            [ DS "Duplicate type declaration",
+              DD decl,
               DS "Previous was",
-              DD sig'
+              DD decl'
             ]
-       in Env.extendSourceLocation p sig $ Env.err msg
+       in Env.extendSourceLocation p decl $ Env.err msg
 
 {- SOLN DATA -}
 -----------------------------------------------------------
@@ -722,7 +715,7 @@ relatedPats dc (pc : pats) =
 checkSubPats :: DataConName -> [Entry] -> [[(Pattern, Epsilon)]] -> TcMonad ()
 checkSubPats dc [] _ = return ()
 checkSubPats dc (Def _ _ : tele) patss = checkSubPats dc tele patss
-checkSubPats dc (TypeSig _ : tele) patss
+checkSubPats dc (TypeDecl _ : tele) patss
   | (not . null) patss && not (any null patss) = do
     let hds = map (fst . head) patss
     let tls = map tail patss

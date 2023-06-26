@@ -3,7 +3,7 @@
 -- | A parsec-based parser for the concrete syntax
 module Parser
   (
-   parseModuleFile, 
+   parseModuleFile,
    parseModuleImports,
    parseExpr,
    expr,
@@ -19,7 +19,7 @@ import qualified Unbound.Generics.LocallyNameless as Unbound
 
 import Text.Parsec hiding (State,Empty)
 import Text.Parsec.Expr(Operator(..),Assoc(..),buildExpressionParser)
-import qualified LayoutToken as Token 
+import qualified LayoutToken as Token
 
 import Control.Monad.State.Lazy hiding (join)
 import Control.Monad.Except ( MonadError(throwError) )
@@ -82,13 +82,13 @@ Optional components in this BNF are marked with < >
 
          A -> B
         
-      Get parsed as (x:A) -> B, with an internal name for x
+      Get parsed as (_:A) -> B, with a wildcard name for the binder
 
    - Nondependent product types, like:
 
          A * B
         
-      Get parsed as { x:A | B }, with an internal name for x
+      Get parsed as { _:A | B }, with a wildcard name for the binder
 
    - You can collapse lambdas, like:
 
@@ -103,6 +103,12 @@ Optional components in this BNF are marked with < >
       Get parsed as peano numbers (Succ (Succ (Succ Zero)))
 
 -}
+
+
+-- | Default name (for parsing 'A -> B' as '(_:A) -> B') 
+wildcardName :: TName
+wildcardName = Unbound.string2Name "_"
+
 
 liftError :: (MonadError e m) => Either e a -> m a
 liftError (Left e) = throwError e
@@ -120,13 +126,13 @@ parseModuleFile name = do
 parseModuleImports :: (MonadError ParseError m, MonadIO m) => String -> m Module
 parseModuleImports name = do
   contents <- liftIO $ readFile name
-  liftError $ Unbound.runFreshM $ 
+  liftError $ Unbound.runFreshM $
 
      (runParserT (do { whiteSpace; moduleImports }) [] name contents)
 
 -- | Test an 'LParser' on a String.
 testParser ::  LParser t -> String -> Either ParseError t
-testParser  parser str = Unbound.runFreshM $ 
+testParser  parser str = Unbound.runFreshM $
 
      runParserT (do { whiteSpace; v <- parser; eof; return v}) [] "<interactive>" str
 
@@ -174,10 +180,10 @@ piforallStyle = Token.LanguageDef
                   ,"axiom"
                   ,"TRUSTME"
                   ,"PRINTME"
-                  ,"ord" 
-                  ,"Bool", "True", "False" 
+                  ,"ord"
+                  ,"Bool", "True", "False"
                   ,"if","then","else"
-                  ,"Unit", "()"                               
+                  ,"Unit", "()"
                   ]
                , Token.reservedOpNames =
                  ["!","?","\\",":",".",",","<", "=", "+", "-", "*", "^", "()", "_","|","{", "}"]
@@ -194,9 +200,9 @@ whiteSpace = Token.whiteSpace tokenizer
 
 variable :: LParser TName
 variable =
-  do i <- identifier 
+  do i <- identifier
      return $ Unbound.string2Name i
-     
+
 
 
 
@@ -205,7 +211,7 @@ colon, dot, comma :: LParser ()
 colon = Token.colon tokenizer >> return ()
 dot = Token.dot tokenizer >> return ()
 comma = Token.comma tokenizer >> return ()
-  
+
 reserved,reservedOp :: String -> LParser ()
 reserved = Token.reserved tokenizer
 reservedOp = Token.reservedOp tokenizer
@@ -240,20 +246,20 @@ importDef = do reserved "import" >>  (ModuleImport <$> importName)
   where importName = identifier
 
 
-    
+
 ---
 --- Top level declarations
 ---
 
-decl,sigDef,valDef :: LParser Decl
-decl =  sigDef <|> valDef 
+decl,declDef,valDef :: LParser Entry
+decl =  declDef <|> valDef
 
 
-  
-sigDef = do
+
+declDef = do
   n <- try (variable >>= \v -> colon >> return v)
   ty <- expr
-  return (mkSig n ty)
+  return (mkDecl n ty)
 
 valDef = do
   n <- try (do {n <- variable; reservedOp "="; return n})
@@ -276,13 +282,13 @@ printme = reserved "PRINTME" *> return (PrintMe )
 refl :: LParser Term
 refl =
   do reserved "Refl"
-     return $ Refl 
+     return $ Refl
 
 
 -- Expressions
 
 expr,term,factor :: LParser Term
- 
+
 -- expr is the toplevel expression grammar
 expr = do
     p <- getPosition
@@ -291,18 +297,18 @@ expr = do
                  [ifix  AssocLeft "=" TyEq],
                  [ifixM AssocRight "->" mkArrowType],
                  [ifixM AssocRight "*" mkTupleType]
-                ]   
+                ]
         ifix  assoc op f = Infix (reservedOp op >> return f) assoc 
         ifixM assoc op f = Infix (reservedOp op >> f) assoc
-        mkArrowType  = 
+        mkArrowType  =
           do n <- Unbound.fresh wildcardName
-             return $ \tyA tyB -> 
+             return $ \tyA tyB ->
                TyPi Rel tyA (Unbound.bind n tyB)
-        mkTupleType = 
+        mkTupleType =
           do n <- Unbound.fresh wildcardName
-             return $ \tyA tyB -> 
+             return $ \tyA tyB ->
               TySigma tyA (Unbound.bind n tyB)
-               
+
 -- A "term" is either a function application or a constructor
 -- application.  Breaking it out as a seperate category both
 -- eliminates left-recursion in (<expr> := <expr> <expr>) and
@@ -310,19 +316,19 @@ expr = do
 term =  funapp
 
 
-  
+
 funapp :: LParser Term
-funapp = do 
+funapp = do
   f <- factor
   foldl' app f <$> many bfactor
   where
-        bfactor = ((,Irr)  <$> brackets expr) 
+        bfactor = ((,Irr)  <$> brackets expr)
                              <|> ((,Rel) <$> factor)
         app e1 (e2,ep)  =  App e1 (Arg ep e2)
 
 
 
-factor = choice [ Var <$> variable <?> "a variable"                
+factor = choice [ Var <$> variable <?> "a variable"
                 , typen      <?> "Type"
                 , lambda     <?> "a lambda"
                 , try letPairExp  <?> "a let pair"
@@ -335,16 +341,16 @@ factor = choice [ Var <$> variable <?> "a variable"
                 , printme    <?> "PRINTME"
                                   , impProd    <?> "an implicit function type"
                   
-                , bconst     <?> "a constant"  
-                , ifExpr     <?> "an if expression" 
-                , sigmaTy    <?> "a sigma type"  
-                
+                , bconst     <?> "a constant"
+                , ifExpr     <?> "an if expression"
+                , sigmaTy    <?> "a sigma type"
+
                 , expProdOrAnnotOrParens
                     <?> "an explicit function type or annotated expression"
                 ]
 
 impOrExpVar :: LParser (TName, Epsilon)
-impOrExpVar = try ((,Irr) <$> (brackets variable)) 
+impOrExpVar = try ((,Irr) <$> (brackets variable))
               <|> (,Rel) <$> variable
 
 
@@ -361,12 +367,12 @@ lambda = do reservedOp "\\"
             binds <- many1                      impOrExpVar
             dot
             body <- expr
-            return $ foldr lam body binds 
+            return $ foldr lam body binds
   where
-    lam (x, ep) m = Lam ep (Unbound.bind x m)           
-  
+    lam (x, ep) m = Lam ep (Unbound.bind x m)
 
-                            
+
+
 
 
 bconst  :: LParser Term
@@ -378,7 +384,7 @@ bconst = choice [reserved "Bool"  >> return TyBool,
 
 
 ifExpr :: LParser Term
-ifExpr = 
+ifExpr =
   do reserved "if"
      a <- expr
      reserved "then"
@@ -386,7 +392,7 @@ ifExpr =
      reserved "else"
      c <- expr
      return (If a b c )
-    
+
 
 -- 
 letExpr :: LParser Term
@@ -418,10 +424,10 @@ letPairExp = do
 -- These have the syntax [x:a] -> b or [a] -> b .
 impProd :: LParser Term
 impProd =
-  do (x,tyA) <- brackets 
+  do (x,tyA) <- brackets
        (try ((,) <$> variable <*> (colon >> expr))
         <|> ((,) <$> Unbound.fresh wildcardName <*> expr))
-     reservedOp "->" 
+     reservedOp "->"
      tyB <- expr
      return $ TyPi Irr tyA (Unbound.bind x tyB)
 
@@ -462,13 +468,13 @@ expProdOrAnnotOrParens =
                   (do b <- afterBinder
                       return $ TyPi Rel a (Unbound.bind x b))
          Colon a b -> return $ Ann a b
-      
-         Comma a b -> 
+
+         Comma a b ->
            return $ Prod a b
          Nope a    -> return a
 
-    
-    
+
+
 
 -- subst e0 by e1 
 substExpr :: LParser Term
@@ -477,16 +483,16 @@ substExpr = do
   a <- expr
   reserved "by"
   b <- expr
-  return $ Subst a b 
+  return $ Subst a b
 
 contra :: LParser Term
 contra = do
   reserved "contra"
   witness <- expr
-  return $ Contra witness 
+  return $ Contra witness
 
 
-sigmaTy :: LParser Term 
+sigmaTy :: LParser Term
 sigmaTy = do
   reservedOp "{"
   x <- variable
@@ -496,5 +502,5 @@ sigmaTy = do
   b <- expr
   reservedOp "}"
   return (TySigma a (Unbound.bind x b))
-  
-  
+
+
