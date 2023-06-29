@@ -12,10 +12,10 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
 v :: 'v_' ::= 
   | a = b         ::   :: TyEq 
   | refl          ::   :: Refl 
-  | subst a by p  ::   :: Subst 
+  | subst a by ne  ::   :: Subst 
 
-path, p :: 'p_' ::=
-  | subst a by p  ::   :: Subst 
+neutral, ne :: 'n_' ::=
+  | subst a by ne  ::   :: Subst 
 
 defns 
 Jwhnf :: '' ::= 
@@ -38,9 +38,9 @@ whnf a ~> v
 ------------------------ :: subst
 whnf (subst a by b) ~> v
 
-whnf b ~> p
+whnf b ~> ne
 ---------------------------------------- :: subst_cong
-whnf (subst a by p) ~> (subst a by p)
+whnf (subst a by ne) ~> (subst a by ne)
 
 defns
 JOp :: '' ::=

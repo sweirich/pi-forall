@@ -73,21 +73,21 @@ v :: 'v_' ::= {{ com values and weak head normal forms }}
 
   | x               ::   :: Var
 
-  | p b             ::   :: App
+  | ne b            ::   :: App
 
   | ( v )           :: S :: Paren
 
 
-path, p :: 'p_' ::= {{ com paths (neutral terms) }}
+neutral, ne :: 'n_' ::= {{ com neutral terms }}
 
   | x               ::   :: Var 
 
-  | p b             ::   :: App 
+  | ne a             ::   :: App 
 
-  | ( p )           :: S :: Paren
+  | ( ne )           :: S :: Paren
 
 subrules 
-  p <:: v
+  ne <:: v
   v <:: a
 
 substitutions
@@ -200,9 +200,9 @@ whnf (x:A) -> B ~> (x:A) -> B
 whnf x ~> x
 
 
-whnf a ~> path
+whnf a ~> ne
 ---------------------- :: app
-whnf a b ~> path b
+whnf a b ~> ne b
 
 % remove type annotations when normalizing
 %

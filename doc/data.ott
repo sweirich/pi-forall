@@ -29,10 +29,10 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
 v :: 'v_' ::= 
    | K args       ::     :: TCon
    | T args       ::     :: DCon 
-   | case p of { </ pati -> ai // i /> } ::     :: Case 
+   | case ne of { </ pati -> ai // i /> } ::     :: Case 
 
-path, p :: 'p_' ::=
-   | case p of { </ pati -> ai // i /> } ::     :: Case 
+neutral, ne :: 'n_' ::=
+   | case ne of { </ pati -> ai // i /> } ::     :: Case 
 
 
 args {{ tex \overline{a} }} , bs {{ tex \overline{b} }} :: '' ::= 
@@ -92,9 +92,9 @@ whnf b ~> v
 ---------------------------------------------------------------------- :: case
 whnf case (K args) of { </ pati -> ai // i /> } ~> v
 
-a ~> p
+a ~> ne
 ------------------------------------------------------------------------------- :: case_cong
-whnf case a of { </ pati -> ai // i /> } ~> case p of { </ pati -> ai // i /> }
+whnf case a of { </ pati -> ai // i /> } ~> case ne of { </ pati -> ai // i /> }
 
 
 defns

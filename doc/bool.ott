@@ -15,10 +15,10 @@ v :: 'v_' ::=
   | Bool                  ::   :: TyBool 
   | True                  ::   :: LitTrue
   | False                 ::   :: LitFalse
-  | if path then a else b ::   :: If
+  | if ne then a else b    ::   :: If
 
-path :: 'p_' ::=
-  | if path then a else b ::   :: If
+neutral , ne :: 'n_' ::=
+  | if ne then a else b    ::   :: If
 
 defns 
 Jwhnf :: '' ::= 
@@ -46,9 +46,9 @@ whnf True ~> True
 ------------------- :: false
 whnf False ~> False
 
-whnf a ~> path
+whnf a ~> ne
 ---------------------------------------------------- :: if_cong
-whnf if a then b1 else b2 ~> if path then b1 else b2
+whnf if a then b1 else b2 ~> if ne then b1 else b2
 
 
 defns

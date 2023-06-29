@@ -1347,10 +1347,19 @@ The following judgment (shown in Figure~\ref{fig:whnf})
 %
 \[ \fbox{$[[whnf a ~> v]]$} \]
 %
-describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak head normal form (whnf)}.
-For closed terms, these rules correspond to a big-step evaluation relation and produce
-a value. For open terms, the rules produce a term that is either headed by a variable
-or by some head form (i.e., $\lambda$ or $\Pi$).
+describes when a term $[[a]]$ reduces to some result $[[v]]$ in \emph{weak
+  head normal form (whnf)}.  For closed terms, these rules correspond to a
+big-step evaluation relation and produce a value (i.e. abstraction or type
+form).  For open terms, the rules could also produce terms that are some
+sequence of applications headed by a variable.  In this case, we call the term
+a \emph{neutral} term, and use the metavariable $[[ne]]$ to refer to it.
+
+\[ 
+\begin{array}{llcl}
+\textit{value}     & [[v]] & ::= & [[Type]]\ |\ [[\x.a]]\ |\ [[(x:A) -> B]]\ |\ [[()]]\ |\ [[Unit]]\ |\ [[ne]] \\
+\textit{neutral terms} & [[ne]] & ::= & [[x]]\ |\ [[ne a]] \\
+\end{array}
+\]
 
 For example, the term
 \begin{piforall}
@@ -1409,10 +1418,10 @@ In \texttt{version2} of the \href{version2/src/TypeCheck.hs}{implementation},
 these functions are called in a few places:
 \begin{itemize}
 \item \texttt{equate} is called at the end of \texttt{checkType} to make sure 
-that the annotate type matches the inferred type.
+that the annotated type matches the inferred type.
 \item \texttt{ensurePi} is called in the \texttt{App} case
 of \texttt{inferType}
-\item \texttt{whnf} is called in \texttt{checkType}
+\item \texttt{whnf} is called at the beginning of \texttt{checkType}
   to make sure that we are using the head form of the type in checking
   mode.
 \end{itemize}
@@ -1428,7 +1437,7 @@ $[[G |- a <=> b]]$?
 There are several ways to do so.
 
 The easiest one to explain is based on reduction---for \texttt{equate} to
-reduce the two arguments to some normal form and then compare those normal
+reduce the two arguments to a \emph{normal form} and then compare those normal
 forms for equivalence.
 
 One way to do this is with the following algorithm:
@@ -1440,9 +1449,9 @@ One way to do this is with the following algorithm:
     Unbound.aeq nf1 nf2
 \end{verbatim}
 
-However, we can do better.  Sometimes we can equate the terms without
-completely reducing them. Because reduction can be expensive (or even
-nonterminating) we would like to only reduce as much as necessary.
+However, we can do better.  Sometimes we can find out that terms are
+equivalent without fully reducing them. Because reduction can be expensive (or
+even nonterminating) we would like to only reduce as much as necessary.
 
 Therefore, the implementation of \cd{equate} has the following form.
 \begin{verbatim}

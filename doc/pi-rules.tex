@@ -46,31 +46,31 @@
 \ottprodline{|}{\ottkw{Unit}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottsym{()}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottmv{x}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{ \ottnt{p}  \;  \ottnt{b} }{}{}{}{}\ottprodnewline
+\ottprodline{|}{ \ottnt{ne}  \;  \ottnt{b} }{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottsym{(}  \ottnt{v}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
 \ottprodline{|}{ \{  \ottmv{x} \!:\! \ottnt{A} \ |\  \ottnt{B}  \} }{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottsym{(}  \ottnt{a}  \ottsym{,}  \ottnt{b}  \ottsym{)}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{p} \, \ottkw{in} \, \ottnt{a}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{a}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottkw{Bool}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottkw{True}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottkw{False}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{if} \, \ottnt{path} \, \ottkw{then} \, \ottnt{a} \, \ottkw{else} \, \ottnt{b}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{if} \, \ottnt{ne} \, \ottkw{then} \, \ottnt{a} \, \ottkw{else} \, \ottnt{b}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottnt{a}  \ottsym{=}  \ottnt{b}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottkw{refl}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{p}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottmv{K} \, \overline{a}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottmv{T} \, \overline{a}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{case} \, \ottnt{p} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}}{}{}{}{}}
+\ottprodline{|}{\ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}}{}{}{}{}}
 
-\newcommand{\ottpath}{
-\ottrulehead{\ottnt{path}  ,\ \ottnt{p}}{::=}{\ottcom{paths (neutral terms)}}\ottprodnewline
+\newcommand{\ottneutral}{
+\ottrulehead{\ottnt{neutral}  ,\ \ottnt{ne}}{::=}{\ottcom{neutral terms}}\ottprodnewline
 \ottfirstprodline{|}{\ottmv{x}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{ \ottnt{p}  \;  \ottnt{b} }{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottsym{(}  \ottnt{p}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{p} \, \ottkw{in} \, \ottnt{a}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{if} \, \ottnt{path} \, \ottkw{then} \, \ottnt{a} \, \ottkw{else} \, \ottnt{b}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{p}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{case} \, \ottnt{p} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}}{}{}{}{}}
+\ottprodline{|}{ \ottnt{ne}  \;  \ottnt{a} }{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottsym{(}  \ottnt{ne}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{a}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{if} \, \ottnt{ne} \, \ottkw{then} \, \ottnt{a} \, \ottkw{else} \, \ottnt{b}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}}{}{}{}{}}
 
 \newcommand{\ottargs}{
 \ottrulehead{\overline{a}  ,\ \overline{b}}{::=}{}\ottprodnewline
@@ -158,7 +158,7 @@
 \newcommand{\ottgrammar}{\ottgrammartabular{
 \ottep\ottinterrule
 \ottv\ottinterrule
-\ottpath\ottinterrule
+\ottneutral\ottinterrule
 \ottargs\ottinterrule
 \ottpat\ottinterrule
 \ottms\ottinterrule
@@ -209,9 +209,9 @@
 
 
 \newcommand{\ottdrulewhnfXXapp}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{path} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \   \ottnt{a}  \;  \ottnt{b}   \leadsto   \ottnt{path}  \;  \ottnt{b}  }{%
+ \ottkw{whnf} \   \ottnt{a}  \;  \ottnt{b}   \leadsto   \ottnt{ne}  \;  \ottnt{b}  }{%
 {\ottdrulename{whnf\_app}}{}%
 }}
 
@@ -234,9 +234,9 @@
 
 
 \newcommand{\ottdrulewhnfXXprodcong}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{p} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{p} \, \ottkw{in} \, \ottnt{b} }{%
+ \ottkw{whnf} \  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{b} }{%
 {\ottdrulename{whnf\_prodcong}}{}%
 }}
 
@@ -281,9 +281,9 @@
 
 
 \newcommand{\ottdrulewhnfXXifXXcong}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{path} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottkw{if} \, \ottnt{path} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}} }{%
+ \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottkw{if} \, \ottnt{ne} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}} }{%
 {\ottdrulename{whnf\_if\_cong}}{}%
 }}
 
@@ -312,9 +312,9 @@
 
 
 \newcommand{\ottdrulewhnfXXsubstXXcong}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{p} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{p}  \ottsym{)}  \leadsto  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{p}  \ottsym{)} }{%
+ \ottkw{whnf} \  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}  \ottsym{)}  \leadsto  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}  \ottsym{)} }{%
 {\ottdrulename{whnf\_subst\_cong}}{}%
 }}
 
@@ -343,9 +343,9 @@
 
 
 \newcommand{\ottdrulewhnfXXcaseXXcong}[1]{\ottdrule[#1]{%
-\ottpremise{\ottnt{a}  \leadsto  \ottnt{p}}%
+\ottpremise{\ottnt{a}  \leadsto  \ottnt{ne}}%
 }{
- \ottkw{whnf} \  \ottkw{case} \, \ottnt{a} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottkw{case} \, \ottnt{p} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}} }{%
+ \ottkw{whnf} \  \ottkw{case} \, \ottnt{a} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}} }{%
 {\ottdrulename{whnf\_case\_cong}}{}%
 }}
 
