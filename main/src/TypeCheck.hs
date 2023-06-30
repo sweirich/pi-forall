@@ -20,7 +20,6 @@ import Debug.Trace
 import Text.PrettyPrint.HughesPJ (($$), render)
 
 import Unbound.Generics.LocallyNameless qualified as Unbound
-import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 {- SOLN DATA -}
 import Unbound.Generics.LocallyNameless.Unsafe (unsafeUnbind)
 {- STUBWITH -}
@@ -44,7 +43,7 @@ inferType a = case a of
 
   -- i-pi
   (TyPi {- SOLN EP -} ep {- STUBWITH -}tyA bnd) -> do
-    (x, tyB) <- Unbound.unbind bnd
+    (x, tyB) <- unbind bnd
     tcType tyA
     Env.extendCtx {- SOLN EP -} (Decl (TypeDecl x ep tyA)){- STUBWITH (mkDecl x tyA) -} (tcType tyB)
     return TyType
@@ -52,29 +51,18 @@ inferType a = case a of
   -- i-app
   (App a b) -> do
     ty1 <- inferType a 
-{- SOLN EQUAL -}
-    let ensurePi = Equal.ensurePi 
-    {- STUBWITH
-
-    let ensurePi :: Type -> TcMonad (Type, Unbound.Bind TName Type)
-        ensurePi (Pos _ ty) = ensurePi ty
-        ensurePi (Ann tm _) = ensurePi tm 
-        ensurePi (TyPi tyA bnd) = return (tyA,bnd)
-        ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty] -}
-{- SOLN EP -}
-    (ep1, tyA, bnd) <- ensurePi ty1
-    unless (ep1 == argEp b) $ Env.err 
-      [DS "In application, expected", DD ep1, DS "argument but found", 
-                                      DD b, DS "instead." ]
-    -- if the argument is Irrelevant, resurrect the context
-    (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ 
-      checkType (unArg b) tyA
-    return (Unbound.instantiate bnd [unArg b])
-    {- STUBWITH 
-
-    (tyA,bnd) <- ensurePi ty1
-    checkType b tyA
-    return (Unbound.instantiate bnd [b]) -}
+{- SOLN EQUAL -} 
+    ty1' <- Equal.whnf ty1 {- STUBWITH     let ty1' = strip ty1 -}
+    case ty1' of 
+      (TyPi {- SOLN EP -}ep1 {- STUBWITH -} tyA bnd) -> do
+{- SOLN EP -}        
+          unless (ep1 == argEp b) $ Env.err 
+            [DS "In application, expected", DD ep1, DS "argument but found", 
+                                            DD b, DS "instead." ]
+          -- if the argument is Irrelevant, resurrect the context 
+          (if ep1 == Irr then Env.extendCtx (Demote Rel) else id) $ checkType (unArg b) tyA {- STUBWITH           checkType b tyA -}
+          return (instantiate bnd {- SOLN EP -} (unArg b){- STUBWITH b -} )
+      _ -> Env.err [DS "Expected a function type but found ", DD ty1]
 
   -- i-ann
   (Ann a tyA) -> do
@@ -107,7 +95,7 @@ inferType a = case a of
 
   -- i-sigma
   (TySigma tyA bnd) -> {- SOLN EQUAL -} do
-    (x, tyB) <- Unbound.unbind bnd
+    (x, tyB) <- unbind bnd
     tcType tyA
     Env.extendCtx (mkDecl x tyA) $ tcType tyB
     return TyType {- STUBWITH Env.err [DS "unimplemented"] -}
@@ -184,7 +172,7 @@ checkType tm ty = do
     (Lam {- SOLN EP -} ep1 {- STUBWITH -} bnd) -> case ty' of
       (TyPi {- SOLN EP -} ep2 {- STUBWITH -}tyA bnd2) -> do
         -- unbind the variables in the lambda expression and pi type
-        (x, body, _, tyB) <- Unbound.unbind2Plus bnd bnd2
+        (x, body, tyB) <- unbind2 bnd bnd2
 {- SOLN EP -} -- epsilons should match up
         unless (ep1 == ep2) $ Env.err [DS "In function definition, expected", DD ep2, DS "parameter", DD x, 
                                       DS "but found", DD ep1, DS "instead."] {- STUBWITH -}
@@ -215,7 +203,7 @@ checkType tm ty = do
     (Prod a b) -> {- SOLN EQUAL -} do
       case ty' of
         (TySigma tyA bnd) -> do
-          (x, tyB) <- Unbound.unbind bnd
+          (x, tyB) <- unbind bnd
           checkType a tyA
           Env.extendCtxs [mkDecl x tyA, Def x a] $ checkType b tyB
         _ ->
@@ -232,7 +220,7 @@ checkType tm ty = do
       pty' <- Equal.whnf pty
       case pty' of
         TySigma tyA bnd' -> do
-          let tyB = Unbound.instantiate bnd' [Var x]
+          let tyB = instantiate bnd' (Var x)
           decl <- Equal.unify [] p (Prod (Var x) (Var y))
           Env.extendCtxs ([mkDecl x tyA, mkDecl y tyB] ++ decl) $
               checkType body tyA
@@ -240,7 +228,7 @@ checkType tm ty = do
     {- STUBWITH Env.err [DS "unimplemented"] -}
     -- c-let
     (Let a bnd) -> {- SOLN HW -} do
-      (x, b) <- Unbound.unbind bnd
+      (x, b) <- unbind bnd
       tyA <- inferType a 
       Env.extendCtxs [mkDecl x tyA, Def x a] $
           checkType b ty' {- STUBWITH   Env.err [DS "unimplemented"] -}
@@ -254,7 +242,10 @@ checkType tm ty = do
       -- infer the type of the proof 'b'
       tp <- inferType b
       -- make sure that it is an equality between m and n
-      (m, n) <- Equal.ensureTyEq tp
+      nf <- Equal.whnf tp
+      (m, n) <- case nf of 
+                  TyEq m n -> return (m,n)
+                  _ -> Env.err [DS "Subst requires an equality type, not", DD tp]
       -- if either side is a variable, add a definition to the context
       edecl <- Equal.unify [] m n
       -- if proof is a variable, add a definition to the context
@@ -263,7 +254,10 @@ checkType tm ty = do
     -- c-contra 
     (Contra p) -> do
       ty' <- inferType p
-      (a, b) <- Equal.ensureTyEq ty'
+      nf <- Equal.whnf ty'
+      (a, b) <- case nf of 
+                  TyEq m n -> return (m,n)
+                  _ -> Env.err [DS "Contra requires an equality type, not", DD ty']
       a' <- Equal.whnf a
       b' <- Equal.whnf b
       case (a', b') of
@@ -315,8 +309,8 @@ checkType tm ty = do
 
     (Case scrut alts) -> do
       sty <- inferType scrut
-      scrut' <- Equal.whnf scrut
       (c, args) <- Equal.ensureTCon sty
+      scrut' <- Equal.whnf scrut
       let checkAlt (Match bnd) = do
             (pat, body) <- Unbound.unbind bnd
             -- add variables from pattern to context
@@ -335,11 +329,11 @@ checkType tm ty = do
 
 
     -- c-infer
-    a -> do
-      tyA <- inferType a
+    _ -> do
+      tyA <- inferType tm
 {- SOLN EQUAL -}
       Equal.equate tyA ty'
-    {- STUBWITH       unless (Unbound.aeq tyA ty') $ Env.err [DS "Types don't match", DD tyA, DS "and", DD ty'] -}
+    {- STUBWITH       unless (aeq tyA ty') $ Env.err [DS "Types don't match", DD tyA, DS "and", DD ty'] -}
 
 {- SOLN DATA -}
 ---------------------------------------------------------------------

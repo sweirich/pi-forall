@@ -15,7 +15,6 @@ import PrettyPrint (Disp (disp), debug, pp)
 import Syntax
 import Text.PrettyPrint.HughesPJ (render, ($$))
 import Unbound.Generics.LocallyNameless qualified as Unbound
-import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 
 ---------------------------------------------------------------------
 
@@ -31,7 +30,7 @@ inferType a = case a of
   TyType -> return TyType
   -- i-pi
   (TyPi tyA bnd) -> do
-    (x, tyB) <- Unbound.unbind bnd
+    (x, tyB) <- unbind bnd
     tcType tyA
     Env.extendCtx (mkDecl x tyA) (tcType tyB)
     return TyType
@@ -39,14 +38,12 @@ inferType a = case a of
   -- i-app
   (App a b) -> do
     ty1 <- inferType a
-    let ensurePi :: Type -> TcMonad (Type, Unbound.Bind TName Type)
-        ensurePi (Pos _ ty) = ensurePi ty
-        ensurePi (Ann tm _) = ensurePi tm
-        ensurePi (TyPi tyA bnd) = return (tyA, bnd)
-        ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty]
-    (tyA, bnd) <- ensurePi ty1
-    checkType b tyA
-    return (Unbound.instantiate bnd [b])
+    let ty1' = strip ty1
+    case ty1' of
+      (TyPi tyA bnd) -> do
+        checkType b tyA
+        return (instantiate bnd b)
+      _ -> Env.err [DS "Expected a function type but found ", DD ty1]
 
   -- i-ann
   (Ann a tyA) -> do
@@ -91,7 +88,7 @@ checkType tm ty = do
     (Lam bnd) -> case ty' of
       (TyPi tyA bnd2) -> do
         -- unbind the variables in the lambda expression and pi type
-        (x, body, _, tyB) <- Unbound.unbind2Plus bnd bnd2
+        (x, body, tyB) <- unbind2 bnd bnd2
 
         -- check the type of the body of the lambda expression
         Env.extendCtx (mkDecl x tyA) (checkType body tyB)
@@ -119,9 +116,9 @@ checkType tm ty = do
     -- c-let
     (Let a bnd) -> Env.err [DS "unimplemented"]
     -- c-infer
-    a -> do
-      tyA <- inferType a
-      unless (Unbound.aeq tyA ty') $ Env.err [DS "Types don't match", DD tyA, DS "and", DD ty']
+    _ -> do
+      tyA <- inferType tm
+      unless (aeq tyA ty') $ Env.err [DS "Types don't match", DD tyA, DS "and", DD ty']
 
 --------------------------------------------------------
 -- Using the typechecker for decls and modules and stuff

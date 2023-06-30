@@ -8,6 +8,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic,from)
+import GHC.Base (MonadPlus)
 import Text.ParserCombinators.Parsec.Pos (SourcePos, initialPos, newPos)
 import Unbound.Generics.LocallyNameless qualified as Unbound
 import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
@@ -170,6 +171,9 @@ unPosFlaky t = fromMaybe (newPos "unknown location" 0 0) (unPos t)
 -- functions for alpha-equivalence, free variables and substitution
 -- using generic programming. 
 
+-- The definitions below specialize the generic operations from the libary
+-- to some of the common uses that we need in pi-forall
+
 -- | Determine when two terms are alpha-equivalent (see below)
 aeq :: Term -> Term -> Bool
 aeq = Unbound.aeq
@@ -178,32 +182,35 @@ aeq = Unbound.aeq
 fv :: Term -> [Unbound.Name Term]
 fv = Unbound.toListOf Unbound.fv
 
--- | subst x b a means to replace x with b in a
+-- | `subst x b a` means to replace `x` with `b` in `a`
 -- i.e.  a [ b / x ]
 subst :: TName -> Term -> Term -> Term
 subst = Unbound.subst
 
--- | in a binder "x.a" replace x with b 
+-- | in a binder `x.a` replace `x` with `b` 
 instantiate :: Unbound.Bind TName Term -> Term -> Term
 instantiate bnd a = Unbound.instantiate bnd [a]
 
--- | in a binder "x.a" replace x with a fresh name
+-- | in a binder `x.a` replace `x` with a fresh name
 unbind :: (Unbound.Fresh m) => Unbound.Bind TName Term -> m (TName, Term)
 unbind = Unbound.unbind
+
+-- | in binders `x.a1` and `x.a2` replace `x` with a fresh name in both terms
+unbind2 :: (Unbound.Fresh m) => Unbound.Bind TName Term -> Unbound.Bind TName Term -> m (TName, Term, Term)
+unbind2 b1 b2 = do 
+  o <- Unbound.unbind2 b1 b2
+  case o of 
+      Just (x,t,_,u) -> return (x,t,u)
+      Nothing -> error "impossible" 
 ------------------
 
--- * Alpha equivalence and free variables
+-- * `Alpha` class instances
 
--- The Unbound library's Alpha class enables the following
--- functions:
---    -- Compare terms for alpha equivalence
---    aeq :: Alpha a => a -> a -> Bool
---    -- Calculate the free variables of a term
---    fv  :: Alpha a => a -> [Unbound.Name a]
---    -- Destruct a binding, generating fresh names for the bound variables
---    unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
+-- The Unbound library's `Alpha` class enables the `aeq`, `fv`,
+-- `instantiate` and `unbind` functions, and also allows some 
+-- specialization of their generic behavior.
 
--- For Terms, we'd like Alpha equivalence to ignore 
+-- For `Term`, we'd like Alpha equivalence to ignore 
 -- source positions and type annotations. So we make sure to 
 -- remove them before calling the generic operation.
 
@@ -249,13 +256,12 @@ idy = Lam (Unbound.bind yName (Var yName))
 
 -- * Substitution
 
--- The Subst class derives capture-avoiding substitution
--- It has two parameters because the sort of thing we are substituting
+-- The Subst class derives capture-avoiding substitution.
+-- It has two parameters because the type of thing we are substituting
 -- for may not be the same as what we are substituting into.
 
--- class Subst b a where
---    subst  :: Name b -> b -> a -> a       -- single substitution
-
+-- The `isvar` function identifies the variables in the term that 
+-- should be substituted for.
 instance Unbound.Subst Term Term where
   isvar (Var x) = Just (Unbound.SubstName x)
   isvar _ = Nothing
@@ -276,8 +282,8 @@ pi2 = TyPi TyBool (Unbound.bind yName (Var yName))
 -- * Source Positions
 
 -- SourcePositions do not have an instance of the Generic class available
--- so we cannot automatically define their Alpha and Subst instances. Instead
--- we do so by hand here. 
+-- so we cannot automatically define their `Alpha` and `Subst` instances. 
+-- Instead we provide a trivial implementation here. 
 instance Unbound.Alpha SourcePos where
   aeq' _ _ _ = True
   fvAny' _ _ = pure

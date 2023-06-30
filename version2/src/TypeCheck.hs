@@ -18,7 +18,6 @@ import Debug.Trace
 import Text.PrettyPrint.HughesPJ (($$), render)
 
 import Unbound.Generics.LocallyNameless qualified as Unbound
-import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 
 
 
@@ -38,7 +37,7 @@ inferType a = case a of
 
   -- i-pi
   (TyPi tyA bnd) -> do
-    (x, tyB) <- Unbound.unbind bnd
+    (x, tyB) <- unbind bnd
     tcType tyA
     Env.extendCtx (mkDecl x tyA) (tcType tyB)
     return TyType
@@ -46,11 +45,12 @@ inferType a = case a of
   -- i-app
   (App a b) -> do
     ty1 <- inferType a 
-    let ensurePi = Equal.ensurePi 
-    
-    (tyA,bnd) <- ensurePi ty1
-    checkType b tyA
-    return (Unbound.instantiate bnd [b])
+    ty1' <- Equal.whnf ty1 
+    case ty1' of 
+      (TyPi  tyA bnd) -> do
+          checkType b tyA
+          return (instantiate bnd b )
+      _ -> Env.err [DS "Expected a function type but found ", DD ty1]
 
   -- i-ann
   (Ann a tyA) -> do
@@ -83,7 +83,7 @@ inferType a = case a of
 
   -- i-sigma
   (TySigma tyA bnd) -> do
-    (x, tyB) <- Unbound.unbind bnd
+    (x, tyB) <- unbind bnd
     tcType tyA
     Env.extendCtx (mkDecl x tyA) $ tcType tyB
     return TyType 
@@ -116,7 +116,7 @@ checkType tm ty = do
     (Lam  bnd) -> case ty' of
       (TyPi tyA bnd2) -> do
         -- unbind the variables in the lambda expression and pi type
-        (x, body, _, tyB) <- Unbound.unbind2Plus bnd bnd2
+        (x, body, tyB) <- unbind2 bnd bnd2
 
         -- check the type of the body of the lambda expression
         Env.extendCtx (mkDecl x tyA) (checkType body tyB)
@@ -145,7 +145,7 @@ checkType tm ty = do
     (Prod a b) -> do
       case ty' of
         (TySigma tyA bnd) -> do
-          (x, tyB) <- Unbound.unbind bnd
+          (x, tyB) <- unbind bnd
           checkType a tyA
           Env.extendCtxs [mkDecl x tyA, Def x a] $ checkType b tyB
         _ ->
@@ -162,7 +162,7 @@ checkType tm ty = do
       pty' <- Equal.whnf pty
       case pty' of
         TySigma tyA bnd' -> do
-          let tyB = Unbound.instantiate bnd' [Var x]
+          let tyB = instantiate bnd' (Var x)
           decl <- Equal.unify [] p (Prod (Var x) (Var y))
           Env.extendCtxs ([mkDecl x tyA, mkDecl y tyB] ++ decl) $
               checkType body tyA
@@ -170,7 +170,7 @@ checkType tm ty = do
     
     -- c-let
     (Let a bnd) -> do
-      (x, b) <- Unbound.unbind bnd
+      (x, b) <- unbind bnd
       tyA <- inferType a 
       Env.extendCtxs [mkDecl x tyA, Def x a] $
           checkType b ty' 
@@ -183,7 +183,10 @@ checkType tm ty = do
       -- infer the type of the proof 'b'
       tp <- inferType b
       -- make sure that it is an equality between m and n
-      (m, n) <- Equal.ensureTyEq tp
+      nf <- Equal.whnf tp
+      (m, n) <- case nf of 
+                  TyEq m n -> return (m,n)
+                  _ -> Env.err [DS "Subst requires an equality type, not", DD tp]
       -- if either side is a variable, add a definition to the context
       edecl <- Equal.unify [] m n
       -- if proof is a variable, add a definition to the context
@@ -192,7 +195,10 @@ checkType tm ty = do
     -- c-contra 
     (Contra p) -> do
       ty' <- inferType p
-      (a, b) <- Equal.ensureTyEq ty'
+      nf <- Equal.whnf ty'
+      (a, b) <- case nf of 
+                  TyEq m n -> return (m,n)
+                  _ -> Env.err [DS "Contra requires an equality type, not", DD ty']
       a' <- Equal.whnf a
       b' <- Equal.whnf b
       case (a', b') of
@@ -214,8 +220,8 @@ checkType tm ty = do
 
 
     -- c-infer
-    a -> do
-      tyA <- inferType a
+    _ -> do
+      tyA <- inferType tm
       Equal.equate tyA ty'
     
 

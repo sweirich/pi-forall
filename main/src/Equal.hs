@@ -1,8 +1,7 @@
 {- pi-forall language -}
 
 -- | Compare two terms for equality
-module Equal (whnf, equate, ensurePi, unify
-              {- SOLN EQUAL -},ensureTyEq {- STUBWITH -} 
+module Equal (whnf, equate, unify
               {- SOLN DATA -},ensureTCon{- STUBWITH -} ) where
 
 import Syntax
@@ -25,7 +24,7 @@ equate t1 t2 = do
     (TyType, TyType) -> return ()
     (Var x,  Var y) | x == y -> return ()
     (Lam {- SOLN EP -} ep1 {- STUBWITH -}bnd1, Lam {- SOLN EP -} ep2 {- STUBWITH -}bnd2) -> do
-      (_, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
+      (_, b1, b2) <- unbind2 bnd1 bnd2
 {- SOLN EP -} 
       unless (ep1 == ep2) $
           tyErr n1 n2 {- STUBWITH -}
@@ -33,7 +32,7 @@ equate t1 t2 = do
     (App a1 a2, App b1 b2) ->
       equate a1 b1 >> {- SOLN EP -} equateArg{- STUBWITH equate -} a2 b2
     (TyPi {- SOLN EP -} ep1 {- STUBWITH -}tyA1 bnd1, TyPi {- SOLN EP -} ep2 {- STUBWITH -}tyA2 bnd2) -> do 
-      (_, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+      (_, tyB1, tyB2) <- unbind2 bnd1 bnd2 
 {- SOLN EP -} 
       unless (ep1 == ep2) $
           tyErr n1 n2 {- STUBWITH -}
@@ -56,12 +55,12 @@ equate t1 t2 = do
       equate c1 c2
       
     (Let rhs1 bnd1, Let rhs2 bnd2) -> do
-      Just (x, body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
+      (x, body1, body2) <- unbind2 bnd1 bnd2
       equate rhs1 rhs2
       equate body1 body2
             
     (TySigma tyA1 bnd1, TySigma tyA2 bnd2) -> do 
-      Just (x, tyB1, _, tyB2) <- Unbound.unbind2 bnd1 bnd2
+      (x, tyB1, tyB2) <- unbind2 bnd1 bnd2
       equate tyA1 tyA2                                             
       equate tyB1 tyB2
 
@@ -71,7 +70,7 @@ equate t1 t2 = do
       
     (LetPair s1 bnd1, LetPair s2 bnd2) -> do  
       equate s1 s2
-      Just ((x,y), body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
+      ((x,y), body1, _, body2) <- Unbound.unbind2Plus bnd1 bnd2
       equate body1 body2
 {- SOLN EQUAL -}      
     (TyEq a b, TyEq c d) -> do
@@ -138,33 +137,6 @@ equateArg a1 a2 =
 {- STUBWITH -}
 
 -------------------------------------------------------
-
--- | Ensure that the given type 'ty' is a 'TyPi' type
--- (or could be normalized to be such) and return the components of 
--- the type.
--- Throws an error if this is not the case.
-ensurePi :: Type -> 
-  TcMonad ({- SOLN EP -} Epsilon, {- STUBWITH -} Type, (Unbound.Bind TName Type))
-ensurePi ty = do
-  nf <- whnf ty
-  case nf of 
-    (TyPi {- SOLN EP -} ep {- STUBWITH -} tyA bnd) -> do 
-      return ({- SOLN EP -} ep,{- STUBWITH -} tyA, bnd)
-    _ -> Env.err [DS "Expected a function type, instead found", DD nf]
-    
-    
-{- SOLN EQUAL -}    
--- | Ensure that the given 'ty' is an equality type 
--- (or could be normalized to be such) and return     
--- the LHS and RHS of that equality
--- Throws an error if this is not the case.
-ensureTyEq :: Term -> TcMonad (Term,Term)     
-ensureTyEq ty = do 
-  nf <- whnf ty
-  case nf of 
-    TyEq m n -> return (m, n)
-    _ -> Env.err [DS "Expected an equality type, instead found", DD nf]
-{- STUBWITH -}    
     
 {- SOLN DATA -}
 
@@ -193,7 +165,7 @@ whnf (App t1 t2) = do
   nf <- whnf t1 
   case nf of 
     (Lam {- SOLN EP -} ep {- STUBWITH -} bnd) -> do
-      whnf (Unbound.instantiate bnd {- SOLN EP -} [unArg t2] {- STUBWITH [t2] -})
+      whnf (instantiate bnd {- SOLN EP -} (unArg t2) {- STUBWITH t2 -})
     _ -> do
       return (App nf t2)
       
@@ -216,8 +188,7 @@ whnf (Pos _ tm) = whnf tm
  
 {- SOLN HW -}
 whnf (Let rhs bnd)  = do
-  -- (x,body) <- Unbound.unbind bnd
-  whnf (Unbound.instantiate bnd [rhs]){- STUBWITH -}  
+  whnf (instantiate bnd rhs){- STUBWITH -}  
 {- SOLN EQUAL -}  
 whnf (Subst tm pf) = do
   pf' <- whnf pf
@@ -267,13 +238,13 @@ unify ns tx ty = do
       (DataCon s1 a1s, DataCon s2 a2s)
         | s1 == s2 -> unifyArgs a1s a2s {- STUBWITH -}
       (Lam {- SOLN EP -} ep1 {- STUBWITH -} bnd1, Lam {- SOLN EP -} ep2 {- STUBWITH -} bnd2) -> do
-        (x, b1, _, b2) <- Unbound.unbind2Plus bnd1 bnd2
+        (x, b1, b2) <- unbind2 bnd1 bnd2
 {- SOLN EP -}
         unless (ep1 == ep2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] {- STUBWITH -}
         unify (x:ns) b1 b2
       (TyPi {- SOLN EP -} ep1 {- STUBWITH -} tyA1 bnd1, TyPi {- SOLN EP -} ep2 {- STUBWITH -} tyA2 bnd2) -> do
-        (x, tyB1, _, tyB2) <- Unbound.unbind2Plus bnd1 bnd2 
+        (x, tyB1, tyB2) <- unbind2 bnd1 bnd2 
 {- SOLN EP -}
         unless (ep1 == ep2) $ do
           Env.err [DS "Cannot equate", DD txnf, DS "and", DD tynf] {- STUBWITH -}

@@ -48,19 +48,13 @@ unit = (x:Type) -> x -> x
 -- includes beta-equivalence/definitions (i.e. >= version2)
 
 -- Church encoding of simply-typed pairs
-
+{-
 
 pair : Type -> Type -> Type
 pair = \p. \q. (c: Type) -> (p -> q -> c) -> c
 
 prod : (p:Type) -> (q:Type) -> p -> q -> pair p q
 prod = \p.\q. \x.\y. \c. \f. f x y
-
--- (p:Type) -> (q:Type) -> p -> q -> pair p q
--- (p:Type) -> (q:Type) -> p -> q -> ((c: Type) -> (p -> q -> c) -> c)
-
-prod' : (p:Type) -> (q:Type) -> p -> q -> ((c: Type) -> (p -> q -> c) -> c)
-prod' = prod
 
 proj1 : (p:Type) -> (q:Type) -> pair p q -> p
 proj1  = \p. \q. \a. a p (\x.\y.x)
@@ -70,4 +64,4 @@ proj2  = \p. \q. \a. a q (\x.\y.y)
 
 swap : (p:Type) -> (q:Type) -> pair p q -> pair q p
 swap = \p. \q. \a. prod q p (proj2 p q a) (proj1 p q a)
-
+-}
