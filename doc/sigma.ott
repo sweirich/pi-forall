@@ -19,22 +19,27 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
 v :: 'v_' ::= 
   | { x : A | B }    ::   :: Sigma
   | ( a , b )        ::   :: Prod 
-  | let ( x , y ) = ne in a ::  :: LetPair
 
 neutral, ne :: 'n_' ::= 
   | let ( x , y ) = ne in a ::  :: LetPair
+
+nf :: 'nf_' ::= 
+  | { x : A | B }    ::   :: Sigma
+  | ( a , b )        ::   :: Prod 
+  | let ( x , y ) = ne in a ::  :: LetPair
+
 
 defns 
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> v ::    :: whnf :: 'whnf_' 
+whnf a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
 whnf a ~> (a1, a2) 
-whnf (b [a1/x] [a2/y]) ~> v
+whnf (b [a1/x] [a2/y]) ~> nf
 ------------------------------- :: letpair
-whnf let (x,y) = a in b ~> v
+whnf let (x,y) = a in b ~> nf
 
 whnf a ~> ne
 --------------------------------------------- :: prodcong

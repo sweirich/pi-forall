@@ -8,7 +8,6 @@ import Control.Monad.Except
 
 import Data.Maybe ( catMaybes )
 
-
 import Environment (D (..), TcMonad)
 import Environment qualified as Env
 import Equal qualified
@@ -28,7 +27,7 @@ import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 
 -- | Infer/synthesize the type of a term
 inferType :: Term -> TcMonad Type
-inferType t = case t of
+inferType a = case a of
   -- i-var
   (Var x) -> do
     decl <- Env.lookupTy x 
@@ -45,24 +44,24 @@ inferType t = case t of
     return TyType
 
   -- i-app
-  (App t1 t2) -> do
-    ty1 <- inferType t1 
+  (App a b) -> do
+    ty1 <- inferType a 
     let ensurePi = Equal.ensurePi 
     
     (tyA,bnd) <- ensurePi ty1
-    checkType t2 tyA
-    return (Unbound.instantiate bnd [t2])
+    checkType b tyA
+    return (Unbound.instantiate bnd [b])
 
   -- i-ann
-  (Ann tm ty) -> do
-    tcType ty
-    checkType tm ty
-    return ty
+  (Ann a tyA) -> do
+    tcType tyA
+    checkType a tyA
+    return tyA
   
   -- Practicalities
   -- remember the current position in the type checking monad
-  (Pos p tm) ->
-    Env.extendSourceLocation p tm $ inferType tm
+  (Pos p a) ->
+    Env.extendSourceLocation p a $ inferType a
   
   -- Extensions to the core language
   -- i-unit
@@ -73,19 +72,14 @@ inferType t = case t of
   TyBool -> return TyType 
 
   -- i-true/false
-  (LitBool b) -> return TyBool 
+  (LitBool _) -> return TyBool 
 
   -- i-if
-  (If t1 t2 t3) -> do
-      checkType t1 TyBool
-      ty <- inferType t2
-      checkType t3 ty
-      return ty 
-  -- i-eq
-  (TyEq a b) -> do
-    aTy <- inferType a
-    checkType b aTy
-    return TyType 
+  (If a b1 b2) -> do
+      checkType a TyBool
+      tyA <- inferType b1
+      checkType b2 tyA
+      return tyA 
 
   -- i-sigma
   (TySigma tyA bnd) -> do
@@ -93,12 +87,17 @@ inferType t = case t of
     tcType tyA
     Env.extendCtx (mkDecl x tyA) $ tcType tyB
     return TyType 
+  -- i-eq
+  (TyEq a b) -> do
+    aTy <- inferType a
+    checkType b aTy
+    return TyType 
 
 
 
   -- cannot synthesize the type of the term
-  tm -> 
-    Env.err [DS "Must have a type for", DD tm] 
+  _ -> 
+    Env.err [DS "Must have a type annotation for", DD a] 
 
 
 -------------------------------------------------------------------------
@@ -110,50 +109,75 @@ tcType tm =  checkType tm TyType
 -------------------------------------------------------------------------
 -- | Check that the given term has the expected type
 checkType :: Term -> Type -> TcMonad ()
-checkType tm ty' = do
-  ty <- Equal.whnf ty' 
+checkType tm ty = do
+  ty' <- Equal.whnf ty 
   case tm of 
     -- c-lam: check the type of a function
-    (Lam  bnd) -> case ty of
+    (Lam  bnd) -> case ty' of
       (TyPi tyA bnd2) -> do
         -- unbind the variables in the lambda expression and pi type
-        (x, body,_,tyB) <- Unbound.unbind2Plus bnd bnd2
+        (x, body, _, tyB) <- Unbound.unbind2Plus bnd bnd2
 
         -- check the type of the body of the lambda expression
         Env.extendCtx (mkDecl x tyA) (checkType body tyB)
-      _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty]
+      _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty']
 
     -- Practicalities
-    (Pos p tm) -> 
-      Env.extendSourceLocation p tm $ checkType tm ty
+    (Pos p a) -> 
+      Env.extendSourceLocation p a $ checkType a ty'
 
     TrustMe -> return ()
 
     PrintMe -> do
       gamma <- Env.getLocalCtx
       Env.warn [DS "Unmet obligation.\nContext:", DD gamma,
-            DS "\nGoal:", DD ty]  
+            DS "\nGoal:", DD ty']  
 
     -- Extensions to the core language
     -- c-if
-    (If t1 t2 t3) -> do
-      checkType t1 TyBool
-      dtrue <- Equal.unify [] t1 (LitBool True)
-      dfalse <- Equal.unify [] t1 (LitBool False)
-      Env.extendCtxs dtrue $ checkType t2 ty
-      Env.extendCtxs dfalse $ checkType t3 ty 
-
+    (If a b1 b2) -> do
+      checkType a TyBool
+      dtrue <- Equal.unify [] a (LitBool True)
+      dfalse <- Equal.unify [] a (LitBool False)
+      Env.extendCtxs dtrue $ checkType b1 ty'
+      Env.extendCtxs dfalse $ checkType b2 ty' 
+    -- c-prod
+    (Prod a b) -> do
+      case ty' of
+        (TySigma tyA bnd) -> do
+          (x, tyB) <- Unbound.unbind bnd
+          checkType a tyA
+          Env.extendCtxs [mkDecl x tyA, Def x a] $ checkType b tyB
+        _ ->
+          Env.err
+            [ DS "Products must have Sigma Type",
+              DD ty,
+              DS "found instead"
+            ]
+    
+    -- c-letpair
+    (LetPair p bnd) -> do
+      ((x, y), body) <- Unbound.unbind bnd
+      pty <- inferType p
+      pty' <- Equal.whnf pty
+      case pty' of
+        TySigma tyA bnd' -> do
+          let tyB = Unbound.instantiate bnd' [Var x]
+          decl <- Equal.unify [] p (Prod (Var x) (Var y))
+          Env.extendCtxs ([mkDecl x tyA, mkDecl y tyB] ++ decl) $
+              checkType body tyA
+        _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
+    
     -- c-let
-    (Let rhs bnd) -> do
-      (x, body) <- Unbound.unbind bnd
-      aty <- inferType rhs 
-      Env.extendCtxs [mkDecl x aty, Def x rhs] $
-          checkType body ty 
-
+    (Let a bnd) -> do
+      (x, b) <- Unbound.unbind bnd
+      tyA <- inferType a 
+      Env.extendCtxs [mkDecl x tyA, Def x a] $
+          checkType b ty' 
     -- c-refl
-    Refl -> case ty of 
+    Refl -> case ty' of 
             (TyEq a b) -> Equal.equate a b
-            _ -> Env.err [DS "Refl annotated with", DD ty]
+            _ -> Env.err [DS "Refl annotated with invalid type", DD ty']
     -- c-subst
     (Subst a b) -> do
       -- infer the type of the proof 'b'
@@ -164,7 +188,7 @@ checkType tm ty' = do
       edecl <- Equal.unify [] m n
       -- if proof is a variable, add a definition to the context
       pdecl <- Equal.unify [] b Refl
-      Env.extendCtxs (edecl ++ pdecl) $ checkType a ty
+      Env.extendCtxs (edecl ++ pdecl) $ checkType a ty'
     -- c-contra 
     (Contra p) -> do
       ty' <- inferType p
@@ -186,40 +210,13 @@ checkType tm ty' = do
               DS "are contradictory"
             ]
     
-    -- c-prod
-    (Prod a b) -> do
-      case ty of
-        (TySigma tyA bnd) -> do
-          (x, tyB) <- Unbound.unbind bnd
-          checkType a tyA
-          Env.extendCtxs [mkDecl x tyA, Def x a] $ checkType b tyB
-        _ ->
-          Env.err
-            [ DS "Products must have Sigma Type",
-              DD ty,
-              DS "found instead"
-            ]
-    
 
-    -- c-letpair
-    (LetPair p bnd) -> do
-      ((x, y), body) <- Unbound.unbind bnd
-      pty <- inferType p
-      pty' <- Equal.whnf pty
-      case pty' of
-        TySigma tyA bnd' -> do
-          let tyB = Unbound.instantiate bnd' [Var x]
-          decl <- Equal.unify [] p (Prod (Var x) (Var y))
-          Env.extendCtxs ([mkDecl x tyA, mkDecl y tyB] ++ decl) $
-              checkType body ty
-        _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
-    
 
 
     -- c-infer
-    tm -> do
-      ty' <- inferType tm
-      Equal.equate ty' ty
+    a -> do
+      tyA <- inferType a
+      Equal.equate tyA ty'
     
 
 

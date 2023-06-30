@@ -43,7 +43,7 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> v ::    :: whnf :: 'whnf_' 
+whnf a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
 defns

@@ -39,7 +39,35 @@
 \ottprodline{|}{ - }{}{}{}{}}
 
 \newcommand{\ottv}{
-\ottrulehead{\ottnt{v}}{::=}{\ottcom{values and weak head normal forms}}\ottprodnewline
+\ottrulehead{\ottnt{v}}{::=}{\ottcom{values}}\ottprodnewline
+\ottfirstprodline{|}{\ottkw{Type}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{ \lambda  \ottmv{x} .  \ottnt{a} }{}{}{}{}\ottprodnewline
+\ottprodline{|}{ ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B} }{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{Unit}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottsym{()}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottsym{(}  \ottnt{v}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
+\ottprodline{|}{ \{  \ottmv{x} \!:\! \ottnt{A} \ |\  \ottnt{B}  \} }{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottsym{(}  \ottnt{a}  \ottsym{,}  \ottnt{b}  \ottsym{)}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{Bool}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{True}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{False}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottnt{a}  \ottsym{=}  \ottnt{b}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{refl}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottmv{K} \, \overline{a}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottmv{T} \, \overline{a}}{}{}{}{}}
+
+\newcommand{\ottneutral}{
+\ottrulehead{\ottnt{neutral}  ,\ \ottnt{ne}}{::=}{\ottcom{neutral terms}}\ottprodnewline
+\ottfirstprodline{|}{\ottmv{x}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{ \ottnt{ne}  \;  \ottnt{a} }{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottsym{(}  \ottnt{ne}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{a}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{if} \, \ottnt{ne} \, \ottkw{then} \, \ottnt{a} \, \ottkw{else} \, \ottnt{b}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}}{}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}}{}{}{}{}}
+
+\newcommand{\ottnf}{
+\ottrulehead{\ottnt{nf}}{::=}{\ottcom{weak head normal forms}}\ottprodnewline
 \ottfirstprodline{|}{\ottkw{Type}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{ \lambda  \ottmv{x} .  \ottnt{a} }{}{}{}{}\ottprodnewline
 \ottprodline{|}{ ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B} }{}{}{}{}\ottprodnewline
@@ -47,7 +75,7 @@
 \ottprodline{|}{\ottsym{()}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottmv{x}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{ \ottnt{ne}  \;  \ottnt{b} }{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottsym{(}  \ottnt{v}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
+\ottprodline{|}{\ottsym{(}  \ottnt{nf}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
 \ottprodline{|}{ \{  \ottmv{x} \!:\! \ottnt{A} \ |\  \ottnt{B}  \} }{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottsym{(}  \ottnt{a}  \ottsym{,}  \ottnt{b}  \ottsym{)}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{a}}{}{}{}{}\ottprodnewline
@@ -60,16 +88,6 @@
 \ottprodline{|}{\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottmv{K} \, \overline{a}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottmv{T} \, \overline{a}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}}{}{}{}{}}
-
-\newcommand{\ottneutral}{
-\ottrulehead{\ottnt{neutral}  ,\ \ottnt{ne}}{::=}{\ottcom{neutral terms}}\ottprodnewline
-\ottfirstprodline{|}{\ottmv{x}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{ \ottnt{ne}  \;  \ottnt{a} }{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottsym{(}  \ottnt{ne}  \ottsym{)}} {\textsf{S}}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{a}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{if} \, \ottnt{ne} \, \ottkw{then} \, \ottnt{a} \, \ottkw{else} \, \ottnt{b}}{}{}{}{}\ottprodnewline
-\ottprodline{|}{\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}}{}{}{}{}\ottprodnewline
 \ottprodline{|}{\ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}}{}{}{}{}}
 
 \newcommand{\ottargs}{
@@ -159,6 +177,7 @@
 \ottep\ottinterrule
 \ottv\ottinterrule
 \ottneutral\ottinterrule
+\ottnf\ottinterrule
 \ottargs\ottinterrule
 \ottpat\ottinterrule
 \ottms\ottinterrule
@@ -169,13 +188,69 @@
 }}
 
 % defnss
+% defns JEquate
+%% defn equate
+\newcommand{\ottdruleeqXXrefl}[1]{\ottdrule[#1]{%
+}{
+\Gamma  \vdash  \ottnt{a}  \Leftrightarrow  \ottnt{a}}{%
+{\ottdrulename{eq\_refl}}{}%
+}}
+
+
+\newcommand{\ottdruleeqXXwhnf}[1]{\ottdrule[#1]{%
+\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf_{{\mathrm{1}}}} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{nf_{{\mathrm{2}}}} }%
+\ottpremise{\Gamma  \vdash  \ottnt{nf_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{nf_{{\mathrm{2}}}}}%
+}{
+\Gamma  \vdash  \ottnt{a}  \Leftrightarrow  \ottnt{b}}{%
+{\ottdrulename{eq\_whnf}}{}%
+}}
+
+
+\newcommand{\ottdruleeqXXabs}[1]{\ottdrule[#1]{%
+\ottpremise{\Gamma  \vdash  \ottnt{a_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{a_{{\mathrm{2}}}}}%
+}{
+\Gamma  \vdash   \lambda  \ottmv{x} .  \ottnt{a_{{\mathrm{1}}}}   \Leftrightarrow   \lambda  \ottmv{x} .  \ottnt{a_{{\mathrm{2}}}} }{%
+{\ottdrulename{eq\_abs}}{}%
+}}
+
+
+\newcommand{\ottdruleeqXXpi}[1]{\ottdrule[#1]{%
+\ottpremise{\Gamma  \vdash  \ottnt{A_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{A_{{\mathrm{2}}}}}%
+\ottpremise{\Gamma  \vdash  \ottnt{B_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{B_{{\mathrm{2}}}}}%
+}{
+\Gamma  \vdash   ( \ottmv{x} \!:\! \ottnt{A_{{\mathrm{1}}}} )  \to   \ottnt{B_{{\mathrm{1}}}}   \Leftrightarrow   ( \ottmv{x} \!:\! \ottnt{A_{{\mathrm{2}}}} )  \to   \ottnt{B_{{\mathrm{2}}}} }{%
+{\ottdrulename{eq\_pi}}{}%
+}}
+
+
+\newcommand{\ottdruleeqXXapp}[1]{\ottdrule[#1]{%
+\ottpremise{\Gamma  \vdash  \ottnt{ne_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{ne_{{\mathrm{2}}}}}%
+\ottpremise{\Gamma  \vdash  \ottnt{b_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{b_{{\mathrm{2}}}}}%
+}{
+\Gamma  \vdash   \ottnt{ne_{{\mathrm{1}}}}  \;  \ottnt{b_{{\mathrm{1}}}}   \Leftrightarrow   \ottnt{ne_{{\mathrm{2}}}}  \;  \ottnt{b_{{\mathrm{2}}}} }{%
+{\ottdrulename{eq\_app}}{}%
+}}
+
+\newcommand{\ottdefnequate}[1]{\begin{ottdefnblock}[#1]{$\Gamma  \vdash  \ottnt{a}  \Leftrightarrow  \ottnt{b}$}{}
+ compare $a$ and $b$ for equality \ottusedrule{\ottdruleeqXXrefl{}}
+\ottusedrule{\ottdruleeqXXwhnf{}}
+\ottusedrule{\ottdruleeqXXabs{}}
+\ottusedrule{\ottdruleeqXXpi{}}
+\ottusedrule{\ottdruleeqXXapp{}}
+\end{ottdefnblock}}
+
+
+\newcommand{\ottdefnsJEquate}{
+\ottdefnequate{}}
+
 % defns Jwhnf
 %% defn whnf
 \newcommand{\ottdrulewhnfXXlamXXbeta}[1]{\ottdrule[#1]{%
 \ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottsym{(}   \lambda  \ottmv{x} .  \ottnt{a'}   \ottsym{)} }%
-\ottpremise{ \ottkw{whnf} \  \ottsym{(}  \ottnt{a'}  \ottsym{[}  \ottnt{b}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{v} }%
+\ottpremise{ \ottkw{whnf} \  \ottsym{(}  \ottnt{a'}  \ottsym{[}  \ottnt{b}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \   \ottnt{a}  \;  \ottnt{b}   \leadsto  \ottnt{v} }{%
+ \ottkw{whnf} \   \ottnt{a}  \;  \ottnt{b}   \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_lam\_beta}}{}%
 }}
 
@@ -217,18 +292,18 @@
 
 
 \newcommand{\ottdrulewhnfXXannot}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{v} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \ottsym{(}  \ottnt{a}  \ottsym{:}  \ottnt{A}  \ottsym{)}  \leadsto  \ottnt{v} }{%
+ \ottkw{whnf} \  \ottsym{(}  \ottnt{a}  \ottsym{:}  \ottnt{A}  \ottsym{)}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_annot}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXletpair}[1]{\ottdrule[#1]{%
 \ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{,}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
-\ottpremise{ \ottkw{whnf} \  \ottsym{(}  \ottnt{b}  \ottsym{[}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{[}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{/}  \ottmv{y}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{v} }%
+\ottpremise{ \ottkw{whnf} \  \ottsym{(}  \ottnt{b}  \ottsym{[}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{[}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{/}  \ottmv{y}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottnt{v} }{%
+ \ottkw{whnf} \  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_letpair}}{}%
 }}
 
@@ -243,18 +318,18 @@
 
 \newcommand{\ottdrulewhnfXXifXXtrue}[1]{\ottdrule[#1]{%
 \ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottkw{True} }%
-\ottpremise{ \ottkw{whnf} \  \ottnt{b_{{\mathrm{1}}}}  \leadsto  \ottnt{v} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{b_{{\mathrm{1}}}}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{v} }{%
+ \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_if\_true}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXifXXfalse}[1]{\ottdrule[#1]{%
 \ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottkw{False} }%
-\ottpremise{ \ottkw{whnf} \  \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{v} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{v} }{%
+ \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_if\_false}}{}%
 }}
 
@@ -304,9 +379,9 @@
 
 \newcommand{\ottdrulewhnfXXsubst}[1]{\ottdrule[#1]{%
 \ottpremise{ \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottkw{refl} }%
-\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{v} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}  \ottsym{)}  \leadsto  \ottnt{v} }{%
+ \ottkw{whnf} \  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}  \ottsym{)}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_subst}}{}%
 }}
 
@@ -335,9 +410,9 @@
 
 \newcommand{\ottdrulewhnfXXcase}[1]{\ottdrule[#1]{%
 \ottpremise{\ottkw{match} \, \ottsym{(}  \ottmv{K} \, \overline{a}  \ottsym{)}  \ottsym{(pati}  \to  \ottsym{ai)}  \leadsto  \ottnt{b}}%
-\ottpremise{ \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{v} }%
+\ottpremise{ \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \ottkw{case} \, \ottsym{(}  \ottmv{K} \, \overline{a}  \ottsym{)} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottnt{v} }{%
+ \ottkw{whnf} \  \ottkw{case} \, \ottsym{(}  \ottmv{K} \, \overline{a}  \ottsym{)} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_case}}{}%
 }}
 
@@ -366,7 +441,7 @@
 {\ottdrulename{whnf\_let\_beta}}{}%
 }}
 
-\newcommand{\ottdefnwhnf}[1]{\begin{ottdefnblock}[#1]{$ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{v} $}{\ottcom{weak head normalize a to v (if possible)}}
+\newcommand{\ottdefnwhnf}[1]{\begin{ottdefnblock}[#1]{$ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf} $}{\ottcom{weak head normalize a to nf (if possible)}}
 \ottusedrule{\ottdrulewhnfXXlamXXbeta{}}
 \ottusedrule{\ottdrulewhnfXXtype{}}
 \ottusedrule{\ottdrulewhnfXXlam{}}
@@ -1392,6 +1467,16 @@
 }}
 
 
+\newcommand{\ottdrulecXXwhnf}[1]{\ottdrule[#1]{%
+\ottpremise{ \ottnt{A} \mbox{ is not in weak-head normal form } }%
+\ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{nf}}%
+\ottpremise{ \ottkw{whnf} \  \ottnt{A}  \leadsto  \ottnt{nf} }%
+}{
+\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}}{%
+{\ottdrulename{c\_whnf}}{}%
+}}
+
+
 \newcommand{\ottdrulecXXpair}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}}%
 \ottpremise{\Gamma  \vdash  \ottnt{b}  \Leftarrow  \ottnt{B}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}}%
@@ -1564,6 +1649,7 @@
 \ottusedrule{\ottdrulecXXlambda{}}
 \ottusedrule{\ottdrulecXXinferXXsimple{}}
 \ottusedrule{\ottdrulecXXinfer{}}
+\ottusedrule{\ottdrulecXXwhnf{}}
 \ottusedrule{\ottdrulecXXpair{}}
 \ottusedrule{\ottdrulecXXletpairXXsimple{}}
 \ottusedrule{\ottdrulecXXletpair{}}
@@ -1588,6 +1674,7 @@
 \ottdefncheckCtx{}\ottdefntcArgTele{}\ottdefndeclarePats{}\ottdefndeclarePat{}\ottdefninferType{}\ottdefncheckType{}}
 
 \newcommand{\ottdefnss}{
+\ottdefnsJEquate
 \ottdefnsJwhnf
 \ottdefnsJOp
 \ottdefnsJEq

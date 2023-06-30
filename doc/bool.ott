@@ -15,27 +15,33 @@ v :: 'v_' ::=
   | Bool                  ::   :: TyBool 
   | True                  ::   :: LitTrue
   | False                 ::   :: LitFalse
-  | if ne then a else b    ::   :: If
 
 neutral , ne :: 'n_' ::=
   | if ne then a else b    ::   :: If
+
+nf :: 'nf_' ::= 
+  | Bool                  ::   :: TyBool 
+  | True                  ::   :: LitTrue
+  | False                 ::   :: LitFalse
+  | if ne then a else b    ::   :: If
+
 
 defns 
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> v ::    :: whnf :: 'whnf_' 
+whnf a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
 whnf a ~> True
-whnf b1 ~> v
+whnf b1 ~> nf
 --------------------------- :: if_true
-whnf if a then b1 else b2 ~> v
+whnf if a then b1 else b2 ~> nf
 
 whnf a ~> False
-whnf b2 ~> v
+whnf b2 ~> nf
 ------------------------------- :: if_false
-whnf if a then b1 else b2 ~> v
+whnf if a then b1 else b2 ~> nf
 
 ----------------- :: bool
 whnf Bool ~> Bool

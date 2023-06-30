@@ -59,7 +59,29 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
   | ()              ::   :: LitUnit  
     {{ com unit term }}
 
-v :: 'v_' ::= {{ com values and weak head normal forms }}
+v :: 'v_' ::= {{ com values }}
+
+  | Type            ::   :: Type 
+
+  | \ x . a         ::   :: Lam 
+
+  | ( x : A ) -> B  ::   :: Pi   
+
+  | Unit            ::   :: TyUnit  
+
+  | ()              ::   :: LitUnit  
+
+  | ( v )           :: S :: Paren
+
+neutral, ne :: 'n_' ::= {{ com neutral terms }}
+
+  | x               ::   :: Var 
+
+  | ne a             ::   :: App 
+
+  | ( ne )           :: S :: Paren
+
+nf :: 'nf_' ::= {{ com weak head normal forms }}
 
   | Type            ::   :: Type 
 
@@ -75,20 +97,12 @@ v :: 'v_' ::= {{ com values and weak head normal forms }}
 
   | ne b            ::   :: App
 
-  | ( v )           :: S :: Paren
-
-
-neutral, ne :: 'n_' ::= {{ com neutral terms }}
-
-  | x               ::   :: Var 
-
-  | ne a             ::   :: App 
-
-  | ( ne )           :: S :: Paren
+  | ( nf )           :: S :: Paren
 
 subrules 
-  ne <:: v
-  v <:: a
+  ne <:: nf
+  v <:: nf
+  nf <:: a
 
 substitutions
   single a x     :: subst_tm
@@ -157,6 +171,8 @@ formula :: 'formula_' ::=
   | G |- A <=> B             ::   :: equate
   | notlam a                 ::   :: notlam
      {{ tex [[a]]\mbox{ is not a $\lambda$-expression } }}
+  | notwhnf a                ::   :: notwhnf
+     {{ tex [[a]]\mbox{ is not in weak-head normal form } }}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -169,17 +185,17 @@ Jwhnf :: '' ::=
 % in our implementation.
 
 defn
-whnf a ~> v ::    :: whnf :: 'whnf_' 
-{{ tex [[whnf]]\ [[a]] \leadsto [[v]] }}
-{{ com weak head normalize a to v (if possible) }}
+whnf a ~> nf ::    :: whnf :: 'whnf_' 
+{{ tex [[whnf]]\ [[a]] \leadsto [[nf]] }}
+{{ com weak head normalize a to nf (if possible) }}
 by
 
 % reduction rules
 
 whnf a ~> (\x.a')
-whnf (a'[b/x]) ~> v
+whnf (a'[b/x]) ~> nf
 ---------------------- :: lam_beta
-whnf a b ~> v
+whnf a b ~> nf
 
 
 ------------------ :: type
@@ -206,10 +222,50 @@ whnf a b ~> ne b
 
 % remove type annotations when normalizing
 %
-whnf a ~> v
+whnf a ~> nf
 ------------------ :: annot
-whnf (a : A) ~> v
+whnf (a : A) ~> nf
 
+
+defns
+JEquate :: '' ::=
+
+defn 
+G |- a <=> b ::    :: equate :: 'eq_'
+by
+{{ com compare $a$ and $b$ for equality }}
+
+%% alpha-equivalent terms are equal
+
+---------------- :: refl
+G |- a <=> a
+
+
+%% if whnfs are equal, then the terms are equal
+
+whnf a ~> nf1
+whnf b ~> nf2
+G |- nf1 <=> nf2
+------------- :: whnf
+G |- a <=> b
+
+
+%% if terms are in whnf, compare subterms
+
+G |- a1 <=> a2
+--------------------------------- :: abs
+G |- \x. a1 <=> \x. a2
+
+G |- A1 <=> A2 
+G |- B1 <=> B2
+--------------------------------  :: pi
+G |- (x : A1) -> B1 <=> (x:A2) -> B2
+
+
+G |- ne1 <=> ne2
+G |- b1 <=> b2
+--------------------------------- :: app
+G |- ne1 b1 <=> ne2 b2 
 
 defns
 JOp :: '' ::=
@@ -221,7 +277,6 @@ by
 
 ----------------------------------  :: lambeta
 (\x.a) b ~> a [ b / x]
-
 
 
 a ~> a'
@@ -394,6 +449,11 @@ G |- A <=> B
 -------------------------- :: infer
 G |- a <= B
 
+notwhnf A
+G |- a <= nf
+whnf A ~> nf
+--------------- :: whnf
+G |- a <= A
 
 defn
 |- G ::   :: checkCtx :: 'g_'

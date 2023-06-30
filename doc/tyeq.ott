@@ -12,17 +12,22 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
 v :: 'v_' ::= 
   | a = b         ::   :: TyEq 
   | refl          ::   :: Refl 
-  | subst a by ne  ::   :: Subst 
 
 neutral, ne :: 'n_' ::=
   | subst a by ne  ::   :: Subst 
+
+nf :: 'nf_' ::= 
+  | a = b         ::   :: TyEq 
+  | refl          ::   :: Refl 
+  | subst a by ne  ::   :: Subst 
+
 
 defns 
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> v ::    :: whnf :: 'whnf_' 
-{{ tex whnf [[a]] \leadsto [[v]] }}
+whnf a ~> nf ::    :: whnf :: 'whnf_' 
+{{ tex whnf [[a]] \leadsto [[nf]] }}
 by
 
 ----------------------- :: tyeq
@@ -34,9 +39,9 @@ whnf refl ~> refl
 
 
 whnf b ~> refl
-whnf a ~> v
+whnf a ~> nf
 ------------------------ :: subst
-whnf (subst a by b) ~> v
+whnf (subst a by b) ~> nf
 
 whnf b ~> ne
 ---------------------------------------- :: subst_cong

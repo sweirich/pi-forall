@@ -29,9 +29,13 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
 v :: 'v_' ::= 
    | K args       ::     :: TCon
    | T args       ::     :: DCon 
-   | case ne of { </ pati -> ai // i /> } ::     :: Case 
 
 neutral, ne :: 'n_' ::=
+   | case ne of { </ pati -> ai // i /> } ::     :: Case 
+
+nf :: 'nf_' ::= 
+   | K args       ::     :: TCon
+   | T args       ::     :: DCon 
    | case ne of { </ pati -> ai // i /> } ::     :: Case 
 
 
@@ -78,7 +82,7 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> v ::    :: whnf :: 'whnf_' 
+whnf a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
 -------------------- :: tcon
@@ -88,9 +92,9 @@ whnf T args ~> T args
 whnf K args ~> K args
 
 match (K args) (pati -> ai) ~> b
-whnf b ~> v
+whnf b ~> nf
 ---------------------------------------------------------------------- :: case
-whnf case (K args) of { </ pati -> ai // i /> } ~> v
+whnf case (K args) of { </ pati -> ai // i /> } ~> nf
 
 a ~> ne
 ------------------------------------------------------------------------------- :: case_cong

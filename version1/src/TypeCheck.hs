@@ -21,7 +21,7 @@ import Unbound.Generics.LocallyNameless.Internal.Fold qualified as Unbound
 
 -- | Infer/synthesize the type of a term
 inferType :: Term -> TcMonad Type
-inferType t = case t of
+inferType a = case a of
   -- i-var
   (Var x) -> do
     decl <- Env.lookupTy x
@@ -37,27 +37,27 @@ inferType t = case t of
     return TyType
 
   -- i-app
-  (App t1 t2) -> do
-    ty1 <- inferType t1
+  (App a b) -> do
+    ty1 <- inferType a
     let ensurePi :: Type -> TcMonad (Type, Unbound.Bind TName Type)
         ensurePi (Pos _ ty) = ensurePi ty
         ensurePi (Ann tm _) = ensurePi tm
         ensurePi (TyPi tyA bnd) = return (tyA, bnd)
         ensurePi ty = Env.err [DS "Expected a function type but found ", DD ty]
     (tyA, bnd) <- ensurePi ty1
-    checkType t2 tyA
-    return (Unbound.instantiate bnd [t2])
+    checkType b tyA
+    return (Unbound.instantiate bnd [b])
 
   -- i-ann
-  (Ann tm ty) -> do
-    tcType ty
-    checkType tm ty
-    return ty
+  (Ann a tyA) -> do
+    tcType tyA
+    checkType a tyA
+    return tyA
 
   -- Practicalities
   -- remember the current position in the type checking monad
-  (Pos p tm) ->
-    Env.extendSourceLocation p tm $ inferType tm
+  (Pos p a) ->
+    Env.extendSourceLocation p a $ inferType a
   -- Extensions to the core language
   -- i-unit
   TyUnit -> return TyType
@@ -65,14 +65,14 @@ inferType t = case t of
   -- i-bool
   TyBool -> Env.err [DS "unimplemented"]
   -- i-true/false
-  (LitBool b) -> Env.err [DS "unimplemented"]
+  (LitBool _) -> Env.err [DS "unimplemented"]
   -- i-if
-  (If t1 t2 t3) -> Env.err [DS "unimplemented"]
+  (If a b1 b2) -> Env.err [DS "unimplemented"]
   -- i-sigma
   (TySigma tyA bnd) -> Env.err [DS "unimplemented"]
   -- cannot synthesize the type of the term
-  tm ->
-    Env.err [DS "Must have a type for", DD tm]
+  _ ->
+    Env.err [DS "Must have a type annotation for", DD a]
 
 -------------------------------------------------------------------------
 
@@ -84,21 +84,21 @@ tcType tm = checkType tm TyType
 
 -- | Check that the given term has the expected type
 checkType :: Term -> Type -> TcMonad ()
-checkType tm ty' = do
-  let ty = strip ty' -- ignore source positions/annotations
+checkType tm ty = do
+  let ty' = strip ty -- ignore source positions/annotations
   case tm of
     -- c-lam: check the type of a function
-    (Lam bnd) -> case ty of
+    (Lam bnd) -> case ty' of
       (TyPi tyA bnd2) -> do
         -- unbind the variables in the lambda expression and pi type
         (x, body, _, tyB) <- Unbound.unbind2Plus bnd bnd2
 
         -- check the type of the body of the lambda expression
         Env.extendCtx (mkDecl x tyA) (checkType body tyB)
-      _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty]
+      _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty']
     -- Practicalities
-    (Pos p tm) ->
-      Env.extendSourceLocation p tm $ checkType tm ty
+    (Pos p a) ->
+      Env.extendSourceLocation p a $ checkType a ty'
     TrustMe -> return ()
     PrintMe -> do
       gamma <- Env.getLocalCtx
@@ -106,22 +106,22 @@ checkType tm ty' = do
         [ DS "Unmet obligation.\nContext:",
           DD gamma,
           DS "\nGoal:",
-          DD ty
+          DD ty'
         ]
 
     -- Extensions to the core language
     -- c-if
-    (If t1 t2 t3) -> Env.err [DS "unimplemented"]
-    -- c-let
-    (Let rhs bnd) -> Env.err [DS "unimplemented"]
+    (If a b1 b2) -> Env.err [DS "unimplemented"]
     -- c-prod
     (Prod a b) -> Env.err [DS "unimplemented"]
     -- c-letpair
     (LetPair p bnd) -> Env.err [DS "unimplemented"]
+    -- c-let
+    (Let a bnd) -> Env.err [DS "unimplemented"]
     -- c-infer
-    tm -> do
-      ty' <- inferType tm
-      unless (Unbound.aeq ty' ty) $ Env.err [DS "Types don't match", DD ty, DS "and", DD ty']
+    a -> do
+      tyA <- inferType a
+      unless (Unbound.aeq tyA ty') $ Env.err [DS "Types don't match", DD tyA, DS "and", DD ty']
 
 --------------------------------------------------------
 -- Using the typechecker for decls and modules and stuff

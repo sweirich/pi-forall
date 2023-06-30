@@ -44,8 +44,10 @@ equate t1 t2 = do
     (LitUnit, LitUnit) -> return ()
     (TyBool, TyBool) -> return ()
     (LitBool b1, LitBool b2) | b1 == b2 -> return ()
-    (If a1 b1 c1, If a2 b2 c2) ->
-      equate a1 a2 >> equate b1 b2 >> equate c1 c2
+    (If a1 b1 c1, If a2 b2 c2) -> do
+      equate a1 a2
+      equate b1 b2
+      equate c1 c2
     (Let rhs1 bnd1, Let rhs2 bnd2) -> do
       Just (x, body1, _, body2) <- Unbound.unbind2 bnd1 bnd2
       equate rhs1 rhs2
@@ -125,9 +127,12 @@ whnf (Pos _ tm) = whnf tm
 -- don't do anything special for them
 whnf tm = return tm
 
--- | 'Unify' the two terms, producing a list of Defs
--- If there is an obvious mismatch, this function produces an error
--- If either term is "ambiguous" just ignore.
+-- | 'Unify' the two terms, producing a list of definitions that
+-- must hold for the terms to be equal
+-- If the terms are already equal, succeed with an empty list
+-- If there is an obvious mismatch, fail with an error
+-- If either term is "ambiguous" (i.e. neutral), give up and
+-- succeed with an empty list
 unify :: [TName] -> Term -> Term -> TcMonad [Entry]
 unify ns tx ty = do
   txnf <- whnf tx
