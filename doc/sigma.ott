@@ -149,6 +149,6 @@ G, x:A1, y:A2 |- b <= B
 G |- let (x,y) = a in b <= B
 
 G |- z => { x : A1 | A2 }
-G, x:A1, y:B2 |- b <= B [ (x,y) / z ]
+G, x:A1, y:A2 |- b <= B [ (x,y) / z ]
 -------------------------------------- :: letpair
 G |- let (x,y) = z in b <= B

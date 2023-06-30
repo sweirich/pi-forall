@@ -1,0 +1,9 @@
+module Sigma where
+
+fst : [A:Type] -> [B:A -> Type] -> { x : A | B x } -> A
+fst = \[A][B] x . let (y,z) = x in y 
+
+snd : [A:Type] -> [B:A -> Type] -> (p : { x:A | B x}) -> B (fst[A][B] p)
+snd = \[A][B] x . let (y,z) = x in z
+  
+
