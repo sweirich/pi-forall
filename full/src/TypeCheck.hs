@@ -215,7 +215,7 @@ checkType tm ty = do
           let tyB = instantiate bnd' (Var x)
           decl <- Equal.unify [] p (Prod (Var x) (Var y))
           Env.extendCtxs ([mkDecl x tyA, mkDecl y tyB] ++ decl) $
-              checkType body tyA
+              checkType body ty'
         _ -> Env.err [DS "Scrutinee of LetPair must have Sigma type"]
     
     -- c-let
