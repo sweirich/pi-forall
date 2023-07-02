@@ -1,7 +1,5 @@
 module Sigma where
 
--- Defining projection terms using pattern matching
-
 fst : (A:Type) -> (B:A -> Type) -> { x : A | B x } -> A
 fst = \A B x . let (y,z) = x in y 
 
