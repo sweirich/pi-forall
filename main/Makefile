@@ -1,11 +1,11 @@
 SOURCES=TypeCheck.hs PrettyPrint.hs LayoutToken.hs Parser.hs Syntax.hs Environment.hs Modules.hs Arbitrary.hs Equal.hs 
 TEST_VERSION1 = Lec1.pi 
-TEST_VERSION2 = $(TEST_VERSION1) Lec2.pi Hw1.pi Hw2.pi NatChurch.pi
+TEST_VERSION2 = $(TEST_VERSION1) Lec2.pi Hw1.pi Hw2.pi NatChurch.pi Sigma.pi
 TEST_VERSION3 = $(TEST_VERSION2) Lec3.pi
 TEST_FULL=Makefile $(TEST_VERSION3) Logic.pi Equality.pi Product.pi Nat.pi Fin.pi FinHw.pi Vec.pi BoolLib.pi List.pi Lambda.pi Lambda0.pi Lambda1.pi Lambda2.pi BoolLib.pi Lec4.pi Product1.pi Fix.pi Lennart.pi Hurkens.pi Equal.pi
 SRCS=$(addprefix src/,$(SOURCES)) app/Main.hs test/Main.hs
 
-EXTRA=LICENSE README.md pi-forall.cabal stack.yaml
+EXTRA=LICENSE README.md pi-forall.cabal stack.yaml 
 
 VERSION1=$(addprefix ../version1/,$(SRCS)) $(addprefix ../version1/pi/,$(TEST_VERSION1)) ../version1/pi/Hw1.pi $(EXTRA)
 VERSION2=$(addprefix ../version2/,$(SRCS)) $(addprefix ../version2/pi/,$(TEST_VERSION2)) $(EXTRA)

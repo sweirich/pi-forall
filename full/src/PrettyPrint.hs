@@ -471,6 +471,9 @@ instance Display Term where
 
   display t
     | Just i <- isNumeral t = display i
+  display (TyCon n [Arg Rel a,Arg Rel (Lam Rel bnd)]) 
+    | n == sigmaName = do
+      display (TySigma a bnd)
   display (TyCon n args) = do
     p <- ask prec
     dn <- display n
