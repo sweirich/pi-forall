@@ -32,7 +32,7 @@ common shared-properties
     parsec >= 3.1.8 && < 3.2,
     mtl >= 2.2.1,
     pretty >= 1.0.1.0,
-    unbound-generics >= 0.2,
+    unbound-generics >= 0.4.3,
     transformers,
     array >= 0.3.0.2 && < 0.6,
     containers,

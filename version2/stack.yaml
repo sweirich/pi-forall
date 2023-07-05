@@ -4,11 +4,6 @@ resolver: lts-21.1
 packages:
 - '.'
 
-extra-deps:
-- git: git@github.com:lambdageek/unbound-generics.git
-  commit: a2a558058012b09bb313b3eb03cddb734fcf4a98
-
-
 flags: {}
 
 extra-package-dbs: []

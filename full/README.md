@@ -21,22 +21,23 @@ Installation
   
   Recommended tools (see links for instructions):
   
-  1. [ghcup](https://www.haskell.org/ghcup/)
+  1. [gchup](https://www.haskell.org/ghcup/)
   
-  The ghcup tool is an installer for general purpose Haskell tools, including GHC, Cabal, Stack and the Haskell language server (HLS). You'll want to install the recommended versions of all of these tools. Older versions are likely to work too, but the stack.yaml file will force a specific version of GHC. 
+  The gchup tool is an installer for general purpose Haskell tools, including GHC, Cabal, Stack and the Haskell language server (HLS). You'll want to install the recommended versions of all of these tools. 
 
-  2. [VSCode](https://code.visualstudio.com/) and [Haskell language extension](https://marketplace.visualstudio.com/items?itemName=haskell.haskell)
-
-  I recommend using VSCode to browse and edit Haskell projects. When working with the `pi-forall` repository, you should open the folder for the specific implementation that you want to work with (i.e. `version1`/`version2`/`full`), so that the Haskell language server
-can find the project metadata. If you open the toplevel `pi-forall` folder instead, you will get errors from vscode.
+  2. [VSCode](https://code.visualstudio.com/) and [Haskell language extension](https://marketplace.visualstudio.com/items?itemName=haskell.haskell)   
 
 
-Project Contents
------------------
+Contents
+--------
 
 There are several versions of `pi-forall` in the repository. See the 
 [documentation](https://github.com/sweirich/pi-forall/blob/2023/doc/oplss.pdf) for an extended 
 description of what parts of the language are covered by each version. 
+
+When you open the project in vscode, you should open the folder for the implementation that
+you want to work with (i.e. `version1`/`version2`/`full`), so that the Haskell language server
+can find the project metadata. 
 
 Each implementation has the following structure:
 
@@ -52,7 +53,7 @@ Each implementation has the following structure:
 
 ```
 
-To build each version, use a terminal to go to that directory and type:
+To build each version, go to that directory and type:
 
 ```
 stack build
@@ -64,11 +65,12 @@ and to typecheck a source file:
 stack exec -- pi-forall <sourcefile>
 ```
 
-
 Versioning
 ----------
 
-This repository has been tested with the current ghcup recommended tool versions for July 2023, including GHC 9.4.5, hsl 2.0.0.1 and stack lts-21.1.
+This repository has been tested with the current ghcup recommended tool versions for June 2023, including GHC 9.2.7 and stack lts-20.24.
+
+
 
 Acknowledgement
 ---------------
