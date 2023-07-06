@@ -12,7 +12,7 @@ how the notes are typeset.)
 
 These lecture notes correspond to an increasingly expressive demo
 implementation of a dependently-typed lambda calculus. Each of the
-following subdirectories is a self-contained implementation, and all 
+following subdirectories is a self-contained implementation and all 
 are generated from the same source, located in the [main/](main/) 
 directory. 
 
@@ -29,17 +29,14 @@ History
 -------
 
 This is a revised version of lecture notes originally presented at OPLSS
-during 2022, 2014 and 2013.
+during 2022, 2014, and 2013.
 
-Videos from the 2014 lectures are also available from the
-[OPLSS website](https://www.cs.uoregon.edu/research/summerschool/summer14/curriculum.html).
-If you want to watch these videos, you should look at the
-2014 branch of this repository.
+Videos from the [2022](https://www.cs.uoregon.edu/research/summerschool/summer22/topics.php) and [2014](https://www.cs.uoregon.edu/research/summerschool/summer14/curriculum.html) lectures are available from the
+OPLSS website. If you watch these videos, you should look at the
+corresponding branch of this repository.
 
 An abridged version of these lectures was also given at the Compose
-Conference, January 2015. Notes from this version are also available.
-
-- [compose.md](old/compose.md): Overview of pi-forall implementation
+Conference, January 2015. [Notes](old/compose.md) from this version are also available.
 
 --
 Stephanie Weirich
