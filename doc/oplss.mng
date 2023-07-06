@@ -324,7 +324,7 @@ the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
 case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
 You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality. (When arguments are marked in this way, the type checker must ensure that this erasure is sound and the argument is never actually used in a meaningful way.)
-Similarly, the constraints that are part of datatype definitions, such as \cd{n = Succ m} above, are enclosed in 
+Similarly, the constraints that are part of datatype definitions, such as \cd{n = Succ m} above, are enclosed in
 square brackets because there is no runtime proof of the equality stored with the data constructor.
 
 \subsection{Homework: Check out \pif}
@@ -388,8 +388,8 @@ both expressions and types. For clarity, the convention is to use lowercase
 letters ($a$,$b$) for expressions and uppercase letters ($A$,$B$) for types.
 
 Note that $\lambda$ and $\Pi$ above are \emph{binding forms}. They bind the
-variable $x$ in $a$ and $B$ respectively. In dependent function types 
-$[[(x:A) -> B]]$, if $x$ does not appear free in $B$, it is also convention 
+variable $x$ in $a$ and $B$ respectively. In dependent function types
+$[[(x:A) -> B]]$, if $x$ does not appear free in $B$, it is also convention
 to write the type as $[[A -> B]]$.
 
 
@@ -589,7 +589,7 @@ checks, then its \emph{type} will also type check. More formally, to state
 this property, we first need to say what it means to check all types in a
 context.
 
-\begin{definition}[Context type checks] 
+\begin{definition}[Context type checks]
 Define \fbox{$[[|-G]]$} with the following rules. \[ \drule{g-nil} \qquad \drule{g-cons} \]
 \end{definition}
 \noindent
@@ -598,7 +598,7 @@ With this judgement, we can state the following property of our type system.
 If $[[G |- a : A ]]$ and $[[|- G]]$, then $[[ G |- A : Type]]$
 \end{lemma}
 \noindent
-Making sure that this property holds for the type system is the motivation for the 
+Making sure that this property holds for the type system is the motivation for the
 $[[G |- A : Type]]$ premise in \rref{t-lambda}.
 
 \section{From typing rules to a typing algorithm}
@@ -713,7 +713,7 @@ Notice that this system is incomplete. There are inference rules for every
 form of expression except for lambda. On the other hand, only lambda
 expressions can be checked against types.  We can make the checking judgment
 more applicable with \rref{c-infer-simple} that allows us to use inference
-whenever a checking rule doesn't apply. This rule only applies when the 
+whenever a checking rule doesn't apply. This rule only applies when the
 term is not a lambda expression.
 
 Now, let us think about the reverse problem a bit. There are programs that the
@@ -1059,7 +1059,7 @@ that we can print warning messages.
 {[}Typecheck.hs{]}}
 
 Now that we have the type checking monad available, we can start our
-implementation. 
+implementation.
 
 The general structure of the \cd{inferType} function starts with a pattern
 match for the various syntactic forms. There are also several cases for
@@ -1069,7 +1069,7 @@ terms that we can synthesize types for, then the type checker produces an
 error.
 
 \begin{verbatim}
-inferType tm = case tm of 
+inferType tm = case tm of
    (Var x) -> ...
 
    TyType -> ...
@@ -1082,20 +1082,20 @@ inferType tm = case tm of
 
    ...
 
-   _ -> Env.err [DS "Must have a type for", DD tm] 
+   _ -> Env.err [DS "Must have a type for", DD tm]
 \end{verbatim}
 
-For checking, the general form of the function also 
+For checking, the general form of the function also
 
 Mixed in here, we also have a pattern for lambda expressions in checking
 mode:
 
 \begin{verbatim}
-checkType tm ty = case tm of 
-  (Lam bnd) -> case ty of 
+checkType tm ty = case tm of
+  (Lam bnd) -> case ty of
      TyPi tyA bnd2 = ...
         -- pass in the Pi type for the lambda expression
-     _ -> 
+     _ ->
        Env.err [DS "Lambda expression has a function type, not ", DD ty]
 \end{verbatim}
 
@@ -1108,7 +1108,7 @@ type. This case is the implementation of \rref{c-infer}.
  -- c-infer
  tm -> do
       ty' <- inferType tm
-      unless (Unbound.aeq ty' ty) $ 
+      unless (Unbound.aeq ty' ty) $
          Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
 \end{verbatim}
 
@@ -1251,7 +1251,7 @@ The main idea is that we will:
 
 \item
   Figure out how to revise the \emph{algorithmic} version of our type
-  system so that it supports the above rule, deferring to an algorithmic 
+  system so that it supports the above rule, deferring to an algorithmic
   version of equality.
 \end{itemize}
 
@@ -1283,9 +1283,9 @@ $\beta$-equivalence rules and congruence rules for those constructs.)
 
 How do we know our definition is good? We want to make sure that whatever
 rules that we add to the system, we define a relation that is
-\emph{consistent}. We want to equate as many terms/types as possible, but 
-we don't want to be be able to derive an equality between $[[Type]]$ and some 
-function type (e.g. $[[(x:Type) -> Type]]$), or an equality between $[[True]]$ and $[[False]]$. To be absolutely confident about our definition, we want a proof 
+\emph{consistent}. We want to equate as many terms/types as possible, but
+we don't want to be be able to derive an equality between $[[Type]]$ and some
+function type (e.g. $[[(x:Type) -> Type]]$), or an equality between $[[True]]$ and $[[False]]$. To be absolutely confident about our definition, we want a proof
 that such equalties are not derivable in our system.
 
 \subsection{Using definitional equality in the algorithm}
@@ -1357,7 +1357,7 @@ form).  For open terms, the rules could also produce terms that are a
 sequence of applications headed by a variable.  In this case, we call the term
 a \emph{neutral} term, and use the metavariable $[[ne]]$ to refer to it.
 
-\[ 
+\[
 \begin{array}{llcl}
 \textit{value}     & [[v]] & ::= & [[\x.a]]\ [[Type]]\ |\ [[(x:A) -> B]]\ \\
 \textit{neutral terms} & [[ne]] & ::= & [[x]]\ |\ [[ne a]] \\
@@ -1408,9 +1408,9 @@ whnf :: Term -> TcMonad Term
 In \texttt{version2} of the \href{version2/src/TypeCheck.hs}{implementation},
 these functions are called in a few places:
 \begin{itemize}
-\item \texttt{equate} is called at the end of \texttt{checkType} to make sure 
+\item \texttt{equate} is called at the end of \texttt{checkType} to make sure
 that the annotated type matches the inferred type.
-\item \texttt{whnf} is called in the \texttt{App} case to ensure that 
+\item \texttt{whnf} is called in the \texttt{App} case to ensure that
   the function has some sort of function type.
 of \texttt{inferType}
 \item \texttt{whnf} is called at the beginning of \texttt{checkType}
@@ -1524,14 +1524,14 @@ Consider our elimination rule for if from your homework assignment:
 
 \[ \drule[width=4in]{t-if-simple} \]
 
-One solution to the homework assignment is to add the following two 
-rules to the algorithmic system, one in inference mode and one in 
+One solution to the homework assignment is to add the following two
+rules to the algorithmic system, one in inference mode and one in
 checking mode.
 
 \[ \drule[width=4in]{c-if-simple}\]
 \[\drule[width=4in]{i-if-simple} \]
 
-In both of these rules, we should check that the condition has type bool (when using the checking judgement here, the algorithm will infer the type of the condition and then compare the inferred type against bool using definitional equality.) However, there is no unique best way to handle the branches of the if expression. Some examples work better using the first rule and some examples require the second rule. 
+In both of these rules, we should check that the condition has type bool (when using the checking judgement here, the algorithm will infer the type of the condition and then compare the inferred type against bool using definitional equality.) However, there is no unique best way to handle the branches of the if expression. Some examples work better using the first rule and some examples require the second rule.
 For example, we can only type check the example below using the first (checking) rule:
 \[ [[ |- \y. if y then (\x.x) else (\x. not x) <= Bool -> Bool -> Bool]] \]
 and we can only type check this next example using the second (inference) rule:
@@ -1630,7 +1630,7 @@ input file.)
 
 \subsubsection{Definitions and let expressions}
 
-Now let's consider let expressions, of the form $[[let x = a in b]]$. The simplest rule 
+Now let's consider let expressions, of the form $[[let x = a in b]]$. The simplest rule
 that we can use for this term is the following:
 
 \[ \drule[width=4in]{t-let-simple} \]
@@ -1643,9 +1643,9 @@ $[[ (\x. b) a ]]$. On the other hand, the bidirectional system won't type check
 this definition without an annotation, so we should add this expression form
 directly.
 
-However, we can also develop a stronger rule, which statically tracks that, because this 
-is a let-expression, we know that $[[x]]$ is equal to its definition. This view leads to the 
-following rule: 
+However, we can also develop a stronger rule, which statically tracks that, because this
+is a let-expression, we know that $[[x]]$ is equal to its definition. This view leads to the
+following rule:
 
 \[ \drule[width=4in]{t-let-def} \]
 
@@ -1673,10 +1673,10 @@ the expression.
 However, in inference mode, we have to be careful that the variable $[[x]]$
 does not escape its scope. One option would be just to reject the program if
 this would happen.  However, a more flexible approach is to substitute this
-variable away with its definition.\footnote{This rule for let can be used to 
-derive the more general form of refinement rules for booleans and other datatypes. In the 
+variable away with its definition.\footnote{This rule for let can be used to
+derive the more general form of refinement rules for booleans and other datatypes. In the
 general case, we can annotate an elimination form with a \emph{motive}:
-\[ \drule[width=4in]{i-if-motive} \] 
+\[ \drule[width=4in]{i-if-motive} \]
 This annotation lets us use refinement, even when the condition is not a variable, and even in inference mode. However, we can also derive this rule via let:
 \[ [[ if a then b1 else b2 [x.A] ]] = [[ let x = a in (if x then b1 else b2 : A) ]] \]
 }
@@ -1685,9 +1685,9 @@ This annotation lets us use refinement, even when the condition is not a variabl
 
 \paragraph{Definitions and refinement}
 
-With the addition of definitions, we can revise our refining rules for booleans and 
-$\Sigma$-types. Instead of substituting in the result type, we can replace those rules 
-with suspended definitions in the context. 
+With the addition of definitions, we can revise our refining rules for booleans and
+$\Sigma$-types. Instead of substituting in the result type, we can replace those rules
+with suspended definitions in the context.
 
 \[ \drule[width=4in]{c-if-def} \]
 
@@ -1762,10 +1762,10 @@ with an equivalent type.
 
 How can we implement this rule? For simplicity in these lecture notes, we will
 play the same trick that we did with booleans, requiring that one of the sides
-of the equality be a variable.\footnote{The \pif implementation implements a more 
-expressive rule that uses \emph{unification} to determine the substitution to apply 
+of the equality be a variable.\footnote{The \pif implementation implements a more
+expressive rule that uses \emph{unification} to determine the substitution to apply
 to $A$. Unification means that if we have an equality type such as
-$[[(x, True) = ( (), y)]]$ 
+$[[(x, True) = ( (), y)]]$
 then we can produce the substitution of $[[()]]$ for $[[x]]$ and $[[True]]$ for $[[y]]$.}
 
 \[ \drule[width=4in]{c-subst-left-simple} \]
@@ -2734,8 +2734,8 @@ equality checking\cite{icc-star}. This approach lead to Erasure Pure Type
 Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
 Dependent Haskell~\cite{weirich:systemd}.
 
-\section*{Acknowledgments} 
-Thanks to ``Team Weirich'' from OPLSS 2022 (Kartik Singhal, Jonathan Chan, Shengyi Jiang and Thomas Binetruy), the Penn PLClub, and the attendees of OPLSS 2022, OPLSS 2014 and OPLSS 2013, for feedback and suggestions about these lecture notes. Some parts of the implementation  This work was supported by the National Science Foundation under grants 
+\section*{Acknowledgments}
+Thanks to ``Team Weirich'' from OPLSS 2022 (Kartik Singhal, Jonathan Chan, Shengyi Jiang and Thomas Binetruy), the Penn PLClub, and the attendees of OPLSS 2022, OPLSS 2014 and OPLSS 2013, for feedback and suggestions about these lecture notes. Some parts of the implementation  This work was supported by the National Science Foundation under grants
 NSF 2006535, NSF 1703835 and NSF 0910786.
 
 \phantomsection
