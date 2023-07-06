@@ -380,10 +380,10 @@ G |- (x:A) -> B : Type
 G |- Type : Type
 
 
-G |- a : (x:A) -> B
-G |- b : A
+G |- f : (x:A) -> B
+G |- a : A
 --------------------------- ::  app
-G |- a b : B [ b / x ]
+G |- f a : B [ a / x ]
 
 
 G |- a : A
