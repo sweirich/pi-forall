@@ -36,6 +36,8 @@
 \newtheorem{definition}{Definition}[section]
 \newtheorem{lemma}{Lemma}[section]
 
+% force footnotes to be on a single page
+\interfootnotelinepenalty=10000
 
 \title{Implementing Dependent Types in \pif}
 \author{Stephanie Weirich}
