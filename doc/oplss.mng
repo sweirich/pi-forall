@@ -699,14 +699,27 @@ the type to infer.
 
 On the other hand, in \rref{c-lambda} we should check $\lambda$-expressions
 against a known type. If that type is provided, we can propagate it to the
-body of the lambda expression. (For subtle reasons, we can skip checking that
-$A$ is a $[[Type]]$.)
+body of the lambda expression. (If we assume that the type provided to 
+the checking judgment has already been checked to be a good type, then 
+we can skip checking that $A$ is a $[[Type]]$.)
 
 The rule for applications, \rref{i-app-simple}, is in inference mode. Here, we
 first infer the type of the function, but once we have that type, we may use
 it to check the type of the argument. This mode change means that
 $\lambda-$expressions that are arguments to other functions (like
 \texttt{map}) do not need any annotation.
+
+For example, if map has type 
+\begin{haskell}
+map : (x : Type) -> (y: Type) -> (x -> y) -> List x -> List y
+\end{haskell}
+then in an application, we can synthesize the type of the expression
+\begin{haskell}
+map Nat Nat (\x.x)
+\end{haskell}
+as \cd{List Nat -> List Nat}.
+After the two type applications, we will end up checking the function 
+argument against the type \cd{Nat -> Nat}.
 
 For types, it is apparent their type is $[[Type]]$, so \rref{i-pi,i-type} just
 continue to infer that.
