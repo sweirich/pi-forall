@@ -1043,8 +1043,9 @@ lookupTy :: TName -> TcMonad Sig
 -- | Extend the context with a new binding
 extendCtx :: Decl -> TcMonad Term -> TcMonad Term
 
--- | Throw an error at the corrent location, assembling the error message
--- from a list of displayable objects. Terminates type checking
+-- | Throw an error at the current location, assembling the error
+-- message from a list of displayable objects.
+-- Terminates type checking.
 err  :: (Disp a) => [a] -> TcMonad b
 
 -- | Print a warning, but continue the current computation.
