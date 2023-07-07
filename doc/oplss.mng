@@ -1459,9 +1459,9 @@ these functions are called in a few places:
 \begin{itemize}
 \item \texttt{equate} is called at the end of \texttt{checkType} to make sure 
 that the annotated type matches the inferred type.
-\item \texttt{whnf} is called in the \texttt{App} case to ensure that 
+\item \texttt{whnf} is called in the \texttt{App} case of \texttt{inferType} to ensure that 
   the function has some sort of function type.
-of \texttt{inferType}
+
 \item \texttt{whnf} is called at the beginning of \texttt{checkType}
   to make sure that we are using the head form of the type in checking
   mode.
