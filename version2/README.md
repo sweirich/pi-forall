@@ -25,8 +25,9 @@ Installation
   
   The gchup tool is an installer for general purpose Haskell tools, including GHC, Cabal, Stack and the Haskell language server (HLS). You'll want to install the recommended versions of all of these tools. 
 
-  2. [VSCode](https://code.visualstudio.com/) and [Haskell language extension](https://marketplace.visualstudio.com/items?itemName=haskell.haskell)   
+  2. [VSCode](https://code.visualstudio.com/) and [Haskell language extension](https://marketplace.visualstudio.com/items?itemName=haskell.haskell) for editing the Haskell implementation of `pi-forall`.  
 
+  3. [pi-forall VS code extension](https://marketplace.visualstudio.com/items?itemName=dunhamsteve.pi4all) for syntax highlighting of `pi-forall` code in VS code.
 
 Contents
 --------

@@ -36,6 +36,8 @@
 \newtheorem{definition}{Definition}[section]
 \newtheorem{lemma}{Lemma}[section]
 
+% force footnotes to be on a single page
+\interfootnotelinepenalty=10000
 
 \title{Implementing Dependent Types in \pif}
 \author{Stephanie Weirich}
@@ -247,13 +249,18 @@ data Vec (A : Type) (n : Nat) : Type where
 The type \cd{Vec A n} has two parameters: \cd{A} the type of elements in the
 list and \cd{n}, a natural number indicating the length of the list. This
 datatype also has two constructors: \cd{Nil} and \cd{Cons}, corresponding to
-empty and non-empty lists. The \cd{Nil} constructor constrains the length
-parameter to be \cd{Zero} when it is used and the \cd{Cons} constructor
-constrains it to be one more than the length of the tail of the list.  In the
-definition of \cd{Cons}, the \cd{m} parameter is the length of the tail of the
-list. This parameter is written in square brackets to indicate that it should
-be \emph{irrelevant}: this value is for type checking only and functions
-should not use it.
+empty and non-empty lists. The \cd{Cons} constructor has three arguments,
+a number \cd{m}, the element at the head of the list (of type \cd{A}), and the tail
+of the list (of type \cd{Vec A m}).
+Both constructors also include \emph{constraints} that must be satisfied when
+they are used. The \cd{Nil} constructor constrains the length
+parameter to be \cd{Zero} and the \cd{Cons} constructor
+constrains it to be one more than the length of the tail of the list.
+
+In the definition of \cd{Cons}, the \cd{m} parameter is the length of the tail
+of the list. This parameter is written in square brackets to indicate that it
+should be \emph{irrelevant}: this value is for type checking only and
+functions should not use it.
 
 For example, we can use \pif to check that the list below contains exactly
 three boolean values.
@@ -276,7 +283,17 @@ As \pif doesn't infer arguments, the map function needs to take \cd{A}, \cd{B}
 and \cd{n} explicitly at the beginning of the function definition, and they
 need to be provided as arguments to the recursive call.
 
-Whenever we call map, we also need to supply the appropriate parameters for
+The type checker helps us avoid errors in the definition of \cd{map}. Like most
+functional languages, if we had forgotten to call \cd{f} and instead included
+\cd{x} in the \cd{Cons}, then \cd{map} would produce a vector containing elements of
+type \cd{A} instead of \cd{B}. The type checker would flag this as an error. Similarly, if
+we had replaces the \cd{Cons} branch with \cd{Nil} or had forgotten to \cd{Cons} \cd{f x} to the result of the recursive call in this branch, the resulting vector would be the wrong
+length. The type checker would catch this error too!
+
+The \pif language does not include the sophisticated type inference algorithms found in many
+other languages, that can figure out some of the arguments provided
+to a function automatically. As a result,
+when we call map, we also need to supply the appropriate parameters for
 the function and the vector that we are giving to \cd{map}. For example, to map
 the boolean \cd{not} function, of type \cd{Bool -> Bool}, we need to provide
 these two \cd{Bool}s along with the length of the vector.
@@ -321,7 +338,10 @@ nth = \[a][n] v f. case f of
 \end{piforall}
 Note how, in the case analysis above, neither \cd{case} requires a branch for
 the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
-case is exhaustive and that the \cd{Nil} case would be inaccessible.
+case is exhaustive and that the \cd{Nil} case would be inaccessible. In these
+cases, the type checker notes that the patterns for the missing branches don't
+make sense: constructing the \cd{Nil} pattern would require satisfying the
+constraint that \cd{Zero = Succ m}, which is impossible.
 
 You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality. (When arguments are marked in this way, the type checker must ensure that this erasure is sound and the argument is never actually used in a meaningful way.)
 Similarly, the constraints that are part of datatype definitions, such as \cd{n = Succ m} above, are enclosed in
@@ -502,6 +522,21 @@ rule to ensure that both the body of the function $[[x]]$ and its type $[[y]]$ a
 well-typed. Finally, this rule also uses \rref{t-type} to show that $[[Type]]$ itself
 is a valid type, see below.
 
+Note that the rule \rref{t-lambda} makes subtle use of the fact that binding variables can
+be freely renamed to alpha-equivalent versions. In the conclusion of the rule, the $[[x]]$ in
+the body of the lambda abstraction $[[a]]$, is a different binder from the $[[x]]$ in the
+body of the function type $[[B]]$. Both of these terms can be modified so that these two
+$[[x]]$ do not have to match. But, above the line, there is only a single $[[x]]$ that appears
+free in both $[[a]]$ and $[[B]]$! If we wanted to be explicit about what is going on, we could
+also write the rule with an explicit substitution:
+
+\[ \drule{t-altlambda}  \]
+
+Most type theorists do not bother with this version and prefer the one that
+reuses the same binder. We will do the same here, and in other similar
+rules. However, we will also have to be careful about how we implement this
+rule in the implementation of our type checker!
+
 \paragraph{More typing rules:  Types}
 
 Observe in the typing derivation above that the rule for typing
@@ -520,7 +555,8 @@ and range of the function are also types.
 Likewise, for polymorphism, we need the somewhat perplexing \rref{t-type}, that
 declares, by fiat, that $[[Type]]$ is a valid $[[Type]]$.\footnote{Note that
   this rule makes our language inconsistent as a logic, as it can encode
-  Girard's paradox.}
+  a logical paradox. The \cd{full} implementation includes a demonstration of
+this paradox in the file \cd{Hurkens.pi}.}
 
 \paragraph{More typing rules: Applications}
 
@@ -697,14 +733,27 @@ the type to infer.
 
 On the other hand, in \rref{c-lambda} we should check $\lambda$-expressions
 against a known type. If that type is provided, we can propagate it to the
-body of the lambda expression. (For subtle reasons, we can skip checking that
-$A$ is a $[[Type]]$.)
+body of the lambda expression. (If we assume that the type provided to
+the checking judgment has already been checked to be a good type, then
+we can skip checking that $A$ is a $[[Type]]$.)
 
 The rule for applications, \rref{i-app-simple}, is in inference mode. Here, we
 first infer the type of the function, but once we have that type, we may use
 it to check the type of the argument. This mode change means that
 $\lambda-$expressions that are arguments to other functions (like
 \texttt{map}) do not need any annotation.
+
+For example, if map has type
+\begin{haskell}
+map : (x : Type) -> (y: Type) -> (x -> y) -> List x -> List y
+\end{haskell}
+then in an application, we can synthesize the type of the expression
+\begin{haskell}
+map Nat Nat (\x.x)
+\end{haskell}
+as \cd{List Nat -> List Nat}.
+After the two type applications, we will end up checking the function
+argument against the type \cd{Nat -> Nat}.
 
 For types, it is apparent their type is $[[Type]]$, so \rref{i-pi,i-type} just
 continue to infer that.
@@ -1411,9 +1460,9 @@ these functions are called in a few places:
 \begin{itemize}
 \item \texttt{equate} is called at the end of \texttt{checkType} to make sure
 that the annotated type matches the inferred type.
-\item \texttt{whnf} is called in the \texttt{App} case to ensure that
+\item \texttt{whnf} is called in the \texttt{App} case of \texttt{inferType} to ensure that
   the function has some sort of function type.
-of \texttt{inferType}
+
 \item \texttt{whnf} is called at the beginning of \texttt{checkType}
   to make sure that we are using the head form of the type in checking
   mode.

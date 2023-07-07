@@ -129,8 +129,8 @@ mkDecl n ty = Decl (TypeDecl n  ty)
 data Entry
   = -- | Declaration for the type of a term  'x : A'
     Decl TypeDecl
-  | -- | The definition of a particular name, must  'x = a'
-    -- already have a type declaration in scope
+  | -- | The definition of a particular name 'x = a'
+    -- must already have a type declaration in scope
     Def TName Term
  
 
@@ -249,7 +249,7 @@ idy :: Term
 idy = Lam (Unbound.bind yName (Var yName))
 
 -- >>> aeq idx idy
--- True
+
 
 
 ---------------

@@ -843,6 +843,15 @@
 }}
 
 
+\newcommand{\ottdruletXXaltlambda}[1]{\ottdrule[#1]{%
+\ottpremise{ \Gamma ,  \ottmv{x} \! :\! \ottnt{A}   \vdash  \ottnt{a}  \ottsym{:}  \ottnt{B}  \ottsym{[}  \ottmv{y}  \ottsym{/}  \ottmv{x}  \ottsym{]}}%
+\ottpremise{\Gamma  \vdash  \ottnt{A}  \ottsym{:}  \ottkw{Type}}%
+}{
+\Gamma  \vdash   \lambda  \ottmv{x} .  \ottnt{a}   \ottsym{:}   ( \ottmv{y} \!:\! \ottnt{A} )  \to   \ottnt{B} }{%
+{\ottdrulename{t\_altlambda}}{}%
+}}
+
+
 \newcommand{\ottdruletXXpi}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{A}  \ottsym{:}  \ottkw{Type}}%
 \ottpremise{ \Gamma ,  \ottmv{x} \! :\! \ottnt{A}   \vdash  \ottnt{B}  \ottsym{:}  \ottkw{Type}}%
@@ -1116,6 +1125,7 @@
 \ottusedrule{\ottdruletXXvar{}}
 \ottusedrule{\ottdruletXXslambda{}}
 \ottusedrule{\ottdruletXXlambda{}}
+\ottusedrule{\ottdruletXXaltlambda{}}
 \ottusedrule{\ottdruletXXpi{}}
 \ottusedrule{\ottdruletXXtype{}}
 \ottusedrule{\ottdruletXXapp{}}
