@@ -212,8 +212,10 @@ whnf G |- (x:A) -> B ~> (x:A) -> B
 %% for open terms (i.e terms with free variables), the result is not a value
 %% but a path (or neutral term)
 
+x = a elem G
+whnf G |- a ~> ne
 ---------- :: var
-whnf G |- x ~> x
+whnf G |- x ~> ne
 
 
 whnf G |- a ~> ne

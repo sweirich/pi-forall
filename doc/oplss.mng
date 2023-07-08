@@ -1403,8 +1403,8 @@ The following judgment (shown in Figure~\ref{fig:whnf})
 %
 \[ \fbox{$[[whnf G |- a ~> nf]]$} \]
 %
-describes when a term $[[a]]$ reduces to some result $[[nf]]$ in \emph{weak
-  head normal form (whnf)}.  For closed terms, these rules correspond to a
+describes when a term $[[a]]$ reduces to some result $[[nf]]$ under context $[[G]]$ 
+in \emph{weak head normal form (whnf)}.  For closed terms, these rules correspond to a
 big-step evaluation relation and produce a value (i.e. abstraction or type
 form).  For open terms, the rules could also produce terms that are a
 sequence of applications headed by a variable.  In this case, we call the term
@@ -1412,7 +1412,7 @@ a \emph{neutral} term, and use the metavariable $[[ne]]$ to refer to it.
 
 \[ 
 \begin{array}{llcl}
-\textit{value}     & [[v]] & ::= & [[\x.a]]\ [[Type]]\ |\ [[(x:A) -> B]]\ \\
+\textit{value}     & [[v]] & ::= & [[\x.a]]\ |\ [[Type]]\ |\ [[(x:A) -> B]]\ \\
 \textit{neutral terms} & [[ne]] & ::= & [[x]]\ |\ [[ne a]] \\
 \textit{weak-head normal form} & [[nf]] & ::= & [[v]]\ |\ [[ne]] \\
 \end{array}

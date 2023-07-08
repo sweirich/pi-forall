@@ -277,8 +277,10 @@
 
 
 \newcommand{\ottdrulewhnfXXvar}[1]{\ottdrule[#1]{%
+\ottpremise{\ottmv{x}  \ottsym{=}  \ottnt{a} \, \in \, \Gamma}%
+\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottmv{x}  \leadsto  \ottmv{x} }{%
+ \ottkw{whnf} \  \Gamma   \vdash   \ottmv{x}  \leadsto  \ottnt{ne} }{%
 {\ottdrulename{whnf\_var}}{}%
 }}
 
