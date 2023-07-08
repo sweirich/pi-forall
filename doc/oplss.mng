@@ -1309,7 +1309,7 @@ simple one: identify terms up to $\alpha$-equivalence. But we can do
 better.
 
 \begin{figure}
-\drules[e]{$[[G |- A = B]]$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,app,lift,annot}
+\drules[e]{$[[G |- A = B]]$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,var,app,lift,annot}
 \caption{Definitional equality for core \pif}
 \label{fig:defeq}
 \end{figure}
@@ -1323,7 +1323,11 @@ relation.  \Rref{e-beta} ensures that our relation \emph{contains
 \emph{congruence relation} (i.e.~if subterms are equal, then larger terms are
 equal), as specified by rules \rref{e-pi,e-lam,e-app}.  We also want to be
 sure that this relation has ``functionality'' (i.e.~we can lift
-equalities). We declare so with \rref{e-lift}. Finally, we want to ignore type
+equalities). We declare so with \rref{e-lift}. 
+\Rref{e-var} states that a variable is equivalent to its definition in the context.
+Here we add variable definitions to the context, which will later be used 
+when we extend the language to support dependent pattern matching. 
+Finally, we want to ignore type
 annotations, so \rref{e-annot} allows the equality judgment to skip over them
 on the left (and with the help of \rref{e-sym}, on the right as well).
 
@@ -1388,7 +1392,7 @@ match against a literal function type.
 \end{itemize}
 
 \begin{figure}
-\drules[whnf]{$[[whnf a ~> v]]$}{Weak head normal form reduction}{lam-beta,annot,type,lam,pi,var,app}
+\drules[whnf]{$[[whnf G |- a ~> v]]$}{Weak head normal form reduction}{lam-beta,annot,type,lam,pi,var,app}
 \caption{Relation computing the weak head normal form of a term}
 \label{fig:whnf}
 \end{figure}
@@ -1397,7 +1401,7 @@ match against a literal function type.
 
 The following judgment (shown in Figure~\ref{fig:whnf})
 %
-\[ \fbox{$[[whnf a ~> nf]]$} \]
+\[ \fbox{$[[whnf G |- a ~> nf]]$} \]
 %
 describes when a term $[[a]]$ reduces to some result $[[nf]]$ in \emph{weak
   head normal form (whnf)}.  For closed terms, these rules correspond to a

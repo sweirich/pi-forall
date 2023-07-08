@@ -185,27 +185,27 @@ Jwhnf :: '' ::=
 % in our implementation.
 
 defn
-whnf a ~> nf ::    :: whnf :: 'whnf_' 
-{{ tex [[whnf]]\ [[a]] \leadsto [[nf]] }}
+whnf G |- a ~> nf ::    :: whnf :: 'whnf_' 
+{{ tex [[whnf]]\ [[G]] [[|-]] [[a]] \leadsto [[nf]] }}
 {{ com weak head normalize a to nf (if possible) }}
 by
 
 % reduction rules
 
-whnf a ~> (\x.a')
-whnf (a'[b/x]) ~> nf
+whnf G |- a ~> (\x.a')
+whnf G |- (a'[b/x]) ~> nf
 ---------------------- :: lam_beta
-whnf a b ~> nf
+whnf G |- a b ~> nf
 
 
 ------------------ :: type
-whnf Type ~> Type
+whnf G |- Type ~> Type
 
 ------------------ :: lam
-whnf \x.a ~> \x.a
+whnf G |- \x.a ~> \x.a
 
 ----------------------------- :: pi
-whnf (x:A) -> B ~> (x:A) -> B
+whnf G |- (x:A) -> B ~> (x:A) -> B
 
 %% congruence rule
 %%
@@ -213,18 +213,18 @@ whnf (x:A) -> B ~> (x:A) -> B
 %% but a path (or neutral term)
 
 ---------- :: var
-whnf x ~> x
+whnf G |- x ~> x
 
 
-whnf a ~> ne
+whnf G |- a ~> ne
 ---------------------- :: app
-whnf a b ~> ne b
+whnf G |- a b ~> ne b
 
 % remove type annotations when normalizing
 %
-whnf a ~> nf
+whnf G |- a ~> nf
 ------------------ :: annot
-whnf (a : A) ~> nf
+whnf G |- (a : A) ~> nf
 
 
 defns
@@ -243,8 +243,8 @@ G |- a <=> a
 
 %% if whnfs are equal, then the terms are equal
 
-whnf a ~> nf1
-whnf b ~> nf2
+whnf G |- a ~> nf1
+whnf G |- b ~> nf2
 G |- nf1 <=> nf2
 ------------- :: whnf
 G |- a <=> b
@@ -415,7 +415,7 @@ G |- b <= A
 G |- a b => B [ b / x ]	  
 
 G |- a => A 
-whnf A ~> (x:A1) -> B 
+whnf G |- A ~> (x:A1) -> B 
 G |- b <= A1
 ---------------------------  :: app
 G |- a b => B [ b / x ]	  
@@ -456,7 +456,7 @@ G |- a <= B
 
 notwhnf A
 G |- a <= nf
-whnf A ~> nf
+whnf G |-  A ~> nf
 --------------- :: whnf
 G |- a <= A
 
