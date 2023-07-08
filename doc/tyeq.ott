@@ -26,26 +26,26 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> nf ::    :: whnf :: 'whnf_' 
+whnf G |-  a ~> nf ::    :: whnf :: 'whnf_' 
 {{ tex whnf [[a]] \leadsto [[nf]] }}
 by
 
 ----------------------- :: tyeq
-whnf (a = b) ~> (a = b)
+whnf G |-  (a = b) ~> (a = b)
 
 
 ---------------- :: refl
-whnf refl ~> refl
+whnf G |-  refl ~> refl
 
 
-whnf b ~> refl
-whnf a ~> nf
+whnf G |-  b ~> refl
+whnf G |-  a ~> nf
 ------------------------ :: subst
-whnf (subst a by b) ~> nf
+whnf G |-  (subst a by b) ~> nf
 
-whnf b ~> ne
+whnf G |-  b ~> ne
 ---------------------------------------- :: subst_cong
-whnf (subst a by ne) ~> (subst a by ne)
+whnf G |-  (subst a by ne) ~> (subst a by ne)
 
 defns
 JOp :: '' ::=
@@ -139,7 +139,7 @@ G |- (a = b) => Type
 
 % a trivial rule that does little
 G |- b => B 
-whnf B ~> (a1 = a2)
+whnf G |-  B ~> (a1 = a2)
 G |- a => A 
 ----------------------------------- :: subst
 G |- subst a by b => A
@@ -155,34 +155,34 @@ G |- refl <= a = b
 
 
 G |- b => B 
-whnf B ~> (x = a2)
+whnf G |-  B ~> (x = a2)
 G |- a <= A [a2/x]
 ----------------------------------- :: subst_left_simple
 G |- subst a by b <= A
 
 G |- b => B 
-whnf B ~> (a1 = x)
+whnf G |-  B ~> (a1 = x)
 G |- a <= A [a1/x]
 ----------------------------------- :: subst_right_simple
 G |- subst a by b <= A
 
 
 G |- y => B 
-whnf B ~> (x = a2)
+whnf G |-  B ~> (x = a2)
 G |- a <= A [a2/x][refl/y]
 ----------------------------------- :: subst_left
 G |- subst a by y <= A
 
 G |- y => B 
-whnf B ~> (a1 = x)
+whnf G |-  B ~> (a1 = x)
 G |- a <= A [a1/x][refl/y]
 ----------------------------------- :: subst_right
 G |- subst a by y <= A
 
 
 G |- a : A
-whnf A ~> (a1 = a2)
-whnf a1 ~> True
-whnf a2 ~> False
+whnf G |-  A ~> (a1 = a2)
+whnf G |-  a1 ~> True
+whnf G |-  a2 ~> False
 ------------------------ :: contra 
 G |- contra a <= B

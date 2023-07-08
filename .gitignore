@@ -17,3 +17,5 @@ dist-newstyle/
 stack.yaml.lock
 *~
 *.bbl
+**/.vscode/**
+*.synctex.gz

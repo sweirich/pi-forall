@@ -204,9 +204,11 @@ instance Unbound.Alpha Term where
 
 -- '(Bool : Type)' is alpha-equivalent to 'Bool'
 -- >>> aeq (Ann TyBool TyType) TyBool
+-- True
 
 -- '(Bool, Bool:Type)' is alpha-equivalent to (Bool, Bool)
 -- >>> aeq (Prod TyBool (Ann TyBool TyType)) (Prod TyBool TyBool)
+-- True
 
 -- At the same time, the generic operation equates terms that differ only
 -- in the names of bound variables.
@@ -228,6 +230,7 @@ idy :: Term
 idy = Lam (Unbound.bind yName (Var yName))
 
 -- >>> aeq idx idy
+-- True
 
 ---------------
 
@@ -252,6 +255,12 @@ pi2 :: Term
 pi2 = TyPi TyBool (Unbound.bind yName (Var yName))
 
 -- >>> Unbound.aeq (Unbound.subst xName TyBool pi1) pi2
+-- True
+
+-- '(y : x) -> (y : Type) -> y'
+pi3 :: Term
+pi3 = TyPi (Var xName) (Unbound.bind yName 
+         (TyPi TyType (Unbound.bind yName (Var yName))))
 
 -----------------
 
