@@ -1,8 +1,8 @@
-% This file includes the specification of the core grammar, operational semantics 
-% and typing rules for the pi-forall language. 
+% This file includes the specification of the core grammar, operational semantics
+% and typing rules for the pi-forall language.
 %
-% It also includes typesetting directives that control how the language is presented 
-% in the lecture notes. 
+% It also includes typesetting directives that control how the language is presented
+% in the lecture notes.
 
 metavar tname, x, y, z, f, g, n ::=
   {{ com variables }}
@@ -16,82 +16,82 @@ grammar
 
 tm, a , b , A , B :: '' ::= {{ com terms and types }}
 
-  | Type            ::   :: Type 
+  | Type            ::   :: Type
     {{ com sort }}
 
-  | x               ::   :: Var 
+  | x               ::   :: Var
     {{ com variable }}
 
-  | \ x . a         ::   :: Lam 
+  | \ x . a         ::   :: Lam
     {{ tex \lambda [[x]]. [[a]] }}
-    {{ com function definition }}    
+    {{ com function definition }}
 
-  | a b             ::   :: App 
+  | a b             ::   :: App
     {{ tex [[a]] \; [[b]] }}
     {{ com function application }}
 
-  | ( x : A ) -> B  ::   :: Pi   
+  | ( x : A ) -> B  ::   :: Pi
     {{ tex ([[x]]\!:\![[A]]) [[->]] [[B]] }}
     {{ com dependent function type }}
 
-  | a [ b / x ]     :: S :: SubstOp 
+  | a [ b / x ]     :: S :: SubstOp
     {{ com substitution }}
 
   | A -> B          :: M :: Arrow
     {{ com syntactic sugar for function types }}
 
-  | ( a : A )       ::   :: Ann 
+  | ( a : A )       ::   :: Ann
     {{ com type annotation }}
 
-  | ( a )           :: S :: Paren 
+  | ( a )           :: S :: Paren
     {{ com parenthesis }}
 
-  | TRUSTME         ::   :: TrustMe   
+  | TRUSTME         ::   :: TrustMe
     {{ com term that has any type }}
 
-  | PRINTME         ::   :: PrintMe   
+  | PRINTME         ::   :: PrintMe
     {{ com print the current context }}
 
 
-  | Unit            ::   :: TyUnit  
+  | Unit            ::   :: TyUnit
     {{ com unit type }}
 
-  | ()              ::   :: LitUnit  
+  | ()              ::   :: LitUnit
     {{ com unit term }}
 
 v :: 'v_' ::= {{ com values }}
 
-  | Type            ::   :: Type 
+  | Type            ::   :: Type
 
-  | \ x . a         ::   :: Lam 
+  | \ x . a         ::   :: Lam
 
-  | ( x : A ) -> B  ::   :: Pi   
+  | ( x : A ) -> B  ::   :: Pi
 
-  | Unit            ::   :: TyUnit  
+  | Unit            ::   :: TyUnit
 
-  | ()              ::   :: LitUnit  
+  | ()              ::   :: LitUnit
 
   | ( v )           :: S :: Paren
 
 neutral, ne :: 'n_' ::= {{ com neutral terms }}
 
-  | x               ::   :: Var 
+  | x               ::   :: Var
 
-  | ne a             ::   :: App 
+  | ne a             ::   :: App
 
   | ( ne )           :: S :: Paren
 
 nf :: 'nf_' ::= {{ com weak head normal forms }}
 
-  | Type            ::   :: Type 
+  | Type            ::   :: Type
 
-  | \ x . a         ::   :: Lam 
+  | \ x . a         ::   :: Lam
 
-  | ( x : A ) -> B  ::   :: Pi   
+  | ( x : A ) -> B  ::   :: Pi
 
-  | Unit            ::   :: TyUnit  
+  | Unit            ::   :: TyUnit
 
-  | ()              ::   :: LitUnit  
+  | ()              ::   :: LitUnit
 
   | x               ::   :: Var
 
@@ -99,7 +99,7 @@ nf :: 'nf_' ::= {{ com weak head normal forms }}
 
   | ( nf )           :: S :: Paren
 
-subrules 
+subrules
   ne <:: nf
   v <:: nf
   nf <:: a
@@ -110,7 +110,7 @@ substitutions
 freevars
   a x   :: fv_tm
 
-parsing 
+parsing
 Ann right Arrow
 Arrow right Arrow
 
@@ -120,7 +120,7 @@ grammar
 
 context, G {{ tex \Gamma }} :: 'ctx_' ::= {{ com contexts }}
 
-   |                 ::    :: Nil  
+   |                 ::    :: Nil
    {{ tex \emptyset }}
 
    | G , x : A       ::    :: Cons   {{ tex [[G]], [[x]]\! :\![[A]] }}
@@ -142,7 +142,7 @@ terminals :: 'terminals_' ::=
   | =>                ::   :: infer         {{ tex \Rightarrow }}
   | =>*               ::   :: minfer        {{ tex \Rightarrow^{\ast} }}
   | ->                ::   :: arrow         {{ tex \to }}
-  | /\                ::   :: ilam          {{ tex \mathrm{\Lambda} }}   
+  | /\                ::   :: ilam          {{ tex \mathrm{\Lambda} }}
   | []                ::   :: box           {{ tex \Box }}
   | |-                ::   :: entails       {{ tex \vdash }}
   | |=                ::   :: hs_entails    {{ tex \vDash }}
@@ -177,8 +177,8 @@ formula :: 'formula_' ::=
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-defns 
-Jwhnf :: '' ::= 
+defns
+Jwhnf :: '' ::=
 
 % For closed terms, these rules correspond to a big-step evaluation relation.
 % This relation is semi-decidable, so we can express it as a Haskell function
@@ -232,7 +232,7 @@ whnf G |- (a : A) ~> nf
 defns
 JEquate :: '' ::=
 
-defn 
+defn
 G |- a <=> b ::    :: equate :: 'eq_'
 by
 {{ com compare $a$ and $b$ for equality }}
@@ -258,7 +258,7 @@ G |- a1 <=> a2
 --------------------------------- :: abs
 G |- \x. a1 <=> \x. a2
 
-G |- A1 <=> A2 
+G |- A1 <=> A2
 G |- B1 <=> B2
 --------------------------------  :: pi
 G |- (x : A1) -> B1 <=> (x:A2) -> B2
@@ -267,7 +267,7 @@ G |- (x : A1) -> B1 <=> (x:A2) -> B2
 G |- ne1 <=> ne2
 G |- b1 <=> b2
 --------------------------------- :: app
-G |- ne1 b1 <=> ne2 b2 
+G |- ne1 b1 <=> ne2 b2
 
 defns
 JOp :: '' ::=
@@ -299,7 +299,7 @@ b ~>* a'
 a ~>* a'
 
 
-defns 
+defns
 JEq :: '' ::=
 
 defn
@@ -312,22 +312,22 @@ G |- (\x.a)b = a [b/x]
 
 ----------  :: refl
 G |- A = A
- 
+
 G |- A = B
 -----------  :: sym
 G |- B = A
- 
-G |- A1 = A2    
+
+G |- A1 = A2
 G |- A2 = A3
 ------------------------- :: trans
 G |- A1 = A3
 
-G, x : A |- b : B   
-G |- a1 = a2     
+G, x : A |- b : B
+G |- a1 = a2
 ---------------------------------- :: lift
 G |- b [a1 / x] = b [a2 / x]
 
-G |- A1 = A2       
+G |- A1 = A2
 G,x:A1 |- B1 = B2
 ------------------------------------ :: pi
 G |- (x:A1) -> B1 = (x:A2) -> B2
@@ -338,8 +338,8 @@ G,x:A1 |- b1 = b2
 G |- \x.b1 = \x.b2
 
 
-G |- a1 = a2    
-G |- b1 = b2 
+G |- a1 = a2
+G |- b1 = b2
 -------------------------- :: app
 G |- a1 b1 = a2 b2
 
@@ -349,16 +349,16 @@ G |- a1 = a2
 G |- (a1 : A) = a2
 
 defns
-JTyping :: '' ::= 
+JTyping :: '' ::=
 
-defn 
+defn
 
 G |- a : A   ::   :: typing :: 't_'
 {{ com Typing }}
 by
 
 x : A elem G
------------ :: var 
+----------- :: var
 G |- x : A
 
 
@@ -372,13 +372,13 @@ G |- A : Type
 ------------------------  ::  lambda
 G |- \x.a : (x:A) -> B
 
-G, x:A |- a : B [ y / x] 
+G, x:A |- a : B [ y / x]
 G |- A : Type
 ------------------------  ::  altlambda
 G |- \x.a : (y:A) -> B
 
 
-G |- A : Type     
+G |- A : Type
 G, x:A |- B : Type
 -------------------------------------- :: pi
 G |- (x:A) -> B : Type
@@ -387,42 +387,42 @@ G |- (x:A) -> B : Type
 G |- Type : Type
 
 
-G |- a : (x:A) -> B 
+G |- a : (x:A) -> B
 G |- b : A
 --------------------------- ::  app
 G |- a b : B [ b / x ]
 
 
-G |- a : A    
+G |- a : A
 G |- A = B
 ------------ :: conv
 G |- a : B
 
 
 defns
-JBidirectional :: '' ::= 
+JBidirectional :: '' ::=
 
-defn 
+defn
 G |- a => A ::    :: inferType :: 'i_'
 {{ com type synthesis (algorithmic) }}
 by
 
 x : A elem G
------------ :: var 
+----------- :: var
 G |- x => A
 
-G |- a => (x:A) -> B 
+G |- a => (x:A) -> B
 G |- b <= A
 ---------------------------  :: app_simple
-G |- a b => B [ b / x ]	  
+G |- a b => B [ b / x ]
 
 G |- a => A 
 whnf G |- A ~> (x:A1) -> B 
 G |- b <= A1
 ---------------------------  :: app
-G |- a b => B [ b / x ]	  
+G |- a b => B [ b / x ]
 
-G |- A <= Type     
+G |- A <= Type
 G, x:A |- B <= Type
 -------------------------------------- :: pi
 G |- (x:A) -> B => Type
@@ -435,23 +435,23 @@ G |- a <= A
 ------------------ :: annot
 G |- (a : A) => A
 
-   
-defn 
+
+defn
 G |- a <= B ::    :: checkType :: 'c_'
 {{ com type checking (algorithmic) }}
 by
 
-G, x:A |- a <= B       
+G, x:A |- a <= B
 --------------------------- ::  lambda
 G |- \x.a <= (x:A) -> B
 
 notlam a
 G |- a => A
-------------- :: infer_simple 
-G |- a <= A 
+------------- :: infer_simple
+G |- a <= A
 
 notlam a
-G |- a => A    
+G |- a => A
 G |- A <=> B
 -------------------------- :: infer
 G |- a <= B
@@ -468,10 +468,10 @@ defn
 by
 
 -------- :: nil
-|- 
+|-
 
 
 G |- A : Type
 |- G
 -------------- :: cons
-|- G , x : A 
+|- G , x : A
