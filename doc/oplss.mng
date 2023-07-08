@@ -607,8 +607,9 @@ cond = \b. b
 \paragraph{Example: void type}
 
 The type \cd{(x:Type) -> x}, called ``void'' is usually an \emph{empty type}
-in polymorphic languages.  There is no way to return a value of any type without
-some sort of type case (not part of \pif).
+in polymorphic languages.  Observe that this function takes a type \cd{x:Type},
+but never takes any expressions of type \cd{x}. Thus, there is no way to return
+a value of any type without some sort of type case (not part of \pif).
 
 However, because \pif does not enforce termination, we can define a value that
 has this type.
@@ -1233,7 +1234,7 @@ pi/Lec1.pi:56:22:
 
 The problem is that even though we want \texttt{pair\ p\ q} to be equal
 to the type
-\texttt{(c:\ Type)\ -\textgreater{}\ (p\ -\textgreater{}\ q\ -\textgreater{}\ c)\ -\textgreater{}\ c}
+\texttt{(c:\ Type)\ -\textgreater{}\ (p\ -\textgreater{}\ q\ -\textgreater{}\ c)\ -\textgreater{}\ c},
 the type checker does not treat these types as equal.
 
 Note that the type checker already records in the environment that
@@ -1248,7 +1249,7 @@ equality}
 As another example, in the full language, we might have a type of length
 indexed vectors, where vectors containing values of type \texttt{A} with
 length \texttt{n} can be given the type \cd{Vec n A}. In this language, we may
-have a safe head operation, that allows us to access the first element of the
+have a safe \texttt{head} operation that allows us to access the first element of the
 vector, as long as it is nonzero.
 
 \begin{piforall}
@@ -1270,7 +1271,9 @@ So the application \texttt{head\ Bool\ 0\ v1} will type check. (Note
 that \pif cannot infer the types \texttt{A} and \texttt{n}.)
 
 However, if we construct the vector, its length may not be a literal
-natural number:
+natural number. Take a look at the \texttt{append} function, that
+takes a vec of length \texttt{m}, vector of length \text{n},
+and returns a vector of length \texttt{plus m n}:
 
 \begin{piforall}
 append : (n : Nat) -> (m : Nat) -> Vec m A -> Vec n A -> Vec (plus m n) A
@@ -1498,7 +1501,7 @@ One way to do this is with the following algorithm:
 
 However, we can do better.  Sometimes we can find out that terms are
 equivalent without fully reducing them. For example, if we observe that the
-two terms are already $\alpha$-equavalent, then we already know that they are
+two terms are already $\alpha$-equivalent, then we already know that they are
 equal---no need to reduce them first. Because reduction can be expensive (or
 even nonterminating) we would like to only reduce as much as we need to find
 out whether the terms can be identified.
