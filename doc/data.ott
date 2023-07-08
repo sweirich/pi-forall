@@ -82,23 +82,23 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> nf ::    :: whnf :: 'whnf_' 
+whnf G |-  a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
 -------------------- :: tcon
-whnf T args ~> T args
+whnf G |-  T args ~> T args
 
 -------------------- :: dcon
-whnf K args ~> K args
+whnf G |-  K args ~> K args
 
 match (K args) (pati -> ai) ~> b
-whnf b ~> nf
+whnf G |-  b ~> nf
 ---------------------------------------------------------------------- :: case
-whnf case (K args) of { </ pati -> ai // i /> } ~> nf
+whnf G |-  case (K args) of { </ pati -> ai // i /> } ~> nf
 
 a ~> ne
 ------------------------------------------------------------------------------- :: case_cong
-whnf case a of { </ pati -> ai // i /> } ~> case ne of { </ pati -> ai // i /> }
+whnf G |-  case a of { </ pati -> ai // i /> } ~> case ne of { </ pati -> ai // i /> }
 
 
 defns
@@ -180,7 +180,7 @@ G |- a <= B ::    :: checkType :: 'c_'
 by
 
 G |- a => A
-whnf A ~> T
+whnf G |-  A ~> T
 </ G |- pati : T => Di // i />
 </ |- a ~ pati => Di' // i />
 </ G, Di , Di' |- ai : A // i />
@@ -190,7 +190,7 @@ G |- case a of { </ pati -> ai // i /> } <= A
 
 
 G |- a => A
-whnf A ~> T bs
+whnf G |- A ~> T bs
 </ G |- pati : T bs => Di // i />
 </ |- a ~ pati => Di' // i />
 </ G, Di , Di' |- ai : A // i />

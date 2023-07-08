@@ -37,7 +37,7 @@ $(RULESFILE): $(OTTFILES)
 
 $(TOP).pdf : $(TOP).tex  $(BIBFILES) $(PAPER_SOURCE) Makefile lstparams.sty lstpi.sty
 	echo $(PAPER_SOURCE)
-	latexmk -pdflatex="texfot pdflatex" -bibtex -pdf $(TOP).tex && latexmk -c
+	latexmk -pdflatex="texfot pdflatex" -bibtex -pdf $(TOP).tex -synctex=1 && latexmk -c
 
 deps:
 	echo $(PAPER_SOURCE)

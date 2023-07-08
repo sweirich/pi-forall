@@ -33,17 +33,17 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> nf ::    :: whnf :: 'whnf_' 
+whnf G |-  a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
-whnf a ~> (a1, a2) 
-whnf (b [a1/x] [a2/y]) ~> nf
+whnf G |-  a ~> (a1, a2) 
+whnf G |-  (b [a1/x] [a2/y]) ~> nf
 ------------------------------- :: letpair
-whnf let (x,y) = a in b ~> nf
+whnf G |-  let (x,y) = a in b ~> nf
 
-whnf a ~> ne
+whnf G |-  a ~> ne
 --------------------------------------------- :: prodcong
-whnf let (x,y) = a in b ~> let (x,y) = ne in b
+whnf G |-  let (x,y) = a in b ~> let (x,y) = ne in b
 
 
 defns

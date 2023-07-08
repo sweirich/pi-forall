@@ -1,6 +1,3 @@
-{- pi-forall -}
-
-{-# HLINT ignore "Use forM_" #-}
 
 -- | The main routines for type-checking
 module TypeCheck (tcModules, inferType, checkType) where
@@ -28,28 +25,29 @@ inferType a = case a of
 
   -- i-type
   TyType -> return TyType
+
   -- i-pi
   (TyPi tyA bnd) -> do
-    (x, tyB) <- unbind bnd
-    tcType tyA
-    Env.extendCtx (mkDecl x tyA) (tcType tyB)
-    return TyType
+      (x, tyB) <- unbind bnd
+      --checkType tyA TyType
+      tcType tyA
+      Env.extendCtx (mkDecl x tyA) (checkType tyB TyType)
+      return TyType
 
   -- i-app
   (App a b) -> do
-    ty1 <- inferType a
-    let ty1' = strip ty1
-    case ty1' of
-      (TyPi tyA bnd) -> do
-        checkType b tyA
-        return (instantiate bnd b)
-      _ -> Env.err [DS "Expected a function type but found ", DD ty1]
+      ty <- inferType a
+      case (strip ty) of 
+        TyPi tyA bnd -> do
+          checkType b tyA
+          return (instantiate bnd b)
+        _ -> Env.err [DS "application of non function", DD ty]
 
   -- i-ann
-  (Ann a tyA) -> do
-    tcType tyA
-    checkType a tyA
-    return tyA
+  (Ann a tyA) -> do 
+     tcType tyA
+     checkType a tyA
+     return tyA
 
   -- Practicalities
   -- remember the current position in the type checking monad
@@ -87,11 +85,8 @@ checkType tm ty = do
     -- c-lam: check the type of a function
     (Lam bnd) -> case ty' of
       (TyPi tyA bnd2) -> do
-        -- unbind the variables in the lambda expression and pi type
-        (x, body, tyB) <- unbind2 bnd bnd2
-
-        -- check the type of the body of the lambda expression
-        Env.extendCtx (mkDecl x tyA) (checkType body tyB)
+        (x, a, tyB) <- unbind2 bnd bnd2
+        Env.extendCtx (mkDecl x tyA) (checkType a tyB)
       _ -> Env.err [DS "Lambda expression should have a function type, not", DD ty']
     -- Practicalities
     (Pos p a) ->

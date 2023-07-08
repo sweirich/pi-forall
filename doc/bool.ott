@@ -30,31 +30,31 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf a ~> nf ::    :: whnf :: 'whnf_' 
+whnf G |-  a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
-whnf a ~> True
-whnf b1 ~> nf
+whnf G |-  a ~> True
+whnf G |-  b1 ~> nf
 --------------------------- :: if_true
-whnf if a then b1 else b2 ~> nf
+whnf G |-  if a then b1 else b2 ~> nf
 
-whnf a ~> False
-whnf b2 ~> nf
+whnf G |-  a ~> False
+whnf G |-  b2 ~> nf
 ------------------------------- :: if_false
-whnf if a then b1 else b2 ~> nf
+whnf G |-  if a then b1 else b2 ~> nf
 
 ----------------- :: bool
-whnf Bool ~> Bool
+whnf G |-  Bool ~> Bool
 
 ---------------- :: true
-whnf True ~> True
+whnf G |-  True ~> True
 
 ------------------- :: false
-whnf False ~> False
+whnf G |-  False ~> False
 
-whnf a ~> ne
+whnf G |-  a ~> ne
 ---------------------------------------------------- :: if_cong
-whnf if a then b1 else b2 ~> if ne then b1 else b2
+whnf G |-  if a then b1 else b2 ~> if ne then b1 else b2
 
 
 defns
