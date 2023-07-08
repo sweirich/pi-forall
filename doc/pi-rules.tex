@@ -1342,10 +1342,11 @@
 
 \newcommand{\ottdruleiXXifXXsimple}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottkw{Bool}}%
-\ottpremise{\Gamma  \vdash  \ottnt{b_{{\mathrm{1}}}}  \Rightarrow  \ottnt{A}}%
-\ottpremise{\Gamma  \vdash  \ottnt{b_{{\mathrm{2}}}}  \Rightarrow  \ottnt{A}}%
+\ottpremise{\Gamma  \vdash  \ottnt{b_{{\mathrm{1}}}}  \Rightarrow  \ottnt{A_{{\mathrm{1}}}}}%
+\ottpremise{\Gamma  \vdash  \ottnt{b_{{\mathrm{2}}}}  \Rightarrow  \ottnt{A_{{\mathrm{2}}}}}%
+\ottpremise{\Gamma  \vdash  \ottnt{A_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{A_{{\mathrm{2}}}}}%
 }{
-\Gamma  \vdash  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \Rightarrow  \ottnt{A}}{%
+\Gamma  \vdash  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \Rightarrow  \ottnt{A_{{\mathrm{1}}}}}{%
 {\ottdrulename{i\_if\_simple}}{}%
 }}
 

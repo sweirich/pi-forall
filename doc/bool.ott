@@ -162,10 +162,11 @@ G |- True => Bool
 G |- False => Bool
 
 G |- a <= Bool 
-G |- b1 => A
-G |- b2 => A
+G |- b1 => A1
+G |- b2 => A2
+G |- A1 <=> A2
 ---------------------------- :: if_simple
-G |- if a then b1 else b2 => A
+G |- if a then b1 else b2 => A1
 
 G |- a <= Bool 
 G |- b1 <= A [ True / x ]
