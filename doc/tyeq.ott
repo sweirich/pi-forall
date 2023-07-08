@@ -104,6 +104,7 @@ G |- a = b
 ------------------- :: refl
 G |- refl : a = b
 
+G |- a : A
 ------------------- :: refl_alt
 G |- refl : a = a
 
@@ -119,6 +120,8 @@ G |- b : a1 = a2
 ----------------------------------- :: subst
 G |- subst a by b : A [a2/x][b/y]
 
+
+G |- A : Type
 G |- a : True = False
 --------------------- :: contra 
 G |- contra a : A
