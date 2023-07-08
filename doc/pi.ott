@@ -186,7 +186,7 @@ Jwhnf :: '' ::=
 
 defn
 whnf G |- a ~> nf ::    :: whnf :: 'whnf_' 
-{{ tex [[whnf]]\ [[G]] [[|-]] [[a]] \leadsto [[nf]] }}
+{{ tex  [[G]] [[|-]] [[whnf]]\ [[a]] \leadsto [[nf]] }}
 {{ com weak head normalize a to nf (if possible) }}
 by
 

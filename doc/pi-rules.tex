@@ -198,8 +198,8 @@
 
 
 \newcommand{\ottdruleeqXXwhnf}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{nf_{{\mathrm{1}}}} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{b}  \leadsto  \ottnt{nf_{{\mathrm{2}}}} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf_{{\mathrm{1}}}} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{nf_{{\mathrm{2}}}} }%
 \ottpremise{\Gamma  \vdash  \ottnt{nf_{{\mathrm{1}}}}  \Leftrightarrow  \ottnt{nf_{{\mathrm{2}}}}}%
 }{
 \Gamma  \vdash  \ottnt{a}  \Leftrightarrow  \ottnt{b}}{%
@@ -247,174 +247,174 @@
 % defns Jwhnf
 %% defn whnf
 \newcommand{\ottdrulewhnfXXlamXXbeta}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottsym{(}   \lambda  \ottmv{x} .  \ottnt{a'}   \ottsym{)} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottnt{a'}  \ottsym{[}  \ottnt{b}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottsym{(}   \lambda  \ottmv{x} .  \ottnt{a'}   \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottnt{a'}  \ottsym{[}  \ottnt{b}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash    \ottnt{a}  \;  \ottnt{b}   \leadsto  \ottnt{nf} }{%
+ \Gamma   \vdash   \ottkw{whnf} \   \ottnt{a}  \;  \ottnt{b}   \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_lam\_beta}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXtype}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{Type}  \leadsto  \ottkw{Type} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{Type}  \leadsto  \ottkw{Type} }{%
 {\ottdrulename{whnf\_type}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXlam}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash    \lambda  \ottmv{x} .  \ottnt{a}   \leadsto   \lambda  \ottmv{x} .  \ottnt{a}  }{%
+ \Gamma   \vdash   \ottkw{whnf} \   \lambda  \ottmv{x} .  \ottnt{a}   \leadsto   \lambda  \ottmv{x} .  \ottnt{a}  }{%
 {\ottdrulename{whnf\_lam}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXpi}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash    ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B}   \leadsto   ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B}  }{%
+ \Gamma   \vdash   \ottkw{whnf} \   ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B}   \leadsto   ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B}  }{%
 {\ottdrulename{whnf\_pi}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXvar}[1]{\ottdrule[#1]{%
 \ottpremise{\ottmv{x}  \ottsym{=}  \ottnt{a} \, \in \, \Gamma}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{ne} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottmv{x}  \leadsto  \ottnt{ne} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottmv{x}  \leadsto  \ottnt{ne} }{%
 {\ottdrulename{whnf\_var}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXapp}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{ne} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash    \ottnt{a}  \;  \ottnt{b}   \leadsto   \ottnt{ne}  \;  \ottnt{b}  }{%
+ \Gamma   \vdash   \ottkw{whnf} \   \ottnt{a}  \;  \ottnt{b}   \leadsto   \ottnt{ne}  \;  \ottnt{b}  }{%
 {\ottdrulename{whnf\_app}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXannot}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottnt{a}  \ottsym{:}  \ottnt{A}  \ottsym{)}  \leadsto  \ottnt{nf} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottnt{a}  \ottsym{:}  \ottnt{A}  \ottsym{)}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_annot}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXletpair}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{,}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottnt{b}  \ottsym{[}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{[}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{/}  \ottmv{y}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{,}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottnt{b}  \ottsym{[}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{[}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{/}  \ottmv{y}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottnt{nf} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_letpair}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXprodcong}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{ne} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{b} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \leadsto  \ottkw{let} \, \ottsym{(}  \ottmv{x}  \ottsym{,}  \ottmv{y}  \ottsym{)}  \ottsym{=}  \ottnt{ne} \, \ottkw{in} \, \ottnt{b} }{%
 {\ottdrulename{whnf\_prodcong}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXifXXtrue}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottkw{True} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{b_{{\mathrm{1}}}}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottkw{True} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{b_{{\mathrm{1}}}}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_if\_true}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXifXXfalse}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottkw{False} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottkw{False} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_if\_false}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXbool}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{Bool}  \leadsto  \ottkw{Bool} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{Bool}  \leadsto  \ottkw{Bool} }{%
 {\ottdrulename{whnf\_bool}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXtrue}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{True}  \leadsto  \ottkw{True} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{True}  \leadsto  \ottkw{True} }{%
 {\ottdrulename{whnf\_true}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXfalse}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{False}  \leadsto  \ottkw{False} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{False}  \leadsto  \ottkw{False} }{%
 {\ottdrulename{whnf\_false}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXifXXcong}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{ne} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottkw{if} \, \ottnt{ne} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \leadsto  \ottkw{if} \, \ottnt{ne} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}} }{%
 {\ottdrulename{whnf\_if\_cong}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXtyeq}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottnt{a}  \ottsym{=}  \ottnt{b}  \ottsym{)}  \leadsto  \ottsym{(}  \ottnt{a}  \ottsym{=}  \ottnt{b}  \ottsym{)} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottnt{a}  \ottsym{=}  \ottnt{b}  \ottsym{)}  \leadsto  \ottsym{(}  \ottnt{a}  \ottsym{=}  \ottnt{b}  \ottsym{)} }{%
 {\ottdrulename{whnf\_tyeq}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXrefl}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{refl}  \leadsto  \ottkw{refl} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{refl}  \leadsto  \ottkw{refl} }{%
 {\ottdrulename{whnf\_refl}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXsubst}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{b}  \leadsto  \ottkw{refl} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottkw{refl} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}  \ottsym{)}  \leadsto  \ottnt{nf} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}  \ottsym{)}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_subst}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXsubstXXcong}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{b}  \leadsto  \ottnt{ne} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{ne} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}  \ottsym{)}  \leadsto  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}  \ottsym{)} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}  \ottsym{)}  \leadsto  \ottsym{(}  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{ne}  \ottsym{)} }{%
 {\ottdrulename{whnf\_subst\_cong}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXtcon}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottmv{T} \, \overline{a}  \leadsto  \ottmv{T} \, \overline{a} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottmv{T} \, \overline{a}  \leadsto  \ottmv{T} \, \overline{a} }{%
 {\ottdrulename{whnf\_tcon}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXdcon}[1]{\ottdrule[#1]{%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottmv{K} \, \overline{a}  \leadsto  \ottmv{K} \, \overline{a} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottmv{K} \, \overline{a}  \leadsto  \ottmv{K} \, \overline{a} }{%
 {\ottdrulename{whnf\_dcon}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXcase}[1]{\ottdrule[#1]{%
 \ottpremise{\ottkw{match} \, \ottsym{(}  \ottmv{K} \, \overline{a}  \ottsym{)}  \ottsym{(pati}  \to  \ottsym{ai)}  \leadsto  \ottnt{b}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{b}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{b}  \leadsto  \ottnt{nf} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{case} \, \ottsym{(}  \ottmv{K} \, \overline{a}  \ottsym{)} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottnt{nf} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{case} \, \ottsym{(}  \ottmv{K} \, \overline{a}  \ottsym{)} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottnt{nf} }{%
 {\ottdrulename{whnf\_case}}{}%
 }}
 
@@ -422,28 +422,28 @@
 \newcommand{\ottdrulewhnfXXcaseXXcong}[1]{\ottdrule[#1]{%
 \ottpremise{\ottnt{a}  \leadsto  \ottnt{ne}}%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottkw{case} \, \ottnt{a} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottkw{case} \, \ottnt{a} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}  \leadsto  \ottkw{case} \, \ottnt{ne} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}} }{%
 {\ottdrulename{whnf\_case\_cong}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXdef}[1]{\ottdrule[#1]{%
 \ottpremise{\ottmv{x}  \ottsym{=}  \ottnt{a} \, \in \, \Gamma}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{v} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{v} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottmv{x}  \leadsto  \ottnt{v} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottmv{x}  \leadsto  \ottnt{v} }{%
 {\ottdrulename{whnf\_def}}{}%
 }}
 
 
 \newcommand{\ottdrulewhnfXXletXXbeta}[1]{\ottdrule[#1]{%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottnt{b}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{v} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottnt{b}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{)}  \leadsto  \ottnt{v} }%
 }{
- \ottkw{whnf} \  \Gamma   \vdash   \ottsym{(}  \ottkw{let} \, \ottmv{x}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \ottsym{)}  \leadsto  \ottnt{v} }{%
+ \Gamma   \vdash   \ottkw{whnf} \  \ottsym{(}  \ottkw{let} \, \ottmv{x}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}  \ottsym{)}  \leadsto  \ottnt{v} }{%
 {\ottdrulename{whnf\_let\_beta}}{}%
 }}
 
-\newcommand{\ottdefnwhnf}[1]{\begin{ottdefnblock}[#1]{$ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a}  \leadsto  \ottnt{nf} $}{\ottcom{weak head normalize a to nf (if possible)}}
+\newcommand{\ottdefnwhnf}[1]{\begin{ottdefnblock}[#1]{$ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{nf} $}{\ottcom{weak head normalize a to nf (if possible)}}
 \ottusedrule{\ottdrulewhnfXXlamXXbeta{}}
 \ottusedrule{\ottdrulewhnfXXtype{}}
 \ottusedrule{\ottdrulewhnfXXlam{}}
@@ -1288,7 +1288,7 @@
 
 \newcommand{\ottdruleiXXapp}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{A}  \leadsto   ( \ottmv{x} \!:\! \ottnt{A_{{\mathrm{1}}}} )  \to   \ottnt{B}  }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{A}  \leadsto   ( \ottmv{x} \!:\! \ottnt{A_{{\mathrm{1}}}} )  \to   \ottnt{B}  }%
 \ottpremise{\Gamma  \vdash  \ottnt{b}  \Leftarrow  \ottnt{A_{{\mathrm{1}}}}}%
 }{
 \Gamma  \vdash   \ottnt{a}  \;  \ottnt{b}   \Rightarrow  \ottnt{B}  \ottsym{[}  \ottnt{b}  \ottsym{/}  \ottmv{x}  \ottsym{]}}{%
@@ -1394,7 +1394,7 @@
 
 \newcommand{\ottdruleiXXsubst}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{b}  \Rightarrow  \ottnt{B}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{B}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{B}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}}%
 }{
 \Gamma  \vdash  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}  \Rightarrow  \ottnt{A}}{%
@@ -1491,7 +1491,7 @@
 \newcommand{\ottdrulecXXwhnf}[1]{\ottdrule[#1]{%
 \ottpremise{ \ottnt{A} \mbox{ is not in weak-head normal form } }%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{nf}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{A}  \leadsto  \ottnt{nf} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{A}  \leadsto  \ottnt{nf} }%
 }{
 \Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}}{%
 {\ottdrulename{c\_whnf}}{}%
@@ -1555,7 +1555,7 @@
 
 \newcommand{\ottdrulecXXsubstXXleftXXsimple}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{b}  \Rightarrow  \ottnt{B}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{B}  \leadsto  \ottsym{(}  \ottmv{x}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{B}  \leadsto  \ottsym{(}  \ottmv{x}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}  \ottsym{[}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}}%
 }{
 \Gamma  \vdash  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}  \Leftarrow  \ottnt{A}}{%
@@ -1565,7 +1565,7 @@
 
 \newcommand{\ottdrulecXXsubstXXrightXXsimple}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{b}  \Rightarrow  \ottnt{B}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{B}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottmv{x}  \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{B}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottmv{x}  \ottsym{)} }%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}  \ottsym{[}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}}%
 }{
 \Gamma  \vdash  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}  \Leftarrow  \ottnt{A}}{%
@@ -1575,7 +1575,7 @@
 
 \newcommand{\ottdrulecXXsubstXXleft}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottmv{y}  \Rightarrow  \ottnt{B}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{B}  \leadsto  \ottsym{(}  \ottmv{x}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{B}  \leadsto  \ottsym{(}  \ottmv{x}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}  \ottsym{[}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{[}  \ottkw{refl}  \ottsym{/}  \ottmv{y}  \ottsym{]}}%
 }{
 \Gamma  \vdash  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottmv{y}  \Leftarrow  \ottnt{A}}{%
@@ -1585,7 +1585,7 @@
 
 \newcommand{\ottdrulecXXsubstXXright}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottmv{y}  \Rightarrow  \ottnt{B}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{B}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottmv{x}  \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{B}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottmv{x}  \ottsym{)} }%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}  \ottsym{[}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \ottsym{[}  \ottkw{refl}  \ottsym{/}  \ottmv{y}  \ottsym{]}}%
 }{
 \Gamma  \vdash  \ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottmv{y}  \Leftarrow  \ottnt{A}}{%
@@ -1595,9 +1595,9 @@
 
 \newcommand{\ottdrulecXXcontra}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{A}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a_{{\mathrm{1}}}}  \leadsto  \ottkw{True} }%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{a_{{\mathrm{2}}}}  \leadsto  \ottkw{False} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{A}  \leadsto  \ottsym{(}  \ottnt{a_{{\mathrm{1}}}}  \ottsym{=}  \ottnt{a_{{\mathrm{2}}}}  \ottsym{)} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a_{{\mathrm{1}}}}  \leadsto  \ottkw{True} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{a_{{\mathrm{2}}}}  \leadsto  \ottkw{False} }%
 }{
 \Gamma  \vdash  \ottkw{contra} \, \ottnt{a}  \Leftarrow  \ottnt{B}}{%
 {\ottdrulename{c\_contra}}{}%
@@ -1606,7 +1606,7 @@
 
 \newcommand{\ottdrulecXXcaseXXsimple}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{A}  \leadsto  \ottmv{T} \,  }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{A}  \leadsto  \ottmv{T} \,  }%
 \ottpremise{\ottcomp{\Gamma  \vdash  \ottnt{pat_{\ottmv{i}}}  \ottsym{:}  \ottmv{T} \,   \Rightarrow  \Delta_{\ottmv{i}}}{\ottmv{i}}}%
 \ottpremise{\ottcomp{\vdash  \ottnt{a}  \sim  \ottnt{pat_{\ottmv{i}}}  \Rightarrow  \Delta'_{\ottmv{i}}}{\ottmv{i}}}%
 \ottpremise{\ottcomp{\Gamma  \ottsym{,}  \Delta_{\ottmv{i}}  \ottsym{,}  \Delta'_{\ottmv{i}}  \vdash  \ottnt{a_{\ottmv{i}}}  \ottsym{:}  \ottnt{A}}{\ottmv{i}}}%
@@ -1619,7 +1619,7 @@
 
 \newcommand{\ottdrulecXXcase}[1]{\ottdrule[#1]{%
 \ottpremise{\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}}%
-\ottpremise{ \ottkw{whnf} \  \Gamma   \vdash   \ottnt{A}  \leadsto  \ottmv{T} \, \overline{b} }%
+\ottpremise{ \Gamma   \vdash   \ottkw{whnf} \  \ottnt{A}  \leadsto  \ottmv{T} \, \overline{b} }%
 \ottpremise{\ottcomp{\Gamma  \vdash  \ottnt{pat_{\ottmv{i}}}  \ottsym{:}  \ottmv{T} \, \overline{b}  \Rightarrow  \Delta_{\ottmv{i}}}{\ottmv{i}}}%
 \ottpremise{\ottcomp{\vdash  \ottnt{a}  \sim  \ottnt{pat_{\ottmv{i}}}  \Rightarrow  \Delta'_{\ottmv{i}}}{\ottmv{i}}}%
 \ottpremise{\ottcomp{\Gamma  \ottsym{,}  \Delta_{\ottmv{i}}  \ottsym{,}  \Delta'_{\ottmv{i}}  \vdash  \ottnt{a_{\ottmv{i}}}  \ottsym{:}  \ottnt{A}}{\ottmv{i}}}%
