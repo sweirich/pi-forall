@@ -869,10 +869,10 @@
 
 
 \newcommand{\ottdruletXXapp}[1]{\ottdrule[#1]{%
-\ottpremise{\Gamma  \vdash  \ottmv{f}  \ottsym{:}   ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B} }%
-\ottpremise{\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}}%
+\ottpremise{\Gamma  \vdash  \ottnt{a}  \ottsym{:}   ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B} }%
+\ottpremise{\Gamma  \vdash  \ottnt{b}  \ottsym{:}  \ottnt{A}}%
 }{
-\Gamma  \vdash   \ottmv{f}  \;  \ottnt{a}   \ottsym{:}  \ottnt{B}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}}{%
+\Gamma  \vdash   \ottnt{a}  \;  \ottnt{b}   \ottsym{:}  \ottnt{B}  \ottsym{[}  \ottnt{b}  \ottsym{/}  \ottmv{x}  \ottsym{]}}{%
 {\ottdrulename{t\_app}}{}%
 }}
 

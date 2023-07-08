@@ -522,7 +522,7 @@ rule to ensure that both the body of the function $[[x]]$ and its type $[[y]]$ a
 well-typed. Finally, this rule also uses \rref{t-type} to show that $[[Type]]$ itself
 is a valid type, see below.
 
-Note that the rule \rref{t-lambda} makes subtle use of the fact that binding variables can
+Note that the \rref{t-lambda} makes subtle use of the fact that binding variables can
 be freely renamed to alpha-equivalent versions. In the conclusion of the rule, the $[[x]]$ in
 the body of the lambda abstraction $[[a]]$, is a different binder from the $[[x]]$ in the
 body of the function type $[[B]]$. Both of these terms can be modified so that these two
@@ -1038,8 +1038,8 @@ instance Unbound.Subst Term Term where
 \end{verbatim}
 
 \noindent
-For more information about \unbound, see the documentation for
-\texttt{unbound-generics}\footnote{\url{https://github.com/lambdageek/unbound-generics}}.
+For more details about \unbound, see the \texttt{unbound-generics}
+documentation\footnote{\url{https://github.com/lambdageek/unbound-generics}}.
 
 \subsection{A Type Checking monad {[}Environment.hs{]}}
 
@@ -1135,7 +1135,9 @@ inferType tm = case tm of
    _ -> Env.err [DS "Must have a type for", DD tm]
 \end{verbatim}
 
-For checking, the general form of the function also
+For checking, the general form of the function is also a pattern match on the
+syntactic forms. The functions \cd{inferType} and \cd{checkType} are defined
+in terms of each other by mutual recursion.
 
 Mixed in here, we also have a pattern for lambda expressions in checking
 mode:

@@ -370,7 +370,7 @@ G |- A : Type
 ------------------------  ::  lambda
 G |- \x.a : (x:A) -> B
 
-G, x:A |- a : B [ y / x] 
+G, x:A |- a : B [ y / x]
 G |- A : Type
 ------------------------  ::  altlambda
 G |- \x.a : (y:A) -> B
@@ -385,10 +385,10 @@ G |- (x:A) -> B : Type
 G |- Type : Type
 
 
-G |- f : (x:A) -> B
-G |- a : A
+G |- a : (x:A) -> B
+G |- b : A
 --------------------------- ::  app
-G |- f a : B [ a / x ]
+G |- a b : B [ b / x ]
 
 
 G |- a : A
