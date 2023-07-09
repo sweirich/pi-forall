@@ -36,8 +36,6 @@
 \newtheorem{definition}{Definition}[section]
 \newtheorem{lemma}{Lemma}[section]
 
-% force footnotes to be on a single page
-\interfootnotelinepenalty=10000
 
 \title{Implementing Dependent Types in \pif}
 \author{Stephanie Weirich}
@@ -249,18 +247,13 @@ data Vec (A : Type) (n : Nat) : Type where
 The type \cd{Vec A n} has two parameters: \cd{A} the type of elements in the
 list and \cd{n}, a natural number indicating the length of the list. This
 datatype also has two constructors: \cd{Nil} and \cd{Cons}, corresponding to
-empty and non-empty lists. The \cd{Cons} constructor has three arguments,
-a number \cd{m}, the element at the head of the list (of type \cd{A}), and the tail
-of the list (of type \cd{Vec A m}).
-Both constructors also include \emph{constraints} that must be satisfied when
-they are used. The \cd{Nil} constructor constrains the length
-parameter to be \cd{Zero} and the \cd{Cons} constructor
-constrains it to be one more than the length of the tail of the list.
-
-In the definition of \cd{Cons}, the \cd{m} parameter is the length of the tail
-of the list. This parameter is written in square brackets to indicate that it
-should be \emph{irrelevant}: this value is for type checking only and
-functions should not use it.
+empty and non-empty lists. The \cd{Nil} constructor constrains the length
+parameter to be \cd{Zero} when it is used and the \cd{Cons} constructor
+constrains it to be one more than the length of the tail of the list.  In the
+definition of \cd{Cons}, the \cd{m} parameter is the length of the tail of the
+list. This parameter is written in square brackets to indicate that it should
+be \emph{irrelevant}: this value is for type checking only and functions
+should not use it.
 
 For example, we can use \pif to check that the list below contains exactly
 three boolean values.
@@ -283,17 +276,7 @@ As \pif doesn't infer arguments, the map function needs to take \cd{A}, \cd{B}
 and \cd{n} explicitly at the beginning of the function definition, and they
 need to be provided as arguments to the recursive call.
 
-The type checker helps us avoid errors in the definition of \cd{map}. Like most
-functional languages, if we had forgotten to call \cd{f} and instead included
-\cd{x} in the \cd{Cons}, then \cd{map} would produce a vector containing elements of
-type \cd{A} instead of \cd{B}. The type checker would flag this as an error. Similarly, if
-we had replaces the \cd{Cons} branch with \cd{Nil} or had forgotten to \cd{Cons} \cd{f x} to the result of the recursive call in this branch, the resulting vector would be the wrong
-length. The type checker would catch this error too!
-
-The \pif language does not include the sophisticated type inference algorithms found in many
-other languages, that can figure out some of the arguments provided
-to a function automatically. As a result,
-when we call map, we also need to supply the appropriate parameters for
+Whenever we call map, we also need to supply the appropriate parameters for
 the function and the vector that we are giving to \cd{map}. For example, to map
 the boolean \cd{not} function, of type \cd{Bool -> Bool}, we need to provide
 these two \cd{Bool}s along with the length of the vector.
@@ -338,13 +321,10 @@ nth = \[a][n] v f. case f of
 \end{piforall}
 Note how, in the case analysis above, neither \cd{case} requires a branch for
 the \cd{Nil} constructor. The \pif type checker can verify that the \cd{Cons}
-case is exhaustive and that the \cd{Nil} case would be inaccessible. In these
-cases, the type checker notes that the patterns for the missing branches don't
-make sense: constructing the \cd{Nil} pattern would require satisfying the
-constraint that \cd{Zero = Succ m}, which is impossible.
+case is exhaustive and that the \cd{Nil} case would be inaccessible.
 
 You may have noticed that some of the arguments to functions and constructors in the examples above are enclosed in square brackets. These arguments are \emph{irrelevant} in \pif. What this means is that the compiler can erase these arguments before running the program and can ignore these arguments when comparing types for equality. (When arguments are marked in this way, the type checker must ensure that this erasure is sound and the argument is never actually used in a meaningful way.)
-Similarly, the constraints that are part of datatype definitions, such as \cd{n = Succ m} above, are enclosed in
+Similarly, the constraints that are part of datatype definitions, such as \cd{n = Succ m} above, are enclosed in 
 square brackets because there is no runtime proof of the equality stored with the data constructor.
 
 \subsection{Homework: Check out \pif}
@@ -395,11 +375,11 @@ contain? At the bare minimum we start with the following five forms:
 
 \[
 \begin{array}{rcll}
-     [[a]],[[b]],[[A]],[[B]] & ::=& [[x]]  &\mbox{ variables  }\\
-         &&[[\x. a]]          &\mbox{ lambda expressions (anonymous functions)} \\
-         &&[[a b]]            &\mbox{ function applications }\\
-         &&[[(x:A) -> B]]     &\mbox{ dependent function type, aka $\Pi$-types }\\
-         &&[[Type]]           &\mbox{ the `type' of types}\\
+     \ottnt{a},\ottnt{b},\ottnt{A},\ottnt{B} & ::=& \ottmv{x}  &\mbox{ variables  }\\
+         && \lambda  \ottmv{x} .  \ottnt{a}           &\mbox{ lambda expressions (anonymous functions)} \\
+         && \ottnt{a}  \;  \ottnt{b}             &\mbox{ function applications }\\
+         && ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B}      &\mbox{ dependent function type, aka $\Pi$-types }\\
+         &&\ottkw{Type}           &\mbox{ the `type' of types}\\
 \end{array}
 \]
 
@@ -408,23 +388,23 @@ both expressions and types. For clarity, the convention is to use lowercase
 letters ($a$,$b$) for expressions and uppercase letters ($A$,$B$) for types.
 
 Note that $\lambda$ and $\Pi$ above are \emph{binding forms}. They bind the
-variable $x$ in $a$ and $B$ respectively. In dependent function types
-$[[(x:A) -> B]]$, if $x$ does not appear free in $B$, it is also convention
-to write the type as $[[A -> B]]$.
+variable $x$ in $a$ and $B$ respectively. In dependent function types 
+$ ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B} $, if $x$ does not appear free in $B$, it is also convention 
+to write the type as $\ottnt{A}  \to  \ottnt{B}$.
 
 
 \subsection{When do expressions in this language type check?}
 
 We define the type system for this language using an inductive
 relation shown in Figure~\ref{fig:typing}. This relation is between an
-expression $[[a]]$, its type $[[A]]$, and a typing context $[[G]]$.
+expression $\ottnt{a}$, its type $\ottnt{A}$, and a typing context $\Gamma$.
 
-\[ \fbox{$[[ G |- a : A ]]$} \]
+\[ \fbox{$\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$} \]
 
-A typing context $[[G]]$ is an ordered list of assumptions about variables and
+A typing context $\Gamma$ is an ordered list of assumptions about variables and
 their types.
 
-    \[ [[ G]]  ::= \emptyset\ |\ [[G, x : A]] \]
+    \[ \Gamma  ::= \emptyset\ |\  \Gamma ,  \ottmv{x} \! :\! \ottnt{A}  \]
 
 We will assume that each of the variables in this list are
 distinct from each other so that there will always be at most one assumption
@@ -438,24 +418,24 @@ about any variable's type.\footnote{On paper, this assumption is reasonable
 \paragraph{An initial set of typing rules: Variables and Functions}
 
 \begin{figure}[t]
-\drules[t]{$[[G|-a:A]]$}{Core type system}{var,lambda,app,pi,type}
+\drules[t]{$\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$}{Core type system}{var,lambda,app,pi,type}
 \caption{Typing rules for core system}
 \label{fig:typing}
 \end{figure}
 
 Consider the first two rules shown in Figure~\ref{fig:typing}, \rref{t-var}
 and \rref{t-lambda}.  The first rule states that the types of variables are
-recorded in the typing context. The premise $[[x:A elem G]]$ requires us to
-find an association between $x$ and the type $A$ in the list $[[G]]$.
+recorded in the typing context. The premise $\ottmv{x}  \ottsym{:}  \ottnt{A} \, \in \, \Gamma$ requires us to
+find an association between $x$ and the type $A$ in the list $\Gamma$.
 
 The second rule, for type checking functions, introduces a new variable into
 the context when we type check the body of a $\lambda$-expression. It also
-requires $[[A]]$, the type of the function's argument, to be a valid type.
+requires $\ottnt{A}$, the type of the function's argument, to be a valid type.
 
 \paragraph{Example: Polymorphic identity functions}
 
 Note that in \rref{t-lambda}, the parameter $x$ is allowed to appear in the
-result type of the function, $[[B]]$. Why is this useful? Well, it gives us
+result type of the function, $\ottnt{B}$. Why is this useful? Well, it gives us
 \emph{parametric polymorphism} automatically.  In Haskell, we write the
 identity function as follows, annotating it with a polymorphic type.
 
@@ -483,21 +463,21 @@ difference between these arguments: both are arguments to the identity
 function.
 
 Finally, the \pif{} type of \cd{id} uses the dependent function type, with
-general form $[[(x:A) -> B]]$. This form is like Haskell's usual function type
-$[[A -> B]]$, except that we can name the argument $[[x]]$ so that it can be
-referred to in the body of the type $[[B]]$. In \cd{id}, dependency allows
-the type argument $[[x]]$ to be used later as the type of $[[y]]$.  We call
+general form $ ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B} $. This form is like Haskell's usual function type
+$\ottnt{A}  \to  \ottnt{B}$, except that we can name the argument $\ottmv{x}$ so that it can be
+referred to in the body of the type $\ottnt{B}$. In \cd{id}, dependency allows
+the type argument $\ottmv{x}$ to be used later as the type of $\ottmv{y}$.  We call
 types of this form $\Pi$-types. (Often dependent function types are written as
 $\Pi x\!:\!A. B$ in formalizations of dependent type theory.\footnote{The
   terminology for these types is muddled: sometimes they are called dependent
   function types and sometimes they are called dependent product types. We use
   the non $\Pi$-notation to emphasize the connection to functions.})
 
-The fact that the type of $x$ is $[[Type]]$ means that $x$ plays the role of a
+The fact that the type of $x$ is $\ottkw{Type}$ means that $x$ plays the role of a
 type variable, such as \texttt{a} in the Haskell type. Because we don't have a
 syntactic distinction between types and terms, in \pif we say that ``types''
-are anything of type $[[Type]]$ and ``terms'' are things of type $A$ where $A$
-has type $[[Type]]$.
+are anything of type $\ottkw{Type}$ and ``terms'' are things of type $A$ where $A$
+has type $\ottkw{Type}$.
 
 We can use the typing rules to construct a typing derivation for the identity
 function as follows.
@@ -507,35 +487,20 @@ function as follows.
 {
    \inferrule*
    {
-              \inferrule*{ [[y:x elem (x:Type,y:x)]]}{[[x:Type, y:x |- y : x]]}
-      \qquad \inferrule*{[[ x:Type elem (x:Type) ]] }{[[ x:Type |- x : Type ]]}
+              \inferrule*{ \ottmv{y}  \ottsym{:}  \ottmv{x} \, \in \, \ottsym{(}    \ottmv{x} \! :\! \ottkw{Type}  ,  \ottmv{y} \! :\! \ottmv{x}   \ottsym{)}}{  \ottmv{x} \! :\! \ottkw{Type}  ,  \ottmv{y} \! :\! \ottmv{x}   \vdash  \ottmv{y}  \ottsym{:}  \ottmv{x}}
+      \qquad \inferrule*{\ottmv{x}  \ottsym{:}  \ottkw{Type} \, \in \, \ottsym{(}   \ottmv{x} \! :\! \ottkw{Type}   \ottsym{)} }{ \ottmv{x} \! :\! \ottkw{Type}   \vdash  \ottmv{x}  \ottsym{:}  \ottkw{Type}}
    }{
-     [[x:Type |- \y. y : (y : x) -> x]]
-   }  \qquad \inferrule*{}{[[ |- Type : Type ]]}
+      \ottmv{x} \! :\! \ottkw{Type}   \vdash   \lambda  \ottmv{y} .  \ottmv{y}   \ottsym{:}   ( \ottmv{y} \!:\! \ottmv{x} )  \to   \ottmv{x} 
+   }  \qquad \inferrule*{}{ \emptyset   \vdash  \ottkw{Type}  \ottsym{:}  \ottkw{Type}}
 }{
-  [[ |- \x. \y. y : (x:Type) -> (y : x) -> x ]]
+   \emptyset   \vdash   \lambda  \ottmv{x} .   \lambda  \ottmv{y} .  \ottmv{y}    \ottsym{:}   ( \ottmv{x} \!:\! \ottkw{Type} )  \to   \ottsym{(}  \ottmv{y}  \ottsym{:}  \ottmv{x}  \ottsym{)}   \to  \ottmv{x}
 }
 \]
 
 This derivation uses \rref{t-lambda} to type check the two $\lambda$-expressions, before using the variable
-rule to ensure that both the body of the function $[[x]]$ and its type $[[y]]$ are
-well-typed. Finally, this rule also uses \rref{t-type} to show that $[[Type]]$ itself
+rule to ensure that both the body of the function $\ottmv{x}$ and its type $\ottmv{y}$ are
+well-typed. Finally, this rule also uses \rref{t-type} to show that $\ottkw{Type}$ itself
 is a valid type, see below.
-
-Note that the \rref{t-lambda} makes subtle use of the fact that binding variables can
-be freely renamed to alpha-equivalent versions. In the conclusion of the rule, the $[[x]]$ in
-the body of the lambda abstraction $[[a]]$, is a different binder from the $[[x]]$ in the
-body of the function type $[[B]]$. Both of these terms can be modified so that these two
-$[[x]]$ do not have to match. But, above the line, there is only a single $[[x]]$ that appears
-free in both $[[a]]$ and $[[B]]$! If we wanted to be explicit about what is going on, we could
-also write the rule with an explicit substitution:
-
-\[ \drule{t-altlambda}  \]
-
-Most type theorists do not bother with this version and prefer the one that
-reuses the same binder. We will do the same here, and in other similar
-rules. However, we will also have to be careful about how we implement this
-rule in the implementation of our type checker!
 
 \paragraph{More typing rules:  Types}
 
@@ -545,7 +510,7 @@ when we add assumptions $x:A$ to the context, that $A$ really is a type.
 Without this precondition, the rules would allow us to derive this nonsensical
 type for the polymorphic identity function.
 
-\[   [[   |- \x.\y. y : (x: True) -> (y:x) -> x ]] \]
+\[    \emptyset   \vdash   \lambda  \ottmv{x} .   \lambda  \ottmv{y} .  \ottmv{y}    \ottsym{:}   ( \ottmv{x} \!:\! \ottkw{True} )  \to   \ottsym{(}  \ottmv{y}  \ottsym{:}  \ottmv{x}  \ottsym{)}   \to  \ottmv{x} \]
 
 This precondition means that we need some rules that conclude that types are
 actually types. For example, the type of a function is itself a type, so we
@@ -553,24 +518,23 @@ will declare it so with \rref{t-pi}. This rule also ensures that the domain
 and range of the function are also types.
 
 Likewise, for polymorphism, we need the somewhat perplexing \rref{t-type}, that
-declares, by fiat, that $[[Type]]$ is a valid $[[Type]]$.\footnote{Note that
+declares, by fiat, that $\ottkw{Type}$ is a valid $\ottkw{Type}$.\footnote{Note that
   this rule makes our language inconsistent as a logic, as it can encode
-  a logical paradox. The \cd{full} implementation includes a demonstration of
-this paradox in the file \cd{Hurkens.pi}.}
+  Girard's paradox.}
 
 \paragraph{More typing rules: Applications}
 
 The application rule, \rref{t-app}, requires that the type of the argument
 matches the domain type of the function. However, note that because the body
 of the function type $B$ could have $x$ free in it, we need also need to
-substitute the argument $[[b]]$ for $x$ in the result.
+substitute the argument $\ottnt{b}$ for $x$ in the result.
 
 \paragraph{Example: applying the polymorphic identity function}
 
 In \pif we should be able to apply the polymorphic identity function to
 itself. When we do this, we need to first provide the type of \cd{id},
 producing an expression of type
-$[[(y: ((x:Type) -> (y:x) -> x)) -> ((x:Type) -> (y:x) -> x)]]$.  This
+$ ( \ottmv{y} \!:\! \ottsym{(}   ( \ottmv{x} \!:\! \ottkw{Type} )  \to   \ottsym{(}  \ottmv{y}  \ottsym{:}  \ottmv{x}  \ottsym{)}   \to  \ottmv{x}  \ottsym{)} )  \to   \ottsym{(}   ( \ottmv{x} \!:\! \ottkw{Type} )  \to   \ottsym{(}  \ottmv{y}  \ottsym{:}  \ottmv{x}  \ottsym{)}   \to  \ottmv{x}  \ottsym{)} $.  This
 function can take \cd{id} as an argument.
 
 \begin{piforall}
@@ -607,9 +571,8 @@ cond = \b. b
 \paragraph{Example: void type}
 
 The type \cd{(x:Type) -> x}, called ``void'' is usually an \emph{empty type}
-in polymorphic languages.  Observe that this function takes a type \cd{x:Type},
-but never takes any expressions of type \cd{x}. Thus, there is no way to return
-a value of any type without some sort of type case (not part of \pif).
+in polymorphic languages.  There is no way to return a value of any type without
+some sort of type case (not part of \pif).
 
 However, because \pif does not enforce termination, we can define a value that
 has this type.
@@ -626,17 +589,17 @@ checks, then its \emph{type} will also type check. More formally, to state
 this property, we first need to say what it means to check all types in a
 context.
 
-\begin{definition}[Context type checks]
-Define \fbox{$[[|-G]]$} with the following rules. \[ \drule{g-nil} \qquad \drule{g-cons} \]
+\begin{definition}[Context type checks] 
+Define \fbox{$\vdash  \Gamma$} with the following rules. \[ \drule{g-nil} \qquad \drule{g-cons} \]
 \end{definition}
 \noindent
 With this judgement, we can state the following property of our type system.
 \begin{lemma}[Regularity]
-If $[[G |- a : A ]]$ and $[[|- G]]$, then $[[ G |- A : Type]]$
+If $\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$ and $\vdash  \Gamma$, then $\Gamma  \vdash  \ottnt{A}  \ottsym{:}  \ottkw{Type}$
 \end{lemma}
 \noindent
-Making sure that this property holds for the type system is the motivation for the
-$[[G |- A : Type]]$ premise in \rref{t-lambda}.
+Making sure that this property holds for the type system is the motivation for the 
+$\Gamma  \vdash  \ottnt{A}  \ottsym{:}  \ottkw{Type}$ premise in \rref{t-lambda}.
 
 \section{From typing rules to a typing algorithm}
 \label{sec:bidirectional}
@@ -674,8 +637,8 @@ inferType (Var x) ctx = lookupTy ctx x
 \end{haskell}
 
 \noindent
-Likewise, the case of the typing function for the $[[Type]]$ term is also
-straightforward. When we see the term $[[Type]]$, we know immediately that it
+Likewise, the case of the typing function for the $\ottkw{Type}$ term is also
+straightforward. When we see the term $\ottkw{Type}$, we know immediately that it
 is its own type.
 
 % \begin{haskell}
@@ -685,7 +648,7 @@ is its own type.
 The only stumbling block for the algorithm is \rref{t-lambda}. To type check a
 function, we need to type check its body when the context has been extended
 with the type of the argument. But, like Haskell, the type of the argument
-$[[A]]$ is not annotated on the function in \pif. So where does it come from?
+$\ottnt{A}$ is not annotated on the function in \pif. So where does it come from?
 
 There is actually an easy fix to turn our current system into an algorithmic
 one. We could just annotate $\lambda$-expressions with the types of the
@@ -707,7 +670,7 @@ judgment that we saw above, and we will call it type
   much more sophisticated deduction of an expression's type, in the context of
   much less information encoded in the syntax of the language. We are not doing
   anything difficult here, just noting that we can read the judgment with
-  $[[A]]$ as an output. } This judgment will be paired with (and will depend
+  $\ottnt{A}$ as an output. } This judgment will be paired with (and will depend
 on) a second judgment, called type \emph{checking}, that takes advantage of
 known type information, such as the annotations on top-level definitions.
 
@@ -720,9 +683,9 @@ judgment, rules that have inference as conclusion start with
 \textsc{c-}.
 
 \begin{figure}
-\drules[i]{$[[G |- a => A]]$}{in context $[[G]]$, infer that term $a$ has type $A$}
+\drules[i]{$\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}$}{in context $\Gamma$, infer that term $a$ has type $A$}
 {var,app-simple,pi,type,annot}
-\drules[c]{$[[G |- a <= A]]$}{in context $[[G]]$, check that term $a$ has type $A$}
+\drules[c]{$\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}$}{in context $\Gamma$, check that term $a$ has type $A$}
 {lambda,infer-simple}
 \caption{(Simple) Bidirectional type system}
 \label{fig:bidirectional}
@@ -734,9 +697,8 @@ the type to infer.
 
 On the other hand, in \rref{c-lambda} we should check $\lambda$-expressions
 against a known type. If that type is provided, we can propagate it to the
-body of the lambda expression. (If we assume that the type provided to
-the checking judgment has already been checked to be a good type, then
-we can skip checking that $A$ is a $[[Type]]$.)
+body of the lambda expression. (For subtle reasons, we can skip checking that
+$A$ is a $\ottkw{Type}$.)
 
 The rule for applications, \rref{i-app-simple}, is in inference mode. Here, we
 first infer the type of the function, but once we have that type, we may use
@@ -744,26 +706,14 @@ it to check the type of the argument. This mode change means that
 $\lambda-$expressions that are arguments to other functions (like
 \texttt{map}) do not need any annotation.
 
-For example, if map has type
-\begin{haskell}
-map : (x : Type) -> (y: Type) -> (x -> y) -> List x -> List y
-\end{haskell}
-then in an application, we can synthesize the type of the expression
-\begin{haskell}
-map Nat Nat (\x.x)
-\end{haskell}
-as \cd{List Nat -> List Nat}.
-After the two type applications, we will end up checking the function
-argument against the type \cd{Nat -> Nat}.
-
-For types, it is apparent their type is $[[Type]]$, so \rref{i-pi,i-type} just
+For types, it is apparent their type is $\ottkw{Type}$, so \rref{i-pi,i-type} just
 continue to infer that.
 
 Notice that this system is incomplete. There are inference rules for every
 form of expression except for lambda. On the other hand, only lambda
 expressions can be checked against types.  We can make the checking judgment
 more applicable with \rref{c-infer-simple} that allows us to use inference
-whenever a checking rule doesn't apply. This rule only applies when the
+whenever a checking rule doesn't apply. This rule only applies when the 
 term is not a lambda expression.
 
 Now, let us think about the reverse problem a bit. There are programs that the
@@ -775,9 +725,9 @@ Well, they involve applications of explicit lambda terms:
 \[
 \inferrule*[Right=t-app]
 {
-      [[ |- \x.x : Bool -> Bool]]  \qquad  [[|- True : Bool ]]
+       \emptyset   \vdash   \lambda  \ottmv{x} .  \ottmv{x}   \ottsym{:}  \ottkw{Bool}  \to  \ottkw{Bool}  \qquad   \emptyset   \vdash  \ottkw{True}  \ottsym{:}  \ottkw{Bool}
 }{
-      [[ |- (\x.x) True : Bool ]]
+       \emptyset   \vdash   \ottsym{(}   \lambda  \ottmv{x} .  \ottmv{x}   \ottsym{)}  \;  \ottkw{True}   \ottsym{:}  \ottkw{Bool}
 }
 \]
 
@@ -786,7 +736,7 @@ requires the function to have an inferable type, but lambdas don't.
 %
 However, there is not that much need to write such terms. We can always
 replace them with something equivalent by doing a $\beta$-reduction of the
-application (in this case, just replace the term with $[[True]]$).
+application (in this case, just replace the term with $\ottkw{True}$).
 
 In fact, the bidirectional type system has the property that it only checks
 terms in \emph{normal} form, i.e., those that do not contain any
@@ -794,7 +744,7 @@ $\beta$-reductions.
 
 \paragraph{Type annotations}
 To type check nonnormal forms in \pif, we also add typing annotations as a new
-form of expression to \pif, written $[[(a : A)]]$, and add \rref{i-annot} to
+form of expression to \pif, written $\ottsym{(}  \ottnt{a}  \ottsym{:}  \ottnt{A}  \ottsym{)}$, and add \rref{i-annot} to
 the type system.
 
 Type annotations allow us to supply known type information anywhere, not just
@@ -803,9 +753,9 @@ at the top level. For example, we can construct this derivation.
 \[
 \inferrule*[Right=i-app]
 {
-      [[ |- (\x.x : Bool -> Bool) => Bool -> Bool]]  \qquad  [[|- True <= Bool ]]
+       \emptyset   \vdash  \ottsym{(}   \lambda  \ottmv{x} .  \ottmv{x}   \ottsym{:}  \ottkw{Bool}  \to  \ottkw{Bool}  \ottsym{)}  \Rightarrow  \ottkw{Bool}  \to  \ottkw{Bool}  \qquad   \emptyset   \vdash  \ottkw{True}  \Leftarrow  \ottkw{Bool}
 }{
-      [[ |- (\x.x : Bool -> Bool) True => Bool ]]
+       \emptyset   \vdash   \ottsym{(}   \lambda  \ottmv{x} .  \ottmv{x}   \ottsym{:}  \ottkw{Bool}  \to  \ottkw{Bool}  \ottsym{)}  \;  \ottkw{True}   \Rightarrow  \ottkw{Bool}
 }
 \]
 
@@ -817,25 +767,25 @@ language.
 Furthermore, we want to convince ourselves that the bidirectional system
 checks the same terms as the original type system. This means that we want to
 prove a property like this one\footnote{This result requires the addition of a
-  typing rule for annotated terms $[[(a:A)]]$ to the original system.}:
+  typing rule for annotated terms $\ottsym{(}  \ottnt{a}  \ottsym{:}  \ottnt{A}  \ottsym{)}$ to the original system.}:
 
 \begin{lemma}[Correctness of the bidirectional type system]
-If $[[G |- a => A]]$ and $[[|- G]]$ then $[[G |- a : A]]$.
-If $[[G |- a <= A]]$ and $[[|- G]]$ and $[[G |- A : Type]]$ then $[[G |- a : A]]$.
+If $\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}$ and $\vdash  \Gamma$ then $\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$.
+If $\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}$ and $\vdash  \Gamma$ and $\Gamma  \vdash  \ottnt{A}  \ottsym{:}  \ottkw{Type}$ then $\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$.
 \end{lemma}
 
 On the other hand, the reverse property is not true. Even if there exists some
-typing derivation $[[G |- a : A]]$ for some term $[[a]]$, we may not be able
+typing derivation $\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$ for some term $\ottnt{a}$, we may not be able
 to infer or check that term using the algorithm. However, all is not lost:
-there will always be some term $[[a']]$ that differs from $[[a]]$ only in the
+there will always be some term $\ottnt{a'}$ that differs from $\ottnt{a}$ only in the
 addition of typing annotations that can be inferred or checked instead.
 
 One issue with this bidirectional system is that it is not closed under
-substitution.  What this means is that given some term $[[b]]$ with a free
-variable, $[[ G, x : A |- b <= B]]$, and another term $[[a]]$ with the same
-type $[[ G |- a <= A]]$ of that variable, we \emph{do not} have a derivation
-$[[ G |- b[a/x] <= A]]$. The reason is that types of variables are always
-inferred, but the term $[[a]]$, may need the type $[[A]]$ to be supplied to
+substitution.  What this means is that given some term $\ottnt{b}$ with a free
+variable, $ \Gamma ,  \ottmv{x} \! :\! \ottnt{A}   \vdash  \ottnt{b}  \Leftarrow  \ottnt{B}$, and another term $\ottnt{a}$ with the same
+type $\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}$ of that variable, we \emph{do not} have a derivation
+$\Gamma  \vdash  \ottnt{b}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}  \Leftarrow  \ottnt{A}$. The reason is that types of variables are always
+inferred, but the term $\ottnt{a}$, may need the type $\ottnt{A}$ to be supplied to
 the type checker.  This issue is particularly annoying in \rref{i-app} when we
 replace a variable (inference mode) with a term that was validated in checking
 mode.
@@ -845,7 +795,7 @@ not have enough annotations to be checked themselves. We can express the propert
 that does hold about our system, using this lemma:
 
 \begin{lemma}[Regularity]
-If $[[G |- a => A]]$ and $[[|- G]]$ then $[[G |- A : Type]]$.
+If $\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}$ and $\vdash  \Gamma$ then $\Gamma  \vdash  \ottnt{A}  \ottsym{:}  \ottkw{Type}$.
 \end{lemma}
 
 This issue is not significant, and we could resolve it by adding an annotation
@@ -857,13 +807,13 @@ to reduce clutter.
 
 Some fairly standard typing rules for booleans are shown below.
 
-\drules{$[[G|-a:A]]$}{Booleans}{t-bool,t-true,t-false}
+\drules{$\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$}{Booleans}{t-bool,t-true,t-false}
 \[ \drule[width=4in]{t-if-simple} \]
 
 Likewise, we can also extend the language with $\Sigma$-types, or
 products, where the type of the second component of the product can depend on the value of the first component.
 
-\drules{$[[G|-a:A]]$}{$\Sigma$-types}{t-sigma,t-pair}
+\drules{$\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$}{$\Sigma$-types}{t-sigma,t-pair}
 \[ \drule[width=4in]{t-letpair-weak} \]
 
 We destruct $\Sigma$-types using pattern matching. The simple rule for pattern
@@ -930,15 +880,15 @@ name for, whose definition we will see shortly. That way \unbound can make
 sure that we only substitute the right form of syntax for the right name,
 i.e., we can only replace a \cd{TName} with a \cd{Term}.  The library
 includes an overloaded function \cd{subst\ x\ a\ b}, which corresponds to
-the substitution we have been writing as $[[ b[a/x] ]]$ in our inference
+the substitution we have been writing as $\ottnt{b}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}$ in our inference
 rules,\footnote{See Guy Steele's talk about the notation for
   substitution~\cite{steele:ppop17}. This is the most common mathematical
-  notation for this operation.} i.e., substitute $[[a]]$ for $[[x]]$ in
-$[[b]]$.
+  notation for this operation.} i.e., substitute $\ottnt{a}$ for $\ottmv{x}$ in
+$\ottnt{b}$.
 
 In general, we want to apply a substitution to many different sorts of
-syntax. For example, we may want to substitute a term $[[a]]$ for a term name
-$[[x]]$ in all of the terms that appear in the typing context. Or there may be
+syntax. For example, we may want to substitute a term $\ottnt{a}$ for a term name
+$\ottmv{x}$ in all of the terms that appear in the typing context. Or there may be
 other sorts of syntax that terms can be part of, and we want to be able to
 substitute for term variables through that syntax too. Therefore, \unbound's
 substitution function has a type with the following general pattern for
@@ -983,8 +933,8 @@ data Term
 As you can see, variables are represented by names. \unbound's \cd{Bind}
 type constructor declares the scope of the bound variables. Both \cd{Lam}
 and \cd{TyPi} bind a single variable in a \cd{Term}.  However, in a
-\cd{TyPi} term, we also want to store the type $[[A]]$, the type of the bound
-variable $[[x]]$.
+\cd{TyPi} term, we also want to store the type $\ottnt{A}$, the type of the bound
+variable $\ottmv{x}$.
 
 Because the syntax is all shared, a \cd{Type} is just another name for a
 \cd{Term}. We will use this name in the source code just for documentation.
@@ -1039,8 +989,8 @@ instance Unbound.Subst Term Term where
 \end{verbatim}
 
 \noindent
-For more details about \unbound, see the \texttt{unbound-generics}
-documentation\footnote{\url{https://github.com/lambdageek/unbound-generics}}.
+For more information about \unbound, see the documentation for
+\texttt{unbound-generics}\footnote{\url{https://github.com/lambdageek/unbound-generics}}.
 
 \subsection{A Type Checking monad {[}Environment.hs{]}}
 
@@ -1093,9 +1043,8 @@ lookupTy :: TName -> TcMonad Sig
 -- | Extend the context with a new binding
 extendCtx :: Decl -> TcMonad Term -> TcMonad Term
 
--- | Throw an error at the current location, assembling the error
--- message from a list of displayable objects.
--- Terminates type checking.
+-- | Throw an error at the corrent location, assembling the error message
+-- from a list of displayable objects. Terminates type checking
 err  :: (Disp a) => [a] -> TcMonad b
 
 -- | Print a warning, but continue the current computation.
@@ -1110,59 +1059,68 @@ that we can print warning messages.
 {[}Typecheck.hs{]}}
 
 Now that we have the type checking monad available, we can start our
-implementation.
-
-The general structure of the \cd{inferType} function starts with a pattern
-match for the various syntactic forms. There are also several cases for
-practical reasons (annotations, source code positions, etc.) and a few cases
-for homework.  If the form of the term does not match any of the forms of the
-terms that we can synthesize types for, then the type checker produces an
-error.
+implementation. For flexibility \texttt{inferType} and \texttt{checkType} will
+\emph{both} be implemented by the same function, called \cd{tcTerm}.
 
 \begin{verbatim}
-inferType tm = case tm of
-   (Var x) -> ...
+inferType :: Term -> TcMonad Type
+inferType t = tcTerm t Nothing
 
-   TyType -> ...
-
-   (TyPi tyA bnd) -> ...
-
-   (App t1 t2) -> ...
-
-   (Ann tm ty) -> ...
-
-   ...
-
-   _ -> Env.err [DS "Must have a type for", DD tm]
+checkType :: Term -> Type -> TcMonad ()
+checkType tm ty = void $ tcTerm tm (Just ty)
 \end{verbatim}
 
-For checking, the general form of the function is also a pattern match on the
-syntactic forms. The functions \cd{inferType} and \cd{checkType} are defined
-in terms of each other by mutual recursion.
+The \texttt{tcTerm} function checks a term, producing its type. The
+second argument is \texttt{Nothing} in inference mode and an expected
+type in checking mode.
+
+\begin{verbatim}
+tcTerm :: Term -> Maybe Type -> TcMonad Type
+\end{verbatim}
+
+We combine these two functions into a single definition so that we can share
+code between checking and inference modes. While none of the expression forms
+of the core language can take advantage of this functionality, it is useful
+for some extensions to the language.
+
+The general structure of the \cd{tcTerm} function starts with a pattern match
+for the various syntactic forms in inference mode:
+
+\begin{verbatim}
+tcTerm (Var x) Nothing = ...
+
+tcTerm TyType Nothing = ...
+
+tcTerm (TyPi tyA bnd) Nothing = ...
+
+tcTerm (App t1 t2) Nothing = ...
+
+\end{verbatim}
 
 Mixed in here, we also have a pattern for lambda expressions in checking
 mode:
 
 \begin{verbatim}
-checkType tm ty = case tm of
-  (Lam bnd) -> case ty of
-     TyPi tyA bnd2 = ...
-        -- pass in the Pi type for the lambda expression
-     _ ->
-       Env.err [DS "Lambda expression has a function type, not ", DD ty]
+tcTerm (Lam bnd) (Just (TyPi tyA bnd2)) = ...
+   -- pass in the Pi type for the lambda expression
+
+tcTerm (Lam _) (Just nf) =  -- checking mode wrong type
+   err [DS "Lambda expression has a function type, not ", DD nf]
 \end{verbatim}
 
-Again there are several cases for practical reasons, plus cases for homework.
-Finally, the last case covers all other forms of checking mode, by calling
-inference mode and making sure that the inferred type is equal to the checked
-type. This case is the implementation of \rref{c-infer}.
+There are also several cases for practical reasons (annotations, source code
+positions, etc.) and a few cases for homework.
+
+Finally, the last case covers all other forms of checking mode, by
+calling inference mode and making sure that the inferred type is equal
+to the checked type. This case is the implementation of \rref{c-infer}.
 
 \begin{verbatim}
- -- c-infer
- tm -> do
-      ty' <- inferType tm
-      unless (Unbound.aeq ty' ty) $
-         Env.err [DS "Types don't match", DD ty, DS "and", DD ty'] -}
+tcTerm tm (Just ty) = do
+ ty' <- inferType tm
+ unless (Unbound.aeq ty' ty) $
+   err [DS "Types don't match", DD ty, DS "and", DD ty']
+ return ty
 \end{verbatim}
 
 The function \texttt{aeq} ensures that the two types are alpha-equivalent. If
@@ -1237,7 +1195,7 @@ pi/Lec1.pi:56:22:
 
 The problem is that even though we want \texttt{pair\ p\ q} to be equal
 to the type
-\texttt{(c:\ Type)\ -\textgreater{}\ (p\ -\textgreater{}\ q\ -\textgreater{}\ c)\ -\textgreater{}\ c},
+\texttt{(c:\ Type)\ -\textgreater{}\ (p\ -\textgreater{}\ q\ -\textgreater{}\ c)\ -\textgreater{}\ c}
 the type checker does not treat these types as equal.
 
 Note that the type checker already records in the environment that
@@ -1252,7 +1210,7 @@ equality}
 As another example, in the full language, we might have a type of length
 indexed vectors, where vectors containing values of type \texttt{A} with
 length \texttt{n} can be given the type \cd{Vec n A}. In this language, we may
-have a safe \texttt{head} operation that allows us to access the first element of the
+have a safe head operation, that allows us to access the first element of the
 vector, as long as it is nonzero.
 
 \begin{piforall}
@@ -1274,9 +1232,7 @@ So the application \texttt{head\ Bool\ 0\ v1} will type check. (Note
 that \pif cannot infer the types \texttt{A} and \texttt{n}.)
 
 However, if we construct the vector, its length may not be a literal
-natural number. Take a look at the \texttt{append} function, that
-takes a vec of length \texttt{m}, vector of length \text{n},
-and returns a vector of length \texttt{plus m n}:
+natural number:
 
 \begin{piforall}
 append : (n : Nat) -> (m : Nat) -> Vec m A -> Vec n A -> Vec (plus m n) A
@@ -1297,7 +1253,7 @@ The main idea is that we will:
 \item
   establish a new judgment that defines when types are equal
 
-\[ \fbox{$[[ G |- A = B]]$} \]
+\[ \fbox{$\Gamma  \vdash  \ottnt{A}  \ottsym{=}  \ottnt{B}$} \]
 \item
   add the following rule to our type system so that it works ``up-to''
   our defined notion of type equivalence
@@ -1306,8 +1262,7 @@ The main idea is that we will:
 
 \item
   Figure out how to revise the \emph{algorithmic} version of our type
-  system so that it supports the above rule, deferring to an algorithmic
-  version of equality.
+  system so that it supports the above rule.
 \end{itemize}
 
 What is a good definition of equality? We have implicitly started with a very
@@ -1315,7 +1270,7 @@ simple one: identify terms up to $\alpha$-equivalence. But we can do
 better.
 
 \begin{figure}
-\drules[e]{$[[G |- A = B]]$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,var,app,lift,annot}
+\drules[e]{$\Gamma  \vdash  \ottnt{A}  \ottsym{=}  \ottnt{B}$}{Definitional Equality}{beta,refl,sym,trans,pi,lam,app,lift,annot}
 \caption{Definitional equality for core \pif}
 \label{fig:defeq}
 \end{figure}
@@ -1329,11 +1284,7 @@ relation.  \Rref{e-beta} ensures that our relation \emph{contains
 \emph{congruence relation} (i.e.~if subterms are equal, then larger terms are
 equal), as specified by rules \rref{e-pi,e-lam,e-app}.  We also want to be
 sure that this relation has ``functionality'' (i.e.~we can lift
-equalities). We declare so with \rref{e-lift}. 
-\Rref{e-var} states that a variable is equivalent to its definition in the context.
-Here we add variable definitions to the context, which will later be used 
-when we extend the language to support dependent pattern matching. 
-Finally, we want to ignore type
+equalities). We declare so with \rref{e-lift}. Finally, we want to ignore type
 annotations, so \rref{e-annot} allows the equality judgment to skip over them
 on the left (and with the help of \rref{e-sym}, on the right as well).
 
@@ -1342,9 +1293,9 @@ $\beta$-equivalence rules and congruence rules for those constructs.)
 
 How do we know our definition is good? We want to make sure that whatever
 rules that we add to the system, we define a relation that is
-\emph{consistent}. We want to equate as many terms/types as possible, but
-we don't want to be be able to derive an equality between $[[Type]]$ and some
-function type (e.g. $[[(x:Type) -> Type]]$), or an equality between $[[True]]$ and $[[False]]$. To be absolutely confident about our definition, we want a proof
+\emph{consistent}. We want to equate as many terms/types as possible, but 
+we don't want to be be able to derive an equality between $\ottkw{Type}$ and some 
+function type (e.g. $ ( \ottmv{x} \!:\! \ottkw{Type} )  \to   \ottkw{Type} $), or an equality between $\ottkw{True}$ and $\ottkw{False}$. To be absolutely confident about our definition, we want a proof 
 that such equalties are not derivable in our system.
 
 \subsection{Using definitional equality in the algorithm}
@@ -1368,9 +1319,9 @@ where type equality matters.
 
 \[ \drule[width=4in]{c-infer} \]
 
-In this case, the types $[[A]]$ and $[[B]]$ are available to the type checker,
+In this case, the types $\ottnt{A}$ and $\ottnt{B}$ are available to the type checker,
 and our equality algorithm must decide whether they are equal. We use
-$[[G |- A <=> B]]$ as the notation for an algorithmic version of our equality
+$\Gamma  \vdash  \ottnt{A}  \Leftrightarrow  \ottnt{B}$ as the notation for an algorithmic version of our equality
 relation---the relation we defined in Figure~\ref{fig:defeq} does not readily
 lead to an algorithm. (More on this algorithmic version in
 Section~\ref{sec:equate} below.)
@@ -1383,7 +1334,7 @@ Section~\ref{sec:equate} below.)
 
 \[ \drule[width=4in]{i-app} \]
 
-In this case, we are given a single type $[[A]]$ and we need to know whether
+In this case, we are given a single type $\ottnt{A}$ and we need to know whether
 it is equivalent to some $\Pi$-type. Because $\Pi$-types are \emph{head}
 forms, we can do this via reduction. This rule evaluates the type $A$ to its
 head form, using the rules shown in Figure~\ref{fig:whnf}. If that form is a
@@ -1393,12 +1344,10 @@ $\Pi$-type, then we can access its subcomponents.
 has already been reduced to normal form. This will allow \rref{c-lambda} to
 match against a literal function type.
 
-\[ \drule[width=4in]{c-whnf} \]
-
 \end{itemize}
 
 \begin{figure}
-\drules[whnf]{$[[whnf G |- a ~> nf]]$}{Weak head normal form reduction}{lam-beta,annot,type,lam,pi,var,app}
+\drules[whnf]{$ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{v} $}{Weak head normal form reduction}{lam-beta,annot,type,lam,pi,var,app}
 \caption{Relation computing the weak head normal form of a term}
 \label{fig:whnf}
 \end{figure}
@@ -1407,22 +1356,12 @@ match against a literal function type.
 
 The following judgment (shown in Figure~\ref{fig:whnf})
 %
-\[ \fbox{$[[whnf G |- a ~> nf]]$} \]
+\[ \fbox{$ \ottkw{whnf} \  \ottnt{a}  \leadsto  \ottnt{v} $} \]
 %
-describes when a term $[[a]]$ reduces to some result $[[nf]]$ under context $[[G]]$ 
-in \emph{weak head normal form (whnf)}.  For closed terms, these rules correspond to a
-big-step evaluation relation and produce a value (i.e. abstraction or type
-form).  For open terms, the rules could also produce terms that are a
-sequence of applications headed by a variable.  In this case, we call the term
-a \emph{neutral} term, and use the metavariable $[[ne]]$ to refer to it.
-
-\[
-\begin{array}{llcl}
-\textit{value}     & [[v]] & ::= & [[\x.a]]\ |\ [[Type]]\ |\ [[(x:A) -> B]]\ \\
-\textit{neutral terms} & [[ne]] & ::= & [[x]]\ |\ [[ne a]] \\
-\textit{weak-head normal form} & [[nf]] & ::= & [[v]]\ |\ [[ne]] \\
-\end{array}
-\]
+describes when a term $\ottnt{a}$ reduces to some result $\ottnt{v}$ in \emph{weak head normal form (whnf)}.
+For closed terms, these rules correspond to a big-step evaluation relation and produce
+a value. For open terms, the rules produce a term that is either headed by a variable
+or by some head form (i.e., $\lambda$ or $\Pi$).
 
 For example, the term
 \begin{piforall}
@@ -1447,7 +1386,7 @@ a Haskell function.
 
 \paragraph{Using algorithmic equality}
 
-In the \pif implementation, the function that corresponds to $[[G |- a <=> b]]$
+In the \pif implementation, the function that corresponds to $\Gamma  \vdash  \ottnt{a}  \Leftrightarrow  \ottnt{b}$
 has type
 %
 \begin{verbatim}
@@ -1456,6 +1395,19 @@ equate :: Term -> Term -> TcMonad ()
 %
 This function ensures that the two provided types are equal, or throws a type error if
 they are not.
+
+Additionally, the \pif includes the function
+% some ``head'' form, without knowing exactly what that form is.  For example,
+% when \emph{checking} lambda expressions, we need to know that the provided
+% type is of the form of a $\Pi$-type ($ ( \ottmv{x} \!:\! \ottnt{A} )  \to   \ottnt{B} $). Likewise, when inferring
+% the type of an application, we need to know that the type inferred for the
+% function is actually a $\Pi$-type.
+\begin{verbatim}
+ensurePi :: Type -> TcMonad (TName, Type, Type)
+\end{verbatim}
+that checks the given type to see if the given is equal to some $\Pi$-type of the form
+$ ( \ottmv{x} \!:\! \ottnt{A_{{\mathrm{1}}}} )  \to   \ottnt{A_{{\mathrm{2}}}} $, and if so returns \texttt{x},
+\texttt{A1} and \texttt{A2}.
 
 This function is defined in terms of a helper function that implements the
 rules shown in Figure~\ref{fig:whnf}.
@@ -1467,34 +1419,27 @@ whnf :: Term -> TcMonad Term
 In \texttt{version2} of the \href{version2/src/TypeCheck.hs}{implementation},
 these functions are called in a few places:
 \begin{itemize}
-\item \texttt{equate} is called at the end of \texttt{checkType} to make sure
-that the annotated type matches the inferred type.
-\item \texttt{whnf} is called in the \texttt{App} case of \texttt{inferType} to ensure that
-  the function has some sort of function type.
-
-\item \texttt{whnf} is called at the beginning of \texttt{checkType}
-  to make sure that we are using the head form of the type in checking
+\item \texttt{equate} is called at the
+end of \texttt{tcTerm}
+\item \texttt{ensurePi} is called in the \texttt{App} case
+of \texttt{tcTerm}
+\item \texttt{whnf} is called in \texttt{checkType}, before the call to
+  \texttt{tcTerm}, to make sure that we are using the head form in checking
   mode.
 \end{itemize}
 
 \subsection{Implementing definitional equality (see Equal.hs)}
 \label{sec:equate}
 
-\begin{figure}
-\drules[eq]{$[[G |- A <=> B]]$}{Algorithmic equality}{refl,whnf,abs,pi,app}
-\caption{Algorithmic equality for core \pif}
-\label{fig:algeq}
-\end{figure}
-
-
-The rules for $[[G |- a = b ]]$ \emph{specify} when terms should be equal, but
+The rules for $\Gamma  \vdash  \ottnt{a}  \ottsym{=}  \ottnt{b}$ \emph{specify} when terms should be equal, but
 they are not an algorithm. But how do we implement its algorithmic analogue
-$[[G |- a <=> b]]$?
+$\Gamma  \vdash  \ottnt{a}  \Leftrightarrow  \ottnt{b}$?
+
 
 There are several ways to do so.
 
 The easiest one to explain is based on reduction---for \texttt{equate} to
-reduce the two arguments to a \emph{normal form} and then compare those normal
+reduce the two arguments to some normal form and then compare those normal
 forms for equivalence.
 
 One way to do this is with the following algorithm:
@@ -1506,12 +1451,9 @@ One way to do this is with the following algorithm:
     Unbound.aeq nf1 nf2
 \end{verbatim}
 
-However, we can do better.  Sometimes we can find out that terms are
-equivalent without fully reducing them. For example, if we observe that the
-two terms are already $\alpha$-equivalent, then we already know that they are
-equal---no need to reduce them first. Because reduction can be expensive (or
-even nonterminating) we would like to only reduce as much as we need to find
-out whether the terms can be identified.
+However, we can do better.  Sometimes we can equate the terms without
+completely reducing them. Because reduction can be expensive (or even
+nonterminating) we would like to only reduce as much as necessary.
 
 Therefore, the implementation of \cd{equate} has the following form.
 \begin{verbatim}
@@ -1534,8 +1476,8 @@ Therefore, the implementation of \cd{equate} has the following form.
         -- | head forms don't match throw an error
         (_,_) -> Env.err ...
 \end{verbatim}
-Above, we first check for alpha-equivalence. If they
-are, we do not need to do anything else. Instead, the function returns immediately
+Above, we first check whether the terms are already alpha-equivalent. If they
+are, we do not need to do anything else, we can return immediately
 (i.e., without throwing an error, which is what the function does when it
 decides that the terms are not equal). The next step is to reduce both terms
 to their weak head normal forms.  If two terms have different head forms, then
@@ -1543,29 +1485,25 @@ we know that they must be different terms, so we can throw an error. If they hav
 the same head forms, then we can call the function recursively on analogous
 subcomponents until the function either terminates or finds a mismatch.
 
-This algorithm is summarized in Figure~\ref{fig:algeq}.
-
 Why do we use weak head reduction vs.~full reduction?
 
 \begin{itemize}
-\item We can extend this algorithm to implement deferred substitutions for
-  variables. Note that when comparing terms we need to have their definitions
-  available. That way we can compute that \texttt{(plus\ 3\ 1)} weak head
-  normalizes to 4, by looking up the definition of \texttt{plus} when
-  needed. However, we don't want to substitute all variables through
-  eagerly---not only does this make extra work, but error messages can be
-  extremely long.
+\item
+  We can implement deferred substitutions for variables. Note that when
+  comparing terms we need to have their definitions available. That way we
+  can compute that \texttt{(plus\ 3\ 1)} weak head normalizes to 4, by
+  looking up the definition of \texttt{plus} when needed. However, we
+  don't want to substitute all variables through eagerly---not only does
+  this make extra work, but error messages can be extremely long.
 \item Furthermore, we allow recursive definitions in \pif, so normalization
   may just fail completely if we unfold recursive definitions inside
   functions before they are applied. In contrast, the definition based on
   \texttt{whnf} only unfolds recursive definitions when they stand in the way
   of equivalence, so avoids some infinite loops in the type checker.
-\end{itemize}
 
-Note that equality is not decidable in \texttt{pi-forall}. There will always
-be terms that could cause \texttt{equate} to loop forever. However, the
-algorithm is sound. If it says that two terms are equal, then there is some
-derivation using the rules of Figure~\ref{fig:defeq} that the terms are equal.
+  Note that we don't have a complete treatment of equality. There will always
+  be terms that can cause \texttt{equate} to loop forever.
+\end{itemize}
 
 \section{Dependent pattern matching and propositional equality}
 \label{sec:pattern-matching}
@@ -1583,18 +1521,20 @@ Consider our elimination rule for if from your homework assignment:
 
 \[ \drule[width=4in]{t-if-simple} \]
 
-One solution to the homework assignment is to add the following two
-rules to the algorithmic system, one in inference mode and one in
+One solution to the homework assignment is to add the following two 
+rules to the algorithmic system, one in inference mode and one in 
 checking mode.
 
 \[ \drule[width=4in]{c-if-simple}\]
 \[\drule[width=4in]{i-if-simple} \]
 
-In both of these rules, we should check that the condition has type bool (when using the checking judgement here, the algorithm will infer the type of the condition and then compare the inferred type against bool using definitional equality.) However, there is no unique best way to handle the branches of the if expression. Some examples work better using the first rule and some examples require the second rule.
+In both of these rules, we should check that the condition has type bool (when using the checking judgement here, the algorithm will infer the type of the condition and then compare the inferred type against bool using definitional equality.) However, there is no unique best way to handle the branches of the if expression. Some examples work better using the first rule and some examples require the second rule. 
 For example, we can only type check the example below using the first (checking) rule:
-\[ [[ |- \y. if y then (\x.x) else (\x. not x) <= Bool -> Bool -> Bool]] \]
+\[  \emptyset   \vdash   \lambda  \ottmv{y} .  \ottkw{if} \, \ottmv{y} \, \ottkw{then} \, \ottsym{(}   \lambda  \ottmv{x} .  \ottmv{x}   \ottsym{)} \, \ottkw{else} \, \ottsym{(}    \lambda  \ottmv{x} .  not \,    \;  \ottmv{x}   \ottsym{)}   \Leftarrow  \ottkw{Bool}  \to  \ottkw{Bool}  \to  \ottkw{Bool} \]
 and we can only type check this next example using the second (inference) rule:
-\[ [[ x:Bool,y:Bool->Bool |- (if x then y else not) true => Bool ]] \]
+\[   \ottmv{x} \! :\! \ottkw{Bool}  ,  \ottmv{y} \! :\! \ottkw{Bool}  \to  \ottkw{Bool}   \vdash   \ottsym{(}  \ottkw{if} \, \ottmv{x} \, \ottkw{then} \, \ottmv{y} \, \ottkw{else} \, not \,   \ottsym{)}  \;  true \,    \Rightarrow  \ottkw{Bool} \]
+Fortunately, it is not difficult to implement our type checking function so that it implements both rules. Indeed, because \cd{tcTerm} combines both judgments into a single Haskell function in the implementation, it is possible to implement both 
+rules with the same code.
 
 However, note that we can strengthen the specification of the type checking
 rule for \cd{if} by making the result type \texttt{A} depend on whether the
@@ -1621,11 +1561,11 @@ bar = \b . if b then () else True
 
 It turns out that this strong type checking rule is difficult to implement. In
 fact, it is not syntax-directed because $A$ and $x$ are not fixed by the
-syntax. Given $[[A[True/x] ]]$ and $[[A [False/x] ]]$ and $[[ A [a/x] ]]$ (or
+syntax. Given $\ottnt{A}  \ottsym{[}  \ottkw{True}  \ottsym{/}  \ottmv{x}  \ottsym{]}$ and $\ottnt{A}  \ottsym{[}  \ottkw{False}  \ottsym{/}  \ottmv{x}  \ottsym{]}$ and $\ottnt{A}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}$ (or
 anything that they are definitionally equal to!)  how can we figure out
 whether they correspond to each other? Neither inference nor checking mode
-works, because we don't ever see the type $[[A]]$ with just the variable
-$[[x]]$.
+works, because we don't ever see the type $\ottnt{A}$ with just the variable
+$\ottmv{x}$.
 
 So, we will not be so ambitious in \pif. We will only allow this refinement when
 the scrutinee is a variable, deferring to the weaker, non-refining typing rule
@@ -1634,13 +1574,13 @@ for all other cases. Specificationally, we will implement this rule:
 \[ \drule[width=4in]{t-if} \]
 
 And, in our bidirectional system, we will only allow refinement
-when we are in checking mode. That way, because $[[a]]$ is just $[[x]]$, we can
+when we are in checking mode. That way, because $\ottnt{a}$ is just $\ottmv{x}$, we can
 easily identify how the type should vary in each branch.
 
 \[ \drule[width=4in]{c-if} \]
 
-To implement this rule, we need only remember that $x$ is $[[True]]$ or
-$[[False]]$ when checking the individual branches of the if expression.
+To implement this rule, we need only remember that $x$ is $\ottkw{True}$ or
+$\ottkw{False}$ when checking the individual branches of the if expression.
 \footnote{
 Here is an alternative version, for inference mode only, suggested
 during a prior summer school:
@@ -1689,26 +1629,26 @@ input file.)
 
 \subsubsection{Definitions and let expressions}
 
-Now let's consider let expressions, of the form $[[let x = a in b]]$. The simplest rule
+Now let's consider let expressions, of the form $\ottkw{let} \, \ottmv{x}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}$. The simplest rule 
 that we can use for this term is the following:
 
 \[ \drule[width=4in]{t-let-simple} \]
 
-Note the last premise: we need to make sure that the variable $[[x]]$ does not
-appear in the type $[[B]]$ because otherwise it would escape its scope. In the
+Note the last premise: we need to make sure that the variable $\ottmv{x}$ does not
+appear in the type $\ottnt{B}$ because otherwise it would escape its scope. In the
 specificational version of the type system, this version of the let rule is
-derivable from function application: $[[let x = a in b]]$ is equivalent to
-$[[ (\x. b) a ]]$. On the other hand, the bidirectional system won't type check
+derivable from function application: $\ottkw{let} \, \ottmv{x}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottnt{b}$ is equivalent to
+$ \ottsym{(}   \lambda  \ottmv{x} .  \ottnt{b}   \ottsym{)}  \;  \ottnt{a} $. On the other hand, the bidirectional system won't type check
 this definition without an annotation, so we should add this expression form
 directly.
 
-However, we can also develop a stronger rule, which statically tracks that, because this
-is a let-expression, we know that $[[x]]$ is equal to its definition. This view leads to the
-following rule:
+However, we can also develop a stronger rule, which statically tracks that, because this 
+is a let-expression, we know that $\ottmv{x}$ is equal to its definition. This view leads to the 
+following rule: 
 
 \[ \drule[width=4in]{t-let-def} \]
 
-In this rule, we've added a definition to our context, i.e. $[[x = a]]$. These
+In this rule, we've added a definition to our context, i.e. $\ottmv{x}  \ottsym{=}  \ottnt{a}$. These
 definitions are used during weak head normalization. If we get to a variable
 in the head position, and there is a definition for it in the context, we
 should look it up and keep normalizing.
@@ -1716,10 +1656,10 @@ should look it up and keep normalizing.
 Definitions in the context act like deferred substitutions. Indeed,
 \rref{t-let-def} doesn't really increase the expressiveness of the type system
 compared to \rref{t-let-simple}: if we had derivation that uses this rule, we
-can replace it with one that uses $[[b [a /x] ]]$ instead of $[[b]]$ in the
-body of the let expression. However, for programmers, if $[[a]]$ is a large
+can replace it with one that uses $\ottnt{b}  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}$ instead of $\ottnt{b}$ in the
+body of the let expression. However, for programmers, if $\ottnt{a}$ is a large
 expression and important for type checking, it is more convenient for to write
-$[[x]]$ instead.
+$\ottmv{x}$ instead.
 
 How do we approach let expressions in the bidirectional system? As with if and
 letpair expressions, it makes sense to have both checking and inference
@@ -1729,24 +1669,24 @@ the expression.
 
 \[ \drule[width=4in]{c-let} \]
 
-However, in inference mode, we have to be careful that the variable $[[x]]$
+However, in inference mode, we have to be careful that the variable $\ottmv{x}$
 does not escape its scope. One option would be just to reject the program if
 this would happen.  However, a more flexible approach is to substitute this
-variable away with its definition.\footnote{This rule for let can be used to
-derive the more general form of refinement rules for booleans and other datatypes. In the
+variable away with its definition.\footnote{This rule for let can be used to 
+derive the more general form of refinement rules for booleans and other datatypes. In the 
 general case, we can annotate an elimination form with a \emph{motive}:
-\[ \drule[width=4in]{i-if-motive} \]
+\[ \drule[width=4in]{i-if-motive} \] 
 This annotation lets us use refinement, even when the condition is not a variable, and even in inference mode. However, we can also derive this rule via let:
-\[ [[ if a then b1 else b2 [x.A] ]] = [[ let x = a in (if x then b1 else b2 : A) ]] \]
+\[ \ottkw{if} \, \ottnt{a} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \ottsym{[}  \ottmv{x}  \ottsym{.}  \ottnt{A}  \ottsym{]} = \ottkw{let} \, \ottmv{x}  \ottsym{=}  \ottnt{a} \, \ottkw{in} \, \ottsym{(}  \ottkw{if} \, \ottmv{x} \, \ottkw{then} \, \ottnt{b_{{\mathrm{1}}}} \, \ottkw{else} \, \ottnt{b_{{\mathrm{2}}}}  \ottsym{:}  \ottnt{A}  \ottsym{)} \]
 }
 
 \[ \drule[width=4in]{i-let} \]
 
 \paragraph{Definitions and refinement}
 
-With the addition of definitions, we can revise our refining rules for booleans and
-$\Sigma$-types. Instead of substituting in the result type, we can replace those rules
-with suspended definitions in the context.
+With the addition of definitions, we can revise our refining rules for booleans and 
+$\Sigma$-types. Instead of substituting in the result type, we can replace those rules 
+with suspended definitions in the context. 
 
 \[ \drule[width=4in]{c-if-def} \]
 
@@ -1755,15 +1695,15 @@ with suspended definitions in the context.
 \subsection{Propositional equality}
 
 \begin{figure}
-\drules[t]{$[[G |- a : A]]$}{Typing}{refl,eq,subst,contra}
+\drules[t]{$\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$}{Typing}{refl,eq,subst,contra}
 \caption{Propositional equality (Specificational rules)}
 \label{fig:propeq}
 \end{figure}
 
 \begin{figure}
-\drules[c]{$[[G |- a <= A]]$}{Checking}{refl,subst-left,subst-right}
+\drules[c]{$\Gamma  \vdash  \ottnt{a}  \Leftarrow  \ottnt{A}$}{Checking}{refl,subst-left,subst-right}
 \[ \drule[width=4in]{c-contra} \]
-\drules[i]{$[[G |- a => A]]$}{Inference}{}
+\drules[i]{$\Gamma  \vdash  \ottnt{a}  \Rightarrow  \ottnt{A}$}{Inference}{}
 \vspace{-5ex}
 \[ \drule[width=4in]{i-eq} \]
 
@@ -1784,10 +1724,10 @@ As a step towards more general indexed datatypes, we will start by adding a prop
 
 The main idea of the equality type is that it converts a \emph{judgment} that
 two types are equal into a \emph{type} that evaluates to a special value form,
-called $[[refl]]$, only when two types are equal.\footnote{Recall that all
+called $\ottkw{refl}$, only when two types are equal.\footnote{Recall that all
   types are inhabited in \pif, so to know whether types are equal, we must
   make sure that we have an actual proof of equality.}  In other words, the
-new value form $[[refl]]$ has type $[[a = b]]$ when these two types are
+new value form $\ottkw{refl}$ has type $\ottnt{a}  \ottsym{=}  \ottnt{b}$ when these two types are
 definitionally equal to each other, as shown in \rref{t-refl} in
 Figure~\ref{fig:propeq}.
 
@@ -1795,14 +1735,14 @@ Sometimes, you might see \rref{t-refl} written as follows:
 %
 \[ \drule[width=3in]{t-refl-alt} \]
 %
-However, this rule is equivalent to the above version because types are equal up to congruence. If we know that $[[|- a = b]]$, then we know that the type $[[a = a]]$ is equal to the type $[[a = b]]$. In a type system with conversion, it doesn't matter which of these equal types we choose for the conclusion of the rule.
+However, this rule is equivalent to the above version because types are equal up to congruence. If we know that $ \emptyset   \vdash  \ottnt{a}  \ottsym{=}  \ottnt{b}$, then we know that the type $\ottnt{a}  \ottsym{=}  \ottnt{a}$ is equal to the type $\ottnt{a}  \ottsym{=}  \ottnt{b}$. In a type system with conversion, it doesn't matter which of these equal types we choose for the conclusion of the rule.
 
 However, in the bidirectional version of the rules, shown in
 Figure~\ref{fig:propeq-alg}, it does make a difference. The algorithmic typing
-rule for $[[refl]]$ requires checking mode so that we know which types we
+rule for $\ottkw{refl}$ requires checking mode so that we know which types we
 need to show equivalent.  (See \rref{c-refl}.)  Furthermore, this rule allows
-$[[a]]$ and $[[b]]$ to differ so that there are no restrictions on its
-use. Instead, to implement this rule, we need only compare $[[a]]$ and $[[b]]$
+$\ottnt{a}$ and $\ottnt{b}$ to differ so that there are no restrictions on its
+use. Instead, to implement this rule, we need only compare $\ottnt{a}$ and $\ottnt{b}$
 using our algorithmic equality, as we did in Section~\ref{sec:equality}.
 
 An equality type is well-formed when the terms on both sides of the equality
@@ -1811,21 +1751,17 @@ equality, as shown in \rref{t-eq}. In the algorithm, \rref{i-eq}, we
 infer the types of each side of the equality type and then check to make sure
 that those types are equal.
 
-The elimination rule for propositional equality is written $[[subst a by b]]$
+The elimination rule for propositional equality is written $\ottkw{subst} \, \ottnt{a} \, \ottkw{by} \, \ottnt{b}$
 in \pif.  This term allows us to convert the type of one expression to
 another, as shown in rule \rref{t-subst-simple} below. In this rule, we can change the type
-of some expression $[[a]]$ by replacing an occurrence of some term $[[a1]]$
+of some expression $\ottnt{a}$ by replacing an occurrence of some term $\ottnt{a_{{\mathrm{1}}}}$
 with an equivalent type.
 
 \[ \drule[width=4in]{t-subst-simple} \]
 
-How can we implement this rule? For simplicity in these lecture notes, we will
-play the same trick that we did with booleans, requiring that one of the sides
-of the equality be a variable.\footnote{The \pif implementation implements a more
-expressive rule that uses \emph{unification} to determine the substitution to apply
-to $A$. Unification means that if we have an equality type such as
-$[[(x, True) = ( (), y)]]$
-then we can produce the substitution of $[[()]]$ for $[[x]]$ and $[[True]]$ for $[[y]]$.}
+How can we implement this rule? For simplicity, we will play the same trick that
+we did with booleans, requiring that one of the sides of the equality be a
+variable.
 
 \[ \drule[width=4in]{c-subst-left-simple} \]
 \[ \drule[width=4in]{c-subst-right-simple} \]
@@ -1843,7 +1779,7 @@ Furthermore, we can also extend the elimination form for propositional
 equality with dependent pattern matching as we did for booleans. This
 corresponds to the elimination rule \rref{t-subst} in Figure~\ref{fig:propeq},
 which observes that the only way to construct a proof of equality is with the
-term $[[refl]]$.\footnote{This version of subst is similar to an eliminator
+term $\ottkw{refl}$.\footnote{This version of subst is similar to an eliminator
   for propositional equality called \texttt{J}. However, our
   eliminator is very strong and can be used to derive ``axiom'' K or the
   uniqueness of identity proofs. The eliminator for propositional equality in
@@ -1857,11 +1793,35 @@ One last addition: \texttt{contra}. If we can somehow prove a false statement,
 then we should be able to prove anything. A contradiction is a proposition
 between two terms that have different head forms. For now, we will use
 \rref{t-contra}, shown in Figure~\ref{fig:propeq}, that requires a proof that
-$[[True]]$ equals $[[False]]$. The algorithmic version of this rule,
+$\ottkw{True}$ equals $\ottkw{False}$. The algorithmic version of this rule,
 \rref{c-contra}, must use weak-head normalization multiple times: first to
 find the equality type and then to show that the two sides of it have
 different head forms. This rule must be in checking mode because we can use
 \textsf{contra} to inhabit any type.
+
+To see an example of propositional equality in action, let's take a look at the function \texttt{sym} in the file \href{version2/test/Hw2.pi}{\texttt{Hw2.pi}}. For convenience, we reproduce the function definition here:
+\begin{piforall}
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  subst Refl by pf 
+\end{piforall}
+Intuitively, the function \texttt{sym} says: if we supply two terms  \texttt{x} and \texttt{y} (both of type \texttt{A}), along with a proof \texttt{pf} that \texttt{x = y}, then we can prove that \texttt{y = x}.  Note that the \pif expression \texttt{subst Refl by pf} is doing a pattern-match on the term inhabiting the identity type. In Coq, \pif expressions of the form \texttt{subst a by b} would be written as:
+\begin{verbatim}
+match b with 
+  Refl => a
+\end{verbatim}
+
+To see what is happening in the body of \texttt{sym}, let's add type annotations to each of the subterms:
+\begin{piforall}
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  (subst (Refl : x = x) by (pf : x = y) : y = x)
+\end{piforall}
+
+In the body of \texttt{sym}, \texttt{subst} eliminates \texttt{pf} (a proof that \texttt{x = y}) when typechecking \texttt{Refl} against the type \texttt{y = x}. Moreover, the \texttt{subst} keyword adds the definition \texttt{x = y} to the context, meaning that both sides of the equality \texttt{y = x} normalize to \texttt{y} -- this is an example of the \rref{c-subst-left} in action. Note that as a result of this rule, the resultant type of the entire expression \texttt{subst Refl by pf} changes to \texttt{y = x}, which is the desired return type for the function \texttt{sym}. 
+
+
+
 
 \subsubsection{Homework (\pif: equality)}
 
@@ -1953,22 +1913,21 @@ evaluate to \texttt{Refl} we could erase it.
 We need to make sure that an irrelevant variable is not ``used'' in the
 relevant parts of the body of a $\lambda$-abstraction. How can we do so?
 
-The key idea is that we mark variable assumptions in the context with an
-$\epsilon$ annotation, which is either $[[Rel]]$ (relevant) or $[[Irr]]$
-(irrelevant).  and only relevant variables can be used in terms. (``Normal''
-variables, introduced by $\lambda$-expressions, will always be marked as
-relevant.) As a result, we revise the variable typing rule to require the
-relevant annotation.  In the \texttt{version3} implementation, type signatures
-in the environment now include an \cd{Epsilon} tag, and the function
-\cd{checkStage} ensures that this tag is $[[Rel]]$ when the variable is used
-in the term.
+The key idea is that we mark variables in the context with an $  \emptyset  ^ \epsilon $
+annotation, which is either $ + $ (relevant) or $ - $ (irrelevant).
+``Normal'' variables, introduced by $\lambda$-expressions, will always be
+marked as relevant, and only relevant variables can be used in terms.  As a
+result, we revise the variable typing rule to require the relevant annotation.
+In the \texttt{version3} implementation, type signatures in the environment now
+include an \cd{Epsilon} tag, and the function \cd{checkStage} ensures that this
+tag is $ + $ when the variable is used in the term.
 
 \[
 \drule{t-evar}
 \]
 
 An irrelevant abstraction introduces its variable into the context tagged with
-the irrelevant annotation. Because of the $[[Irr]]$ tag, these variables are
+the irrelevant annotation. Because of the $ - $ tag, such variables are
 inaccessible in the body of the function.
 
 \[
@@ -1977,7 +1936,7 @@ inaccessible in the body of the function.
 
 However, this variable should be available for use in \emph{types} and other
 \emph{irrelevant} parts of the term. To enable this use, we use a special
-context operation $[[G Rel]]$, as in the second premise in \rref{t-elambda}, and
+context operation $ \Gamma ^  +  $, as in the second premise in \rref{t-elambda}, and
 in the \rref{t-eapp} rule below.
 
 \[
@@ -1985,13 +1944,13 @@ in the \rref{t-eapp} rule below.
 \]
 
 This operation on the context, called \emph{resurrection}, converts all
-``$[[Irr]]$'' tags on variables to be ``$[[Rel]]$''. It represents a shift in
-our perspective: because we have entered an irrelevant part of the term, the
+$ - $ tags on variables to be $ + $. It represents a shift in our
+perspective: because we have entered an irrelevant part of the term, the
 variables that were not visible before are now available after this context
 modification.
 
 Finally, when checking irrelevant $\Pi$ types, we mark the variable with
-$[[Rel]]$ when we add it to the context so that it may be used in the range of
+$ + $ when we add it to the context so that it may be used in the range of
 the $\Pi$ type. Otherwise, we would not be able to verify the type of the
 polymorphic identity function above.
 \[
@@ -2020,7 +1979,7 @@ arguments are now tagged with their relevance, and when we compare arguments
 that are tagged as irrelevant, we do nothing. In fact, what we are doing is
 actually \emph{defining} equality over just the computationally relevant parts
 of the term instead of the entire term. And we have been doing this in a limited
-form from the beginning---recall that \texttt{version1} of \pif already
+form from the beginning---recall that \texttt{version1} of \pif \pif already
 ignores type annotations. Just as type annotations do not affect computation
 and can be ignored, the same reasoning holds for irrelevant arguments.
 
@@ -2205,7 +2164,7 @@ or \cd{data Nat} extend the context with new type constants (i.e.
 type constructors) and new data constructors. It is as if we had added a
 bunch of new typing rules to the type system, such as:
 
-\drules[t]{$[[G|- a : A]]$}{Typing}{Nat,Void,Zero,Succ,ImTrue}
+\drules[t]{$\Gamma  \vdash  \ottnt{a}  \ottsym{:}  \ottnt{A}$}{Typing}{Nat,Void,Zero,Succ,ImTrue}
 
 In the general form, a \emph{simple} data type declaration includes a
 name and a list of data constructors.
@@ -2271,23 +2230,23 @@ boolDecl = Data "Bool" [ConstructorDef "False" (Telescope []),
 
 % \[
 %\begin{array}{llcl}
-%\mathit{Telescope} &[[ D ]]& ::= &[[ x : A , D ]]\ |\ [[ x = b , D ]]\ |\ \mathit{empty} \\
-%\mathit{Pattern}   &[[ p ]]& ::= &[[ x ]]\ |\ [[K ps]] \\
+%\mathit{Telescope} &\Delta& ::= &\ottmv{x}  \ottsym{:}  \ottnt{A}  \ottsym{,}  \Delta\ |\ \ottmv{x}  \ottsym{=}  \ottnt{b}  \ottsym{,}  \Delta\ |\ \mathit{empty} \\
+%\mathit{Pattern}   &\ottnt{p}& ::= &\ottmv{x}\ |\ \ottmv{K} \, \ottnt{ps} \\
 %\end{array}
 % \]
 
 In general, when we have a datatype declaration, that means that a new data type
-$[[T]]$ of type $[[Type]]$ will be added to the context.  Furthermore, the
-context should record all of the data constructors for that type, $[[Ki]]$, as
-well as the telescope, written $[[Di]]$, for each data constructor.  For
-example for natural numbers, the new type $[[T]]$ is $[[Nat]]$, there are two
+$\ottmv{T}$ of type $\ottkw{Type}$ will be added to the context.  Furthermore, the
+context should record all of the data constructors for that type, $\ottmv{K_{\ottmv{i}}}$, as
+well as the telescope, written $\Delta_{\ottmv{i}}$, for each data constructor.  For
+example for natural numbers, the new type $\ottmv{T}$ is $\ottkw{Nat}$, there are two
 new data constructors, $\mathsf{Zero}$ and $\mathsf{Succ}$, the former has an empty
 telescope, the latter has a telescope containing the declaration of a single
-relevant argument of type $[[Nat]]$.  Alternatively, for the \cd{SillyBool}
+relevant argument of type $\ottkw{Nat}$.  Alternatively, for the \cd{SillyBool}
 example, there are again two new data constructors $\mathsf{ImTrue}$ and
-$[[ImFalse]]$. Each of these constructors takes a telescope with two entries,
-first the declaration of a name of type $[[Bool]]$ and then a definition of
-that name as either $[[True]]$ or $[[False]]$.
+$ImFalse$. Each of these constructors takes a telescope with two entries,
+first the declaration of a name of type $\ottkw{Bool}$ and then a definition of
+that name as either $\ottkw{True}$ or $\ottkw{False}$.
 
 The information about datatype declarations stored in the context is used to
 check terms that are the applications of data constructors. For simplicity,
@@ -2295,13 +2254,13 @@ check terms that are the applications of data constructors. For simplicity,
 arguments.
 
 So our typing rule for data constructor applications looks a little like
-this. We have $[[args]]$ as representing the list of arguments for the data
-constructor $[[K]]$.
+this. We have $\overline{a}$ as representing the list of arguments for the data
+constructor $\ottmv{K}$.
 
 \[ \drule{i-dcon-simple} \]
 
 We need to check that list against the telescope for the constructor, using
-the judgment $[[G |- args <= D]]$.
+the judgment $\Gamma  \vdash  \overline{a}  \Leftarrow  \Delta$.
 
 In this judgment, each argument must have
 the right type. Furthermore, because of dependency, we substitute that
@@ -2320,16 +2279,16 @@ should also get to the end of the telescope.
 
 \begin{figure}[ht]
 \begin{tabular}{lll}
-$[[G |- args <= D]]$   & \texttt{tcArgTele}
+$\Gamma  \vdash  \overline{a}  \Leftarrow  \Delta$   & \texttt{tcArgTele}
    & Type check a list of arguments against a telescope \\
-$[[G |- pat : A => D]]$ & \texttt{declarePat}
+$\Gamma  \vdash  \ottnt{pat}  \ottsym{:}  \ottnt{A}  \Rightarrow  \Delta$ & \texttt{declarePat}
    & Create telescope containing all of the \\
    && variables from the pattern \\
-$[[ |- a ~ b => D]]$  & \texttt{unify}
+$\vdash  \ottnt{a}  \sim  \ottnt{b}  \Rightarrow  \Delta$  & \texttt{unify}
    & Compare two terms to create a list of definitions \\
-$[[ D [ a / x ] ]] $  & \texttt{doSubst}
+$\Delta  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]} $  & \texttt{doSubst}
    & Substitute through a telescope \\
-$[[ D1 [ args / D2 ] ]]$ & \texttt{substTele}
+$\Delta_{{\mathrm{1}}}  \ottsym{[}  \overline{a}  \ottsym{/}  \Delta_{{\mathrm{2}}}  \ottsym{]}$ & \texttt{substTele}
    & Substitute a list of args for the variables \\
    && declared in a telescope \\
 \end{tabular}
@@ -2339,7 +2298,7 @@ $[[ D1 [ args / D2 ] ]]$ & \texttt{substTele}
 
 Figure ~\ref{fig:data} lists the relevant judgments for type checking the use
 of datatypes and the corresponding functions in the \pif implementation.  The
-$[[G |- args <= D]]$ judgment, described above, is implemented by the
+$\Gamma  \vdash  \overline{a}  \Leftarrow  \Delta$ judgment, described above, is implemented by the
 \cd{tcArgTele} function in \texttt{TypeCheck.hs}. This function has the
 following type in the implementation: (For reasons that we explain below, we
 have a special type \texttt{Arg} for the arguments to the data constructor.)
@@ -2349,7 +2308,7 @@ tcArgTele :: [Arg] -> Telescope -> TcMonad [Arg]
 \end{verbatim}
 
 The \cd{tcArgTele} also function relies on the substitution function for
-telescopes, written $[[D [a/x] ]]$ in the rules above:
+telescopes, written $\Delta  \ottsym{[}  \ottnt{a}  \ottsym{/}  \ottmv{x}  \ottsym{]}$ in the rules above:
 
 \begin{verbatim}
 doSubst :: [(TName, Term)] -> [Decl] -> TcMonad [Assn]
@@ -2363,21 +2322,21 @@ the telescope.
 
 In your homework assignment, we used a special \texttt{if} term to eliminate boolean types.
 Now, we would like to replace that with the more general \texttt{case} expression, of the
-form $[[case a of { </ pati -> ai // i /> }]]$
+form $\ottkw{case} \, \ottnt{a} \, \ottkw{of} \, \ottsym{\{} \, \ottcomp{\ottnt{pat_{\ottmv{i}}}  \to  \ottnt{a_{\ottmv{i}}}}{\ottmv{i}} \, \ottsym{\}}$
 that works with any form of datatype. What should the typing rule for
 that sort of expression look like? There is a lot of work to do.
 
 \[ \drule[width=4in]{c-case-simple} \]
 
 Mathematically, this rule first checks that the scrutinee has the type of some
-datatype $[[T]]$. Then, for each case of the pattern match, this rule looks at
-the pattern $[[pati]]$ and uses the context to calculate a telescope $[[Di]]$
+datatype $\ottmv{T}$. Then, for each case of the pattern match, this rule looks at
+the pattern $\ottnt{pat_{\ottmv{i}}}$ and uses the context to calculate a telescope $\Delta_{\ottmv{i}}$
 containing declarations of all of the variables bound in that pattern. That
-telescope is added to the context to type check each branch $[[ai]]$ against the type of
-the entire expression $[[A]]$. Furthermore, when
+telescope is added to the context to type check each branch $\ottnt{a_{\ottmv{i}}}$ against the type of
+the entire expression $\ottnt{A}$. Furthermore, when
 checking the type of each branch, we can refine that type because we know that
 the scrutinee is equal to the pattern. To reflect this information during type checking,
-we also construct the telescope $[[Di']]$.
+we also construct the telescope $\Delta'_{\ottmv{i}}$.
 
 How do we implement this rule in our language? The general strategy
 is as follows:
@@ -2385,23 +2344,23 @@ is as follows:
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \item
-  Infer type of the scrutinee $[[a]]$ (\texttt{inferType})
+  Infer type of the scrutinee $\ottnt{a}$ (\texttt{inferType})
 \item
-  Make sure that the inferred type is some type constructor $[[T]]$
+  Make sure that the inferred type is some type constructor $\ottmv{T}$
   (\texttt{ensureTyCon})
 \item
-  For each case alternative $[[pi]][[->]][[ai]]$:
+  For each case alternative $\ottnt{p_{\ottmv{i}}} \to \ottnt{a_{\ottmv{i}}}$:
 \begin{itemize}
 \item
-  Create the declarations $[[Di]]$ for the variables in the pattern
+  Create the declarations $\Delta_{\ottmv{i}}$ for the variables in the pattern
   (\texttt{declarePat})
 
-\item Create a list of definitions $[[Di']]$ that follow from unifying the
-  scrutinee $[[a]]$ with the pattern $[[pi]]$ (\texttt{unify})
+\item Create a list of definitions $\Delta'_{\ottmv{i}}$ that follow from unifying the
+  scrutinee $\ottnt{a}$ with the pattern $\ottnt{p_{\ottmv{i}}}$ (\texttt{unify})
 
 \item
-  Check the body of the case $[[ai]]$ in the extended context against the
-  expected type $[[A]]$ (\texttt{checkType})
+  Check the body of the case $\ottnt{a_{\ottmv{i}}}$ in the extended context against the
+  expected type $\ottnt{A}$ (\texttt{checkType})
 \end{itemize}
 
 \item
@@ -2452,10 +2411,10 @@ we used for data constructor applications.
 
 Now, to type check data constructor applications for parameterized types, we
 need to modify the typing rule for data constructors. This rule below
-separates the type constructor telescope ($[[D1]]$) from the data constructor
-telescope $[[D2]]$ when looking up the data constructor from the context. When
-type checking the arguments of the data constructor $[[args]]$, we first
-substitute the arguments of the type constructor $[[bs]]$ into the data
+separates the type constructor telescope ($\Delta_{{\mathrm{1}}}$) from the data constructor
+telescope $\Delta_{{\mathrm{2}}}$ when looking up the data constructor from the context. When
+type checking the arguments of the data constructor $\overline{a}$, we first
+substitute the arguments of the type constructor $\overline{b}$ into the data
 constructor telescope.
 
 \[ \drule[width=3in]{c-dcon} \]
@@ -2677,7 +2636,7 @@ inconsistent. Indeed, Martin-L\"of's original formulation of type
 theory~\cite{martin-lof71} included this rule until the resulting paradox
 was demonstrated by Girard. This inconsistency was resolved in later versions
 of the systems~\cite{martin-lof73} and in the Calculus of
-Constructions~\cite{Coc} by stratifying $[[Type]]$: first into two levels and
+Constructions~\cite{Coc} by stratifying $\ottkw{Type}$: first into two levels and
 then into an infinite hierarchy of universes~\cite{luo-ecc}.
 
 The inconsistency of this system as a logic does not prevent its use as a
@@ -2793,8 +2752,8 @@ equality checking\cite{icc-star}. This approach lead to Erasure Pure Type
 Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
 Dependent Haskell~\cite{weirich:systemd}.
 
-\section*{Acknowledgments}
-Thanks to ``Team Weirich'' from OPLSS 2022 (Kartik Singhal, Jonathan Chan, Shengyi Jiang and Thomas Binetruy), the Penn PLClub, and the attendees of OPLSS 2022, OPLSS 2014 and OPLSS 2013, for feedback and suggestions about these lecture notes. Some parts of the implementation  This work was supported by the National Science Foundation under grants
+\section*{Acknowledgments} 
+Thanks to ``Team Weirich'' from OPLSS 2022 (Kartik Singhal, Jonathan Chan, Shengyi Jiang and Thomas Binetruy), the Penn PLClub, and the attendees of OPLSS 2022, OPLSS 2014 and OPLSS 2013, for feedback and suggestions about these lecture notes. Some parts of the implementation  This work was supported by the National Science Foundation under grants 
 NSF 2006535, NSF 1703835 and NSF 0910786.
 
 \phantomsection
