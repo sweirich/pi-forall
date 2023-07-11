@@ -101,6 +101,7 @@ G |- a = b : Type
 
 
 G |- a = b
+G |- a = b : Type
 ------------------- :: refl
 G |- refl : a = b
 

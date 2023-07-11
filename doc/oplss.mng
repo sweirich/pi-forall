@@ -1868,6 +1868,34 @@ different head forms. This rule must be in checking mode because we can use
 Complete the file \href{version2/test/Hw2.pi}{\texttt{Hw2.pi}}. This file
 gives you practice with working with equality propositions in \pif.
 
+\paragraph{Example}
+To see an example of propositional equality in action, let's take a look at the function \texttt{sym} in the file \href{version2/test/Hw2.pi}{\texttt{Hw2.pi}}. 
+For convenience, we reproduce the function definition here:
+\begin{piforall}
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  subst Refl by pf 
+\end{piforall}
+Intuitively, the function \texttt{sym} says: if we supply two terms  \texttt{x} and \texttt{y} (both of type \texttt{A}), along with a proof \texttt{pf} that \texttt{x = y}, then we can prove that \texttt{y = x}.  
+Note that the \pif expression \texttt{subst Refl by pf} is doing a pattern-match on the term inhabiting the identity type. In Coq, \pif expressions of the form \texttt{subst a by b} would be written as:
+\begin{verbatim}
+match b with 
+  Refl => a
+\end{verbatim}
+
+To see what is happening in the body of \texttt{sym}, let's add type annotations to each of the subterms:
+\begin{piforall}
+sym : (A:Type) -> (x:A) -> (y:A) -> (x = y) -> y = x
+sym = \ A x y pf .
+  (subst (Refl : x = x) by (pf : x = y) : y = x)
+\end{piforall}
+
+In the body of \texttt{sym}, \texttt{subst} eliminates \texttt{pf} (a proof that \texttt{x = y}) when typechecking \texttt{Refl} against the type \texttt{y = x}. 
+Moreover, the \texttt{subst} keyword adds the definition \texttt{x = y} to the context, meaning that both sides of the equality \texttt{y = x} normalize to \texttt{y}; this is an example of the \rref{c-subst-left} in action. 
+Note that as a result of this rule, the result type of the entire expression \texttt{subst Refl by pf} changes to \texttt{y = x}, which is the desired return type for the function \texttt{sym}. 
+
+
+
 \section{Irrelevance: the \(\forall\) of \pif}
 \label{sec:irrelevance}
 
