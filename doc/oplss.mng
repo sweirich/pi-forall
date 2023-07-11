@@ -2822,8 +2822,13 @@ Systems (EPTS)~\cite{mishra-linger:epts}, and the treatment of irrelevance in
 Dependent Haskell~\cite{weirich:systemd}.
 
 \section*{Acknowledgments}
-Thanks to ``Team Weirich'' from OPLSS 2022 (Kartik Singhal, Jonathan Chan, Shengyi Jiang and Thomas Binetruy), the Penn PLClub, and the attendees of OPLSS 2022, OPLSS 2014 and OPLSS 2013, for feedback and suggestions about these lecture notes. Some parts of the implementation  This work was supported by the National Science Foundation under grants
-NSF 2006535, NSF 1703835 and NSF 0910786.
+Thanks to ``Team Weirich'' from OPLSS 2023 (Ernest Ng, David L\"{a}wen, Litao
+Zhou, and Katherine Philip) and OPLSS 2022 (Kartik Singhal, Jonathan Chan,
+Shengyi Jiang, and Thomas Binetruy), the Penn PLClub, and the attendees of
+OPLSS 2022, OPLSS 2014 and OPLSS 2013, for feedback and suggestions about
+these lecture notes. Some parts of the implementation This work was supported
+by the National Science Foundation under grants NSF 2006535, NSF 1703835 and
+NSF 0910786.
 
 \phantomsection
 \addcontentsline{toc}{section}{References}
