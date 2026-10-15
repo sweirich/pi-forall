@@ -28,5 +28,4 @@ LaTeX source files
 + [lstparams.sty](lstparams.sty), [lsthaskell.sty](lsthaskell.sty), [listproc.sty](listproc.sty) - supporting style files for code listings (including Haskell)
 + [ottalt.sty](ottalt.sty) - [Auxiliary style file](https://users.cs.northwestern.edu/~jesse/code/latex/ottalt/ottalt.pdf) for working with Ott produced LaTeX macros
 + [weirich.bib](weirich.bib) - BibTeX data
-+ [equality.v](equality.v) - Coq scratch file exploring eliminators and axiom K for propositional equality (not used to build the notes)
 + Makefile - how to put everything together
