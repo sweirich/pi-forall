@@ -658,7 +658,7 @@ exists.\footnote{Note: If you are looking at the \pif implementation, note
   that this is not the final type of \cd{inferType}.}
 
 \begin{haskell}
-type Ctx = [(TName,Type)]
+type Ctx = [(Var,Type)]
 
 inferType :: Term -> Ctx -> Maybe Type
 \end{haskell}
@@ -667,7 +667,7 @@ Let us look at our rules in Figure~\ref{fig:typing}.  Is the definition of this
 function straightforward?  For example, in the variable rule, as long as we
 can look up the type of a variable in the context, we can produce its
 type. That means that, assuming that there is some function \cd{lookupTy},
-with type \cd{Ctx -> TName -> Maybe Type}, this rule corresponds to the
+with type \cd{Ctx -> Var -> Maybe Type}, this rule corresponds to the
 following case of the \cd{inferType} function. So far so good!
 
 \begin{haskell}
