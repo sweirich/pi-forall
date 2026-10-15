@@ -310,7 +310,7 @@ that states what length of vector it is appropriate for.
 \begin{piforall}
 data Fin (n : Nat) : Type where
   Zero of [m:Nat][n = Succ m]
-  Succ of [m:Nat][n = Succ m] (Fin m)
+  Succ of [m:Nat](Fin m)[n = Succ m]
 \end{piforall}
 
 For example, the type \cd{Fin 3} has exactly three values:
