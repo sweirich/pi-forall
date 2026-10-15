@@ -9,7 +9,7 @@ tm, a , b , A , B  :: '' ::= {{ com terms and types }}
   | False                 ::   :: LitFalse {{ com boolean value false }}
   | if a then b1 else b2  ::   :: If {{ com conditional }}
 
-  | if a then b1 else b2 [ x . B ]  ::   :: IfM {{ com conditional }}
+  | if a then b1 else b2 [ x . B ]  ::   :: IfM {{ com conditional with motive }}
 
 v :: 'v_' ::= 
   | Bool                  ::   :: TyBool 
@@ -70,7 +70,7 @@ if True then b1 else b2 ~> b1
 
 
 ---------------------------------- :: if_false
-if False then b1 else b2 ~> b1
+if False then b1 else b2 ~> b2
 
 a ~> a'
 --------------------------------- :: if

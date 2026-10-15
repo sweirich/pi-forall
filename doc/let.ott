@@ -1,4 +1,4 @@
-% Language additions for 
+% Language additions for let expressions and definitions
 
 grammar
 
@@ -19,17 +19,14 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf G |-  a = v ::    :: whnf :: 'whnf_' 
+whnf G |-  a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
-x = a elem G 
-whnf G |-  a ~> v
-------------- :: def
-whnf G |-  x ~> v
+%% (variable lookup is rule whnf_var in pi.ott)
 
-whnf G |-  (b[a/x]) ~> v
+whnf G |-  (b[a/x]) ~> nf
 ------------------------------- :: let_beta
-whnf G |-  (let x = a in b) ~> v
+whnf G |-  (let x = a in b) ~> nf
 
 defns
 JOp :: '' ::=

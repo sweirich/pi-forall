@@ -27,7 +27,6 @@ Jwhnf :: '' ::=
 
 defn
 whnf G |-  a ~> nf ::    :: whnf :: 'whnf_' 
-{{ tex whnf [[a]] \leadsto [[nf]] }}
 by
 
 ----------------------- :: tyeq
@@ -45,7 +44,7 @@ whnf G |-  (subst a by b) ~> nf
 
 whnf G |-  b ~> ne
 ---------------------------------------- :: subst_cong
-whnf G |-  (subst a by ne) ~> (subst a by ne)
+whnf G |-  (subst a by b) ~> (subst a by ne)
 
 defns
 JOp :: '' ::=

@@ -168,6 +168,8 @@ formula :: 'formula_' ::=
   | judgement                ::   :: judgement
   | formula1 .. formulai     ::   :: dots
   | x : A elem G             ::   :: inG
+  | x notin defs G           ::   :: notDefInG
+     {{ tex [[x]]\mbox{ has no definition in } [[G]] }}
   | G |- A <=> B             ::   :: equate
   | notlam a                 ::   :: notlam
      {{ tex [[a]]\mbox{ is not a $\lambda$-expression } }}
@@ -213,6 +215,11 @@ whnf G |- a ~> nf
 ---------- :: var
 whnf G |- x ~> nf
 
+%% variables without definitions are already in whnf
+x notin defs G
+---------- :: var_nodef
+whnf G |- x ~> x
+
 %% congruence rule
 %%
 %% for open terms (i.e terms with free variables), the result is not a value
@@ -234,8 +241,8 @@ JEquate :: '' ::=
 
 defn
 G |- a <=> b ::    :: equate :: 'eq_'
-by
 {{ com compare $a$ and $b$ for equality }}
+by
 
 %% alpha-equivalent terms are equal
 
@@ -390,6 +397,11 @@ G |- a : (x:A) -> B
 G |- b : A
 --------------------------- ::  app
 G |- a b : B [ b / x ]
+
+G |- a : A
+G |- A : Type
+------------------ :: annot
+G |- (a : A) : A
 
 
 G |- a : A

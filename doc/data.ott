@@ -14,8 +14,8 @@ indexvar i ::=
 grammar
 
 tm, a , b , A , B :: '' ::= {{ com terms and types }}
-   | K args       ::     :: TCon
-   | T args       ::     :: DCon 
+   | K args       ::     :: DCon
+   | T args       ::     :: TCon 
    | case a of { </ pati -> ai // i /> } ::     :: Case 
    | a [ pat / x ] ::     :: PatSubst
 
@@ -27,15 +27,15 @@ tm, a , b , A , B :: '' ::= {{ com terms and types }}
    | SillyBool    ::     :: SillyBool   
 
 v :: 'v_' ::= 
-   | K args       ::     :: TCon
-   | T args       ::     :: DCon 
+   | K args       ::     :: DCon
+   | T args       ::     :: TCon 
 
 neutral, ne :: 'n_' ::=
    | case ne of { </ pati -> ai // i /> } ::     :: Case 
 
 nf :: 'nf_' ::= 
-   | K args       ::     :: TCon
-   | T args       ::     :: DCon 
+   | K args       ::     :: DCon
+   | T args       ::     :: TCon 
    | case ne of { </ pati -> ai // i /> } ::     :: Case 
 
 
@@ -67,6 +67,7 @@ telescope, D {{ tex \Delta }} :: 'd_' ::=
    |  D1 ,  D2   ::    :: Concat
    |             ::    :: Nil
    | D [ a / x ] :: M  :: Subst
+   | D [ pat / x ] :: M  :: SubstPat
    | D [ args / D1 ] :: M :: SubstTele
 
 formula :: 'formula_' ::=
@@ -91,12 +92,13 @@ whnf G |-  T args ~> T args
 -------------------- :: dcon
 whnf G |-  K args ~> K args
 
+whnf G |-  a ~> K args
 match (K args) (pati -> ai) ~> b
 whnf G |-  b ~> nf
 ---------------------------------------------------------------------- :: case
-whnf G |-  case (K args) of { </ pati -> ai // i /> } ~> nf
+whnf G |-  case a of { </ pati -> ai // i /> } ~> nf
 
-a ~> ne
+whnf G |-  a ~> ne
 ------------------------------------------------------------------------------- :: case_cong
 whnf G |-  case a of { </ pati -> ai // i /> } ~> case ne of { </ pati -> ai // i /> }
 
@@ -135,9 +137,9 @@ G |- Void : Type
 ---------------- :: Zero
 G |- Zero : Nat
    
-G |- n : Nat
+G |- a : Nat
 ----------------- :: Succ
-G |- Succ n : Nat
+G |- Succ a : Nat
 
 G |- a1 : Bool    
 G |- a2 : a1 = True
@@ -193,10 +195,10 @@ G |- a => A
 whnf G |- A ~> T bs
 </ G |- pati : T bs => Di // i />
 </ |- a ~ pati => Di' // i />
-</ G, Di , Di' |- ai : A // i />
+</ G, Di , Di' |- ai <= B // i />
 branches exhaustive
 --------------------------------------------------------  :: case
-G |- case a of { </ pati -> ai // i /> } <= A
+G |- case a of { </ pati -> ai // i /> } <= B
 
 K : D1 -> D2 -> T elem G
 G |- args <= D2 [ bs / D1 ]
@@ -210,13 +212,14 @@ by
 ----------------- :: nil
 G |-  <=  
 
-G |- a : A       
+G |- a <= A
 G |- args <= D [ a / x ]
 ----------------------------------------- :: sig
 G |- a args <= x:A , D
 
-
-G |- args <= D [ a / x ]
+%% check that the constraint holds; no substitution is needed
+G |- x <=> a
+G |- args <= D
 ----------------------------------------- :: def
 G |- args <= x = a , D
 
@@ -231,9 +234,14 @@ G |-  :  =>
 
 
 G |- pat : A => D1
-G |- ps : D => D2
+G, D1 |- ps : D [ pat / x ] => D2
 --------------------------------------------- :: Cons
 G |- pat ps : x : A , D => D1 , D2 
+
+%% constraints in the telescope are kept in the output
+G, x = b |- ps : D => D2
+--------------------------------------------- :: Def
+G |- ps : x = b , D => x = b , D2
 
 
 defn

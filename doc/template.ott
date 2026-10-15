@@ -1,4 +1,4 @@
-% Language additions for 
+% Language additions for <feature> (template for new extensions)
 
 grammar
 
@@ -9,7 +9,7 @@ defns
 Jwhnf :: '' ::= 
 
 defn
-whnf G |-  a = nf ::    :: whnf :: 'whnf_' 
+whnf G |-  a ~> nf ::    :: whnf :: 'whnf_' 
 by
 
 defns
